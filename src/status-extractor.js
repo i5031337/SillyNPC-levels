@@ -34,6 +34,8 @@ import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReaso
 import { setPendingChanges, isItemDecided } from './status-review.js';
 import { recordAppliedChanges, recordThreadChanges } from './status-snapshots.js';
 import { applyTimeRules } from './status-rules.js';
+import { progressXp, boostStat } from './progression.js';
+import { splitValue } from './utils.js';
 
 /**
  * Second-pass state extraction.
@@ -557,6 +559,7 @@ function safePlayerCard() {
 export function describeLimits(trackerSettings, state) {
     const describe = (list, label, valueFor) => {
         const entries = (list || [])
+            .filter(stat => label !== 'Player limits' || stat.name.toLowerCase() !== 'xp')
             .map(stat => ({
                 name: stat.name,
                 /* The value's own ceiling whenever the actor holds a value, and the
@@ -735,6 +738,15 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
             + 'in other games.',
         '\n### CURRENT STATE',
         describeCurrentState(state, trackerSettings) || '(empty)',
+        '\n### PLAYER EXPERIENCE',
+        'When the latest message shows a meaningful player accomplishment, award XP. '
+            + 'Examples include acquiring a useful item, resolving a challenge, or a successful '
+            + 'interaction with an NPC. Award a small amount for a modest achievement and more '
+            + 'for a major one. Do not award XP for merely repeating an earlier event, and do '
+            + 'not award XP without a concrete accomplishment in the latest message.',
+        'Report XP as the new absolute total, including any amount above its current cap. '
+            + 'For example, if XP is 90/100 and the event earns 20, report 110/100. '
+            + 'The extension performs level-ups and carries excess XP forward. Do not change Level.',
         /* Beside the state, because it is state. It used to sit after the limits and
            the field list, among the rules, where it read as an aside about shape rather
            than as more of what is already known. Same shape as the characters above it
@@ -900,6 +912,62 @@ export function coerceToUpdate(raw) {
     if (!raw) return null;
     if (typeof raw === 'object') return Array.isArray(raw) ? null : raw;
     return safeJsonParse(extractJSON(String(raw)));
+}
+
+/** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
+async function addLevelBonus(parsed, state, trackerSettings, messageText) {
+    const stats = parsed?.player?.stats || parsed?.player;
+    const current = state?.player?.stats || {};
+    const xpName = Object.keys(current).find(key => key.toLowerCase() === 'xp');
+    const levelName = Object.keys(current).find(key => key.toLowerCase() === 'level');
+    const bonusName = (trackerSettings.playerStats || []).find(s => s.name.toLowerCase() === 'level bonus')?.name;
+    if (!stats || !xpName || !levelName || !bonusName) return;
+    const xpKey = Object.keys(stats).find(key => key.toLowerCase() === 'xp');
+    if (!xpKey) return;
+    const transition = progressXp(current[xpName], stats[xpKey], current[levelName]);
+    if (!transition || transition.levelsGained < 1) return;
+
+    const eligible = (trackerSettings.playerStats || []).filter(def => {
+        if (['xp', 'level', 'level bonus'].includes(def.name.toLowerCase())) return false;
+        const parts = splitValue(current[def.name]);
+        return Number.isFinite(Number(parts.current)) && parts.current !== '';
+    }).map(def => def.name);
+    const prompt = [
+        `The player just earned enough XP to reach level ${transition.level}.`,
+        `Latest story event: ${messageText}`,
+        `Current player sheet: ${JSON.stringify(current)}`,
+        `Eligible numeric stats: ${eligible.join(', ') || '(none)'}`,
+        'Choose one story-appropriate level-up bonus. It can be a new narrative perk, '
+            + 'or a modest increase of one eligible numeric stat. Return JSON with a short '
+            + 'description; for a stat increase, include the exact stat name and a positive '
+            + 'integer amount of 1 to 5. For a perk, omit stat and amount.',
+    ].join('\n');
+    const schema = {
+        type: 'object', required: ['description'],
+        properties: {
+            description: { type: 'string' },
+            stat: { type: 'string' },
+            amount: { type: 'number' },
+        },
+    };
+    let bonus;
+    try {
+        bonus = coerceToUpdate(await requestExtraction(prompt, schema, trackerSettings,
+            'Choose a level-up bonus for the player. Return only a JSON object.',
+            { usageKind: 'extraction' }));
+    } catch (error) {
+        console.warn(LOG_PREFIX, 'Level-up bonus request failed:', error);
+    }
+    const description = String(bonus?.description ?? '').trim().slice(0, 180);
+    if (!description) return;
+    const amount = Number(bonus?.amount);
+    const target = eligible.find(name => name.toLowerCase() === String(bonus?.stat ?? '').toLowerCase());
+    const sheetStats = parsed.player.stats || parsed.player;
+    if (target && Number.isInteger(amount) && amount >= 1 && amount <= 5) {
+        const boosted = boostStat(current[target], sheetStats[target], amount);
+        if (boosted !== null) sheetStats[target] = boosted;
+    }
+    sheetStats[bonusName] = `Level ${transition.level}: ${description}`;
 }
 
 /**
@@ -1235,6 +1303,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             );
             return { applied: false, reason: 'unparseable' };
         }
+        await addLevelBonus(parsed, state, trackerSettings, String(messageText));
 
         // Presence first: applyUpdate refuses to introduce characters in speakers mode,
         // so anyone the extraction reports must be admitted to the scene before their

@@ -2,7 +2,29 @@
   <img src="img/SillyNPCLogo.jpg" alt="SillyNPC" width="420">
 </p>
 
-# SillyNPC
+# SillyNPC XP
+
+This fork adds automatic player XP progression to SillyNPC. Install it **instead of**
+the original extension; both use the same settings and events and must not run together.
+
+With the Status Tracker enabled, the reader can award XP for concrete accomplishments
+in the latest story message, including useful item acquisitions, resolved challenges,
+and successful NPC interactions. It reports the new absolute XP total. For example,
+an award of 20 when XP is `90/100` is reported as `110/100`.
+
+The extension then automatically advances Level to 2 and stores `10/100` XP. The
+current XP maximum stays the threshold for subsequent levels, and large awards can
+cross multiple levels. On a level-up in separate extraction mode, the reader makes
+an additional request to choose a story-appropriate bonus. It may increase an
+existing numeric player stat by 1–5, or write a narrative perk. The latest bonus
+appears in the player's `Level Bonus` field. In inline mode, the narrator is asked
+to supply that field with its status update. If no bonus can be read from the LLM,
+the level-up still occurs; the bonus can be entered on the player sheet.
+
+XP awards are model judgments and can be corrected on the player sheet. Each award
+should correspond to an accomplishment in the latest message; events already counted
+should not be awarded again. The tracker review settings still govern proposed
+changes, including a review mode that holds all changes for approval.
 
 [![SillyTavern Compatible](https://img.shields.io/badge/SillyTavern-Extension-crimson?style=for-the-badge&logo=electron&logoColor=white)](https://github.com/SillyTavern/SillyTavern)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
@@ -77,10 +99,7 @@ SillyNPC operates across two core modules:
 
 ### Method 1: SillyTavern Extension Installer
 1. Open SillyTavern and click **Extensions** (stacked blocks icon) -> **Install Extension**.
-2. Paste the repository URL:
-   ```text
-   https://github.com/BrutalKoala/SillyNPC
-   ```
+2. Paste the URL of this GitHub fork after it is published.
 3. Click **Save / Install** and refresh the page.
 
 ### Method 2: Manual Clone
@@ -88,7 +107,7 @@ Clone the repository directly into your SillyTavern installation directory:
 
 ```bash
 cd SillyTavern/public/scripts/extensions/third-party
-git clone https://github.com/BrutalKoala/SillyNPC.git
+git clone <this-fork-git-url> SillyNPC
 ```
 Reload SillyTavern.
 

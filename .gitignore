@@ -1,7 +1,8 @@
-# The test suite is not part of what SillyTavern loads - manifest.json names only
-# index.js and style.css - so it is kept out of the published extension. The files
-# stay on disk: `node tests/run.mjs` still works locally.
+# Keep upstream's local test suite ignored; publish the progression tests with this fork.
 tests/
+!tests/
+tests/*
+!tests/progression.mjs
 
 # Scratch / editor debris
 temp_*.txt

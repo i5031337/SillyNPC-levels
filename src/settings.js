@@ -376,7 +376,8 @@ export const defaultSettings = {
             { name: 'HP', defaultValue: '20/20', format: '{{name}}: {{value}}', maxStatValue: '20', visible: true, isPrimary: true, color: '#e03131' },
             { name: 'Energy', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true, isPrimary: true, color: '#3b5bdb' },
             { name: 'Level', defaultValue: '1', format: '{{name}}: {{value}}', maxStatValue: '', visible: true, isPrimary: false },
-            { name: 'XP', defaultValue: '0/100', format: '{{name}}: {{value}}', maxStatValue: '100', visible: true, isPrimary: false }
+            { name: 'XP', defaultValue: '0/100', format: '{{name}}: {{value}}', maxStatValue: '100', visible: true, isPrimary: false },
+            { name: 'Level Bonus', defaultValue: '', format: '{{name}}: {{value}}', maxStatValue: '', visible: true, isPrimary: false }
         ],
         collections: [
             { 
@@ -1053,6 +1054,12 @@ export function normalizeSettings(settings) {
         if (!settings.statusTracker.playerStats) {
             settings.statusTracker.playerStats = structuredClone(defaultSettings.statusTracker.playerStats);
         } else {
+            if (settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'xp')
+                && settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'level')
+                && !settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'level bonus')) {
+                settings.statusTracker.playerStats.push(structuredClone(
+                    defaultSettings.statusTracker.playerStats.find(stat => stat.name === 'Level Bonus')));
+            }
             // Ensure all player stats have format and maxStatValue
             for (const stat of settings.statusTracker.playerStats) {
                 if (stat.format === undefined) stat.format = '{{value}}';
@@ -1242,4 +1249,3 @@ export function importSettingsData(jsonText) {
     saveSettings();
     return true;
 }
-

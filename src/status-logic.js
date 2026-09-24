@@ -19,6 +19,7 @@ import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '.
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from './constants.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from './utils.js';
 import { getIgnoredSpeakerLabels, normaliseSpeakerLabel } from './speaker-labels.js';
+import { progressXp } from './progression.js';
 import { describeThreads } from './threads.js';
 import { charactersFromActivatedLore } from './activated-lore.js';
 
@@ -1645,6 +1646,7 @@ function getStatusInstructions() {
     prompt += `IMPORTANT: The "Current Status" block is the authoritative source of truth. If an item or character is missing from it, they are no longer present or in possession. Do NOT re-add items that were recently removed unless the current message explicitly describes acquiring them again.\n\n`;
 
     prompt += `Rules: ${applyMacros(settings.systemRules)}\n`;
+    prompt += `Player XP: award XP for meaningful accomplishments in the latest message, such as acquiring a useful item, overcoming a challenge, or a successful NPC interaction. Report the new absolute XP total even when it exceeds its current maximum (90/100 plus 20 becomes 110/100). The extension performs the level-up and carries excess XP forward. When an award crosses the cap, also provide a story-appropriate Level Bonus on the player sheet. Do not award the same event twice.\n`;
     
     prompt += `\n### CRITICAL RULE: AVOID DOUBLE-DEDUCTING COSTS\n`;
     prompt += `- Action/Spell Costs: If a resource, attribute, or item cost (e.g., Energy, Mana, HP, Ammo, Gold) was already deducted or used in a previous turn (for example, in the message prompting a roll or when the action was initiated), do NOT deduct it again when describing the outcome or resolution of that action.\n`;
@@ -1670,7 +1672,7 @@ function getStatusInstructions() {
         .join(', ');
 
     const playerStats = currentState.player?.stats || {};
-    const playerMaxes = describeMaxes(settings.playerStats,
+    const playerMaxes = describeMaxes(settings.playerStats.filter(stat => stat.name.toLowerCase() !== 'xp'),
         name => playerStats[findMatchingStatKey(playerStats, name) || name]);
     // One line for the whole cast, so the highest ceiling anyone present shows is the one
     // named: a party where one character has been raised to 350 must not be told 40.
@@ -2359,10 +2361,27 @@ export function applyUpdate(update, options = {}) {
             },
         );
 
+        const xpName = settings.playerStats.find(s => s.name.toLowerCase() === 'xp')?.name;
+        const levelName = settings.playerStats.find(s => s.name.toLowerCase() === 'level')?.name;
+        let xpProgress = null;
+        if (xpName && levelName && playerGroups.has(xpName)) {
+            const group = playerGroups.get(xpName);
+            const raw = group.whole ?? group.current;
+            if (raw !== undefined) {
+                xpProgress = progressXp(state.player.stats[xpName], raw, state.player.stats[levelName]);
+            }
+        }
+
         for (const [actualKey, group] of playerGroups) {
+            if (xpProgress && (actualKey === xpName
+                || (actualKey === levelName && xpProgress.levelsGained > 0))) continue;
             const statDef = settings.playerStats.find(s => s.name.toLowerCase() === actualKey.toLowerCase());
             const merged = combineStatValue(state.player.stats[actualKey], group, statDef, { verbatim });
             state.player.stats[actualKey] = constrainToDefinition(statDef, merged, state.player.stats[actualKey]);
+        }
+        if (xpProgress) {
+            state.player.stats[xpName] = xpProgress.xp;
+            if (xpProgress.levelsGained > 0) state.player.stats[levelName] = xpProgress.level;
         }
 
         // Look for collections both in .collections and at top level
@@ -4348,5 +4367,3 @@ export function importSystemPreset(jsonText) {
     saveSettings();
     return profile;
 }
-
-

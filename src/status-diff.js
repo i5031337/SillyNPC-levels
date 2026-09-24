@@ -169,6 +169,7 @@ export function computeStateDiff(before, after, trackerSettings) {
         }));
     }
 
+    const playerStart = changes.length;
     const playerStatKeys = new Set([
         ...Object.keys(before?.player?.stats || {}),
         ...Object.keys(after?.player?.stats || {}),
@@ -179,6 +180,22 @@ export function computeStateDiff(before, after, trackerSettings) {
             before: before?.player?.stats?.[key], after: after?.player?.stats?.[key],
             policy, threshold,
         }));
+    }
+    // Rollover makes the XP numerator fall, but that is an earned level, not a loss.
+    // Treat its paired Level change as one ordinary automatic event in risky mode.
+    const beforePlayer = before?.player?.stats || {};
+    const afterPlayer = after?.player?.stats || {};
+    const xpKey = Object.keys(afterPlayer).find(key => key.toLowerCase() === 'xp');
+    const levelKey = Object.keys(afterPlayer).find(key => key.toLowerCase() === 'level');
+    if (xpKey && levelKey
+        && Number(afterPlayer[levelKey]) > Number(beforePlayer[levelKey])
+        && Number(splitValue(afterPlayer[xpKey]).current) < Number(splitValue(beforePlayer[xpKey]).current)) {
+        for (const change of changes.slice(playerStart)) {
+            if (change.scope === 'player' && change.kind === 'stat' && change.label === xpKey) {
+                change.risk = 'normal';
+                change.reason = 'XP carried forward after level-up';
+            }
+        }
     }
     changes.push(...diffCollections({
         scope: 'player', actor: null,
