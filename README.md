@@ -122,7 +122,7 @@ Reload SillyTavern.
    * When a character speaks in chat, click their name or placeholder portrait to create/open their card.
    * Upload an image, assign an accent color, and save.
 3. **Enabling Tracker & HUD:**
-   * The tracker is **off by default**. Enable it under the **Tracker** tab to begin state extraction.
+   * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
    * The HUD appears once the tracker is running; choose a meter style under the **HUD** tab.
 
 ---
