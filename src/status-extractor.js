@@ -746,7 +746,8 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
             + 'not award XP without a concrete accomplishment in the latest message.',
         'Report XP as the new absolute total, including any amount above its current cap. '
             + 'For example, if XP is 90/100 and the event earns 20, report 110/100. '
-            + 'The extension performs level-ups and carries excess XP forward. Do not change Level.',
+            + 'Keep the XP cap unchanged. The extension performs level-ups and carries excess '
+            + 'XP forward. Do not change Level or Level Bonus.',
         /* Beside the state, because it is state. It used to sit after the limits and
            the field list, among the rules, where it read as an aside about shape rather
            than as more of what is already known. Same shape as the characters above it

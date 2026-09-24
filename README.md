@@ -99,7 +99,7 @@ SillyNPC operates across two core modules:
 
 ### Method 1: SillyTavern Extension Installer
 1. Open SillyTavern and click **Extensions** (stacked blocks icon) -> **Install Extension**.
-2. Paste the URL of this GitHub fork after it is published.
+2. Paste this fork's repository URL: `https://github.com/i5031337/SillyNPC-levels`.
 3. Click **Save / Install** and refresh the page.
 
 ### Method 2: Manual Clone
@@ -107,7 +107,7 @@ Clone the repository directly into your SillyTavern installation directory:
 
 ```bash
 cd SillyTavern/public/scripts/extensions/third-party
-git clone <this-fork-git-url> SillyNPC
+git clone https://github.com/i5031337/SillyNPC-levels.git SillyNPC
 ```
 Reload SillyTavern.
 
