@@ -1,4 +1,4 @@
-import { availablePrompts, PROMPTS } from './prompts.js';
+import { availablePrompts, PROMPTS, BUILT_IN_PROMPTS } from './prompts.js';
 import { buildSettingTextArea, buildSettingNumber, buildSettingSlider } from './ui-shared.js';
 import { escapeHtml } from './utils.js';
 
@@ -20,6 +20,8 @@ export function buildPromptEditor(entry, { onChange, showHome = false } = {}) {
         help: entry.help,
         recommended: entry.recommended?.(),
         emptyNote: entry.emptyNote,
+        builtIn: entry.showsBuiltIn ? entry.recommended?.() : undefined,
+        rows: entry.rows,
         showTokens: true,
         onChange,
     });
@@ -97,4 +99,71 @@ export function renderPromptsView(view, onApply) {
             + hidden.map(p => `<b>${escapeHtml(p.label)}</b>`).join(', ') + '.';
         view.append(note);
     }
+
+    view.append(buildBuiltInSection(onApply));
+}
+
+/**
+ * Everything else the extension says, folded away: the headings, asks and rules it builds
+ * prompts from. One fold per area, and a fold's boxes are only built when it is opened -
+ * there are dozens, and a tab that drew them all would be slow to open for something most
+ * people never touch.
+ */
+function buildBuiltInSection(onApply) {
+    const wrap = document.createElement('details');
+    wrap.className = 'sillynpc-prompt-builtins';
+
+    const summary = document.createElement('summary');
+    summary.textContent = 'Built-in wording';
+    wrap.append(summary);
+
+    const intro = document.createElement('small');
+    intro.className = 'notes';
+    intro.textContent = 'The rest of what the extension sends: section headings, asks and rules '
+        + 'wrapped around your data. Each is sent as written here. {{placeholders}} are filled '
+        + 'with your data when it is sent, and a line whose placeholders are all empty is left '
+        + 'out. Leave a box empty for the built-in wording.';
+    wrap.append(intro);
+
+    const groups = [...new Set(BUILT_IN_PROMPTS.map(entry => entry.group))];
+    for (const group of groups) {
+        const fold = document.createElement('details');
+        fold.className = 'sillynpc-prompt-group';
+        const title = document.createElement('summary');
+        title.textContent = group;
+        fold.append(title);
+
+        /* When this group runs at all. Without it every box reads as something sent on
+           every message, which is true of five of the eighteen. */
+        const runs = BUILT_IN_PROMPTS.find(e => e.group === group)?.runs;
+        if (runs) {
+            const cadence = document.createElement('small');
+            cadence.className = 'notes sillynpc-prompt-cadence';
+            cadence.textContent = runs;
+            fold.append(cadence);
+        }
+        fold.addEventListener('toggle', () => {
+            if (!fold.open || fold.dataset.built) return;
+            fold.dataset.built = 'true';
+            for (const entry of BUILT_IN_PROMPTS.filter(e => e.group === group)) {
+                const section = document.createElement('div');
+                section.className = 'sillynpc-prompt-section';
+                /* Labelled, not hidden. A text that cannot fire in this setup is still
+                   yours to read and edit - and knowing it is dormant is the answer to
+                   "why is this here", which a missing box does not give. */
+                const idle = entry.idle?.() || '';
+                if (idle) {
+                    section.classList.add('sillynpc-prompt-idle');
+                    const says = document.createElement('small');
+                    says.className = 'notes sillynpc-prompt-idle-note';
+                    says.textContent = idle;
+                    section.append(says);
+                }
+                section.append(buildPromptEditor(entry, { onChange: onApply }));
+                fold.append(section);
+            }
+        });
+        wrap.append(fold);
+    }
+    return wrap;
 }

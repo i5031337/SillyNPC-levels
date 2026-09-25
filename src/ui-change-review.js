@@ -1,5 +1,6 @@
-import { getPendingChanges, resolvePendingChanges, getLooseNotes } from './status-review.js';
+import { getPendingChanges, resolvePendingChanges, getLooseNotes, getRefusedValues } from './status-review.js';
 import { getSettings } from './settings.js';
+import { acceptedByDefault } from './status-diff.js';
 
 /**
  * The inline review panel.
@@ -50,7 +51,7 @@ function buildReviewPanel(messageId) {
     const rows = pending.map((change, index) => ({
         index,
         change,
-        accepted: change.kind !== 'item-remove',   // deletions default to "no"
+        accepted: acceptedByDefault(change),   // see status-diff.js
         dismiss: false,                            // never off by default: see buildRow
         value: String(change.after ?? ''),
         // Where it lands, editable before it does.
@@ -77,14 +78,18 @@ function buildReviewPanel(messageId) {
     // differently from the stat. Shown rather than dropped: a reason that could not be
     // placed is evidence about a reader losing track of what it is changing, which is the
     // question this whole feature exists to answer.
+    /* Folded, since there are usually far more of these than there are rows. A reader that
+       restates the whole state explains every value it restates, and all but a handful of
+       those explain something that did not change - thirty lines above seven rows, burying
+       the decision the panel exists for. The evidence is still here, one click away. */
     const loose = getLooseNotes(messageId);
     if (loose.length) {
-        const notes = document.createElement('div');
+        const notes = document.createElement('details');
         notes.className = 'sillynpc-review-loose-notes';
-        const lead = document.createElement('small');
+        const lead = document.createElement('summary');
         lead.textContent = loose.length === 1
-            ? 'It also said, about nothing listed here:'
-            : `It also said ${loose.length} things about nothing listed here:`;
+            ? 'It also said one thing that matches no change here'
+            : `It also said ${loose.length} things that match no change here`;
         notes.appendChild(lead);
         for (const note of loose) {
             const line = document.createElement('small');
@@ -93,6 +98,28 @@ function buildReviewPanel(messageId) {
             notes.appendChild(line);
         }
         panel.appendChild(notes);
+    }
+
+    /* What a field's own vocabulary turned down. Shown because the sheet looks the same
+       whether the reader said nothing about a field or said something it was not allowed to
+       say, and those call for opposite answers: one is a reader to fix, the other a word to
+       add in System Builder. */
+    const refused = getRefusedValues(messageId);
+    if (refused.length) {
+        const box = document.createElement('details');
+        box.className = 'sillynpc-review-loose-notes sillynpc-review-refused';
+        const lead = document.createElement('summary');
+        lead.textContent = refused.length === 1
+            ? 'One value was refused: it is not on that field\'s list'
+            : `${refused.length} values were refused: they are not on their field's list`;
+        box.appendChild(lead);
+        for (const line of refused) {
+            const row = document.createElement('small');
+            row.className = 'sillynpc-review-loose-note';
+            row.textContent = line;
+            box.appendChild(row);
+        }
+        panel.appendChild(box);
     }
 
     const list = document.createElement('div');
@@ -243,6 +270,11 @@ function buildRow(row) {
     const label = document.createElement('span');
     label.className = 'sillynpc-review-label';
     label.textContent = change.label;
+    if (change.kind === 'item-remove') {
+        label.title = change.fromReplace
+            ? 'A scan rebuilt this list and this item was not in it. Tick it to remove the item.'
+            : 'The reader says this is gone. Untick it to keep the item.';
+    }
 
     const from = document.createElement('span');
     from.className = 'sillynpc-review-from';

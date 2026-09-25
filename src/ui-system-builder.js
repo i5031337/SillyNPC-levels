@@ -152,10 +152,19 @@ function buildCollectionsEditor(onRefresh) {
         const renderFields = () => {
             fieldsList.replaceChildren();
             col.fields.forEach((field, fIdx) => {
+                /* Two lines. The controls have filled their line for a while, and the
+                   description below is the one thing here written in sentences - it is sent
+                   to the tracker's reader, so a 60px box beside the key would be the wrong
+                   shape for what goes in it. */
+                const fBox = document.createElement('div');
+                fBox.style.display = 'flex';
+                fBox.style.flexDirection = 'column';
+                fBox.style.gap = '3px';
+                fBox.style.marginBottom = '8px';
+
                 const fRow = document.createElement('div');
                 fRow.style.display = 'flex';
                 fRow.style.gap = '5px';
-                fRow.style.marginBottom = '5px';
                 fRow.style.alignItems = 'center';
                 
                 fRow.innerHTML = `
@@ -175,7 +184,7 @@ function buildCollectionsEditor(onRefresh) {
                         <input type="checkbox" class="f-multiline" ${field.isMultiline ? 'checked' : ''} ${field.type !== 'text' ? 'disabled' : ''}>
                         <small class="sillynpc-row-hint">Multi</small>
                     </label>
-                    <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody - and the per-message reader cannot change it, because the Library's value is written back over whatever it returns.&#10;&#10;Ticked together with Multi, the field is also left out of what the reader is sent each message: it is the same sentence on every holder and nothing the reader says about it survives. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers ignore this and are always per-holder, unless the number is the Primary field.">
+                    <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody.&#10;&#10;The tracker's reader is shown the value every message - it has to know what a thing is to judge what a message did with it - but it cannot change one: the Library's value is written back over whatever it returns. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers ignore this and are always per-holder, unless the number is the Primary field.">
                         <input type="checkbox" class="f-static" ${field.isStatic !== false ? 'checked' : ''}>
                         <small class="sillynpc-row-hint">Static</small>
                     </label>
@@ -265,7 +274,19 @@ function buildCollectionsEditor(onRefresh) {
                     renderFields();
                 });
 
-                fieldsList.appendChild(fRow);
+                const hint = document.createElement('input');
+                hint.type = 'text';
+                hint.className = 'text_pole f-hint';
+                hint.value = field.hint || '';
+                hint.placeholder = `What "${field.label || field.name}" is for - sent to the tracker's reader`;
+                hint.title = `What this field means. Sent to the tracker's reader with the field list, `
+                    + 'so a number called Cost can say what it costs. Leave empty to send only the name and type.';
+                hint.style.fontSize = 'var(--sillynpc-text-sm)';
+                hint.style.opacity = '0.9';
+                hint.addEventListener('input', (e) => { field.hint = e.target.value; saveSettings(); });
+
+                fBox.append(fRow, hint);
+                fieldsList.appendChild(fBox);
             });
         };
 
@@ -425,7 +446,7 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
                 <button type="button" class="menu_button stat-down-btn" title="Move down" ${index === stats.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
                 <button type="button" class="menu_button delete-btn"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <div style="display:flex; gap:8px; width:100%; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; align-items:center;">
                 <small class="sillynpc-field-note">Format:</small>
                 <input type="text" class="text_pole stat-format" value="${escapeHtml(stat.format || '{{value}}')}" placeholder="e.g. HP: {{value}}" style="flex:1; font-size:var(--sillynpc-text-md); height:24px;">
                 ${isNumericStat(stat) ? `
@@ -474,6 +495,11 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
                            ${String(stat.format || '').includes('{{name}}') ? 'checked' : ''}
                            ${formatIsToggleable(stat.format) ? '' : 'disabled'}>
                     <small>Name</small>
+                </label>
+                <label class="sillynpc-check-group" style="margin-left:6px;"
+                       title="Only you change it. The tracker is told not to, and any change it reports is thrown away. Edit it by hand on the sheet or in the tracker box.">
+                    <input type="checkbox" class="stat-locked" ${stat.locked ? 'checked' : ''}>
+                    <small>Locked</small>
                 </label>
                 <input type="text" class="text_pole stat-options"
                        value="${escapeHtml((stat.options || []).join(', '))}"
@@ -575,6 +601,7 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
             onRefresh();
         });
         row.querySelector('.stat-visible').addEventListener('change', (e) => { stat.visible = e.target.checked; saveSettings(); onRefresh(); });
+        row.querySelector('.stat-locked').addEventListener('change', (e) => { stat.locked = e.target.checked; saveSettings(); onRefresh(); });
         // A shortcut for writing Format, not a second mechanism: one place decides what
         // a field is labelled, and it is the box right there in the row.
         row.querySelector('.stat-show-name').addEventListener('change', (e) => {

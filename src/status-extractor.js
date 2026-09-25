@@ -1,3 +1,4 @@
+import { promptText } from './prompt-texts.js';
 import { getContext } from '../../../../st-context.js';
 import { applyMacros } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
@@ -29,6 +30,9 @@ import {
     getPlayerCard,
     findCardForName,
     statsInSystem,
+    takeRefusedValues,
+    sanitizeModelUpdate,
+    lockedStats,
 } from './status-logic.js';
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from './status-diff.js';
 import { setPendingChanges, isItemDecided } from './status-review.js';
@@ -186,22 +190,27 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
         const relevant = (trackerSettings.collections || [])
             .filter(c => c.target === 'all' || c.target === target);
         if (!relevant.length) return null;
+        const itemShape = (col) => ({
+            type: 'object',
+            properties: Object.fromEntries((col.fields || []).map(f => [
+                f.name,
+                { type: f.type === 'number' ? 'number' : (f.type === 'boolean' ? 'boolean' : 'string') },
+            ])),
+        });
         return {
             type: 'object',
             properties: Object.fromEntries(relevant.map(col => [col.id, {
                 type: 'object',
                 properties: {
-                    add: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: Object.fromEntries((col.fields || []).map(f => [
-                                f.name,
-                                { type: f.type === 'number' ? 'number' : (f.type === 'boolean' ? 'boolean' : 'string') },
-                            ])),
-                        },
-                    },
+                    add: { type: 'array', items: itemShape(col) },
                     remove: { type: 'array', items: { type: 'string' } },
+                    /* The third verb, which the reader could not reach.
+                       A schema names what may come back, so leaving "update" out told the
+                       model not to send one - while the inline prompt documented all three
+                       and applyCollectionUpdate handled all three. A half-drunk potion had
+                       no way to be reported, so it arrived as an "add" that merged field by
+                       field, or not at all. */
+                    update: { type: 'array', items: itemShape(col) },
                 },
             }])),
         };
@@ -256,6 +265,12 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
                     },
                 },
             },
+            /* Only when reasons are on, and for the reason threads are below: a schema names
+               what may come back, so a key it leaves out is a key the model is told not to
+               send. The ask would still be in the prompt and the answer would never arrive. */
+            ...(trackerSettings.extractionReasons === false ? {} : {
+                why: { type: 'object', additionalProperties: { type: 'string' } },
+            }),
             // Only when threads are on. A schema names what may come back, so a key it
             // does not mention is a key the model is told not to send - the ask would
             // still be in the prompt and the answer would never arrive, which is the
@@ -276,7 +291,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
                 },
                 closed: { type: 'array', items: { type: 'string' } },
             } : {}),
-            // Only when there are strangers to ask about - see describeStrangers.
+            // Only when there are strangers to ask about - see strangerValues.
             ...(strangers.length ? {
                 strangers: {
                     type: 'object',
@@ -315,17 +330,16 @@ export function strangersToClassify(messageId) {
  * to cannot be read off their name, and nobody can tag for every description - but the
  * reader is reading the reply anyway, and choosing from a short closed list is a small ask.
  *
- * @returns {string} '' when there is nobody to ask about.
+ * @returns {{ strangers: string, strangerKinds: string, strangerExample: string }} All empty
+ *   when there is nobody to ask about, which leaves the STRANGERS section out.
  */
-export function describeStrangers(strangers, tags = poolTags()) {
-    if (!strangers?.length || !tags.length) return '';
-    return [
-        '\n### STRANGERS',
-        `These speakers have no character card: ${strangers.map(n => JSON.stringify(n)).join(', ')}.`,
-        'Also return a "strangers" object giving each of them the one kind that fits them best,',
-        `chosen only from: ${tags.join(', ')}.`,
-        `For example: { ${JSON.stringify(strangers[0])}: ${JSON.stringify(tags[0])} }. If none of those fits, give "".`,
-    ].join('\n');
+export function strangerValues(strangers, tags = poolTags()) {
+    if (!strangers?.length || !tags.length) return { strangers: '', strangerKinds: '', strangerExample: '' };
+    return {
+        strangers: strangers.map(n => JSON.stringify(n)).join(', '),
+        strangerKinds: tags.join(', '),
+        strangerExample: `${JSON.stringify(strangers[0])}: ${JSON.stringify(tags[0])}`,
+    };
 }
 
 /**
@@ -349,6 +363,12 @@ export function describeStrangers(strangers, tags = poolTags()) {
  * @param {object} trackerSettings
  * @returns {string}
  */
+/** A note, ending in a full stop, however the person who wrote it left it. */
+function endsSentence(text) {
+    const trimmed = String(text ?? '').trim();
+    return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
 export function describeCollections(trackerSettings) {
     const lines = [];
     for (const col of trackerSettings.collections || []) {
@@ -361,8 +381,14 @@ export function describeCollections(trackerSettings) {
             // is added is the only chance the library gets to learn its description.
             const library = !f.isPrimary && f.isMultiline && isStaticField(f)
                 ? ' [write it when adding; kept in the library afterwards]' : '';
+            /* What the field is for, in the owner's words. A collection could say what it
+               held and a stat could say how it was written, and a collection's fields had
+               nowhere to say anything at all - so "value (number)" reached the reader as a
+               number called Cost with nothing saying what it costs. */
+            const says = String(f.hint ?? '').trim();
             return `${f.name}${type}${choices}`
-                + `${f.isPrimary ? ' [identifies the item]' : ''}${library}`;
+                + `${f.isPrimary ? ' [identifies the item]' : ''}${library}`
+                + `${says ? ` - ${endsSentence(says)}` : ''}`;
         }).join(', ');
 
         /* The label and the note, not just the id. An id is a key - "pictures" tells the
@@ -376,7 +402,7 @@ export function describeCollections(trackerSettings) {
         const note = String(col.hint ?? '').trim();
 
         lines.push(`- ${title} for ${col.target || 'all'}`
-            + `${note ? ` - ${note.replace(/\s*$/, '').replace(/\.?$/, '.')}` : ''}`
+            + `${note ? ` - ${endsSentence(note)}` : ''}`
             + ` Fields: ${fields || 'name'}`);
     }
     return lines.join('\n');
@@ -416,7 +442,18 @@ export function buildDeltaExample(trackerSettings) {
         }
     }
 
-    const shape = { [col.id]: { add: [item], remove: ['<exact name of something lost>'] } };
+    /* All three verbs. The example is the only place the reply's shape is shown in the
+       user's own names, so a verb missing from it is a verb the reader does not use. */
+    const changed = { [primary]: '<exact name>', ...Object.fromEntries(
+        Object.entries(item).filter(([key]) => key !== primary).slice(0, 1)
+            .map(([key]) => [key, '<its new value>'])) };
+    const shape = {
+        [col.id]: {
+            add: [item],
+            remove: ['<exact name of something lost>'],
+            ...(Object.keys(changed).length > 1 ? { update: [changed] } : {}),
+        },
+    };
     return JSON.stringify(shape, null, 2);
 }
 
@@ -435,46 +472,31 @@ function summariseCollections(actor, target, trackerSettings) {
         const out = {};
         for (const col of cols) {
             const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
-            const qtyField = (col.fields || []).find(f => f.type === 'number'
-                && ['quantity', 'qty', 'count'].includes(f.name));
-            // Shown as objects rather than names. Collections used to render as bare
-            // strings - "spells": ["Fireball"] - so the model never saw that an item
-            // has a weight or a description, and had no shape to copy when adding one.
-            // Empty fields are dropped: they say nothing, and a long inventory of
-            // mostly-blank objects would crowd out the message being read.
+            /* Shown as objects rather than names, and whole. Collections used to render as
+               bare strings - "spells": ["Fireball"] - so the model never saw that an item
+               has a cost or a description, and had no shape to copy when adding one.
+
+               Nothing is withheld any more. Descriptions used to be left out on the grounds
+               that a static field is owned by the item library and written back over
+               whatever the reader returns (getMergedItem), so the reader could not change
+               one - which is true, and was the wrong conclusion. It cannot change a
+               description; it has to READ one to judge what a message did with the thing.
+               Choosing whether somebody just ate {"name":"Fekete Bomba","quantity":1} with
+               nothing to say what that is, is guessing, and a reader that has to guess what
+               an item is will also guess at its description and write one back.
+
+               A zero is sent for the same reason: a spell that costs nothing and a spell
+               whose cost nobody has filled in are different facts, and dropping the zero
+               made them one. Only a field that is genuinely empty is left out, because an
+               empty field has nothing to say. */
             out[col.id] = (actor?.collections?.[col.id] || []).map(item => {
                 const name = item?.[primary] ?? item?.name ?? '';
                 if (!name) return null;
                 const shown = { [primary]: String(name) };
                 for (const field of col.fields || []) {
                     if (field.name === primary) continue;
-                    /* Long text that belongs to the item rather than to whoever holds it.
-
-                       Static is the load-bearing half and means something exact: the value
-                       is kept once in the item library and copied onto every copy of that
-                       item, and getMergedItem writes it back over whatever the reader
-                       returns. So sending it repeats the same sentence on everybody carrying
-                       a cellphone, to describe something the reader cannot change anyway.
-
-                       Static alone would be too blunt. Under the default rule everything
-                       that is not a number is static, so a spell's cost and element would go
-                       with it - and the cost is what the reader deducts when a message says
-                       somebody cast something without naming a figure. That trades
-                       correctness for a few hundred characters.
-
-                       Multi narrows it, and it is worth being straight about what that flag
-                       actually declares: it means "edit this in a box I can write several
-                       lines in", which is a statement about the editor, not about meaning.
-                       It is used here as a proxy for "long enough to be worth not repeating",
-                       and it is a good one because nobody asks for a textarea to hold a
-                       number or a word. Both ways of being wrong are mild and visible: a long
-                       field with Multi unticked is still sent, costing what it costs, and a
-                       short one with Multi ticked is withheld from a reader that could not
-                       have changed it. Both checkboxes now say this in System Builder. */
-                    if (field.isMultiline && isStaticField(field)) continue;
                     const value = item?.[field.name];
                     if (value === undefined || value === null || value === '') continue;
-                    if (field.type === 'number' && Number(value) === 0) continue;
                     shown[field.name] = value;
                 }
                 return shown;
@@ -624,6 +646,16 @@ export function describeLimits(trackerSettings, state) {
 }
 
 
+/** The stats ticked Locked, one line per scope, or '' when there are none. */
+function describeLocked(trackerSettings) {
+    const locked = lockedStats(trackerSettings);
+    return [
+        locked.world.length ? `World: ${locked.world.join(', ')}` : '',
+        locked.player.length ? `Player: ${locked.player.join(', ')}` : '',
+        locked.characters.length ? `Characters: ${locked.characters.join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+}
+
 /**
  * Builds the extraction prompt.
  *
@@ -715,108 +747,42 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
     // an exact repeat of any of the rest.
     const openText = activeThreads(state, currentMessageIndex())
         .map(t => `  - "${t.quote}"`).join('\n');
-    const limits = describeLimits(trackerSettings, state);
-    const schema = describeCollections(trackerSettings);
-    const example = buildDeltaExample(trackerSettings);
-    const absent = describeAbsentButNamed(state, messageText, trackerSettings);
-    const context = leadUp.length
-        ? '\n### EARLIER MESSAGES (context only - already reflected in the state above)\n'
-            + leadUp.join('\n---\n')
-        : '';
-    return [
-        /* What the words in this prompt mean here, before any of them are used.
-         *
-         * The system prompt above may be the shipped one or one somebody wrote themselves,
-         * and either way it has to talk about stats and collections in the abstract. It
-         * cannot know that this setup's collections are "pictures" and "contacts" rather
-         * than an inventory. This can, so it says so - and says the lists are closed, which
-         * is what stops a model reporting a plausible stat nobody configured. */
-        '### WHAT YOU MAY CHANGE',
-        'The stats are exactly the ones named in the current state below. The collections '
-            + 'are exactly the ones listed under their own heading. There are no others: a '
-            + 'name that does not appear below does not exist here, whatever it is called '
-            + 'in other games.',
-        '\n### CURRENT STATE',
-        describeCurrentState(state, trackerSettings) || '(empty)',
-        '\n### PLAYER EXPERIENCE',
-        'When the latest message shows a meaningful player accomplishment, award XP. '
-            + 'Examples include acquiring a useful item, resolving a challenge, or a successful '
-            + 'interaction with an NPC. Award a small amount for a modest achievement and more '
-            + 'for a major one. Do not award XP for merely repeating an earlier event, and do '
-            + 'not award XP without a concrete accomplishment in the latest message.',
-        'Report XP as the new absolute total, including any amount above its current cap. '
-            + 'For example, if XP is 90/100 and the event earns 20, report 110/100. '
-            + 'Keep the XP cap unchanged. The extension performs level-ups and carries excess '
-            + 'XP forward. Do not change Level or Level Bonus.',
-        /* Beside the state, because it is state. It used to sit after the limits and
-           the field list, among the rules, where it read as an aside about shape rather
-           than as more of what is already known. Same shape as the characters above it
-           too - these are the same kind of thing and were drawn as a different one. */
-        absent ? '\n### KNOWN, BUT NOT IN THE SCENE\n'
-            + 'Named in the message and already tracked, but not on stage. This is what '
-            + 'is on file for them. Do not report them back: if the message puts one of '
-            + 'them into the scene, include them in "characters" and report only what '
-            + 'this message changed about them.\n' + absent : '',
-        limits ? '\n### LIMITS\n' + limits : '',
+    /* One text, 'reader' in prompt-texts.js: every section of this request, in order. What
+     * each section is for, since the wording is now yours to change:
+     *
+     * - WHAT YOU MAY CHANGE comes before any of the words it defines. The system prompt may be
+     *   the shipped one or your own, and either way talks about stats and collections in the
+     *   abstract; this says what they are here, and that the lists are closed - which is what
+     *   stops a model reporting a plausible stat nobody configured.
+     * - KNOWN, BUT NOT IN THE SCENE sits beside the state because it is state.
+     * - The collections' fields come before the example, so they read as part of what is
+     *   known. Without them a new item arrived with only the field the example showed.
+     * - The reasons and threads asks are here rather than in the system prompt: your own
+     *   extraction prompt replaces the shipped one outright, so anything added there would
+     *   never reach anybody who has written their own. The threads ask names speech acts,
+     *   which can be answered from one message, and its quote rule is what keeps it from
+     *   becoming invented plot - a quote can be checked against the message.
+     */
+    return promptText('reader', {
+        state: describeCurrentState(state, trackerSettings) || '(empty)',
+        offstage: describeAbsentButNamed(state, messageText, trackerSettings),
+        limits: describeLimits(trackerSettings, state),
+        locked: describeLocked(trackerSettings),
+        xpProgression: (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
+            && (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
-        describeExtractionNotes(state, messageText),
-        describeStrangers(strangers),
-        // The fields each collection actually has. Without this the model had only the
-        // prompt's one example to go by, which showed a single field called name - so
-        // that is all a new item ever arrived with.
-        // Before the field list, so it reads as part of what is already known rather
-        // than as an instruction about shape.
-        schema ? '\n### COLLECTIONS AND THEIR FIELDS\n' + schema : '',
-        example ? '\n### A COLLECTION CHANGE LOOKS LIKE THIS\n' + example
-            + '\nOmit any field the message does not state. Do not guess a value.' : '',
-        describeOpenProfileFields(state),
-        buildMinimalExample(state, trackerSettings),
-        context,
-        '\n### LATEST MESSAGE (apply what this one changes)',
-        messageText,
-        '\n### TASK',
-        'Return the updated state as JSON.',
-        // Here rather than in the system prompt on purpose. A user's own extraction
-        // prompt replaces the shipped one outright, so anything added there would never
-        // reach anybody who has written their own - the trap that lost [CONTEXT] from the
-        // image template. This section is assembled by the extension either way. It also
-        // keeps the ask off the history scan, which builds its own prompt and has no use
-        // for a clause per change across hundreds of messages.
-        trackerSettings.extractionReasons === false ? '' : [
-            'Also return a "why" object explaining every value you changed: one short',
-            'clause each, naming what in the latest message caused it.',
-            'Key it by the stat - "Time" for a world stat, "Player.Health" for the player,',
-            '"Elza.Health" for a character.',
-            // The line that may cure rather than explain: a change that has to name its
-            // cause is harder to invent than one that only has to be plausible.
-            'If you cannot point at something in the latest message, do not change the',
-            'value at all and do not list it.',
-        ].join('\n'),
-        // Threads. Also here rather than the system prompt, and for the same reason as the
-        // reasons above: a user's own extraction prompt replaces the shipped one outright.
-        //
-        // The ask names speech acts rather than asking what was important. "Will this
-        // matter later" is the question nobody can answer at the time - it is why
-        // summaries lose the line that turns out to count - but "did somebody promise,
-        // threaten, owe, confide, set a deadline or make a plan" is answerable from the
-        // message alone.
-        trackerSettings.threadsEnabled !== true ? '' : [
-            '',
-            'Also return a "threads" array for anything in the latest message that opened',
-            'one of these and is not finished with:',
-            ...THREAD_KINDS.map(k => `  ${k.id} - ${k.hint}`),
-            'Each: { "kind": "...", "text": "what is outstanding, one line",',
-            '"quote": "the words from the message that opened it", "who": "who it is about" }.',
-            // The rule that keeps this from becoming invented plot. A quote can be checked
-            // against the message; a description cannot.
-            'The quote must be words that appear in the latest message. If you cannot quote',
-            'it, do not list it.',
-            'Most messages open nothing. An empty array is the usual answer.',
-            openText ? `Already open, do not list again:\n${openText}` : '',
-            'Return "closed" as an array of the quoted lines above that this message',
-            'resolved, if any.',
-        ].filter(Boolean).join('\n'),
-    ].filter(Boolean).join('\n');
+        notes: describeExtractionNotes(state, messageText),
+        ...strangerValues(strangers),
+        collections: describeCollections(trackerSettings),
+        collectionExample: buildDeltaExample(trackerSettings),
+        profileFields: describeOpenProfileFields(state),
+        minimalReply: buildMinimalExample(state, trackerSettings),
+        earlier: leadUp.join('\n---\n'),
+        message: messageText,
+        reasons: trackerSettings.extractionReasons === false ? '' : 'on',
+        threads: trackerSettings.threadsEnabled === true ? 'on' : '',
+        openThreads: openText,
+    });
 }
 
 /**
@@ -855,6 +821,19 @@ function describeAnswer(answer) {
     if (typeof answer === 'string') return answer;
     try { return JSON.stringify(answer ?? ''); } catch { return ''; }
 }
+/**
+ * The temperature to ask for, or null to send none.
+ *
+ * Empty means none: the setting has to be able to say "leave it alone", which is what the
+ * extension did before it existed.
+ */
+export function readerTemperature(trackerSettings) {
+    const typed = String(trackerSettings?.extractionTemperature ?? '').trim();
+    if (typed === '') return null;
+    const numeric = Number(typed);
+    return Number.isFinite(numeric) && numeric >= 0 && numeric <= 2 ? numeric : null;
+}
+
 export async function requestExtraction(userPrompt, schema, trackerSettings, systemPrompt = null, { usageKind = 'extraction' } = {}) {
     // A caller may pass its own - the history scan does. Otherwise the user's, if they
     // have written one, and the built-in if not.
@@ -863,6 +842,7 @@ export async function requestExtraction(userPrompt, schema, trackerSettings, sys
     const context = getContext();
     const profileId = trackerSettings.extractionProfileId;
     const maxTokens = Number(trackerSettings.extractionMaxTokens) || 1200;
+    const temperature = readerTemperature(trackerSettings);
 
     debugLog(`Extraction -> ${describeConnection(profileId)}, reply budget ${maxTokens}`);
 
@@ -876,10 +856,16 @@ export async function requestExtraction(userPrompt, schema, trackerSettings, sys
                 [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
                 maxTokens,
                 { extractData: true, includePreset: false },
-                // Structured output is opt-in: some backends return an empty object
-                // rather than reject a schema they dislike, which loses the update
-                // silently. The system prompt pins the shape without it.
-                (schema && trackerSettings.extractionUseSchema) ? { json_schema: schema } : {},
+                {
+                    // Structured output is opt-in: some backends return an empty object
+                    // rather than reject a schema they dislike, which loses the update
+                    // silently. The system prompt pins the shape without it.
+                    ...((schema && trackerSettings.extractionUseSchema) ? { json_schema: schema } : {}),
+                    // Sent only when you set one. Nothing of the story preset comes with the
+                    // request (includePreset is off), so with no temperature here the model's
+                    // own default decides - usually 1.0, which is loose for reading facts.
+                    ...(temperature === null ? {} : { temperature }),
+                },
             );
             const answer = typeof result === 'string' ? result : (result?.content ?? result ?? '');
             recordUsage(usageKind, { prompt: systemPrompt + userPrompt, reply: describeAnswer(answer) });
@@ -921,7 +907,7 @@ async function addLevelBonus(parsed, state, trackerSettings, messageText) {
     const current = state?.player?.stats || {};
     const xpName = Object.keys(current).find(key => key.toLowerCase() === 'xp');
     const levelName = Object.keys(current).find(key => key.toLowerCase() === 'level');
-    const bonusName = (trackerSettings.playerStats || []).find(s => s.name.toLowerCase() === 'level bonus')?.name;
+    const bonusName = (trackerSettings.playerStats || []).find(s => s.name.toLowerCase() === 'level bonus' && !s.locked)?.name;
     if (!stats || !xpName || !levelName || !bonusName) return;
     const xpKey = Object.keys(stats).find(key => key.toLowerCase() === 'xp');
     if (!xpKey) return;
@@ -929,20 +915,16 @@ async function addLevelBonus(parsed, state, trackerSettings, messageText) {
     if (!transition || transition.levelsGained < 1) return;
 
     const eligible = (trackerSettings.playerStats || []).filter(def => {
-        if (['xp', 'level', 'level bonus'].includes(def.name.toLowerCase())) return false;
+        if (def.locked || ['xp', 'level', 'level bonus'].includes(def.name.toLowerCase())) return false;
         const parts = splitValue(current[def.name]);
         return Number.isFinite(Number(parts.current)) && parts.current !== '';
     }).map(def => def.name);
-    const prompt = [
-        `The player just earned enough XP to reach level ${transition.level}.`,
-        `Latest story event: ${messageText}`,
-        `Current player sheet: ${JSON.stringify(current)}`,
-        `Eligible numeric stats: ${eligible.join(', ') || '(none)'}`,
-        'Choose one story-appropriate level-up bonus. It can be a new narrative perk, '
-            + 'or a modest increase of one eligible numeric stat. Return JSON with a short '
-            + 'description; for a stat increase, include the exact stat name and a positive '
-            + 'integer amount of 1 to 5. For a perk, omit stat and amount.',
-    ].join('\n');
+    const prompt = promptText('levelBonus', {
+        level: transition.level,
+        message: messageText,
+        sheet: JSON.stringify(current),
+        eligible: eligible.join(', ') || '(none)',
+    });
     const schema = {
         type: 'object', required: ['description'],
         properties: {
@@ -954,7 +936,7 @@ async function addLevelBonus(parsed, state, trackerSettings, messageText) {
     let bonus;
     try {
         bonus = coerceToUpdate(await requestExtraction(prompt, schema, trackerSettings,
-            'Choose a level-up bonus for the player. Return only a JSON object.',
+            promptText('levelBonusSystem'),
             { usageKind: 'extraction' }));
     } catch (error) {
         console.warn(LOG_PREFIX, 'Level-up bonus request failed:', error);
@@ -1003,15 +985,7 @@ function describeOpenProfileFields(state) {
         if (card) describe(card, actor.name);
     }
 
-    if (!lines.length) return '';
-    return '\n### PROFILE FIELDS YOU MAY UPDATE\n'
-        + 'Their current values are in the state above. These describe who somebody IS, not '
-        + 'what is happening to them, and they change rarely - a scar, a haircut, a lasting '
-        + 'change of manner. Update one only when the latest message plainly shows it. '
-        + 'Omitting a field means unchanged, which is almost always the right answer. Any '
-        + 'profile field not listed here must not be changed. Return them under "profile" '
-        + 'on that character, beside "stats".\n'
-        + lines.join('\n');
+    return lines.join('\n');
 }
 
 /**
@@ -1025,7 +999,8 @@ function describeOpenProfileFields(state) {
  * Placeholders where a value would be, so nothing here can be mistaken for a fact about the
  * scene - the same reasoning as buildDeltaExample, which does this for collections.
  */
-function buildMinimalExample(state, trackerSettings) {
+// Exported for the tests, as buildUserPrompt is.
+export function buildMinimalExample(state, trackerSettings) {
     const firstNamed = (list) => (list || []).map(s => s?.name).filter(Boolean)[0];
 
     const playerStat = firstNamed(trackerSettings.playerStats);
@@ -1039,13 +1014,13 @@ function buildMinimalExample(state, trackerSettings) {
             : `    { "name": ${JSON.stringify(name)} }`))
         : [];
 
-    return '\n### A MINIMAL REPLY LOOKS LIKE THIS\n{\n'
+    const example = '{\n'
         + '  "global": {},\n'
         + (playerStat
             ? `  "player": { "stats": { ${JSON.stringify(playerStat)}: "<new value>" } },\n`
             : '  "player": {},\n')
-        + `  "characters": [\n${characters.join(',\n')}\n  ]\n}\n`
-        + 'Everyone present is listed; only what changed carries a value.';
+        + `  "characters": [\n${characters.join(',\n')}\n  ]\n}`;
+    return example;
 }
 
 /**
@@ -1304,6 +1279,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             );
             return { applied: false, reason: 'unparseable' };
         }
+        // No ceilings the stats do not have, and nothing for a locked stat. See
+        // sanitizeModelUpdate.
+        sanitizeModelUpdate(parsed, loadStateFromMetadata(), trackerSettings);
         await addLevelBonus(parsed, state, trackerSettings, String(messageText));
 
         // Presence first: applyUpdate refuses to introduce characters in speakers mode,
@@ -1342,7 +1320,13 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // removals and implausible jumps can be held back for a look rather than
         // becoming fact.
         const currentState = loadStateFromMetadata();
+        /* Anything refused before this run belongs to an older one; the dry run below sees
+           this whole reply, so what it turns down is this message's. */
+        takeRefusedValues();
         const wouldBe = applyUpdate(parsed, { dryRun: true });
+        const refused = takeRefusedValues().map(({ field, wanted, allowed, kept }) =>
+            `${field}: "${wanted}" is not one of ${allowed.join(', ')} - kept "${kept}"`);
+        if (refused.length) debugLog('Values refused by their allowed lists', refused);
         const proposed = computeStateDiff(currentState, wouldBe, trackerSettings);
         // Standing decisions are applied before the split, not after. Filtering only the
         // pending half would let a protected item be deleted outright by anyone whose
@@ -1385,7 +1369,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         recordAppliedChanges(messageId, applied);
 
         if (pending.length > 0) {
-            setPendingChanges(messageId, pending, unmatched);
+            setPendingChanges(messageId, pending, unmatched, refused);
             debugLog(`${pending.length} change(s) awaiting review on message ${key}`);
         }
 

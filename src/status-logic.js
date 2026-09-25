@@ -1,3 +1,4 @@
+import { promptText } from './prompt-texts.js';
 import { djb2 } from './hash.js';
 import { 
     setExtensionPrompt,
@@ -63,8 +64,14 @@ export function mergeStatValue(oldVal, newVal, options = {}) {
      *    written the whole value, and a rule that helpfully appends "/350" to it means the
      *    ceiling can be changed but never removed - which is exactly what it meant.
      */
+    /* A number, or it is not a ceiling. A fill once wrote the words "current/maximum" into
+       a new character's Health - the model copied the shape it was shown instead of filling
+       it in - and from then on every value written to that field came back as
+       "Observe the party dynamics./maximum", because the word after the slash was being kept
+       as the ceiling. ceilingFromValue answers the same question for the prompts and the
+       meters, and says no to a date for the same reason. */
     const parts = strOld.split('/');
-    if (!verbatim && strOld.includes('/') && parts.length === 2 && parts[1].trim()) {
+    if (!verbatim && parts.length === 2 && ceilingFromValue(strOld) !== null) {
         return clampToCeiling(`${strNew.trim()}/${parts[1].trim()}`);
     }
 
@@ -100,6 +107,75 @@ export function resolveMaxValue(statDef) {
         if (denominator) return denominator;
     }
     return '';
+}
+
+const PLAIN_NUMBER = /^\s*-?\d+(?:\.\d+)?\s*$/;
+const NUMBER_OVER_NUMBER = /^\s*(-?\d+(?:\.\d+)?)\s*\/\s*-?\d+(?:\.\d+)?\s*$/;
+
+/**
+ * The locked stats' names, by scope - the ones only you change.
+ *
+ * @returns {{ world: string[], player: string[], characters: string[] }}
+ */
+export function lockedStats(trackerSettings = getSettings().statusTracker) {
+    const names = (list) => (list || []).filter(stat => stat?.locked && stat.name).map(stat => stat.name);
+    return {
+        world: names(trackerSettings.globalStats),
+        player: names(trackerSettings.playerStats),
+        characters: names(trackerSettings.npcStats),
+    };
+}
+
+/**
+ * What a model's reply may not do to the stats, taken out before it is applied.
+ *
+ * Only for replies from a model - the tracker's reader and the inline block. Your own edits
+ * never come through here, so typing "120/150" on the sheet still sets a ceiling.
+ *
+ * - A locked stat is dropped: you change it, the model does not.
+ * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
+ *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
+ *   changed and then came back as "4/20" were this - a model copying the "current/maximum"
+ *   form it saw elsewhere onto a score. A stat with a Starts max, or already holding a
+ *   ceiling, is left alone, and so is anything that is not a number over a number.
+ *
+ * @param {object} update Changed in place, and returned.
+ * @param {object} state The state the reply is applied to.
+ */
+export function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker) {
+    if (!update || typeof update !== 'object') return update;
+
+    const clean = (stats, defs, stored) => {
+        if (!stats || typeof stats !== 'object') return;
+        for (const key of Object.keys(stats)) {
+            const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
+            if (!def) continue;
+            if (def.locked) {
+                delete stats[key];
+                continue;
+            }
+            const incoming = String(stats[key] ?? '');
+            const held = stored?.[findMatchingStatKey(stored || {}, key) || key];
+            const ceiling = incoming.match(NUMBER_OVER_NUMBER);
+            if (ceiling && PLAIN_NUMBER.test(String(held ?? '')) && !resolveMaxValue(def)) {
+                stats[key] = ceiling[1];
+            }
+        }
+    };
+
+    clean(update.global, trackerSettings.globalStats, state?.global);
+    if (update.player && typeof update.player === 'object') {
+        // applyUpdate reads update.player.stats, or update.player itself when it is flat.
+        const playerStats = update.player.stats && typeof update.player.stats === 'object'
+            ? update.player.stats : update.player;
+        clean(playerStats, trackerSettings.playerStats, state?.player?.stats);
+    }
+    for (const actor of Array.isArray(update.characters) ? update.characters : []) {
+        const current = (state?.characters || [])
+            .find(c => String(c?.name).toLowerCase() === String(actor?.name).toLowerCase());
+        clean(actor?.stats, trackerSettings.npcStats, current?.stats);
+    }
+    return update;
 }
 
 /**
@@ -1421,7 +1497,9 @@ function summarizeCollection(collectionId, items, includeFull = false) {
  * For prompt injection, we now include the FULL collection list to support Full State Sync.
  */
 export function formatCompactStatus(state, fullDetail = false) {
-    let output = "[Current Scene Status]\n";
+    // The world, the player and each character, one line each. The heading and the sections
+    // after these lines are the 'sceneBlock' text in prompt-texts.js.
+    let output = '';
     
     /* Through the schema, not the stored object. A stat deleted in System Builder leaves its
        value behind in the chat, and this block used to send it to the story model on every
@@ -1506,21 +1584,19 @@ export function formatCompactStatus(state, fullDetail = false) {
     }
     
 
-    // Who these people actually are, for everyone the lines above just listed.
-    const who = describeCastProfiles(state);
-    if (who) output += `${who}\n`;
-
-    // And who the story just named without putting on stage.
-    const named = describeNamedButUnlisted(state);
-    if (named) output += `${named}\n`;
-
-    // What is still outstanding, riding the block that is already being sent. Nothing
-    // is retrieved to put it here - a thread was caught when it opened, which is the
-    // whole difference between this and searching a summary for it later.
-    const threads = describeThreads(state, currentMessageIndex());
-    if (threads) output += `${threads}\n`;
-
-    return output.trim();
+    return promptText('sceneBlock', {
+        status: output.trim(),
+        // Who these people actually are, for everyone the lines above just listed.
+        profiles: describeCastProfiles(state),
+        // And who the story just named without putting on stage.
+        offstage: describeNamedButUnlisted(state),
+        // What is still outstanding, riding the block that is already being sent. Nothing
+        // is retrieved to put it here - a thread was caught when it opened, which is the
+        // whole difference between this and searching a summary for it later.
+        threads: describeThreads(state, currentMessageIndex()),
+        // What the bracketed lines on the earlier messages are, when they are being sent.
+        rule: settings.historyNotes ? promptText('historyNoteRule') : '',
+    }).trim();
 }
 
 /**
@@ -1578,12 +1654,17 @@ function describeNamedButUnlisted(state) {
             .map(([name, value]) => `${name}=${value}`)
             .join(', ');
 
-        /* Their belongings, at the same detail as anybody on stage. They had none at all
-           until now, which is the fault this block exists to prevent one step removed: the
-           narrator knew Nikolett was somebody without knowing she carries anything, so the
-           moment the story handed her something it was invented. Empty collections are
-           skipped here rather than shown as "(empty)" - that reassurance is worth its space
-           for the people in the room, and not for six who are not. */
+        /* Their belongings, in full, as anybody in the room gets them. They had none at all
+           once, which is the fault this block exists to prevent one step removed: the narrator
+           knew Nikolett was somebody without knowing she carries anything, so the moment the
+           story handed her something it was invented.
+
+           Names alone were tried, to keep an absent character's skill descriptions from being
+           pushed at the narrator every turn. That is the same fault one step further on: a
+           name with no description is invented the moment the story uses it, and this block
+           only ever holds people the story has just pulled in by their lore. Empty collections
+           are skipped - "(empty)" is worth its space for the people in the room, not for six
+           who are not. */
         const carried = Object.entries(card.statusCollections || {})
             .map(([colId, items]) => summarizeCollection(colId, items, true))
             .filter(Boolean);
@@ -1599,9 +1680,7 @@ function describeNamedButUnlisted(state) {
        above" was the first wording, and "not in the scene list" is one careless reading away
        from "not in the scene" - which is the exact claim this block must not make. What the
        block is for is enough; why these names are in a separate paragraph is our business. */
-    return 'Also on file. Who these people are if the story uses them - being listed here is '
-        + 'not a cue to bring them in, and not a claim about where they are:\n'
-        + lines.join('\n');
+    return lines.join('\n');
 }
 
 /** The four profile fields on one line, or '' when none is written. */
@@ -1629,32 +1708,16 @@ function describeCastProfiles(state) {
         if (line) lines.push(`${actor.name} - ${line}`);
     }
 
-    return lines.length ? `Who they are:\n${lines.join('\n')}` : '';
+    return lines.join('\n');
 }
 
 /**
  * Builds the system instruction for the AI
  */
-function getStatusInstructions() {
+// Exported for the tests: the prompt texts are checked to send exactly what they did.
+export function getStatusInstructions() {
     const settings = getSettings().statusTracker;
     const currentState = committedState || loadStateFromMetadata();
-    
-    let prompt = `\n### STATUS TRACKER ACTIVE\n`;
-    prompt += `Update the following status realistically based on the latest events in the story.\n`;
-    prompt += `Current Status:\n${formatCompactStatus(currentState, true)}\n\n`;
-    
-    prompt += `IMPORTANT: The "Current Status" block is the authoritative source of truth. If an item or character is missing from it, they are no longer present or in possession. Do NOT re-add items that were recently removed unless the current message explicitly describes acquiring them again.\n\n`;
-
-    prompt += `Rules: ${applyMacros(settings.systemRules)}\n`;
-    prompt += `Player XP: award XP for meaningful accomplishments in the latest message, such as acquiring a useful item, overcoming a challenge, or a successful NPC interaction. Report the new absolute XP total even when it exceeds its current maximum (90/100 plus 20 becomes 110/100), keeping the XP cap unchanged. The extension performs the level-up and carries excess XP forward. When an award crosses the cap, also provide a story-appropriate Level Bonus on the player sheet. Do not award the same event twice.\n`;
-    
-    prompt += `\n### CRITICAL RULE: AVOID DOUBLE-DEDUCTING COSTS\n`;
-    prompt += `- Action/Spell Costs: If a resource, attribute, or item cost (e.g., Energy, Mana, HP, Ammo, Gold) was already deducted or used in a previous turn (for example, in the message prompting a roll or when the action was initiated), do NOT deduct it again when describing the outcome or resolution of that action.\n`;
-    prompt += `- The "Current Status" already reflects the prior deduction. Only apply NEW changes, damage, or costs that occur in the latest turn (e.g., backlash damage, new item usage).\n`;
-
-    prompt += `\n### UPDATE PROCESS\n`;
-    prompt += `1. Reasoning: Briefly explain the changes in 1-2 sentences (e.g., "The player took damage and used a potion."). Focus on stat changes, collection updates, and environment changes.\n`;
-    prompt += `2. JSON Update: Provide the updated status block wrapped in <status_update> tags.\n`;
 
     /* The ceilings actually in play, not the configured ones.
      *
@@ -1679,34 +1742,13 @@ function getStatusInstructions() {
     const npcMaxes = describeMaxes(settings.npcStats,
         name => highestCeiling(currentState.characters, name));
 
-    if (playerMaxes || npcMaxes) {
-        prompt += `\n### STAT LIMITS (Maximums)\n`;
-        if (playerMaxes) prompt += `- Player Max Stats: ${playerMaxes}\n`;
-        if (npcMaxes) prompt += `- NPC Max Stats: ${npcMaxes}\n`;
-        prompt += `Maintain values within these limits. If a stat format includes a max (e.g. "50/100"), ensure you update only the current value unless the maximum itself should change.\n`;
-    }
-    
-    prompt += `\n### COLLECTION SYNC RULES\n`;
-    prompt += `Collections (e.g., inventory, spells, skills) MUST be updated via **Full State Sync** (replacement):\n`;
-    prompt += `- Both the 'player' and any object in the 'characters' array can have a 'collections' object.\n`;
-    prompt += `- Provide an ARRAY of ALL items that should be in the collection after the update.\n`;
-    prompt += `- CRITICAL: You MUST ALWAYS preserve and carry over ALL existing spells, skills, items, and accessories verbatim unless they are explicitly lost, destroyed, consumed, or discarded in the story context. NEVER omit existing items or spells from an active character's collections array, as omission equals complete deletion.\n`;
-    prompt += `- You can transfer items between actors by removing them from one collection and adding them to another in the same update.\n`;
-    prompt += `- Example: "inventory": [ { "name": "Sword", "quantity": 1 }, { "name": "Potion", "quantity": 2 } ]\n`;
-    
-    prompt += `\n### LEGACY DELTA RULES (Fallback)\n`;
-    prompt += `If you only need to make a small change, you may optionally use delta objects:\n`;
-    prompt += `- "add": [ { "name": "Item", "quantity": 1, ... } ] - Adds or increments quantity if it exists.\n`;
-    prompt += `- "remove": [ "Item Name" ] - Removes the item.\n`;
-    prompt += `- "update": [ { "name": "Item", "quantity": 5 } ] - Modifies specific fields of an existing item.\n`;
-    prompt += `- "clear": true - Resets the collection.\n`;
-
     // Add field definitions for collections to guide the AI
+    let schemas = '';
     if (settings.collections && settings.collections.length > 0) {
         // Filter collections to only those relevant to current actors
         const hasPlayer = !!currentState.player;
         const hasNPCs = currentState.characters && currentState.characters.length > 0;
-        
+
         const relevantCollections = settings.collections.filter(col => {
             if (col.target === 'all') return true;
             if (col.target === 'player' && hasPlayer) return true;
@@ -1714,54 +1756,57 @@ function getStatusInstructions() {
             return false;
         });
 
-        if (relevantCollections.length > 0) {
-            prompt += `\n### COLLECTION SCHEMAS\n`;
-            relevantCollections.forEach(col => {
-                const fieldInfo = col.fields.map(f => `${f.name} (${f.type}${f.isMultiline ? ', multiline' : ''})`).join(', ');
-                prompt += `- ${col.id} (${col.name}): ${fieldInfo}\n`;
-            });
-        }
+        schemas = relevantCollections.map(col => {
+            const fieldInfo = col.fields.map(f => `${f.name} (${f.type}${f.isMultiline ? ', multiline' : ''})`).join(', ');
+            return `- ${col.id} (${col.name}): ${fieldInfo}`;
+        }).join('\n');
     }
 
-    prompt += `\nIMPORTANT: Always include the FULL list of characters currently present in the scene in the "characters" array. If a character is no longer present, remove them from the list.\n`;
-    if (settings.sceneBindingStat) {
-        prompt += `IMPORTANT: If the scene or location changes, ONLY include characters in the 'characters' array who moved to the new scene. Omit any characters left behind.\n`;
-    }
-    prompt += `Format: At the absolute end of your response, you MUST provide the reasoning and the <status_update> tags. Do not use markdown code blocks inside the tags.\n`;
-    
-    return prompt;
+    // One text, 'storyBlock' in prompt-texts.js, from the heading to the format line.
+    return '\n' + promptText('storyBlock', {
+        status: formatCompactStatus(currentState, true),
+        rules: applyMacros(settings.systemRules),
+        limits: playerMaxes || npcMaxes ? 'on' : '',
+        playerLimits: playerMaxes,
+        npcLimits: npcMaxes,
+        schemas,
+        sceneChange: settings.sceneBindingStat ? 'on' : '',
+        xpProgression: settings.playerStats.some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
+            && settings.playerStats.some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
+    }) + '\n';
 }
 
 /**
  * Builds a fake assistant response to prime the AI with the correct format
  */
-function getStatusExample() {
+// Exported for the tests, as getStatusInstructions is.
+export function getStatusExample() {
+    /* Built from this setup's own stats and collections, with placeholders where values
+     * would be. It used to be a goblin fight with "quantity" and "description" fields
+     * written in, which taught every story model that status updates are about combat and
+     * that items have fields many setups do not. */
     const settings = getSettings().statusTracker;
-    const inventoryCol = settings.collections.find(c => c.id === 'inventory');
-    const primaryFieldName = inventoryCol?.fields?.find(f => f.isPrimary)?.name || 'name';
-    
-    const example = {
-        player: { 
-            stats: { "HP": "18/20" },
-            collections: { 
-                "inventory": [
-                    { [primaryFieldName]: "Iron Sword", "quantity": 1, "description": "Slightly rusted" },
-                    { [primaryFieldName]: "Apple", "quantity": 3, "description": "Red and juicy" },
-                    { [primaryFieldName]: "Rusty Dagger", "quantity": 1, "description": "Taken from the Goblin" }
-                ] 
-            }
-        },
-        characters: [
-            { 
-                "name": "Goblin", 
-                "stats": { "HP": "0", "Condition": "Dead" },
-                "collections": {
-                    "inventory": []
-                }
-            }
-        ]
-    };
-    return `The player ate a Health Potion but was still hit by the Goblin. The Goblin was subsequently defeated, and the player took their Rusty Dagger. Updated the inventory for both actors to show the transfer.\n<status_update>${JSON.stringify(example)}</status_update>`;
+    const state = committedState || loadStateFromMetadata();
+    const first = (list) => (list || []).map(s => s?.name).filter(Boolean)[0];
+
+    const player = {};
+    const playerStat = first(settings.playerStats);
+    if (playerStat) player.stats = { [playerStat]: '<new value>' };
+    const col = (settings.collections || []).find(c => c?.target !== 'npc');
+    if (col) {
+        const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
+        const item = { [primary]: '<item name>' };
+        for (const field of col.fields || []) {
+            if (field.name !== primary && field.type === 'number') item[field.name] = 1;
+        }
+        player.collections = { [col.id]: { add: [item], remove: ['<something used up>'] } };
+    }
+
+    const character = { name: first(state?.characters) || '<someone present>' };
+    const npcStat = first(settings.npcStats);
+    if (npcStat) character.stats = { [npcStat]: '<new value>' };
+
+    return promptText('storyExample', { update: JSON.stringify({ player, characters: [character] }) });
 }
 
 /**
@@ -2143,6 +2188,22 @@ export function allowedValues(def) {
  * @param {*} existing What is there now.
  * @returns {*} The value to store.
  */
+/**
+ * Values refused since the last time anybody asked, as lines to show.
+ *
+ * A word that is not on a field's list is thrown away and the old value kept, which is
+ * right - a vocabulary nothing enforces is not one. But it happened in the console only,
+ * and from outside it looks exactly like a reader that never reports that field: a fight
+ * starts, the reader says "Tense", the list allows nine other words, and Condition sits at
+ * "Happy" with nothing said. The reply is still refused; now it is said out loud.
+ */
+const refused = [];
+
+/** The refusals since the last call, and clears them. */
+export function takeRefusedValues() {
+    return refused.splice(0, refused.length);
+}
+
 export function constrainToOptions(def, incoming, existing) {
     const allowed = allowedValues(def);
     if (!allowed.length) return incoming;
@@ -2155,6 +2216,7 @@ export function constrainToOptions(def, incoming, existing) {
 
     debugLog(`"${wanted}" is not an allowed value for ${def?.name || 'this field'} `
         + `(${allowed.join(', ')}); kept "${existing ?? ''}"`);
+    refused.push({ field: def?.name || 'a field', wanted, allowed, kept: String(existing ?? '') });
     return existing;
 }
 
@@ -2199,7 +2261,25 @@ export function capToLength(def, value) {
  * @param {*} existing
  * @returns {*}
  */
+/**
+ * The wording a prompt uses for a value, handed back as if it were one.
+ *
+ * "current/maximum" is what the fill prompt calls the shape of a value with a ceiling, and
+ * a model filling in a new character wrote exactly that into Health, Essence and every text
+ * field it had nothing to say about. Angle brackets are the other shape: the worked examples
+ * use "<new value>" and "<exact name>". Neither is ever a value somebody meant.
+ */
+function looksUnfilled(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return false;
+    return /^current\s*\/\s*maximum$/i.test(text) || /^<[^>]*>$/.test(text);
+}
+
 export function constrainToDefinition(def, incoming, existing) {
+    if (looksUnfilled(incoming)) {
+        debugLog(`Refused "${String(incoming).trim()}" for ${def?.name || 'a field'}: that is the prompt's wording, not a value`);
+        return existing;
+    }
     const kept = constrainToOptions(def, incoming, existing);
     // Only ever cut what was actually written. When the options guard refuses a value it
     // hands back the one already stored, and trimming that would rewrite something nobody
@@ -2921,12 +3001,19 @@ function updateCardOffstage(card, updChar, state, settings, { dryRun = false, al
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
 
+    /* Through the same two guards the scene's cast gets. Written raw, this path let a value
+       no list allows onto a card - a Condition of "Unconscious" where the nine allowed words
+       do not include it - and let a bare number lose the ceiling the card already had. Being
+       off stage is about where somebody is, not about which rules their sheet follows. */
+    const defOf = (name) => (settings.npcStats || [])
+        .find(stat => String(stat?.name).toLowerCase() === String(name).toLowerCase());
     const validKeys = new Set((settings.npcStats || []).map(s => s.name.toLowerCase()));
     const sourceStats = updChar.stats || {};
     for (const [key, value] of Object.entries(sourceStats)) {
         const matched = findMatchingStatKey(actor.stats, key) || key;
         if (!validKeys.has(matched.toLowerCase())) continue;
-        actor.stats[matched] = String(value);
+        const merged = mergeStatValue(actor.stats[matched], String(value));
+        actor.stats[matched] = constrainToDefinition(defOf(matched), merged, actor.stats[matched]);
     }
 
     const collectionIds = new Set((settings.collections || []).map(c => c.id.toLowerCase()));

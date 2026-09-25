@@ -4,9 +4,10 @@
     "requires": [],
     "optional": [],
     "js": "index.js",
+    "generate_interceptor": "sillyNpcHistoryNotes",
     "css": "style.css",
     "author": "BrutalKoala",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "homePage": "https://github.com/i5031337/SillyNPC-levels",
     "auto_update": false,
     "description": "SillyNPC fork with automatic XP level-ups, story-based XP awards, and player-sheet level bonuses."

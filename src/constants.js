@@ -52,7 +52,7 @@ export const BUILT_IN_DEFAULT_AVATAR = 'data:image/svg+xml;charset=utf-8,' + enc
  * that decided whether migrations ran, so bumping one without the other silently
  * skipped them. Migrations now always run; this value is informational.
  */
-export const EXTENSION_VERSION = '0.6.0';
+export const EXTENSION_VERSION = '0.7.0';
 
 /**
  * Themes shipped by the extension (each has a `.sillynpc-theme-<id>` block in
@@ -265,13 +265,14 @@ export const SYSTEM_PROMPT = [
     'Output ONLY raw JSON. Do not include markdown formatting, code fences (```), explanations, or notes.',
     '',
     '### JSON SCHEMA',
-    'Return an object with EXACTLY these three top-level keys and no others:',
+    'Build the reply on these three top-level keys:',
     '{',
     '  "global": {},',
     '  "player": {},',
     '  "characters": []',
     '}',
     'Never use a character name as a top-level key. Characters belong strictly inside the "characters" array.',
+    'Add a top-level key only where the request below asks for one - "why", "threads", "closed" and "strangers" are asked for there. Invent no others.',
     '',
     '### PRESENCE & DIFF RULES',
     '1. Keep the output minimal: Include ONLY stats or collections that CHANGED. Omit everything else.',
@@ -284,7 +285,7 @@ export const SYSTEM_PROMPT = [
     '### VALUE & TEXT RULES',
     '- Report values AFTER the events of the message.',
     '- Exact Naming: Use exact stat names from current state. Never invent names; never append _current or _max.',
-    '- Bounded values: Write values with a maximum as "current/maximum" (e.g., "77/80").',
+    '- Pools and scores: a value shown as "current/maximum" in CURRENT STATE keeps that form (e.g., "77/80"). A value shown as a plain number stays a plain number, even when it has a range. Never add "/maximum" to it.',
     '- Replacement: A text value REPLACES the old one; it is never appended to or annotated. Write what is true right now.',
     '- Do not invent events: If the text does not state a change, leave it out.',
     '',
@@ -299,7 +300,7 @@ export const SYSTEM_PROMPT = [
     '- If a character was frightened, hurt or angry in an EARLIER scene but the current message shows them acting normally, set their Condition back to a calm baseline.',
     '- Physical injury is the exception: it persists until treated or rested.',
     '- Emotional states do not persist across scenes.',
-    '- Never leave a character in a negative Condition by default. If the message gives you no signal, write a calm baseline.',
+    '- Never leave a character in a negative Condition by default. Returning to a calm baseline needs a reason, like any other change: time has passed, the scene has moved on, or the character is plainly behaving normally.',
     '',
     '### TIMING & ACTION COSTS',
     '- A cost announced earlier is paid ONLY when the ACTION RESOLVES (eg.: the roll outcome is described, character get hurt, etc.), even if the latest message does not restate the number.',

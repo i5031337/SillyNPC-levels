@@ -2088,12 +2088,15 @@ span.sillynpc-review-to {
     white-space: normal;
 }
 
-/* Reasons that matched no row. Set apart from the rows so it is clear they explain
-   nothing on the list, which is itself the point of showing them. */
+/* Reasons that matched no row, set apart from the rows so it is clear they explain nothing
+   on the list - and folded, since a reader that restates the whole state explains every
+   value it restates, which is thirty lines above seven rows.
+
+   A block with margins rather than the flex column it was: this is a <details> now, and a
+   details laid out as a flex container has shown its contents while shut in some browsers.
+   The gap is not worth finding out which. */
 .sillynpc-review-loose-notes {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sillynpc-space-xs);
+    display: block;
     margin: var(--sillynpc-space-sm) 0;
     padding: var(--sillynpc-space-sm);
     border-left: 2px solid var(--sillynpc-border);
@@ -2102,15 +2105,27 @@ span.sillynpc-review-to {
 }
 
 .sillynpc-review-loose-note {
+    display: block;
     padding-left: var(--sillynpc-space-sm);
+    margin-top: var(--sillynpc-space-xs);
 }
 
 /* A deletion is the one thing that cannot be undone by simply waiting, so it reads as a
-   warning and starts unticked. */
+   warning - and, when a scan rebuilt the list rather than the reader naming the item, it
+   also starts unticked. */
 .sillynpc-review-row.kind-item-remove .sillynpc-review-icon,
 .sillynpc-review-row.kind-item-remove .sillynpc-review-why {
     color: var(--sillynpc-danger);
     opacity: 0.85;
+}
+
+/* The name of the thing going away, struck through: the row says "Chocolate -> (gone)",
+   and at a glance that read the same as any other row. Now the difference is in the
+   words, not only in the icon's colour. */
+.sillynpc-review-row.kind-item-remove .sillynpc-review-label {
+    text-decoration: line-through;
+    text-decoration-color: var(--sillynpc-danger);
+    text-decoration-thickness: 1px;
 }
 
 .sillynpc-review-row.kind-item-add .sillynpc-review-icon {
@@ -2330,12 +2345,30 @@ span.sillynpc-review-to {
     transform-origin: center center;
 }
 
+/* While it is being dragged: no transitions, and no blur. The blur is re-done over whatever
+   is behind the HUD - a video background included - every time it moves, which is what made
+   dragging lag. It comes back the moment the HUD is put down. */
+.sillynpc-hud-container.is-dragging {
+    transition: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    will-change: translate;
+}
+
 /* Clear of SillyTavern's top bar rather than 20px from the window edge, which put the
-   HUD under it. The variable is SillyTavern's own and follows the user's font scale. */
-.sillynpc-hud-container.top-right    { top: calc(var(--topBarBlockSize, 34px) + 20px); right: 20px; }
-.sillynpc-hud-container.top-left     { top: calc(var(--topBarBlockSize, 34px) + 20px); left: 20px; flex-direction: row-reverse; }
-.sillynpc-hud-container.bottom-right { bottom: 20px; right: 20px; }
-.sillynpc-hud-container.bottom-left  { bottom: 20px; left: 20px; flex-direction: row-reverse; }
+   HUD under it. The variable is SillyTavern's own and follows the user's font scale.
+
+   Divided by the HUD's zoom (HUD Scale, see applyHudZoom in ui-hud.js): zoom scales the
+   element's own offsets too, and without this a larger HUD would stand further from the
+   corner the larger it got. */
+.sillynpc-hud-container {
+    --sillynpc-hud-edge: calc(20px / var(--sillynpc-hud-zoom, 1));
+    --sillynpc-hud-top: calc((var(--topBarBlockSize, 34px) + 20px) / var(--sillynpc-hud-zoom, 1));
+}
+.sillynpc-hud-container.top-right    { top: var(--sillynpc-hud-top); right: var(--sillynpc-hud-edge); }
+.sillynpc-hud-container.top-left     { top: var(--sillynpc-hud-top); left: var(--sillynpc-hud-edge); flex-direction: row-reverse; }
+.sillynpc-hud-container.bottom-right { bottom: var(--sillynpc-hud-edge); right: var(--sillynpc-hud-edge); }
+.sillynpc-hud-container.bottom-left  { bottom: var(--sillynpc-hud-edge); left: var(--sillynpc-hud-edge); flex-direction: row-reverse; }
 
 /* Persona images are 2:3 - SillyTavern renders the thumbnail at 96x144 - and this frame is
  * a circle, so `cover` keeps a square from the middle and discards the top and bottom. On a
@@ -4779,4 +4812,73 @@ textarea.sillynpc-profile-input {
 
 .sillynpc-tag-refresh {
     margin-bottom: var(--sillynpc-space-md);
+}
+
+/* The built-in wording on the Prompts tab: one fold, then a fold per area. Marked by the
+   summary line alone, so it reads as more of the same list rather than a new panel. */
+.sillynpc-prompt-builtins,
+.sillynpc-prompt-group {
+    margin-top: var(--sillynpc-space-lg);
+}
+
+.sillynpc-prompt-group {
+    margin-left: var(--sillynpc-space-md);
+    margin-top: var(--sillynpc-space-sm);
+}
+
+.sillynpc-prompt-builtins > summary,
+.sillynpc-prompt-group > summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: var(--sillynpc-space-xs) 0;
+}
+
+.sillynpc-prompt-builtins > summary {
+    font-size: var(--sillynpc-text-lg);
+}
+
+.sillynpc-prompt-builtins > summary:focus-visible,
+.sillynpc-prompt-group > summary:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
+}
+
+/* A built-in text's help lists its placeholders one per line. */
+.sillynpc-prompt-group .sillynpc-setting .notes {
+    white-space: pre-line;
+}
+
+/* When a group is sent at all - under its heading, before the boxes, because "every
+   message" and "only when you press Scan" are the difference between eighteen prompts
+   and five. */
+.sillynpc-prompt-cadence {
+    display: block;
+    margin: 0 0 var(--sillynpc-space-xs) var(--sillynpc-space-md);
+    opacity: 0.85;
+}
+
+/* A text that cannot fire in this setup. Dimmed rather than hidden: it is still yours to
+   read and edit, and the note above it says why nothing is sending it. */
+.sillynpc-prompt-idle-note {
+    display: block;
+    margin-left: var(--sillynpc-space-md);
+    color: var(--sillynpc-danger);
+    opacity: 0.9;
+}
+
+.sillynpc-prompt-idle > .sillynpc-setting {
+    opacity: 0.72;
+}
+
+/* Folded: a reader that restates the whole state explains every value it restates, so
+   these outnumber the rows they sit above. Opening them is a click; burying the decision
+   under thirty lines is not a choice worth offering. */
+.sillynpc-review-loose-notes > summary {
+    cursor: pointer;
+    list-style-position: outside;
+}
+
+.sillynpc-review-loose-notes > summary:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
 }

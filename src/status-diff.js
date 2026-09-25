@@ -85,7 +85,7 @@ function diffStat({ scope, actor, label, before, after, policy, threshold }) {
 }
 
 /** Compares one actor's collections. */
-function diffCollections({ scope, actor, before, after, trackerSettings }) {
+function diffCollections({ scope, actor, before, after, trackerSettings, fromReplace }) {
     const changes = [];
     const ids = new Set([
         ...Object.keys(before?.collections || {}),
@@ -106,9 +106,15 @@ function diffCollections({ scope, actor, before, after, trackerSettings }) {
             changes.push({
                 scope, actor, label: itemLabel(item, primary), collectionId: colId,
                 kind: 'item-remove', before: itemLabel(item, primary), after: '(gone)',
-                // Wholesale replacement means an item the model forgot is indistinguishable
-                // from one it deliberately dropped.
                 risk: 'risky', reason: 'item would be removed',
+                /* Where the removal came from, which decides whether the panel arrives
+                   ticked. A per-message reply cannot delete by omission - applyCollectionUpdate
+                   downgrades a bare list to additions - so an item missing from the "after"
+                   state is one the reader explicitly asked to remove. A scan rebuilds the
+                   whole list and means it, and there an item it forgot is indistinguishable
+                   from one it dropped on purpose. Two different questions; they had one
+                   answer, and it was the wrong one for the common case. */
+                fromReplace: !!fromReplace,
                 item,
             });
         }
@@ -145,14 +151,35 @@ function diffCollections({ scope, actor, before, after, trackerSettings }) {
 }
 
 /**
+ * Whether a row arrives in the review panel already ticked.
+ *
+ * Everything does, except a removal that fell out of a rebuilt list. Every deletion used
+ * to arrive unticked, from a time when any reply restating an inventory could produce a
+ * phantom removal - and the effect was that a thing the story plainly used up stayed on
+ * the sheet unless you noticed the one row that needed a click. A per-message reply can no
+ * longer delete by omission (applyCollectionUpdate downgrades a bare list to additions),
+ * so a removal from the reader is one it asked for by name. A scan rebuilds whole lists
+ * and means it, and there an item it forgot really is indistinguishable from one it
+ * dropped on purpose, so that one still asks.
+ *
+ * @param {object} change A row from computeStateDiff.
+ * @returns {boolean}
+ */
+export function acceptedByDefault(change) {
+    return change?.kind !== 'item-remove' || !change?.fromReplace;
+}
+
+/**
  * Everything an update would change.
  *
  * @param {object} before Current state.
  * @param {object} after State the update would produce (from applyUpdate dryRun).
  * @param {object} trackerSettings
+ * @param {{ fromReplace?: boolean }} [how] fromReplace when the "after" state was built by
+ *   rebuilding whole collections, as the history scan does - see diffCollections.
  * @returns {Array<object>} Flat list of changes, each with a `risk`.
  */
-export function computeStateDiff(before, after, trackerSettings) {
+export function computeStateDiff(before, after, trackerSettings, { fromReplace = false } = {}) {
     const policy = trackerSettings.maxChangePolicy || 'free';
     const threshold = Number(trackerSettings.reviewSwingThreshold ?? 0.6);
     const changes = [];
@@ -199,7 +226,7 @@ export function computeStateDiff(before, after, trackerSettings) {
     }
     changes.push(...diffCollections({
         scope: 'player', actor: null,
-        before: before?.player, after: after?.player, trackerSettings,
+        before: before?.player, after: after?.player, trackerSettings, fromReplace,
     }));
 
     // Characters are matched by name; presence itself is decided elsewhere, so a
@@ -227,7 +254,7 @@ export function computeStateDiff(before, after, trackerSettings) {
         }
         changes.push(...diffCollections({
             scope: 'character', actor: afterChar.name,
-            before: beforeChar, after: afterChar, trackerSettings,
+            before: beforeChar, after: afterChar, trackerSettings, fromReplace,
         }));
     }
 
@@ -265,16 +292,21 @@ function reasonKeysFor(change) {
  *
  * @param {Array<object>} changes Mutated in place.
  * @param {Record<string, string>} why As returned by the reader.
- * @returns {string[]} The reasons that matched nothing, so they can be shown rather than
- *   silently dropped - a key spelled wrongly is exactly when the reason is worth reading.
+ * @returns {string[]} The reasons that matched nothing, each with the key it arrived under,
+ *   so they can be shown rather than silently dropped. The key is half the evidence: a
+ *   reason that will not attach is usually filed under a name no row has, and without it
+ *   the panel shows a list of sentences with nothing to say about where they belong.
  */
 export function attachReasons(changes, why) {
     if (!why || typeof why !== 'object' || Array.isArray(why)) return [];
 
     const remaining = new Map();
+    const asWritten = new Map();
     for (const [key, text] of Object.entries(why)) {
         const clause = String(text ?? '').trim();
-        if (clause) remaining.set(reasonKey(key), clause);
+        if (!clause) continue;
+        remaining.set(reasonKey(key), clause);
+        asWritten.set(reasonKey(key), String(key).trim());
     }
 
     // Qualified first, so a bare label cannot claim a row a fuller key was meant for.
@@ -289,7 +321,7 @@ export function attachReasons(changes, why) {
         }
     }
 
-    return [...remaining.values()];
+    return [...remaining.entries()].map(([key, clause]) => `${asWritten.get(key) || key}: ${clause}`);
 }
 
 export function partitionChanges(changes, trackerSettings) {

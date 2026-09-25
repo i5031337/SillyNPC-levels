@@ -179,6 +179,13 @@ export const defaultSettings = {
      */
     profileHints: {},
     /**
+     * Your own wording for the texts the extension builds prompts from, by id - see
+     * prompt-texts.js. Absent or empty means the built-in text, like profileHints.
+     *
+     * @type {Record<string, string>}
+     */
+    promptTexts: {},
+    /**
      * Which connection writes lore. Empty means your main API.
      *
      * Its own setting rather than the tracker's: a small model chosen for returning JSON
@@ -427,6 +434,29 @@ export const defaultSettings = {
         extractionProfileId: '',
         /** Token budget for the extraction reply. */
         extractionMaxTokens: 1200,
+
+        /**
+         * What the reader is told to be: 0 for as steady as the model gets, higher for more
+         * variety. Empty leaves it to the model, which is what was sent before this existed.
+         * Only reaches a model through the tracker's own connection profile; the main API
+         * uses whatever its own settings say.
+         */
+        extractionTemperature: '',
+
+        /**
+         * Whether each message of the history carries the world as it stood at that message,
+         * from the snapshot the tracker already saves. Off by default: it is the one setting
+         * that grows with the length of the context.
+         */
+        historyNotes: false,
+
+        /**
+         * The world fields left OUT of those notes, by name. Kept as what to leave out, so a
+         * field added later is shown without anybody going back to tick it.
+         *
+         * @type {string[]}
+         */
+        historyNoteSkip: [],
         /**
          * How many preceding messages the extraction sees as context.
          *
@@ -812,6 +842,9 @@ export function normalizeSettings(settings) {
     // then belongs to the user forever.
     if (!settings.profileHints || typeof settings.profileHints !== 'object') {
         settings.profileHints = {};
+    }
+    if (!settings.promptTexts || typeof settings.promptTexts !== 'object' || Array.isArray(settings.promptTexts)) {
+        settings.promptTexts = {};
     }
 
     if (!String(settings.statusTracker.extractionPrompt || '').trim()) {

@@ -2,7 +2,7 @@ import { getSettings, saveSettings, defaultSettings } from './settings.js';
 import { buildPromptEditor } from './ui-prompts.js';
 import { promptById } from './prompts.js';
 import { tidyTemplateLabels } from './ui-template-tidy.js';
-import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, updateExtensionTheme, repositionCloseButton } from './ui-shared.js';
+import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from './ui-shared.js';
 import { loadStateFromMetadata, saveStateToMetadata, syncPlayerToMaster, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from './status-logic.js';
 import { POPUP_TYPE, Popup } from '../../../../popup.js';
 import { eventSource } from '../../../../events.js';
@@ -168,6 +168,37 @@ export function renderStatusView(container) {
         help: 'Raise this if updates come back truncated while tracking many stats.',
         onChange: onApply
     }));
+
+    container.append(buildSettingNumber({
+        key: 'statusTracker.extractionTemperature',
+        label: 'Reader Temperature',
+        step: 0.05,
+        max: 2,
+        allowEmpty: true,
+        placeholder: 'the model\'s own',
+        help: 'How steady the reader is: 0 reads the same message the same way every time, '
+            + 'higher invents more. Around 0.2 suits a job whose answer is facts and JSON. '
+            + 'Empty sends none, leaving it to the model - usually 1.0, which is loose for '
+            + 'this. Sent only when the tracker has its own connection profile; through your '
+            + 'main API, that API\'s own settings decide. Nothing else from your story preset '
+            + 'is ever sent with an extraction.',
+        onChange: onApply,
+    }));
+
+    container.append(buildSettingToggle({
+        key: 'statusTracker.historyNotes',
+        label: 'World State On Each Message',
+        help: 'Puts a line at the top of every earlier message in the story prompt saying what '
+            + 'the world held at that message - the snapshot the tracker already saves. Without '
+            + 'it the model reads the whole history with no time and no place on any of it, so '
+            + '"what we did two days ago" is unanswerable unless somebody said the date out '
+            + 'loud. It costs what it carries: on a sixty-message context, all four of a typical '
+            + 'setup\'s world fields are about 2,400 tokens, time and place alone about 600. '
+            + 'Your chat file is untouched - the notes are added to the copy sent to the model.',
+        onChange,
+    }));
+
+    if (settings.historyNotes) container.append(buildHistoryNoteFields(settings, onApply));
 
     container.append(buildSettingToggle({
         key: 'statusTracker.extractionReasons',
@@ -430,6 +461,62 @@ export function renderStatusView(container) {
     btnRow.append(dashBtn, advBtn);
     container.appendChild(btnRow);
 
+}
+
+/**
+ * Which world fields go into the note on each past message.
+ *
+ * Stored as the ones left OUT (historyNoteSkip), so a field added in System Builder later
+ * appears in the notes without anybody coming back here to tick it. Untick everything and
+ * the notes stop, which is the same as switching the feature off - said in the line below
+ * the ticks rather than guarded against.
+ */
+function buildHistoryNoteFields(settings, onApply) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sillynpc-setting';
+    wrap.dataset.setting = 'statusTracker.historyNoteSkip';
+
+    const label = document.createElement('label');
+    label.className = 'sillynpc-setting-row';
+    label.style.fontWeight = 'bold';
+    label.textContent = 'Fields In The Note';
+    wrap.append(label);
+
+    const row = document.createElement('div');
+    row.className = 'sillynpc-setting-row';
+    row.style.flexWrap = 'wrap';
+    row.style.gap = '10px';
+
+    const skipped = () => (settings.historyNoteSkip || []).map(name => String(name).toLowerCase());
+    for (const stat of settings.globalStats || []) {
+        const name = String(stat?.name ?? '').trim();
+        if (!name) continue;
+
+        const tick = document.createElement('label');
+        tick.className = 'checkbox_label';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = !skipped().includes(name.toLowerCase());
+        box.dataset.field = name;
+        box.addEventListener('change', () => {
+            const without = (settings.historyNoteSkip || [])
+                .filter(other => String(other).toLowerCase() !== name.toLowerCase());
+            settings.historyNoteSkip = box.checked ? without : [...without, name];
+            onApply();
+        });
+        tick.append(box, document.createTextNode(` ${name}`));
+        row.append(tick);
+    }
+    wrap.append(row);
+
+    const note = document.createElement('small');
+    note.className = 'notes';
+    note.textContent = (settings.globalStats || []).length
+        ? 'A field you untick is left out of the notes and nothing else. Untick them all and no '
+            + 'notes are sent. A world field added later is included on its own.'
+        : 'No world fields to show yet - add one in System Builder.';
+    wrap.append(note);
+    return wrap;
 }
 
 /**
