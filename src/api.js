@@ -1,5 +1,5 @@
 import { promptText, defaultPromptText } from './prompt-texts.js';
-import { chat, getRequestHeaders } from '../../../../../script.js';
+import { chat, getRequestHeaders, extractMessageFromData } from '../../../../../script.js';
 import { getContext } from '../../../../st-context.js';
 import { loadWorldInfo, saveWorldInfo, createWorldInfoEntry } from '../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../slash-commands.js';
@@ -412,7 +412,9 @@ async function requestLore(prompt) {
         systemPrompt: promptText('loreSystem'),
         responseLength: maxTokens,
     });
-    const text = (typeof raw === 'string' ? raw : (raw?.content ?? '')) || '';
+    // generateRawData returns the provider's response object. Its text can live in
+    // choices, results, or a content block array, depending on the main API.
+    const text = extractMessageFromData(raw) || '';
     // Not awaited on purpose: counting asks the tokenizer, and a counter is not worth
     // making anyone wait for, nor worth failing a generation over.
     recordUsage('lore', { prompt: promptText('loreSystem') + prompt, reply: text });

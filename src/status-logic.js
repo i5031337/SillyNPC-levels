@@ -132,7 +132,8 @@ export function lockedStats(trackerSettings = getSettings().statusTracker) {
  * Only for replies from a model - the tracker's reader and the inline block. Your own edits
  * never come through here, so typing "120/150" on the sheet still sets a ceiling.
  *
- * - A locked stat is dropped: you change it, the model does not.
+ * - A locked stat is dropped after it has a value. A blank NPC stat can be
+ *   initialized once, then only you can change it.
  * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
  *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
  *   changed and then came back as "4/20" were this - a model copying the "current/maximum"
@@ -145,17 +146,22 @@ export function lockedStats(trackerSettings = getSettings().statusTracker) {
 export function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker) {
     if (!update || typeof update !== 'object') return update;
 
-    const clean = (stats, defs, stored) => {
+    const clean = (stats, defs, stored, { npc = false, cardStats = {} } = {}) => {
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
             if (!def) continue;
+            const held = stored?.[findMatchingStatKey(stored || {}, key) || key];
+            const cardHeld = cardStats?.[findMatchingStatKey(cardStats || {}, key) || key];
             if (def.locked) {
-                delete stats[key];
-                continue;
+                // A locked NPC stat may be seeded once, but a value already on its
+                // card must also protect it while the character is off stage.
+                if (!npc || String(held ?? '').trim() || String(cardHeld ?? '').trim()) {
+                    delete stats[key];
+                    continue;
+                }
             }
             const incoming = String(stats[key] ?? '');
-            const held = stored?.[findMatchingStatKey(stored || {}, key) || key];
             const ceiling = incoming.match(NUMBER_OVER_NUMBER);
             if (ceiling && PLAIN_NUMBER.test(String(held ?? '')) && !resolveMaxValue(def)) {
                 stats[key] = ceiling[1];
@@ -173,7 +179,8 @@ export function sanitizeModelUpdate(update, state, trackerSettings = getSettings
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
             .find(c => String(c?.name).toLowerCase() === String(actor?.name).toLowerCase());
-        clean(actor?.stats, trackerSettings.npcStats, current?.stats);
+        clean(actor?.stats, trackerSettings.npcStats, current?.stats,
+            { npc: true, cardStats: findCardForName(actor?.name)?.statusOverrides });
     }
     return update;
 }
@@ -239,6 +246,26 @@ export function highestCeiling(characters, name) {
 export function isNumericStat(statDef) {
     const type = statDef?.type;
     return type === 'number' || type === 'bar';
+}
+
+/** The configured NPC fields, included in both tracker prompts for new arrivals. */
+export function describeNpcStatFields(trackerSettings) {
+    return (trackerSettings?.npcStats || [])
+        .filter(stat => stat?.name)
+        .map(stat => {
+            const details = [isNumericStat(stat) ? 'number' : 'text'];
+            const choices = allowedValues(stat);
+            if (choices.length) details.push(`choose one of ${choices.join(', ')}`);
+            else if (isNumericStat(stat)) {
+                if (stat.min !== undefined && String(stat.min).trim() !== '') details.push(`minimum ${stat.min}`);
+                const max = resolveMaxValue(stat);
+                if (max) details.push(`starting maximum ${max}`);
+            }
+            if (String(stat.defaultValue ?? '').trim()) details.push(`default ${stat.defaultValue}`);
+            if (stat.locked) details.push('fill only while blank, then keep fixed');
+            return `- ${stat.name}: ${details.join('; ')}`;
+        })
+        .join('\n');
 }
 
 /**
@@ -1766,6 +1793,7 @@ export function getStatusInstructions() {
     return '\n' + promptText('storyBlock', {
         status: formatCompactStatus(currentState, true),
         rules: applyMacros(settings.systemRules),
+        npcFields: describeNpcStatFields(settings),
         limits: playerMaxes || npcMaxes ? 'on' : '',
         playerLimits: playerMaxes,
         npcLimits: npcMaxes,

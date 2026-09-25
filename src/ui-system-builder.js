@@ -497,7 +497,7 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
                     <small>Name</small>
                 </label>
                 <label class="sillynpc-check-group" style="margin-left:6px;"
-                       title="Only you change it. The tracker is told not to, and any change it reports is thrown away. Edit it by hand on the sheet or in the tracker box.">
+                       title="Only you change a value once set. For an NPC field with no value, the tracker may assign its first value; later changes it reports are thrown away. Edit it by hand on the sheet or in the tracker box.">
                     <input type="checkbox" class="stat-locked" ${stat.locked ? 'checked' : ''}>
                     <small>Locked</small>
                 </label>

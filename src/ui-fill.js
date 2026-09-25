@@ -102,7 +102,7 @@ export async function fillCharacter(char, { onSave } = {}) {
         return;
     }
 
-    const audit = auditCharacter(char);
+    const audit = await auditCharacter(char);
     if (!audit.anything) {
         toastr.info(`${char.name} is already filled in.`, 'SillyNPC');
         return;

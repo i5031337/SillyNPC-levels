@@ -89,9 +89,9 @@ export function carriedItems(char) {
  * when they pressed a button about empty fields.
  *
  * @param {object} char
- * @returns {{ lore: object, data: object, belongings: object, image: object, anything: boolean }}
+ * @returns {Promise<{ lore: object, data: object, belongings: object, image: object, anything: boolean }>}
  */
-export function auditCharacter(char) {
+export async function auditCharacter(char) {
     const missingProfile = missingProfileFields(char);
     const profile = missingProfile.length === 0
         // Built from the list rather than spelled out, so adding a field does not leave a
@@ -104,9 +104,10 @@ export function auditCharacter(char) {
                 + `${missingProfile.map(f => f.label).join(', ')}.`,
         };
 
-    const lore = char?.lorebook
+    const hasLore = char?.lorebook && String(await readLoreEntry(char)).trim();
+    const lore = hasLore
         ? { done: true, summary: 'Already linked to a lorebook entry.' }
-        : { done: false, summary: 'No lorebook entry. Will look for one, and write it if there is none.' };
+        : { done: false, summary: 'No written lore entry. Will look for one, and write it if there is none.' };
 
     const missing = missingStats(char);
     const data = missing.length === 0
@@ -339,13 +340,17 @@ export async function readLoreEntry(char) {
  * @returns {Promise<{ ok: boolean, action: string, reason?: string }>}
  */
 export async function fillLore(char) {
-    if (char.lorebook) return { ok: true, action: 'already linked' };
-
-    if (await tryAutoSyncLorebook(char, { silent: true })) {
-        return { ok: true, action: 'linked an existing entry' };
+    if (char.lorebook && String(await readLoreEntry(char)).trim()) {
+        return { ok: true, action: 'already linked' };
     }
 
-    const world = getSettings().defaultLorebook || getChatLorebookName();
+    if (!char.lorebook && await tryAutoSyncLorebook(char, { silent: true })) {
+        if (String(await readLoreEntry(char)).trim()) {
+            return { ok: true, action: 'linked an existing entry' };
+        }
+    }
+
+    const world = char.lorebook?.world || getSettings().defaultLorebook || getChatLorebookName();
     if (!world) {
         return {
             ok: false, action: 'none',
@@ -364,7 +369,9 @@ export async function fillLore(char) {
        The profile is the one that must not describe somebody it has never been told about;
        see fillSources. Applying the same test here refused far more than intended, because
        its Data Bank half is switched off by default. */
-    const { uid } = await createLoreEntry(char, world, char.name);
+    // Creating an entry links it before generation starts. If generation failed on a
+    // previous attempt, reuse that empty entry instead of treating the link as done.
+    const uid = char.lorebook?.uid ?? (await createLoreEntry(char, world, char.name)).uid;
     const { content, tags } = await generateLoreContent(char, world, uid);
     if (!String(content || '').trim()) {
         return { ok: false, action: 'none', reason: 'The lore writer returned nothing usable.' };
@@ -391,8 +398,12 @@ export function buildFillPrompt(char, missing, lore, trackerSettings, { collecti
     const describe = (stat) => {
         const max = resolveMaxValue(stat);
         const range = max ? ` (out of ${max})` : '';
+        const choices = (stat.options || []).map(value => String(value).trim()).filter(Boolean);
+        const allowed = choices.length ? `, choose one of ${choices.join(', ')}` : '';
+        const minimum = !choices.length && stat.min !== undefined && String(stat.min).trim() !== ''
+            ? `, minimum ${stat.min}` : '';
         const example = stat.defaultValue ? `, typically "${stat.defaultValue}"` : '';
-        return `- ${stat.name}${range}${example}`;
+        return `- ${stat.name}${range}${allowed}${minimum}${example}`;
     };
 
     const facts = describeTrackedFacts(char);

@@ -1,4 +1,5 @@
 import { promptText } from './prompt-texts.js';
+import { extractMessageFromData } from '../../../../../script.js';
 import { getContext } from '../../../../st-context.js';
 import { applyMacros } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
@@ -33,6 +34,7 @@ import {
     takeRefusedValues,
     sanitizeModelUpdate,
     lockedStats,
+    describeNpcStatFields,
 } from './status-logic.js';
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from './status-diff.js';
 import { setPendingChanges, isItemDecided } from './status-review.js';
@@ -768,6 +770,7 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
         offstage: describeAbsentButNamed(state, messageText, trackerSettings),
         limits: describeLimits(trackerSettings, state),
         locked: describeLocked(trackerSettings),
+        npcFields: describeNpcStatFields(trackerSettings),
         xpProgression: (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
             && (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
@@ -881,7 +884,12 @@ export async function requestExtraction(userPrompt, schema, trackerSettings, sys
         responseLength: maxTokens,
         jsonSchema: trackerSettings.extractionUseSchema ? schema : null,
     });
-    const answer = typeof raw === 'string' ? raw : (raw?.content ?? raw ?? '');
+    // Without a schema, generateRawData returns the provider response. Its text may
+    // be in choices, results, or content blocks rather than a top-level content field.
+    // With a schema, SillyTavern has already extracted the JSON response for us.
+    const answer = schema && trackerSettings.extractionUseSchema
+        ? raw
+        : extractMessageFromData(raw);
     recordUsage(usageKind, { prompt: systemPrompt + userPrompt, reply: describeAnswer(answer) });
     return answer;
 }
