@@ -9,6 +9,8 @@ import { recordUsage } from './usage.js';
 import { syncEntryIdentity, mergeKeywords, namesFor } from './lorebook.js';
 import { escapeRegExp, describeConnection } from './utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
+import { PROFILE_FIELDS } from './constants-profile.js';
+import { mergeLoreProfile, splitLoreProfile, joinLoreProfile } from './lore-profile.js';
 
 /**
  * The slice of story the lore writer is shown.
@@ -189,6 +191,19 @@ export async function generateLoreContent(char, world, uid, options = {}) {
         prompt += `\n\nFrom the setting's reference material:\n${worldFacts}`;
     }
 
+    if (!options.template && !char.isPlayer) {
+        const existing = mergeLoreProfile(existingLore, char.profile, char.name).profile;
+        prompt += '\n\nThe same response must also contain these profile fields at the start of Content, '
+            + 'one labelled line per field. Keep established values exactly as given; fill only blanks '
+            + 'that the sources support. Never invent a value. After these lines, write the usual lore sections.\n'
+            + PROFILE_FIELDS.map(field => `${field.label}: ${existing[field.id] || '(fill if known)'}`)
+                .join('\n');
+        if (options.preserveLore && existingLore.trim()) {
+            prompt += '\nThis is a Fill request. Supply the named profile fields; the existing additional lore '
+                + 'will be retained exactly and does not need rewriting.';
+        }
+    }
+
     const text = await requestLore(prompt);
 
     let tags = '';
@@ -215,6 +230,13 @@ export async function generateLoreContent(char, world, uid, options = {}) {
 
     const namePattern = new RegExp(`^#*\\s*${escapeRegExp(char.name)}\\s*[:\\-]?\\s*\\n?`, 'i');
     content = content.replace(namePattern, '').trim();
+
+    if (!options.template && !char.isPlayer) {
+        const merged = mergeLoreProfile(content, char.profile, char.name);
+        content = options.preserveLore && existingLore.trim()
+            ? joinLoreProfile(merged.profile, splitLoreProfile(existingLore, char.name).lore)
+            : merged.content;
+    }
 
     // The prompt asks for "Tags:" and "Content:". A reply with neither did not follow the
     // instruction, and the usual reason is that the instruction never arrived - the reply
@@ -250,6 +272,11 @@ export async function saveLoreContent(char, world, uid, tags, content) {
     if (!entry) throw new Error(`Entry UID ${uid} not found in Lorebook`);
 
     entry.content = content.trim();
+    if (!char.isPlayer) {
+        const merged = mergeLoreProfile(entry.content, char.profile, char.name);
+        entry.content = merged.content;
+        char.profile = { ...char.profile, ...merged.profile };
+    }
     // The writer returns Abilities/History/Ties and never a name, so the heading is put
     // on here rather than asked for. Before the tags merge, which must not be lost.
     syncEntryIdentity(char, entry);

@@ -145,10 +145,8 @@ export const DIALOGUE_FORMAT_PROMPT = [
 /**
  * What a character *is*, as named fields rather than a paragraph.
  *
- * These four used to live inside the lore entry as prose, which meant the interface could
- * not read them, regenerating the entry rewrote all of them at once, and they sat mixed in
- * with the history they are not. Named fields can be laid out, corrected one at a time,
- * and left alone while the entry around them changes.
+ * These fields have named lines at the start of the lore entry and a card mirror for
+ * tracker and portrait consumers. Named fields can be laid out and corrected individually.
  *
  * Four, and fixed. Everything else a character might have - their job, their ties, their
  * rank, what they are hiding - varies by system and belongs in System Builder where you
@@ -201,4 +199,3 @@ export const IMAGE_PROMPT_BY_BACKEND = Object.freeze({
         '{{lore}}, {{items}}, solo, upper body, looking at viewer, ' +
         'detailed face, cinematic lighting, sharp focus, {{context}}',
 });
-

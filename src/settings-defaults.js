@@ -250,7 +250,7 @@ export const defaultSettings = {
         '- Weigh the whole history, not the most recent scene. A character who was frightened, angry or hurt in the last few messages is not permanently that way. ',
         '- Write what is generally true of them, not what was true five minutes ago.',
         '- Do NOT invent affiliations, factions, agendas, hidden links, secret knowledge or people they answer to.',
-        '- Do NOT describe their age, their appearance, their personality or how they speak.',
+        '- Put age, appearance, personality, warmth and speech in their labelled fields at the start of Content. Do not repeat them in the lore sections.',
         '- Do NOT list their spells, items, skills or numbers.',
         '- Invent nothing. If neither the facts nor the story supports a detail, leave it out.',
         '- An entry that is short because little has happened is correct.',

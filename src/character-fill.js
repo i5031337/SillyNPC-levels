@@ -10,6 +10,7 @@ import { tryAutoSyncLorebook } from './lorebook.js';
 import { charactersMentionedIn } from './mentions.js';
 import { getPersonaData } from './status-logic.js';
 import { readLoreEntry } from './character-fill-lore.js';
+import { syncProfileToLore } from './lore-profile-sync.js';
 export { readLoreEntry, fillLore } from './character-fill-lore.js';
 
 /**
@@ -106,9 +107,9 @@ export async function auditCharacter(char) {
         };
 
     const hasLore = char?.lorebook && String(await readLoreEntry(char)).trim();
-    const lore = hasLore
-        ? { done: true, summary: 'Already linked to a lorebook entry.' }
-        : { done: false, summary: 'No written lore entry. Will look for one, and write it if there is none.' };
+    const lore = hasLore && !missingProfile.length
+        ? { done: true, summary: 'Description and lore are complete.' }
+        : { done: false, summary: 'Write or complete the description and lore in one request.' };
 
     const missing = missingStats(char);
     const data = missing.length === 0
@@ -131,7 +132,7 @@ export async function auditCharacter(char) {
     const wanted = (stage) => stage.checked ?? !stage.done;
     return {
         profile, lore, data, belongings, image,
-        anything: wanted(profile) || wanted(lore) || wanted(data)
+        anything: wanted(lore) || wanted(data)
             || wanted(belongings) || wanted(image),
     };
 }
@@ -308,6 +309,7 @@ export async function fillProfile(char, { fields = null } = {}) {
     }
 
     saveSettings();
+    await syncProfileToLore(char);
     return { ok: true, filled };
 }
 

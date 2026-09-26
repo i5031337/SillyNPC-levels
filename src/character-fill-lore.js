@@ -3,6 +3,8 @@ import { debugLog } from './constants.js';
 import { getSettings } from './settings.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from './api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from './lorebook.js';
+import { PROFILE_FIELDS } from './constants-profile.js';
+import { splitLoreProfile } from './lore-profile.js';
 
 /** The linked entry's text, or an empty string. Read fresh: it may have just been written. */
 export async function readLoreEntry(char) {
@@ -23,21 +25,30 @@ export async function readLoreEntry(char) {
 /**
  * Gives the card a lore entry: the one that already exists, or a new one.
  *
- * Linking beats writing. A character named in a lorebook the user has curated by hand is
- * better described there than by anything generated, and writing a second entry for the
- * same person is how a lorebook fills up with duplicates.
+ * Reuses an existing entry. Fill keeps its additional lore intact while asking the model
+ * to supply missing named details in the same request.
  *
  * @returns {Promise<{ ok: boolean, action: string, reason?: string }>}
  */
 export async function fillLore(char) {
-    if (char.lorebook && String(await readLoreEntry(char)).trim()) {
-        return { ok: true, action: 'already linked' };
-    }
+    let existing = await readLoreEntry(char);
 
     if (!char.lorebook && await tryAutoSyncLorebook(char, { silent: true })) {
-        if (String(await readLoreEntry(char)).trim()) {
-            return { ok: true, action: 'linked an existing entry' };
+        existing = await readLoreEntry(char);
+    }
+
+    const parsed = splitLoreProfile(existing, char.name);
+    char.profile ||= {};
+    for (const field of PROFILE_FIELDS) {
+        if (!String(char.profile[field.id] ?? '').trim() && parsed.profile[field.id]) {
+            char.profile[field.id] = parsed.profile[field.id];
         }
+    }
+    const missing = PROFILE_FIELDS.some(field => !String(char.profile[field.id] ?? '').trim());
+    if (existing.trim() && !missing) {
+        // Saving also migrates older entries into the common format, without a model call.
+        await saveLoreContent(char, char.lorebook.world, char.lorebook.uid, '', existing);
+        return { ok: true, action: 'linked entry is complete' };
     }
 
     const world = char.lorebook?.world || getSettings().defaultLorebook || getChatLorebookName();
@@ -62,7 +73,8 @@ export async function fillLore(char) {
     // Creating an entry links it before generation starts. If generation failed on a
     // previous attempt, reuse that empty entry instead of treating the link as done.
     const uid = char.lorebook?.uid ?? (await createLoreEntry(char, world, char.name)).uid;
-    const { content, tags } = await generateLoreContent(char, world, uid);
+    const { content, tags } = await generateLoreContent(char, world, uid,
+        { preserveLore: Boolean(existing.trim()) });
     if (!String(content || '').trim()) {
         return { ok: false, action: 'none', reason: 'The lore writer returned nothing usable.' };
     }
@@ -70,4 +82,3 @@ export async function fillLore(char) {
     await saveLoreContent(char, world, uid, tags, content);
     return { ok: true, action: `wrote a new entry in "${world}"` };
 }
-

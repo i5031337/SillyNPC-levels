@@ -3,6 +3,8 @@ import { getSettings, saveSettings } from './settings.js';
 import { liveFactsFor } from './api.js';
 import { readLoreEntry, fillProfile } from './character-fill.js';
 import { openLightbox } from './ui-portrait.js';
+import { syncProfileToLore, profileFromLore } from './lore-profile-sync.js';
+import { renderLoreBlocks } from './ui-profile-lore.js';
 
 /**
  * The character page you land on: what is known about somebody, laid out to be read.
@@ -77,17 +79,6 @@ function chipRow(label, chips) {
 }
 
 /**
- * Says what was written and offers the previous text back.
- *
- * A clickable toast rather than a dialog: the new text is usually what was wanted, and
- * stopping to confirm every time would make regenerating tedious. The way back is there for
- * the times it is not. Long-lived on purpose - long enough to read the new text and decide,
- * which is the whole point of being offered it.
- *
- * Restores into the settings and the box together, so the panel does not go on showing text
- * that is no longer stored.
- */
-/**
  * The button that puts the previous text back, beside the one that replaced it.
  *
  * It was a clickable toast, which was wrong twice over: a toast is gone in fifteen seconds
@@ -114,6 +105,7 @@ function buildUndoButton(field, char, input) {
         char.profile[field.id] = previous;
         input.value = previous;
         saveSettings();
+        syncProfileToLore(char).catch(err => console.error(LOG_PREFIX, 'Could not update lorebook profile', err));
         previous = null;
         undo.hidden = true;
     });
@@ -151,7 +143,7 @@ export function renderProfileFields(char, container) {
 
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
-            <label>Profile</label>
+            <label>Character details</label>
             <small class="notes">Who they are, rather than what is happening to them.
                 Sent with the scene so the narrator knows how to play them. The tracker
                 never changes a locked field, and a lock is the default.</small>
@@ -237,6 +229,8 @@ export function renderProfileFields(char, container) {
             char.profile[field.id] = input.value;
             saveSettings();
         });
+        input.addEventListener('change', () => syncProfileToLore(char)
+            .catch(err => console.error(LOG_PREFIX, 'Could not update lorebook profile', err)));
 
         label.setAttribute('for', `sillynpc-profile-${field.id}`);
         input.id = `sillynpc-profile-${field.id}`;
@@ -375,6 +369,8 @@ export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
  */
 export async function renderProfileView(char, container) {
     if (!container || !char) return;
+    const linkedContent = char.lorebook?.world ? await readLoreEntry(char) : '';
+    const unified = profileFromLore(linkedContent, char.profile, char.name);
     container.replaceChildren();
     container.className = 'sillynpc-charview';
 
@@ -407,7 +403,7 @@ export async function renderProfileView(char, container) {
     const aliasNames = (char.aliases || [])
         .filter(a => a?.pattern && !a.isRegex)
         .map(a => a.pattern);
-    const blocks = buildProfileBlocks(char, {
+    const blocks = buildProfileBlocks({ ...char, profile: unified.profile }, {
         extraBadges: aliasNames.length ? [chip('Also called', aliasNames.join(', '))] : [],
     });
 
@@ -457,18 +453,10 @@ export async function renderProfileView(char, container) {
     container.append(body);
 
     if (char.lorebook?.world) {
-        const text = await readLoreEntry(char);
+        const text = unified.lore;
         if (text) {
             emptyDescription?.remove();
-            const heading = document.createElement('div');
-            heading.className = 'sillynpc-cv-label';
-            heading.textContent = `Linked lorebook · ${char.lorebook.world}`;
-
-            const content = document.createElement('div');
-            content.className = 'sillynpc-cv-lore-text';
-            content.textContent = text;
-
-            loreBlock.append(heading, content);
+            renderLoreBlocks(text, loreBlock);
         }
     }
 

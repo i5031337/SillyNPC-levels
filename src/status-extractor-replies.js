@@ -9,6 +9,7 @@ import { requestExtraction, coerceToUpdate } from './status-extractor-request.js
 import { mentionsName } from './mentions.js';
 import { coerceThread, addThread, closeThread, openThreads, touchThreads, pruneThreads } from './threads.js';
 import { recordThreadChanges } from './status-snapshots.js';
+import { syncProfileToLore } from './lore-profile-sync.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
 export async function addLevelBonus(parsed, state, trackerSettings, messageText) {
@@ -66,6 +67,7 @@ export function applyProfileFromReply(parsed) {
     if (!anyProfileFieldUnlocked(profileOwners())) return [];
 
     const changed = [];
+    const touched = new Set();
 
     const write = (card, incoming) => {
         if (!card || !incoming || typeof incoming !== 'object') return;
@@ -79,6 +81,7 @@ export function applyProfileFromReply(parsed) {
             if (!value || value === String(card.profile[field.id] ?? '').trim()) continue;
             card.profile[field.id] = value;
             changed.push(`${card.name}.${field.label}`);
+            touched.add(card);
         }
     };
 
@@ -92,6 +95,8 @@ export function applyProfileFromReply(parsed) {
 
     if (changed.length) {
         saveSettings();
+        for (const card of touched) syncProfileToLore(card).catch(err =>
+            console.error(LOG_PREFIX, 'Could not update profile in lorebook', err));
         debugLog('Profile fields the story changed:', changed);
     }
     return changed;

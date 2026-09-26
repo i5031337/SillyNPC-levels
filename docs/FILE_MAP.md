@@ -129,6 +129,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/default-portraits.js` | Stranger portrait pool and assignments. |
 | `src/image-tags.js` | Portrait tag fields and tag lookup. |
 | `src/lorebook.js` | Lorebook linking, identity, and synchronization. |
+| `src/lore-profile.js` | Shared format for profile fields and legacy lore text. |
+| `src/lore-profile-sync.js` | Sync the unified lore entry with card profile fields. |
 | `src/activated-lore.js` | Capture activated lore entries and their characters. |
 | `src/beats.js` | Segment visible message content into story beats. |
 | `src/mentions.js` | Detect named character mentions. |
@@ -184,6 +186,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui-player-sections.js` | Player sheet content sections. |
 | `src/ui-portrait.js` | Portrait gallery and lightbox. |
 | `src/ui-profile.js` | Character profile blocks and editor. |
+| `src/ui-profile-lore.js` | Format named lore sections in the character view. |
 | `src/ui-prompts.js` | Prompt editor and budget view. |
 | `src/ui-scan-button.js` | History scan trigger. |
 | `src/ui-setting-controls.js` | Shared settings form controls. |

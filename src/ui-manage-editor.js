@@ -32,7 +32,8 @@ import { renderLorebookSection, resetLorebookState } from './ui-lorebook-section
 import { renderProfileView, renderProfileFields } from './ui-profile.js';
 import { renderThreadsView } from './ui-threads.js';
 import { fillCharacter } from './ui-fill.js';
-import { fillProfile } from './character-fill.js';
+import { fillProfile, readLoreEntry } from './character-fill.js';
+import { profileFromLore } from './lore-profile-sync.js';
 import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderGenerationSettingsView } from './ui-settings-tabs.js';
 import { renderPromptsView } from './ui-prompts.js';
 import { renderStatsView } from './ui-stats.js';
@@ -326,7 +327,17 @@ function renderEditForm(char, editView, sticky, title) {
 
     renderCategorySelect(char, catContainer);
     renderProfileFields(char, profileContainer);
-    renderLorebookSection(char, loreContainer, { onChange: renderEditor });
+    if (char.lorebook?.world) readLoreEntry(char).then(content => {
+        if (!content || !profileContainer.isConnected) return;
+        const merged = profileFromLore(content, char.profile, char.name).profile;
+        const missing = PROFILE_FIELDS.filter(field => !char.profile?.[field.id] && merged[field.id]);
+        if (!missing.length) return;
+        char.profile ||= {};
+        for (const field of missing) char.profile[field.id] = merged[field.id];
+        saveSettings();
+        renderProfileFields(char, profileContainer);
+    });
+    renderLorebookSection(char, loreContainer, { onChange: renderEditor, label: 'Additional lore' });
     renderOverridesSection(char, overridesContainer);
     renderCollectionsSection(char, collectionsContainer);
 }

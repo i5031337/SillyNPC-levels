@@ -11,6 +11,7 @@ tests/*
 !tests/settings-migration.mjs
 !tests/status-dependencies.mjs
 !tests/ui-maintenance.mjs
+!tests/lore-profile.mjs
 
 # Scratch / editor debris
 temp_*.txt

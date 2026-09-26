@@ -194,6 +194,8 @@
     color: var(--sillynpc-fg-primary);
 }
 
+.sillynpc-cv-lore { gap: var(--sillynpc-space-md); }
+
 .sillynpc-cv-chips {
     display: flex;
     flex-wrap: wrap;
@@ -555,4 +557,3 @@
     align-items: baseline;
     gap: var(--sillynpc-space-sm);
 }
-
