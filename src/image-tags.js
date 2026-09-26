@@ -8,7 +8,7 @@
  *
  * Nothing in SillyNPC acts on a tag. Deciding *which* field wins when two of them name a
  * picture is policy, and policy belongs to whatever is asking - see registerImageTagFields.
- * This module answers only the question it owns: given a field and a value, which picture.
+ * This module stores explicit tags and reads values encoded in filenames.
  *
  * Imports settings and nothing else, so the whole of it runs in the Node harness.
  */
@@ -119,36 +119,6 @@ export function setImageTag(char, path, field, value) {
 }
 
 /**
- * The picture this card wears when `field` holds `value`, or '' when none does.
- *
- * **Gallery order decides**, when two pictures carry the same tag. That is the order the
- * carousel steps through and the order the tag grid draws in, so which one wins is
- * something the reader can see rather than something they have to know - and it is stable,
- * where iterating the tag map would depend on the order the tags happened to be written.
- *
- * Case-insensitive on the value, matching how stored stat keys are looked up everywhere
- * else here: the model writes "Wounded" and "wounded" on different days.
- *
- * @param {object} char
- * @param {string} field
- * @param {string} value
- * @returns {string} A path from char.images, or ''.
- */
-export function imageForTag(char, field, value) {
-    const wanted = String(value ?? '').trim().toLowerCase();
-    if (!char || !field || !wanted) return '';
-
-    const tags = tagsFor(char);
-    if (!tags) return '';
-
-    for (const path of Array.isArray(char.images) ? char.images : []) {
-        const tagged = tags[path]?.[field];
-        if (typeof tagged === 'string' && tagged.trim().toLowerCase() === wanted) return path;
-    }
-    return '';
-}
-
-/**
  * The values a filename says its picture is for.
  *
  * Forty pictures out of a generator, named for what they show, should not need forty
@@ -234,23 +204,7 @@ function matchPart(part, valuesByField, found) {
 }
 
 /**
- * Everything this picture is tagged with: what its name says, plus what was set by hand.
- *
- * Explicit wins. The filename covers the forty that were named for their value and the
- * grid covers the handful that need a second tag or a correction, and a correction that
- * lost to a filename would be a control that visibly does nothing.
- *
- * @param {object} char
- * @param {string} path
- * @param {Record<string, string[]>} valuesByField
- * @returns {Record<string, string>}
- */
-export function effectiveTags(char, path, valuesByField) {
-    return { ...tagsFromFilename(path, valuesByField), ...(tagsFor(char)?.[path] ?? {}) };
-}
-
-/**
- * The fields in play and the values each allows, ready for the two functions above.
+ * The fields in play and the values each allows for filename matching.
  *
  * @returns {Record<string, string[]>} In the registered order, which decides ties.
  */

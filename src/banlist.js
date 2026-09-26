@@ -1,4 +1,4 @@
-import { promptText, defaultPromptText } from './prompt-texts.js';
+import { promptText } from './prompt-texts.js';
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles, main_api } from '../../../../../script.js';
 import { textgenerationwebui_settings } from '../../../../textgen-settings.js';
 import { getContext } from '../../../../st-context.js';
@@ -119,10 +119,6 @@ export function applyBanList() {
 }
 
 /* ─── Finding what to ban ─────────────────────────────────────────────────── */
-
-/** What the reader is told when it goes looking. */
-// The built-in wording; what is sent is promptText('banScanSystem'), which may be your own.
-export const BAN_SCAN_SYSTEM_PROMPT = defaultPromptText('banScanSystem');
 
 /**
  * Reads the recent chat and proposes what to ban.

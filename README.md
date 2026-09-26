@@ -4,6 +4,8 @@
 
 # SillyNPC XP
 
+For the source layout and each file's responsibility, see the [file map](docs/FILE_MAP.md).
+
 This fork adds automatic player XP progression and chat-owned NPCs to SillyNPC. Install it **instead of**
 the original extension; both use the same settings and events and must not run together.
 
@@ -160,8 +162,9 @@ Advanced settings and fine-tuning parameters remain hidden until **Show Every Se
 
 ## Development
 
-Everything SillyTavern loads is here: `manifest.json` names `index.js` and `style.css`,
-and those pull in `src/`. There is no build step — clone it into
+`manifest.json` loads `index.js` and `style.css`. The JavaScript entry point imports
+the feature modules in `src/`; the CSS entry point imports the ordered files in
+`styles/`. There is no build step — clone the extension into
 `public/scripts/extensions/third-party/` and reload.
 
 Verbose logging is off by default. Turn it on in **Advanced -> Log Requests To The
@@ -171,35 +174,20 @@ Console**, or from DevTools:
 window.SILLYNPC_DEBUG = true;
 ```
 
-### Layout
+### Source layout
 
-| File | Role |
-|---|---|
-| `index.js` | Entry point, event wiring |
-| `src/constants.js` | Version, theme list, prompts, profile fields, debug logger |
-| `src/settings.js` | Defaults and migrations (`normalizeSettings`) |
-| `src/utils.js` | Escaping, JSON repair, image picking, stat-bar maths |
-| `src/chat.js` | Speaker detection and avatar injection |
-| `src/characters.js` | Character cards and categories |
-| `src/character-repository.js` · `src/character-scope.js` | Chat and reusable world card ownership and lookup |
-| `src/character-transfer.js` | Sending one character to somebody else, and taking one in |
-| `src/stat-persistence.js` | Innate/Variable migration and transfer rules |
-| `src/world-character-export.js` · `src/chat-listing.js` | Gathering characters from every chat in a Saved System |
-| `src/default-portraits.js` | Faces for speakers who have none |
-| `src/status-logic.js` | State, parsing, persona sync, collections, systems |
-| `src/status-extractor.js` | The separate reading pass |
-| `src/status-diff.js` · `src/status-review.js` | What an update changes, and what waits for you |
-| `src/status-snapshots.js` | Per-message records, and the state as of a message |
-| `src/status-clock.js` · `src/status-rules.js` | Reading the clock, and time rules |
-| `src/status-history.js` | Keeping old tracker blocks out of the prompt |
-| `src/history-scan.js` | Reading the whole story to catch collections up |
-| `src/threads.js` | What is not finished with |
-| `src/ui-grid-filter.js` · `src/ui-settings-search.js` | Finding a character, and finding a setting |
-| `src/banlist.js` · `src/narrator-rules.js` · `src/dialogue-format.js` | Text placed into the prompt |
-| `src/lorebook.js` · `src/api.js` | Lorebook linking, generation, portraits |
-| `src/usage.js` | What each generator has cost |
-| `src/status-ui.js` | Rendering the status box |
-| `src/ui-*.js` | One module per page of the menu, plus the HUD, sheet and review panel |
+| Path | Responsibility |
+| --- | --- |
+| `index.js`, `src/entry-*.js` | Extension startup and SillyTavern event handlers |
+| `src/settings*.js`, `src/constants*.js`, `src/utils*.js` | Settings, constants, and shared helpers |
+| `src/chat*.js`, `src/character*.js` | Message decoration and character ownership, editing, and transfer |
+| `src/status-*.js`, `src/progression.js` | Tracker state, extraction, reviews, history, and XP |
+| `src/ui-*.js` | Settings, character sheets, HUD, and other views |
+| `src/api*.js`, `src/lorebook.js` | Lore and portrait generation and storage |
+| `style.css`, `styles/*.css` | Ordered theme and interface styling |
+| `tests/*.mjs` | Focused behavior tests |
+
+See the [file map](docs/FILE_MAP.md) for every source file and its responsibility.
 
 Run the focused tests with `node --experimental-default-type=module --test tests/*.mjs`.
 

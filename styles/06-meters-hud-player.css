@@ -1,0 +1,472 @@
+/* ─── Stat Meters ──────────────────────────────────────────────────────── */
+/* A stat configured as a Meter renders its value on top of a proportional bar.
+   The value stays contenteditable, so the gauge is decoration around the same
+   control rather than a replacement for it. */
+
+.sillynpc-status-meter {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 64px !important;
+    padding: 0 6px !important;
+    border-radius: var(--sillynpc-radius-sm) !important;
+    background: color-mix(in srgb, var(--sillynpc-fg-primary), transparent 88%) !important;
+    overflow: hidden !important;
+    vertical-align: middle !important;
+    line-height: 1.4 !important;
+}
+
+.sillynpc-status-meter-fill {
+    position: absolute !important;
+    inset: 0 auto 0 0 !important;
+    background: color-mix(in srgb, var(--sillynpc-accent-text, var(--sillynpc-accent)), transparent 55%) !important;
+    transition: width 0.3s ease !important;
+    pointer-events: none !important;
+}
+
+.sillynpc-status-meter-text {
+    position: relative !important;
+    z-index: 1 !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* The header reserves no room for the buttons on purpose. They float, so its text wraps
+   around however many there are; a fixed reservation here - 50px, about two buttons - is
+   what let a row of four overlap it. Giving this a block formatting context (overflow,
+   display:flow-root) would stop the wrap and bring the overlap back in another form. */
+/* The rule between the world line and everything below it.
+
+   It had one rule, scoped to .sillynpc-theme-default, and it never drew - under any theme.
+   The box resets every descendant with `all: revert !important` at a specificity of 0,11,0,
+   which a border-top on a single class loses to, so the divider was an empty div with no
+   border and no width. Excluded from that reset above, the same way the meters and the
+   portraits already are, and given a rule here that is not tied to one theme. */
+.sillynpc-status-divider {
+    display: block;
+    border-top: 1px solid var(--sillynpc-border, rgba(128, 128, 128, 0.35));
+    margin: 6px 0;
+}
+
+.sillynpc-status-char {
+    margin-bottom: 3px;
+    display: block;
+    line-height: 1.6;
+}
+
+/*
+ * Characters Side By Side.
+ *
+ * Equal columns, each as wide as the widest character's row on one line (measured by
+ * fitCharacterColumns and handed over as --sillynpc-char-column), as many as fit. A row
+ * wider than the box gets the whole box. Before it is measured, 240px.
+ *
+ * The list is left out of the box's reset while this is on - the reset is "all: revert
+ * !important", which no grid rule can get past - so the rules here say everything the
+ * reset would otherwise have settled.
+ */
+.sillynpc-status-box.sillynpc-char-columns .sillynpc-status-characters {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--sillynpc-char-column, 240px)), 1fr)) !important;
+    column-gap: var(--sillynpc-space-lg, 16px) !important;
+    row-gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    font: inherit !important;
+    color: inherit !important;
+    box-sizing: border-box !important;
+}
+
+/* Anything in the list that is not a character - a "Present characters" heading, the line
+   break after it - spans the whole row rather than taking a column of its own. Left out
+   of the reset for the same reason as the list. */
+.sillynpc-status-box.sillynpc-char-columns .sillynpc-status-characters > :not(.sillynpc-status-char) {
+    grid-column: 1 / -1 !important;
+}
+
+.sillynpc-status-box.sillynpc-char-columns .sillynpc-status-characters > br {
+    display: none !important;
+}
+
+/* While measuring: one column, as wide as its widest row wants. */
+.sillynpc-status-box.sillynpc-char-columns .sillynpc-status-characters.is-measuring {
+    display: block !important;
+    width: max-content !important;
+}
+
+.sillynpc-status-editable {
+    padding: 0px 2px;
+    border-radius: 2px;
+    cursor: text;
+    display: inline-block;
+    min-width: 5px;
+    border-bottom: 1px dashed transparent;
+}
+
+.sillynpc-status-editable:hover {
+    border-bottom-color: currentColor;
+}
+
+.sillynpc-status-editable:focus {
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+    border-bottom: 1px solid currentColor;
+}
+
+.sillynpc-status-dashboard {
+    color: var(--st-text-color);
+}
+
+/* ─── HUD Widget ───────────────────────────────────────────────────────── */
+
+/* Its gap, padding and radius are set in HUD proportions further down, and were also set
+   here where they never applied - so editing them here did nothing at all. Declared once,
+   where the reasoning for the numbers is. */
+.sillynpc-hud-container {
+    position: fixed;
+    z-index: var(--sillynpc-z-hud);
+    display: flex;
+    align-items: center;
+    background: var(--sillynpc-bg-primary);
+    backdrop-filter: var(--sillynpc-backdrop);
+    border: 1px solid var(--sillynpc-border);
+    box-shadow: var(--sillynpc-shadow);
+    pointer-events: all;
+    transition: transform 0.2s ease, opacity 0.2s ease, background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    transform-origin: center center;
+}
+
+/* While it is being dragged: no transitions, and no blur. The blur is re-done over whatever
+   is behind the HUD - a video background included - every time it moves, which is what made
+   dragging lag. It comes back the moment the HUD is put down. */
+.sillynpc-hud-container.is-dragging {
+    transition: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    will-change: translate;
+}
+
+/* Clear of SillyTavern's top bar rather than 20px from the window edge, which put the
+   HUD under it. The variable is SillyTavern's own and follows the user's font scale.
+
+   Divided by the HUD's zoom (HUD Scale, see applyHudZoom in ui-hud.js): zoom scales the
+   element's own offsets too, and without this a larger HUD would stand further from the
+   corner the larger it got. */
+.sillynpc-hud-container {
+    --sillynpc-hud-edge: calc(20px / var(--sillynpc-hud-zoom, 1));
+    --sillynpc-hud-top: calc((var(--topBarBlockSize, 34px) + 20px) / var(--sillynpc-hud-zoom, 1));
+}
+.sillynpc-hud-container.top-right    { top: var(--sillynpc-hud-top); right: var(--sillynpc-hud-edge); }
+.sillynpc-hud-container.top-left     { top: var(--sillynpc-hud-top); left: var(--sillynpc-hud-edge); flex-direction: row-reverse; }
+.sillynpc-hud-container.bottom-right { bottom: var(--sillynpc-hud-edge); right: var(--sillynpc-hud-edge); }
+.sillynpc-hud-container.bottom-left  { bottom: var(--sillynpc-hud-edge); left: var(--sillynpc-hud-edge); flex-direction: row-reverse; }
+
+/* Persona images are 2:3 - SillyTavern renders the thumbnail at 96x144 - and this frame is
+ * a circle, so `cover` keeps a square from the middle and discards the top and bottom. On a
+ * full-body picture the discarded top is exactly the head.
+ *
+ * `top` is the fallback rather than the JavaScript default, so the right framing holds
+ * before any of it runs. Portrait Framing overrides it by setting the variable. */
+/* The picture inside the frame.
+ *
+ * It used to be the frame's own background-image. Every other portrait in the extension is
+ * an <img> - the chat avatars, the character cards, the tracker rows - and those were the
+ * ones that looked right; this was the only background-image and the only one that came out
+ * coarse, at every HUD scale.
+ *
+ * It rounds itself rather than being clipped by the frame: the plate layout draws corner
+ * marks just outside the portrait's edges, and overflow: hidden on the frame would cut them
+ * off. border-radius: inherit follows the frame, including when portrait-square sets it
+ * to 0.
+ *
+ * pointer-events: none so the frame keeps the drag, the click that opens the sheet, and
+ * the keyboard activation - the picture must not become a second target for any of them. */
+.sillynpc-hud-portrait-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center var(--sillynpc-portrait-focus, top);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* Its width and height follow the meter count and are set in HUD proportions below. */
+.sillynpc-hud-portrait {
+    border-radius: 50%;
+    /* Kept for the empty frame: the tint below still shows while no picture has loaded. */
+    background-size: cover;
+    background-position: center var(--sillynpc-portrait-focus, top);
+    /* 1px, not 2. At 2 the accent read as a frame around the picture rather than an edge
+       to it, which with the panel padding outside it made the portrait look boxed in. */
+    border: 1px solid var(--sillynpc-accent);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+}
+
+.sillynpc-hud-portrait:hover {
+    transform: scale(1.05);
+    z-index: 5;
+}
+
+.sillynpc-hud-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* min-width follows the meter width, in HUD proportions below. */
+}
+
+.sillynpc-hud-stat-row {
+    width: 100%;
+}
+
+.sillynpc-hud-bar-wrap {
+    width: var(--sillynpc-hud-meter-width, 92px);
+    height: var(--sillynpc-hud-meter-height, 14px);
+    background: var(--sillynpc-bg-secondary);
+    border-radius: var(--sillynpc-radius-md);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-hud-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+
+.sillynpc-hud-bar-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 2px black;
+}
+
+/* ─── Player Sheet Modal ───────────────────────────────────────────────── */
+
+.sillynpc-modal.sillynpc-player-sheet {
+    display: flex;
+    flex-direction: column;
+    /* Fills the dialog, the way .sillynpc-manage does. It used to be a fixed
+       1200x700 inside a dialog sized to the popup-width setting, so on a wide
+       screen the sheet sat in the left of it looking off-centre - and the width
+       and height settings did nothing here at all. */
+    width: 100%;
+    height: 100%;
+    /* A flex item will not shrink below its own content unless it is told it may, and
+       until it can shrink there is nothing for the scrolling pane inside it to overflow.
+       This is one of the three declarations that make the sheet scroll at all. */
+    min-height: 0;
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    padding: var(--sillynpc-space-xl);
+    box-sizing: border-box;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-lg);
+    box-shadow: var(--sillynpc-shadow);
+}
+
+.sillynpc-sheet-header {
+    margin-bottom: var(--sillynpc-space-xl);
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--sillynpc-accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* Keeps its height while the body takes what is left. Without this the header is
+       squeezed along with everything else once the sheet is taller than the dialog. */
+    flex-shrink: 0;
+}
+
+.sillynpc-sheet-close {
+    cursor: pointer;
+    font-size: var(--sillynpc-text-lg);
+    opacity: 0.6;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.sillynpc-sheet-close:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.sillynpc-sheet-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sillynpc-sheet-title .persona-name {
+    font-size: var(--sillynpc-text-xl);
+    font-weight: bold;
+}
+
+.sillynpc-sheet-title .level-badge {
+    background: var(--sillynpc-accent);
+    color: black;
+    padding: 2px 10px;
+    border-radius: var(--sillynpc-radius-sm);
+    font-weight: bold;
+    font-size: var(--sillynpc-text-md);
+}
+
+.sillynpc-sheet-body {
+    display: flex;
+    gap: var(--sillynpc-space-xl);
+    flex: 1;
+    overflow: hidden;
+    /* Same reason as the sheet above: without this it refuses to be shorter than its
+       own contents, and the pane inside it never has anything to scroll. */
+    min-height: 0;
+}
+
+/* The portrait and its controls. The lorebook entry used to sit here too, and a linked
+   entry is several paragraphs: in a fixed column with nothing to scroll it flattened the
+   portrait on the way past. It has a tab of its own now. */
+.sillynpc-sheet-sidebar {
+    /* Was a flat 240px that could not shrink, which on a 360px phone left the text a
+       third of the width behind a portrait taking the rest - the "it blocks the text"
+       report. The cap is what it always was on a full-size dialog; the floor is the
+       point below which the picture stops being worth its space. */
+    flex: 0 0 clamp(130px, 28%, 240px);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    /* So the scrollbar sits beside the content rather than on top of it. */
+    padding-right: var(--sillynpc-space-sm);
+}
+
+/* A flex item shrinks before it scrolls, which is how the portrait came to be squeezed to
+   nothing rather than the column simply being too long. Nothing in here may shrink. */
+.sillynpc-sheet-sidebar > * {
+    flex-shrink: 0;
+}
+
+/* The portrait block's own buttons already carry the gap below them. */
+.sillynpc-sheet-sidebar .sillynpc-editor-image-buttons {
+    margin-bottom: 0;
+}
+
+.sillynpc-sheet-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+}
+
+.sillynpc-sheet-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-sheet-tabs .sillynpc-tab {
+    padding: var(--sillynpc-space-sm) 15px;
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+    cursor: pointer;
+    font-size: var(--sillynpc-text-md);
+    opacity: 0.7;
+    margin-bottom: -1px;
+}
+
+.sillynpc-sheet-tabs .sillynpc-tab.active {
+    opacity: 1;
+    background: var(--sillynpc-bg-primary);
+    border-top: 2px solid var(--sillynpc-accent);
+    font-weight: bold;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Flex rather than a grid of equal columns.
+
+   auto-fill columns gave every stat the same width, which is the wrong shape for this
+   content: "Tier" holds one digit and "Perception / Investigation" is twenty-six
+   characters, so a width that suits one wraps the other onto a second line while the
+   first sits half empty. Here each cell starts from its own content and grows to share
+   what is left of the row. */
+.sillynpc-attributes-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.sillynpc-attribute-item {
+    background: var(--sillynpc-bg-secondary);
+    padding: var(--sillynpc-space-md);
+    border-radius: var(--sillynpc-radius-md);
+    border: 1px solid var(--sillynpc-border);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    /* Grow into the rest of the row, shrink when the window does, and start from the
+       cell's own content rather than a number chosen for all of them. */
+    flex: 1 1 auto;
+    /* What keeps a label on one line, without a width anyone had to choose: a flex item
+       with an auto basis starts at its max-content size, and max-content is the label as if
+       it never wrapped. So a cell asks for exactly the room its own name needs.
+
+       min-content would have been the obvious rule and is a trap - it beats max-width, so a
+       label longer than the sheet pushes the sheet sideways instead of giving in. Zero lets
+       the cell shrink in that one case and the name wrap, which is the right way to lose. */
+    min-width: 0;
+    /* A cell may ask for more than the row has - a stat holding a sentence asks for the
+       whole sentence - and this is where that request stops. It takes a row to itself and
+       wraps inside it, which is what makes a long value readable instead of a tall column
+       six lines deep. */
+    max-width: 100%;
+    text-align: center;
+    align-items: center;
+}
+
+.sillynpc-attribute-item .attr-name {
+    font-size: var(--sillynpc-text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+}
+
+.sillynpc-attribute-item .attr-value {
+    font-size: var(--sillynpc-text-lg);
+    font-weight: bold;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-inline-edit {
+    cursor: pointer;
+}
+
+.sillynpc-inline-edit:focus {
+    outline: 1px solid var(--sillynpc-accent);
+    background: rgba(255, 255, 255, 0.05);
+}
+

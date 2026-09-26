@@ -1,0 +1,523 @@
+/* ─── Cards ────────────────────────────────────────────────────────────── */
+
+.sillynpc-category-heading.drag-over {
+    background: rgba(201, 169, 110, 0.2);
+    border-bottom: 2px solid var(--SmartThemeQuoteColor, #c9a96e);
+}
+
+.sillynpc-card-subgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
+    gap: var(--sillynpc-space-lg);
+    padding: var(--sillynpc-space-xs);
+    min-height: 50px;
+}
+
+.sillynpc-card {
+    position: relative;
+    background: var(--sillynpc-bg-primary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 3 / 4;
+}
+
+.sillynpc-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--sillynpc-accent);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.sillynpc-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.9);
+}
+
+.sillynpc-card.drag-over {
+    border: 2px solid var(--sillynpc-accent);
+    box-shadow: 0 0 10px var(--sillynpc-accent);
+}
+
+.sillynpc-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.sillynpc-card-fallback {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.sillynpc-card-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--sillynpc-space-sm);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    color: white;
+    font-size: var(--sillynpc-text-md);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sillynpc-card-color-stripe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    z-index: 2;
+}
+
+/* The selection tick, lifted out of the card's flex column.
+ *
+ * It was a plain flex item appended after the portrait, and the portrait is height: 100% of
+ * a card with a fixed aspect ratio - so it took the whole column and pushed the tick past
+ * the bottom edge, where overflow: hidden removed it. Characters with a picture could not be
+ * selected at all; ones without could, because the fallback initial is flex: 1 and shrinks
+ * to share the space. Select-all was the only way to include anybody with a portrait.
+ *
+ * Absolute, like the delete button beside it, which is why that one always worked. Scoped to
+ * the card: the same class is an ordinary list checkbox in System Builder and the stat
+ * editors, where it must stay in the flow.
+ */
+.sillynpc-card > .sillynpc-bulk-check {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 2;
+    margin: 0;
+    /* A portrait can be any colour under it, so the tick carries its own backing rather
+       than trusting the picture to be dark. */
+    border-radius: 4px;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.sillynpc-card-delete {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 0, 0, 0.7);
+    color: white;
+    border: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3;
+    transition: background 0.2s;
+}
+
+.sillynpc-card:hover .sillynpc-card-delete {
+    display: flex;
+}
+
+/* A character who is not in this chat.
+ *
+ * Dimmed rather than hidden: somebody you cannot see is somebody you cannot let back in,
+ * and a grid that silently drops half its cards teaches the wrong lesson. */
+.sillynpc-card-out-of-chat {
+    opacity: 0.35;
+    filter: grayscale(1);
+}
+
+.sillynpc-card-out-of-chat:hover {
+    opacity: 0.7;
+    filter: grayscale(0.4);
+}
+
+.sillynpc-card-scope {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3;
+}
+
+.sillynpc-card:hover .sillynpc-card-scope {
+    display: flex;
+}
+
+.sillynpc-card-delete:hover {
+    background: rgba(255, 0, 0, 1);
+}
+
+.sillynpc-card-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3em;
+    border: 2px dashed var(--sillynpc-border);
+    background: transparent;
+    color: var(--sillynpc-border);
+}
+
+.sillynpc-card-add:hover {
+    border-color: var(--sillynpc-accent);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* ─── Editor ───────────────────────────────────────────────────────────── */
+
+.sillynpc-editor-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-lg);
+    margin-bottom: var(--sillynpc-space-xl);
+    padding-bottom: var(--sillynpc-space-md);
+    /* SillyTavern's own popup close sits at top:-6px right:-6px and is 24px square, so it
+       lands on top of whatever this row puts in its right-hand corner - which is the
+       delete button. Enough padding to clear it. */
+    padding-right: 28px;
+    border-bottom: 1px solid var(--sillynpc-border);
+    flex-wrap: wrap;
+}
+
+.sillynpc-editor-title {
+    flex: 1;
+    margin: 0;
+    font-size: var(--sillynpc-text-xl);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-editor-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+}
+
+.sillynpc-editor-left {
+    /* Percentage, not vw: this column lives in a dialog, and a narrow dialog on a wide
+       monitor would take a viewport unit as permission to stay huge. See the note on
+       .sillynpc-sheet-sidebar. */
+    flex: 0 0 clamp(130px, 30%, 260px);
+    max-width: 100%;
+}
+
+.sillynpc-editor-right {
+    flex: 1 1 260px;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.sillynpc-editor-bigpreview {
+    /* width:100% plus a border is wider than its column without this. It never showed in
+       the character editor, whose left column has room to spare; the player sheet's is
+       240px and the two extra pixels put a scrollbar under the whole sidebar. */
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--sillynpc-radius-md);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-editor-bigpreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.sillynpc-editor-bigpreview-empty {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--sillynpc-fg-secondary);
+    font-size: var(--sillynpc-text-lg);
+}
+
+.sillynpc-editor-bigpreview-empty i {
+    font-size: 3em;
+}
+
+.sillynpc-img-gen-icon {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--sillynpc-accent);
+    color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.sillynpc-img-gen-icon:hover {
+    transform: scale(1.1);
+    background: white;
+}
+
+.sillynpc-editor-image-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sillynpc-space-sm);
+    margin-top: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-xl);
+}
+
+.sillynpc-editor-field {
+    margin-bottom: var(--sillynpc-space-xl);
+}
+
+.sillynpc-editor-field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: var(--sillynpc-space-sm);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* ─── Dense editor rows ────────────────────────────────────────────────── */
+
+/* The System Builder writes a lot of rows: a stat, its format, its bounds, four
+   checkboxes. Those rows carried their layout as inline style attributes, the same four
+   or five declarations copied down the file, which is why relabelling two checkboxes
+   meant editing HTML rather than a class.
+
+   Only what repeats moves here. A per-field width stays inline, because it is genuinely
+   about that one field and naming a class per width would be worse than the attribute. */
+
+/* The small caption in front of an input on a shared row: Format:, Min:, Write it:. */
+.sillynpc-field-note {
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+/* A checkbox and the word next to it, kept on one line together. The margin that
+   separates one group from the next stays inline: it differs per row on purpose. */
+.sillynpc-check-group {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-xs);
+}
+
+/* The same, tighter, for the three-letter flags on a collection field. */
+.sillynpc-check-group-tight {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+}
+
+/* The abbreviated label under one of those - Pri, Multi, Static. */
+.sillynpc-row-hint {
+    font-size: var(--sillynpc-text-xs);
+    opacity: 0.7;
+}
+
+/* The heading over a nested list, such as a collection's fields. */
+.sillynpc-fields-heading {
+    opacity: 0.6;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+
+/* ─── Color Controls ───────────────────────────────────────────────────── */
+
+.sillynpc-color-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+}
+
+.sillynpc-color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--sillynpc-radius-sm);
+    border: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-color-input {
+    flex: 1;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* ─── Alias & Path Fields ──────────────────────────────────────────────── */
+
+.sillynpc-alias-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+.sillynpc-alias-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    background: rgba(255, 255, 255, 0.05);
+    padding: var(--sillynpc-space-sm);
+    border-radius: 6px;
+    flex-wrap: wrap;
+}
+
+/* ─── Category Headings ────────────────────────────────────────────────── */
+
+.sillynpc-category-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    margin-top: 24px;
+    margin-bottom: var(--sillynpc-space-md);
+    padding-bottom: var(--sillynpc-space-xs);
+    border-bottom: 1px solid var(--sillynpc-accent);
+}
+
+.sillynpc-category-label {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-category-delete,
+.sillynpc-category-rename {
+    background: transparent;
+    border: none;
+    color: var(--sillynpc-fg-secondary);
+    cursor: pointer;
+    font-size: var(--sillynpc-text-md);
+    padding: var(--sillynpc-space-xs);
+    transition: color 0.2s;
+}
+
+.sillynpc-category-delete:hover {
+    color: var(--sillynpc-danger);
+}
+
+/* Renaming is not destructive, so it does not borrow the delete colour. */
+.sillynpc-category-rename:hover {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* A heading is both a place to drop a card and a thing to drag, so the two say different
+   things: filing a character underlines the heading (.drag-over, above), reordering shows
+   the line it would move to. Without the distinction a drop is a guess. */
+.sillynpc-category-heading[draggable="true"] {
+    cursor: grab;
+}
+
+.sillynpc-category-heading.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.sillynpc-category-heading.drag-over-category {
+    border-top: 2px solid var(--SmartThemeQuoteColor, #c9a96e);
+    background: rgba(201, 169, 110, 0.12);
+}
+
+/* --- Bulk delete -------------------------------------------------------------------
+   The same bar in six lists - the item library, two collection panels, the character
+   grid and both System Builder lists - so it has to read the same in all of them. */
+.sillynpc-bulk-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sillynpc-space-sm);
+}
+
+/* Destructive, and it is the button the count lives on, so it is the one that looks it. */
+.sillynpc-bulk-bar .sillynpc-bulk-delete {
+    color: var(--sillynpc-danger);
+}
+
+/* Disabled rather than hidden while nothing is ticked: a button that appears once you
+   have selected something gives no clue that selecting is what it is waiting for. */
+.sillynpc-bulk-bar .sillynpc-bulk-delete:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* --- Who is in this scene ----------------------------------------------------------
+   One row per name, with the three answers on the right. The name is given the room so
+   a long one does not push the choices off the panel. */
+.sillynpc-cast-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    flex-wrap: wrap;
+    padding: var(--sillynpc-space-sm) 0;
+    border-bottom: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-cast-name {
+    flex: 1;
+    min-width: 120px;
+    font-weight: bold;
+}
+
+.sillynpc-cast-choices {
+    display: flex;
+    gap: var(--sillynpc-space-md);
+    flex-wrap: wrap;
+}
+
+/* The whole label is the target, not the dot: a radio button on its own is a small thing
+   to hit, and the words beside it are what say which answer this is. */
+.sillynpc-cast-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sillynpc-space-xs);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* Big enough to hit without care, since the row beside it is a click target too. */
+.sillynpc-bulk-check {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    cursor: pointer;
+    accent-color: var(--sillynpc-accent);
+}
+
+/* ─── Tab Panel Animation ──────────────────────────────────────────────── */
+
+.sillynpc-tab-panel[style*="display: flex"] {
+    animation: sillynpc-fade-in 0.3s ease-out;
+}
+

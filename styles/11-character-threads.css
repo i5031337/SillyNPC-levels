@@ -1,0 +1,558 @@
+/* ─── Character page: the readable view ─────────────────────────────────────
+   The editor is a form, which is the right shape for changing things and the
+   wrong one for looking at them. This is what sits in front of it. Every colour
+   comes from the theme tokens, so it follows whichever theme is chosen. */
+
+/* The header and the tabs travel together, and stay put while the page scrolls.
+   A long profile put Back, Fill, Delete and the tab switch off the top of the
+   screen, so getting out meant scrolling back up first. */
+.sillynpc-editor-sticky {
+    position: sticky;
+    z-index: 5;
+    background: var(--sillynpc-bg-primary);
+    /* Both numbers are the panel's own padding, and they have to stay that way.
+       .sillynpc-tab-panel pads its content; the margin pulls this bar back out over
+       that padding and the matching padding puts its contents back where they were,
+       so the bar covers the full width and the full strip above it.
+
+       The offset is negative because a sticky top is measured from the scrollport's
+       CONTENT edge, not its padding edge: at top:0 the bar parked one padding-width
+       low and scrolling content showed through the gap above it. */
+    top: calc(-1 * var(--sillynpc-space-lg));
+    margin: calc(-1 * var(--sillynpc-space-lg)) calc(-1 * var(--sillynpc-space-lg)) 0;
+    padding: var(--sillynpc-space-lg) var(--sillynpc-space-lg) 0;
+}
+
+.sillynpc-charview-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: var(--sillynpc-space-md);
+    border-bottom: 1px solid var(--sillynpc-border);
+}
+
+/* Its own class, not .sillynpc-tab: that one belongs to the popup's tab bar,
+   whose handler would switch the whole panel from here. */
+.sillynpc-charview-tab {
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+    color: var(--sillynpc-fg-secondary);
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    font-size: var(--sillynpc-text-base);
+    cursor: pointer;
+    border-radius: var(--sillynpc-radius-sm) var(--sillynpc-radius-sm) 0 0;
+}
+
+.sillynpc-charview-tab:hover {
+    color: var(--sillynpc-fg-primary);
+    background: var(--sillynpc-bg-secondary);
+}
+
+.sillynpc-charview-tab.active {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    border-bottom-color: var(--sillynpc-accent);
+    font-weight: bold;
+}
+
+/* Said out loud rather than inherited. SillyTavern's own `.popup` sets
+   text-align: center on everything inside every popup, which is where this came
+   from originally - and a page whose alignment depends on somebody else's
+   stylesheet flips the day they change it. */
+.sillynpc-charview {
+    /* The widest a line of prose gets before it is capped. */
+    --sillynpc-cv-measure: 100ch;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-xl);
+    padding-top: var(--sillynpc-space-md);
+    text-align: center;
+}
+
+.sillynpc-cv-body {
+    display: flex;
+    gap: var(--sillynpc-space-xl);
+    align-items: flex-start;
+}
+
+/* Matched to .sillynpc-editor-left rather than chosen: flipping between Profile
+   and Edit should not resize the portrait under the cursor. */
+.sillynpc-cv-left {
+    flex: 0 0 clamp(130px, 30%, 260px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+}
+
+.sillynpc-cv-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-lg);
+}
+
+.sillynpc-cv-narrative,
+.sillynpc-narrative-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    min-width: 0;
+}
+
+.sillynpc-cv-narrative > h3,
+.sillynpc-narrative-editor > h3 {
+    margin: 0;
+    padding-bottom: var(--sillynpc-space-sm);
+    border-bottom: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-cv-portrait {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    box-sizing: border-box;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-md);
+    background: var(--sillynpc-bg-secondary);
+    overflow: hidden;
+}
+
+.sillynpc-cv-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.sillynpc-cv-portrait-empty {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sillynpc-space-sm);
+    color: var(--sillynpc-fg-secondary);
+}
+
+.sillynpc-cv-portrait-empty i { font-size: 2.6em; }
+
+/* The speech colour, on the portrait rather than in a row of its own: it is one
+   fact and it is about how they appear. */
+.sillynpc-cv-colour {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--sillynpc-bg-primary);
+}
+
+.sillynpc-cv-category {
+    text-align: center;
+    font-size: var(--sillynpc-text-md);
+    color: var(--sillynpc-fg-secondary);
+    padding: 4px 8px;
+    background: var(--sillynpc-bg-secondary);
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+/* A caption and its text share one box, so they centre on one axis. With a width
+   on the text alone the caption kept the full width of the column and centred
+   against that instead, which is how every label came to sit in the middle of the
+   page while its own paragraph stayed where it was.
+
+   The box takes the width it is given rather than capping itself: the popup's
+   width is a setting, and a page that ignored it would leave the space somebody
+   chose to have sitting empty. */
+.sillynpc-cv-block,
+.sillynpc-cv-lore {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    /* Generous on purpose: it should only bite where a line gets genuinely hard to
+       follow, not claw back the width somebody widened the popup to get. Centred
+       text makes a long line worse than a left-aligned one - there is no straight
+       edge to come back to - which is why there is a limit at all. One name, so
+       there is one place to change it. */
+    max-width: var(--sillynpc-cv-measure);
+    margin: 0 auto;
+}
+
+.sillynpc-cv-label {
+    font-size: var(--sillynpc-text-sm);
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sillynpc-fg-secondary);
+}
+
+.sillynpc-cv-value {
+    line-height: 1.55;
+    white-space: pre-wrap;
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-cv-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sillynpc-space-sm);
+}
+
+.sillynpc-cv-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 999px;
+    font-size: var(--sillynpc-text-md);
+}
+
+.sillynpc-cv-chip-key { color: var(--sillynpc-fg-secondary); }
+
+.sillynpc-cv-chip-value {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A chip with no value is a thing, not a measurement - an item, not a stat -
+   so it reads as plain text rather than as a label waiting for a number. */
+.sillynpc-cv-chip:not(:has(.sillynpc-cv-chip-value)) .sillynpc-cv-chip-key {
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-cv-empty {
+    max-width: 60ch;
+    margin: 0 auto;
+}
+
+.sillynpc-cv-lore-text {
+    line-height: 1.55;
+    white-space: pre-wrap;
+    color: var(--sillynpc-fg-primary);
+    padding: var(--sillynpc-space-md);
+    background: var(--sillynpc-bg-secondary);
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+/* Below this the two-column layouts stop being a layout: shrinking a column further makes
+   both halves too narrow to read, so the portrait takes a turn at full width and hands the
+   rest of the space back underneath it. The character view has done this since it was
+   written; the player sheet and the editor never did, which is why the sheet was the one
+   that got reported. */
+@media (max-width: 700px) {
+    .sillynpc-cv-body { flex-direction: column; align-items: center; }
+    .sillynpc-cv-left { flex: 0 0 auto; width: min(200px, 60%); }
+
+    .sillynpc-sheet-body,
+    .sillynpc-editor-main {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Stacked, the column is a block above the content rather than a column beside it, so
+       the clamp above no longer applies - it was sizing it against a row. */
+    .sillynpc-sheet-sidebar,
+    .sillynpc-editor-left {
+        flex: 0 0 auto;
+        width: min(200px, 60%);
+        /* It scrolled as a full-height column; stacked there is nothing to scroll and a
+           fixed height would leave the picture floating in it. */
+        overflow-y: visible;
+        padding-right: 0;
+    }
+
+    .sillynpc-sheet-main,
+    .sillynpc-editor-right {
+        width: 100%;
+    }
+}
+
+/* ─── Player sheet: one page instead of a tab per collection ────────────────
+   The sheet used to be Attributes, a tab for each collection and Lore, which
+   made the same player look like two unrelated pages depending on whether you
+   opened them from the HUD or from the character grid. It carries the character
+   page's two tabs now, and everything that was behind the old ones is stacked
+   under Profile. */
+.sillynpc-sheet-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: var(--sillynpc-space-lg);
+}
+
+/* The profile fields, between the attributes above and the collections below. */
+.sillynpc-sheet-profile,
+.sillynpc-sheet-profile-form,
+.sillynpc-sheet-lore {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-lg);
+}
+
+.sillynpc-sheet-profile:not(:empty),
+.sillynpc-sheet-lore:not(:empty) {
+    margin-top: var(--sillynpc-space-xl);
+}
+
+/* The sheet reads left-aligned: it is a working sheet with values you correct,
+   not the character page's centred read. Said out loud because SillyTavern's own
+   .popup centres everything inside it. */
+.sillynpc-sheet-content {
+    text-align: left;
+}
+
+.sillynpc-sheet-content .sillynpc-cv-block,
+.sillynpc-sheet-content .sillynpc-cv-lore {
+    margin: 0;
+}
+
+/* The chips centre on the character page and have to follow the text here. Left
+   in the middle they were the one row on the sheet that did not line up with
+   everything above and below it. */
+.sillynpc-sheet-content .sillynpc-cv-chips {
+    justify-content: flex-start;
+}
+
+/* ─── Ban list ──────────────────────────────────────────────────────────────
+   Whether these are banned or merely requested changes what the list means, so
+   the mode is said above it rather than tucked under it. */
+.sillynpc-ban-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-lg);
+}
+
+.sillynpc-ban-mode {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sillynpc-space-sm);
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    border-radius: var(--sillynpc-radius-sm);
+    border: 1px solid var(--sillynpc-border);
+    background: var(--sillynpc-bg-secondary);
+    font-size: var(--sillynpc-text-md);
+    color: var(--sillynpc-fg-secondary);
+}
+
+/* A real ban and a polite request are different promises, and the difference is
+   worth seeing before you read the list. */
+.sillynpc-ban-mode.is-sampler {
+    border-color: var(--sillynpc-success);
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-ban-mode i { margin-top: 0.2em; }
+
+.sillynpc-ban-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sillynpc-ban-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-sm);
+    padding: 4px 4px 4px var(--sillynpc-space-md);
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+.sillynpc-ban-text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-ban-remove { padding: 2px 8px; }
+
+.sillynpc-ban-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sillynpc-space-sm);
+}
+
+.sillynpc-ban-offer-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sillynpc-space-sm);
+    padding: 5px 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+/* ─── Open threads ──────────────────────────────────────────────────────────
+   What is being sent with every message, shown so the cost of the feature is
+   never a mystery. The quote is on screen because it is what makes a thread
+   checkable - one whose line never appears in the story is one the reader
+   invented, and there is no way to notice that without seeing it. */
+.sillynpc-threads-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    margin: var(--sillynpc-space-md) 0 var(--sillynpc-space-lg);
+}
+
+.sillynpc-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sillynpc-thread-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sillynpc-space-sm);
+    padding: var(--sillynpc-space-sm);
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+/* Settled ones stay in the list so a wrong close can be undone, but they are
+   not what the panel is about. */
+.sillynpc-thread-row.is-closed { opacity: 0.55; }
+
+/* Which ones are actually being sent. The list is ordered by that, but order alone does
+   not say where the line falls - and the line is the whole point of the panel, because
+   below it a thread is costing nothing and is first to be dropped when the cap bites. */
+.sillynpc-thread-row.is-active {
+    border-left: 3px solid var(--sillynpc-accent);
+}
+
+/* A pin is the reader overruling the scoring, so it should look deliberate rather than
+   like another state the extension chose. */
+.sillynpc-thread-row.is-pinned {
+    border-color: var(--sillynpc-accent);
+}
+
+.sillynpc-thread-status {
+    margin-top: 2px;
+    font-size: var(--sillynpc-text-md);
+    opacity: 0.75;
+}
+
+.sillynpc-thread-actions .menu_button.sillynpc-thread-pinned {
+    color: var(--sillynpc-accent);
+    border-color: var(--sillynpc-accent);
+}
+
+.sillynpc-thread-kind {
+    flex: 0 0 auto;
+    font-size: var(--sillynpc-text-xs);
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    padding: 3px 7px;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.sillynpc-thread-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sillynpc-thread-text {
+    color: var(--sillynpc-fg-primary);
+    overflow-wrap: anywhere;
+}
+
+.sillynpc-thread-quote {
+    font-size: var(--sillynpc-text-md);
+    font-style: italic;
+    color: var(--sillynpc-fg-secondary);
+    overflow-wrap: anywhere;
+}
+
+.sillynpc-thread-actions {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.sillynpc-thread-actions .menu_button { padding: 2px 8px; }
+
+/* The Threads tab explains itself, because it is off by default and anybody
+   reading it has never seen it work. */
+/* Said out loud, for the same reason the character page says it: SillyTavern's own
+   .popup centres everything inside it, so this read as a centred, ragged block
+   pinned at one width - it ignored the menu width entirely and looked like a
+   picture of text rather than text. Left, and the width it is given, capped at the
+   same measure the character page uses so a very wide menu does not produce a line
+   too long to track back to the start of. */
+.sillynpc-threads-blurb {
+    width: 100%;
+    max-width: 100ch;
+    text-align: left;
+    line-height: 1.55;
+    margin: 0 0 var(--sillynpc-space-md);
+}
+
+
+/* Two ways of getting a thread in that the reader did not find as the story went past. */
+.sillynpc-thread-gather {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+/* Writing one out by hand. Left-aligned and stacked, because SillyTavern's own .popup
+   centres everything inside it and a centred form reads as a poster. */
+.sillynpc-thread-add {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    text-align: left;
+}
+
+.sillynpc-thread-add-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    font-weight: bold;
+}
+
+/* The field itself is not the label, so it does not inherit the weight. */
+.sillynpc-thread-add-field select,
+.sillynpc-thread-add-field input,
+.sillynpc-thread-add-field textarea {
+    width: 100%;
+    font-weight: normal;
+}
+
+.sillynpc-thread-add-field textarea {
+    resize: vertical;
+    min-height: 3.4em;
+}
+
+/* The six kinds, so what the reader is being asked for is on the page rather
+   than only in the prompt. */
+.sillynpc-thread-kinds {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: var(--sillynpc-space-md) 0;
+}
+
+.sillynpc-thread-kind-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sillynpc-space-sm);
+}
+

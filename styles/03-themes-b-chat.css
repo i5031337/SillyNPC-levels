@@ -1,0 +1,397 @@
+/* ── 10. Tabletop Parchment (Light - Serif) ───────────────────────────── */
+
+.sillynpc-theme-tabletop-parchment {
+    color-scheme: light;
+    --sillynpc-bg-primary: #e8d5ac;
+    --sillynpc-bg-secondary: rgba(93, 64, 55, 0.07);
+    --sillynpc-fg-primary: #2b1f14;
+    --sillynpc-fg-secondary: #5a4632;
+    /* Light ground: the shared success and danger score under 2.5 here. These clear
+       4.5 against both this theme's surfaces. */
+    --sillynpc-success: #1b5e20;
+    --sillynpc-danger: #8f2c22;
+    --sillynpc-warning: #6b3f00;
+    --sillynpc-accent: #7a3b1f;
+    --sillynpc-border: #8a6a45;
+    /* A bookish old-style face, so it is not the same Georgia Rosewater uses. */
+    --sillynpc-font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sillynpc-radius-md: 2px;
+    --sillynpc-radius-lg: 3px;
+    --sillynpc-shadow: 2px 3px 12px rgba(60, 40, 20, 0.35);
+}
+
+.sillynpc-theme-tabletop-parchment .sillynpc-manage,
+.sillynpc-theme-tabletop-parchment .sillynpc-status-box,
+.sillynpc-theme-tabletop-parchment.sillynpc-hud-container,
+.sillynpc-theme-tabletop-parchment.sillynpc-player-sheet,
+.sillynpc-theme-tabletop-parchment.sillynpc-manage {
+    /* Blotching, then a faint fibre weave, over the base tone. All gradients, so the
+       theme stays self-contained - no image to ship, cache, or fail to load. */
+    background-color: #e8d5ac;
+    background-image:
+        radial-gradient(ellipse at 18% 22%, rgba(150, 110, 60, 0.16) 0%, transparent 42%),
+        radial-gradient(ellipse at 82% 14%, rgba(120, 85, 45, 0.12) 0%, transparent 38%),
+        radial-gradient(ellipse at 68% 84%, rgba(150, 110, 60, 0.14) 0%, transparent 45%),
+        radial-gradient(ellipse at 8% 78%, rgba(120, 85, 45, 0.10) 0%, transparent 40%),
+        repeating-linear-gradient(90deg, rgba(120, 90, 50, 0.05) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(0deg, rgba(120, 90, 50, 0.04) 0 1px, transparent 1px 4px),
+        linear-gradient(160deg, #efdfbc 0%, #e3cda1 55%, #d8bf90 100%);
+    /* Aged at the edges, where a real sheet is handled most. */
+    box-shadow:
+        inset 0 0 44px rgba(110, 78, 40, 0.34),
+        inset 0 0 8px rgba(90, 60, 30, 0.20),
+        var(--sillynpc-shadow);
+    border: 1px solid var(--sillynpc-border);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-serif);
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+}
+
+.sillynpc-theme-tabletop-parchment .sillynpc-manage *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-tabletop-parchment.sillynpc-hud-container *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-tabletop-parchment .sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+    font-family: var(--sillynpc-font-serif);
+}
+
+.sillynpc-theme-tabletop-parchment .sillynpc-setting {
+    border: 1px solid rgba(93, 64, 55, 0.3);
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px 10px 5px 12px / 10px 5px 12px 4px;
+}
+
+.sillynpc-theme-tabletop-parchment .sillynpc-section-title {
+    position: relative;
+    border-bottom: 2px solid var(--sillynpc-accent);
+}
+
+.sillynpc-theme-tabletop-parchment .sillynpc-section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    right: 20px;
+    width: 30px;
+    height: 15px;
+    background: var(--sillynpc-accent);
+    opacity: 0.2;
+    mask: radial-gradient(circle, black 30%, transparent 70%);
+    -webkit-mask: radial-gradient(circle, black 30%, transparent 70%);
+}
+
+/* ── 11. Analog Horror (Dark - Monospace) ─────────────────────────────── */
+
+.sillynpc-theme-analog-horror {
+    color-scheme: dark;
+    --sillynpc-bg-primary: #050505;
+    --sillynpc-bg-secondary: #0a0a0a;
+    --sillynpc-fg-primary: #cccccc;
+    --sillynpc-fg-secondary: #888888;
+    --sillynpc-accent: #ff0000;
+    --sillynpc-border: #333333;
+    --sillynpc-font-family: var(--sillynpc-font-mono);
+    --sillynpc-radius-md: 0px;
+    --sillynpc-radius-lg: 0px;
+    --sillynpc-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+    --sillynpc-backdrop: none;
+    --sillynpc-glow: 0 0 5px rgba(255, 0, 0, 0.5);
+}
+
+@keyframes analog-flicker {
+    /* Still for most of the cycle, and it no longer moves anything: translateY and skewX
+       on a 0.3s loop is what shook the menu and the HUD. A CRT that never settles is a
+       strobe, not a CRT. */
+    0%, 92%, 100% { opacity: 1; }
+    93%           { opacity: 0.86; }
+    94%           { opacity: 1; }
+    97%           { opacity: 0.92; }
+    98%           { opacity: 1; }
+}
+
+@keyframes analog-vignette-pulse {
+    0%, 100% { box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.08), var(--sillynpc-shadow); }
+    50%      { box-shadow: inset 0 0 90px rgba(255, 0, 0, 0.16), var(--sillynpc-shadow); }
+}
+
+@keyframes analog-chromatic {
+    0%, 100% { text-shadow:  1px 0 rgba(255, 0, 0, 0.3), -1px 0 rgba(0, 255, 255, 0.2); }
+    33%       { text-shadow:  1.5px 0 rgba(255, 0, 0, 0.4), -0.5px 0 rgba(0, 255, 255, 0.2); }
+    66%       { text-shadow:  0.5px 0 rgba(255, 0, 0, 0.2), -1.5px 0 rgba(0, 255, 255, 0.4); }
+}
+
+.sillynpc-theme-analog-horror .sillynpc-manage,
+.sillynpc-theme-analog-horror .sillynpc-status-box,
+.sillynpc-theme-analog-horror.sillynpc-player-sheet,
+.sillynpc-theme-analog-horror.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-mono);
+    position: relative;
+    overflow: hidden;
+    animation: analog-flicker 9s infinite steps(1), analog-vignette-pulse 10s infinite ease-in-out;
+}
+
+.sillynpc-theme-analog-horror .sillynpc-manage::before,
+.sillynpc-theme-analog-horror .sillynpc-status-box::before,
+.sillynpc-theme-analog-horror.sillynpc-player-sheet::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    /* The repeating-radial-gradient at 2500px was the shattered-glass field, and it sat
+       over the text you were trying to read. Scanlines and a colour split instead, at a
+       fraction of the weight. */
+    background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.14) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.012), rgba(0, 255, 0, 0.006), rgba(0, 0, 255, 0.012));
+    background-blend-mode: normal;
+    opacity: 0.55;
+    pointer-events: none;
+    /* FIX: Was z-index:2001 magic number — use token */
+    z-index: var(--sillynpc-z-overlay);
+    background-size: 100% 3px, 4px 100%;
+    pointer-events: none;
+    opacity: 0.15;
+}
+
+/* The HUD is 60 pixels across and permanently on screen. Giving it the same treatment as
+   a full menu panel is what made the theme unusable rather than atmospheric: it shook, and
+   the overlay covered the few numbers it exists to show. */
+.sillynpc-theme-analog-horror.sillynpc-hud-container {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-mono);
+    position: relative;
+    overflow: hidden;
+    animation: none;
+}
+
+.sillynpc-theme-analog-horror.sillynpc-hud-container::before {
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.10) 50%);
+    background-size: 100% 3px;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.sillynpc-theme-analog-horror .sillynpc-section-title {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    /* Was chromatic aberration on a 2s loop, which made every heading swim. */
+    text-shadow: 1px 0 rgba(255, 0, 0, 0.25), -1px 0 rgba(0, 255, 255, 0.18);
+    border-bottom: 1px solid var(--sillynpc-accent);
+}
+
+.sillynpc-theme-analog-horror .sillynpc-setting {
+    border: 1px solid var(--sillynpc-border);
+    background: rgba(10, 10, 10, 0.8);
+    transition: border-color 0.1s;
+}
+
+.sillynpc-theme-analog-horror .sillynpc-setting:hover {
+    border-color: var(--sillynpc-accent);
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+}
+
+.sillynpc-theme-analog-horror .sillynpc-tab.active {
+    background: var(--sillynpc-accent);
+    color: #000;
+}
+
+/* ── 12. Rosewater (Light - Serif) ────────────────────────────────────── */
+
+.sillynpc-theme-rosewater {
+    color-scheme: light;
+    --sillynpc-bg-primary: #fdeef0;
+    --sillynpc-bg-secondary: #f8dfe3;
+    --sillynpc-fg-primary: #4a2c33;
+    --sillynpc-fg-secondary: #7b5560;
+    /* Light ground: the shared success and danger score under 2.5 here. These clear
+       4.5 against both this theme's surfaces. */
+    --sillynpc-success: #2c5e3f;
+    --sillynpc-danger: #a1281f;
+    --sillynpc-warning: #7a5210;
+    --sillynpc-accent: #f4d1d1;
+    /* --sillynpc-accent is a pale pink chosen as a FILL (the active-tab pill).
+       As text on the cream background it scores 1.30 contrast, which left field
+       labels, category labels, item names and stat values effectively invisible.
+       Only themes with this problem declare --sillynpc-accent-text; everywhere
+       else the var() fallback resolves to the theme's own accent. */
+    --sillynpc-accent-text: #9d4e5e;
+    --sillynpc-border: #e0c3a8;
+    --sillynpc-font-family: var(--sillynpc-font-serif);
+    --sillynpc-radius-md: 15px;
+    --sillynpc-radius-lg: 25px;
+    --sillynpc-shadow: 0 10px 30px rgba(244, 209, 209, 0.3);
+    --sillynpc-backdrop: blur(5px);
+    --sillynpc-glow: 0 0 15px rgba(244, 209, 209, 0.5);
+}
+
+.sillynpc-theme-rosewater .sillynpc-manage,
+.sillynpc-theme-rosewater .sillynpc-status-box,
+.sillynpc-theme-rosewater.sillynpc-hud-container,
+.sillynpc-theme-rosewater.sillynpc-player-sheet,
+.sillynpc-theme-rosewater.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-serif);
+    /* FIX: Was transition:all — narrowed to specific properties */
+    transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sillynpc-theme-rosewater .sillynpc-manage::after,
+.sillynpc-theme-rosewater.sillynpc-player-sheet::after {
+    content: "✿";
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 40px;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.sillynpc-theme-rosewater .sillynpc-setting {
+    /* FIX: Was transition:all */
+    transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--sillynpc-accent);
+}
+
+.sillynpc-theme-rosewater .sillynpc-setting:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(244, 209, 209, 0.4);
+    background: white;
+    border-color: #d4a373;
+}
+
+.sillynpc-theme-rosewater .sillynpc-section-title {
+    color: #d4a373;
+    font-style: italic;
+    border-bottom: 2px solid var(--sillynpc-accent);
+}
+
+.sillynpc-theme-rosewater .sillynpc-tab.active {
+    background: var(--sillynpc-accent);
+    color: var(--sillynpc-fg-primary);
+    box-shadow: 0 4px 10px rgba(244, 209, 209, 0.5);
+}
+
+.sillynpc-theme-rosewater .sillynpc-status-box {
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 20px;
+}
+
+/* ─── Chat Injection ───────────────────────────────────────────────────── */
+/* FIX: This block injects into SillyTavern's .mes_text which has its own
+   aggressive styles. !important is justified here — it's the one place we
+   genuinely need to override a 3rd-party host stylesheet we can't modify. */
+
+.sillynpc-speech-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: var(--sillynpc-space-lg) !important;
+    /* Vertical padding is its own token because two rules set it - this one and the
+       coloured-background variant below - and they have to move together. 15px above and
+       below a block whose height is already set by the avatar read as a thick band of
+       empty colour; the 12px margin between blocks is what separates them. */
+    padding: var(--sillynpc-speech-pad-y, 6px) 0 !important;
+    margin: var(--sillynpc-space-md) 0 !important;
+    width: 100% !important;
+    flex-wrap: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.sillynpc-speech-text {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: block !important;
+    line-height: var(--sillynpc-line-height) !important;
+}
+
+.sillynpc-chat-avatar {
+    flex: 0 0 auto !important;
+    align-self: center !important;
+    margin: 0 !important;
+    display: block !important;
+    max-width: none !important;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    z-index: 1;
+}
+
+.sillynpc-chat-avatar:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sillynpc-alias-link {
+    align-self: center;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 999px;
+    background: var(--sillynpc-bg-secondary);
+    color: var(--sillynpc-fg-primary);
+    cursor: pointer;
+    padding: 3px 6px;
+}
+
+.sillynpc-chat-avatar.shape-square   { border-radius: 0 !important; }
+.sillynpc-chat-avatar.shape-rounded  { border-radius: 10px !important; }
+.sillynpc-chat-avatar.shape-circle   { border-radius: 50% !important; }
+
+.sillynpc-chat-avatar.size-small  { width:  44px !important; min-width:  44px !important; height:  60px !important; }
+.sillynpc-chat-avatar.size-medium { width:  64px !important; min-width:  64px !important; height:  88px !important; }
+.sillynpc-chat-avatar.size-large  { width:  96px !important; min-width:  96px !important; height: 132px !important; }
+.sillynpc-chat-avatar.size-extra  { width: 132px !important; min-width: 132px !important; height: 180px !important; }
+
+/* Speech Block Coloring */
+.mes_text .sillynpc-speech-block[class*="color-"],
+.mes_text .sillynpc-speech-block[class*="color-"] * {
+    color: var(--sillynpc-color) !important;
+}
+
+.mes_text .sillynpc-speech-block.color-background,
+.mes_text .sillynpc-speech-block.color-all {
+    background-color: color-mix(in srgb, var(--sillynpc-color), transparent 85%) !important;
+    /* Horizontal padding stays: text needs clearance from a coloured edge. Only the
+       vertical band shrinks. */
+    padding: var(--sillynpc-speech-pad-y, 6px) 15px !important;
+    border-radius: 10px !important;
+}
+
+.mes_text .sillynpc-speech-block.color-border,
+.mes_text .sillynpc-speech-block.color-all {
+    border-left: 4px solid var(--sillynpc-color) !important;
+    padding-left: 15px !important;
+}
+
+.mes_text .sillynpc-speech-block.color-gradient {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--sillynpc-color), transparent 85%) 0%, transparent 100%) !important;
+    border-left: 4px solid var(--sillynpc-color) !important;
+    padding-left: 15px !important;
+}
+
+.mes_text .sillynpc-speech-block.color-all {
+    border-radius: 0 10px 10px 0 !important;
+}
+
+/* Dividers
+ *
+ * Mixed from the text colour rather than named outright, so each one keeps the same
+ * weight whatever the chat sits on. Subtle was a flat 5%-opacity white and Dashed used
+ * the theme's border colour: on a dark background both came out as good as invisible,
+ * which read as the setting doing nothing at all. */
+.sillynpc-speech-block.divider-subtle {
+    border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent) !important;
+}
+.sillynpc-speech-block.divider-bold   { border-top: 2px solid var(--SmartThemeQuoteColor, #c9a96e) !important; }
+.sillynpc-speech-block.divider-dashed {
+    border-top: 1px dashed color-mix(in srgb, currentColor 55%, transparent) !important;
+}
+.sillynpc-speech-block.divider-none   { border-top: none !important; }
+

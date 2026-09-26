@@ -1,15 +1,16 @@
-import { promptText, defaultPromptText } from './prompt-texts.js';
+import { promptText } from './prompt-texts.js';
 import { getContext } from '../../../../st-context.js';
-import { loadWorldInfo } from '../../../../world-info.js';
 import { fillTemplate } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
-import { debugLog, PROFILE_FIELDS, hintFor } from './constants.js';
+import { PROFILE_FIELDS, hintFor } from './constants.js';
 import { requestExtraction, coerceToUpdate, describeCollections } from './status-extractor.js';
 import { applyUpdate, resolveMaxValue, loadStateFromMetadata } from './status-logic.js';
-import { describeTrackedFacts, describeProfile, buildLoreExcerpt, createLoreEntry, generateLoreContent, saveLoreContent } from './api.js';
-import { tryAutoSyncLorebook, getChatLorebookName } from './lorebook.js';
+import { describeTrackedFacts, describeProfile, buildLoreExcerpt } from './api.js';
+import { tryAutoSyncLorebook } from './lorebook.js';
 import { charactersMentionedIn } from './mentions.js';
 import { getPersonaData } from './status-logic.js';
+import { readLoreEntry } from './character-fill-lore.js';
+export { readLoreEntry, fillLore } from './character-fill-lore.js';
 
 /**
  * Filling in a character card that was created from a chat, or by hand, and is empty.
@@ -147,10 +148,6 @@ export function missingProfileFields(char) {
     const profile = char?.profile || {};
     return PROFILE_FIELDS.filter(field => !String(profile[field.id] ?? '').trim());
 }
-
-/** What the reader is told when filling in who somebody is. */
-// The built-in wording; what is sent is promptText('profileSystem'), which may be your own.
-export const PROFILE_SYSTEM_PROMPT = defaultPromptText('profileSystem');
 
 /**
  * What there is to go on, before anything is sent.
@@ -313,77 +310,6 @@ export async function fillProfile(char, { fields = null } = {}) {
     saveSettings();
     return { ok: true, filled };
 }
-
-/** The linked entry's text, or an empty string. Read fresh: it may have just been written. */
-export async function readLoreEntry(char) {
-    if (!char?.lorebook?.world) return '';
-    try {
-        const worldData = await loadWorldInfo(char.lorebook.world);
-        const entries = worldData?.entries;
-        const entry = Array.isArray(entries)
-            ? entries.find(e => Number(e.uid) === Number(char.lorebook.uid))
-            : entries?.[char.lorebook.uid];
-        return entry?.content || '';
-    } catch (err) {
-        debugLog('Could not read the linked lore entry', err);
-        return '';
-    }
-}
-
-/**
- * Gives the card a lore entry: the one that already exists, or a new one.
- *
- * Linking beats writing. A character named in a lorebook the user has curated by hand is
- * better described there than by anything generated, and writing a second entry for the
- * same person is how a lorebook fills up with duplicates.
- *
- * @returns {Promise<{ ok: boolean, action: string, reason?: string }>}
- */
-export async function fillLore(char) {
-    if (char.lorebook && String(await readLoreEntry(char)).trim()) {
-        return { ok: true, action: 'already linked' };
-    }
-
-    if (!char.lorebook && await tryAutoSyncLorebook(char, { silent: true })) {
-        if (String(await readLoreEntry(char)).trim()) {
-            return { ok: true, action: 'linked an existing entry' };
-        }
-    }
-
-    const world = char.lorebook?.world || getSettings().defaultLorebook || getChatLorebookName();
-    if (!world) {
-        return {
-            ok: false, action: 'none',
-            reason: 'No lorebook to write into. Choose a Default Target Lorebook in Generation, '
-                + 'or open a chat that has one.',
-        };
-    }
-
-    /* No test on whether there is anything to write from.
-
-       An entry is worth having for a character who has not appeared yet - that is most of
-       what somebody is doing when they make a card in advance - and the lore writer reads
-       the Data Bank and its own configurable slice of the chat, which is a different and
-       larger question than "is this name in the last fifteen messages".
-
-       The profile is the one that must not describe somebody it has never been told about;
-       see fillSources. Applying the same test here refused far more than intended, because
-       its Data Bank half is switched off by default. */
-    // Creating an entry links it before generation starts. If generation failed on a
-    // previous attempt, reuse that empty entry instead of treating the link as done.
-    const uid = char.lorebook?.uid ?? (await createLoreEntry(char, world, char.name)).uid;
-    const { content, tags } = await generateLoreContent(char, world, uid);
-    if (!String(content || '').trim()) {
-        return { ok: false, action: 'none', reason: 'The lore writer returned nothing usable.' };
-    }
-
-    await saveLoreContent(char, world, uid, tags, content);
-    return { ok: true, action: `wrote a new entry in "${world}"` };
-}
-
-/** What the reader is told when filling one character's fields. */
-// The built-in wording; what is sent is promptText('fillSystem'), which may be your own.
-export const FILL_SYSTEM_PROMPT = defaultPromptText('fillSystem');
 
 /**
  * The material the reader is given about one character.

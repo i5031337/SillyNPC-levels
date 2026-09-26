@@ -1,0 +1,494 @@
+/* ─── Collection Readonly Mode ─────────────────────────────────────────── */
+.sillynpc-item-card.readonly-mode {
+    background: color-mix(in srgb, var(--sillynpc-bg-secondary), transparent 50%);
+    border: 1px solid var(--sillynpc-border);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: var(--sillynpc-radius-md);
+    margin-bottom: 10px;
+}
+
+.readonly-field {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--sillynpc-radius-sm);
+    border: 1px solid color-mix(in srgb, var(--sillynpc-border), transparent 80%);
+}
+
+.readonly-field.multiline {
+    display: flex;
+    flex-direction: column;
+}
+
+.readonly-field .field-label {
+    font-size: var(--sillynpc-text-sm);
+    font-weight: bold;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--sillynpc-border), transparent 80%);
+    padding-bottom: 2px;
+}
+
+.readonly-field .field-value {
+    font-size: var(--sillynpc-text-base);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 500px) {
+    .sillynpc-setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--sillynpc-space-sm);
+        min-height: auto;
+    }
+
+    .sillynpc-setting .text_pole,
+    .sillynpc-setting select,
+    .sillynpc-setting .slider-container {
+        flex: 1 1 auto;
+        max-width: 100%;
+        width: 100%;
+    }
+}
+/* A lore reply that ignored the requested format.
+ *
+ * Above the preview rather than instead of it: the usual cause is that the instruction
+ * never reached the model, so what came back is the story model answering in character -
+ * occasionally salvageable, never a lore entry. */
+.sillynpc-lore-warning {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border-left: 3px solid var(--sillynpc-warning);
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    font-size: var(--sillynpc-text-md);
+    line-height: 1.4;
+}
+
+/* Stepping through a character's saved portraits. The arrows sit over the preview rather
+   than beside it so the image keeps the full width of the column, and they are hidden
+   entirely below two images by the code that builds them. */
+.sillynpc-img-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6em;
+    cursor: pointer;
+    opacity: 0.55;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    /* Legible over a light or dark portrait without a solid backing plate. */
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    transition: opacity 0.15s ease;
+    z-index: 2;
+}
+
+.sillynpc-img-nav:hover {
+    opacity: 1;
+}
+
+.sillynpc-img-nav-prev {
+    left: 4px;
+}
+
+.sillynpc-img-nav-next {
+    right: 4px;
+}
+
+.sillynpc-img-nav-count {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--sillynpc-font-mono);
+    font-size: var(--sillynpc-text-sm);
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    z-index: 2;
+}
+
+/* Choosing what a generation should be drawn from. */
+.sillynpc-genmode-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    margin: var(--sillynpc-space-md) 0;
+}
+
+.sillynpc-genmode-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sillynpc-space-md);
+    cursor: pointer;
+    text-align: left;
+}
+
+.sillynpc-genmode-row input[type="radio"] {
+    margin-top: 4px;
+    flex: 0 0 auto;
+}
+
+.sillynpc-genref-area {
+    margin-top: var(--sillynpc-space-md);
+}
+
+.sillynpc-genref-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sillynpc-space-md);
+    margin: var(--sillynpc-space-md) 0;
+}
+
+.sillynpc-genref-cell {
+    width: 72px;
+    height: 96px;
+    border: 2px solid transparent;
+    border-radius: var(--sillynpc-radius-sm, 4px);
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.sillynpc-genref-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+}
+
+.sillynpc-genref-cell.selected {
+    border-color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    opacity: 1;
+}
+
+.sillynpc-genresult-image {
+    max-width: 100%;
+    max-height: 55vh;
+    display: block;
+    margin: 0 auto var(--sillynpc-space-md);
+    border-radius: var(--sillynpc-radius-sm, 4px);
+}
+
+/* Removing a portrait. Bottom-left, clear of the generate wand and the nav arrows, and
+   deliberately understated: it deletes a file, so it should not invite a stray click. */
+.sillynpc-img-delete {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.4;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    font-size: var(--sillynpc-text-md);
+    transition: opacity 0.15s ease, background 0.15s ease;
+    z-index: 2;
+}
+
+.sillynpc-img-delete:hover {
+    opacity: 1;
+    background: rgba(160, 40, 40, 0.85);
+}
+
+/* Which characters this chat is for. Previously it borrowed the sync row's class and was
+   nudged into shape with inline styles at four separate places, which is why it sat
+   ragged against the grid below it. Its own panel, centred, with the controls in tidy
+   rows instead of wrapping flex children with flex-basis:100%. */
+/* --- Finding a setting without knowing which page it is on --------------------------
+   Above the tabs, because it is a way of getting to a tab rather than something on one. */
+.sillynpc-settings-search {
+    position: relative;
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+.sillynpc-settings-search-input {
+    width: 100%;
+    text-align: left;
+}
+
+/* Over the tabs rather than pushing them down: the list is transient, and a rail that
+   jumps every time you type is harder to use than one that does not move. */
+.sillynpc-settings-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: 2px;
+    border: 1px solid var(--sillynpc-border, rgba(128, 128, 128, 0.25));
+    border-radius: var(--sillynpc-radius-sm, 4px);
+    background: var(--sillynpc-bg-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.sillynpc-settings-search-hit {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    border: none;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sillynpc-settings-search-hit:hover,
+/* The focus ring for anything makeActivatable has promoted into a control.
+
+   Styled once, on the class that helper adds, rather than per component - there are ten
+   or so of these and they are icons, cards and cells with nothing else in common. Only
+   :focus-visible, so a mouse click does not leave a ring behind it.
+
+   outline rather than border or box-shadow: it does not take part in layout, so a ring
+   cannot move the thing it is drawn around. */
+.sillynpc-activatable:focus-visible {
+    outline: 2px solid var(--sillynpc-accent-text, var(--sillynpc-accent));
+    outline-offset: 2px;
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+.sillynpc-settings-search-hit:focus-visible {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.sillynpc-settings-search-label {
+    font-weight: 500;
+}
+
+/* Which page, because half of what makes this useful is learning where things are rather
+   than being taken there blind every time. */
+.sillynpc-settings-search-where {
+    font-size: var(--sillynpc-text-sm);
+    color: var(--sillynpc-fg-secondary);
+}
+
+.sillynpc-settings-search-none {
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    text-align: left;
+}
+
+/* Where the search took you. A long page arriving with nothing marked is barely better
+   than not being brought at all. */
+.sillynpc-setting-found {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 3px;
+    border-radius: var(--sillynpc-radius-sm, 4px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .sillynpc-setting-found {
+        transition: outline-color 0.3s ease;
+    }
+}
+
+/* Finding a character among many. Sits directly above what it filters, because a box
+   further away than the thing it acts on reads as belonging to something else. */
+.sillynpc-grid-filter {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+.sillynpc-grid-filter-input {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+/* Says how many of how many, so a short list is told from a narrow filter. */
+.sillynpc-grid-filter-count {
+    white-space: nowrap;
+    color: var(--sillynpc-fg-secondary);
+}
+
+/* The row above the grid: a count, the select bar, and two buttons.
+
+   It had no rule at all, so it was a plain block and the three controls sat
+   against each other with nothing between them - createElement and append put no
+   whitespace between siblings, so there was not even the accidental space an
+   inline layout normally borrows from the source. */
+.sillynpc-sync-all-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+.sillynpc-chat-scope {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    padding: var(--sillynpc-space-lg, 12px);
+    margin-bottom: var(--sillynpc-space-md);
+    text-align: center;
+    border: 1px solid var(--sillynpc-border, rgba(128, 128, 128, 0.25));
+    border-radius: var(--sillynpc-radius-sm, 4px);
+    background: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+.sillynpc-chat-scope-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.sillynpc-chat-scope-categories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sillynpc-space-md) var(--sillynpc-space-lg, 14px);
+}
+
+.sillynpc-chat-scope-categories label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.sillynpc-chat-scope .notes {
+    max-width: 62ch;
+}
+
+
+
+/* One rank below a section title. The Writing Rules tab has two halves with three
+   features in the first, so the features need to read as parts of the half above them
+   rather than as five equal headings. Quieter on every count: no rule, no uppercase,
+   the body colour rather than the accent. */
+.sillynpc-subsection-title {
+    margin: var(--sillynpc-space-lg) 0 var(--sillynpc-space-sm);
+    font-size: var(--sillynpc-text-base);
+    letter-spacing: 0.04em;
+    color: var(--sillynpc-fg-primary, inherit);
+    text-align: left;
+}
+
+/* Prose introducing a tab or one of its halves: left, and the width it is given, for the
+   same reason the Threads blurb is - a centred paragraph inherited from SillyTavern's own
+   .popup reads as a block pinned at one width. */
+.sillynpc-tab-intro {
+    width: 100%;
+    max-width: 100ch;
+    text-align: left;
+    line-height: 1.55;
+    margin: 0 0 var(--sillynpc-space-md);
+}
+
+/* Two buttons that do opposite things, kept apart. */
+.sillynpc-backup-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-md);
+}
+
+/* --- The pool of faces for strangers ------------------------------------------------
+   A grid rather than a list: these are chosen by looking at them, and the tags under
+   each one are what decides who wears it. */
+.sillynpc-pool-note {
+    max-width: 100ch;
+    text-align: left;
+    line-height: 1.55;
+    margin: 0 0 var(--sillynpc-space-md);
+}
+
+.sillynpc-pool-grid {
+    display: grid;
+    /* As many as fit, never fewer than one, and each stays wide enough for its tags. */
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-lg, 12px);
+}
+
+.sillynpc-pool-empty {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin: 0;
+}
+
+.sillynpc-pool-cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    padding: var(--sillynpc-space-sm);
+    border: 1px solid var(--sillynpc-border, rgba(128, 128, 128, 0.25));
+    border-radius: var(--sillynpc-radius-sm, 4px);
+    background: var(--sillynpc-bg-secondary);
+}
+
+/* A fixed frame so a portrait and a landscape photograph line up in the same grid. */
+.sillynpc-pool-frame {
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: var(--sillynpc-radius-sm, 4px);
+}
+
+.sillynpc-pool-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sillynpc-pool-tags {
+    width: 100%;
+    font-size: var(--sillynpc-text-md);
+    text-align: left;
+}
+
+/* Over the picture's corner: the cell is small, and a full-width button under the tags
+   would take as much room as the face it removes. */
+.sillynpc-pool-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 6px;
+    line-height: 1;
+    color: var(--sillynpc-danger);
+    background: var(--sillynpc-bg-primary);
+    opacity: 0.85;
+}
+
+.sillynpc-pool-remove:hover {
+    opacity: 1;
+}
+
+/* Seeing a portrait whole. The preview crops to a fixed frame, so this is the only way to
+   see the picture as generated without opening the file on disk. */
+.sillynpc-lightbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sillynpc-lightbox img {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: var(--sillynpc-radius-sm, 4px);
+}
+

@@ -1,0 +1,457 @@
+/* ─── Pip Rows ──────────────────────────────────────────────────────────────
+   Notches rather than a fill, so a change of two points is a whole cell instead of a
+   pixel. The cells divide the meter width, so the slider still means something. */
+.sillynpc-hud-container.sillynpc-hud-pips { gap: var(--sillynpc-space-sm); }
+.sillynpc-hud-pips .sillynpc-hud-stats { gap: 4px; }
+/* No border. A 1px border on each of ten cells is two pixels of every cell spent on
+   something invisible, and it is what made the columns look unequal: the cells share out
+   the leftover width and the borders push that share into fractions, which the browser
+   then paints a pixel apart. Wider meters hid it because the fraction got smaller.
+   flex-basis 0 divides the whole width rather than what is left after the content. */
+.sillynpc-hud-pips .sillynpc-hud-segment {
+    flex: 1 1 0;
+    min-width: 0;
+    border: 0;
+    border-radius: 1px;
+    background: color-mix(in srgb, var(--sillynpc-fg-primary) 16%, transparent);
+}
+/* Painted in JS, so this only has to add the glow the lit ones carry. */
+.sillynpc-hud-pips .sillynpc-hud-segment[style*="background"] {
+    box-shadow: 0 0 0.4em -0.1em var(--sillynpc-hud-stat-colour, var(--sillynpc-accent));
+}
+.sillynpc-hud-pips .sillynpc-hud-bar-text {
+    position: static;
+    width: auto;
+    height: auto;
+    margin-left: 0.4em;
+    font-size: var(--sillynpc-text-xs);
+}
+.sillynpc-hud-pips .sillynpc-hud-stat-row { display: flex; align-items: center; }
+
+/* ─── Split Ring ────────────────────────────────────────────────────────────
+   One ring divided into a segment per stat. The panel matches the portrait's shape so it
+   reads as a backing plate rather than a stray box behind a circle. Geometry - the
+   padding against the ring overhang - is in the .meter-ring rules above. */
+.sillynpc-hud-container.sillynpc-hud-splitring {
+    border-radius: 50%;
+}
+.sillynpc-hud-container.sillynpc-hud-splitring.portrait-square {
+    border-radius: 0;
+}
+.sillynpc-hud-splitring .sillynpc-hud-stats { min-width: 0; }
+
+/* ─── Edge Dock ─────────────────────────────────────────────────────────────
+   Docked against the side of the screen with its outer half cut away. Takes the least
+   room of any of them, and only makes sense against an edge - which the corner setting
+   already guarantees. */
+.sillynpc-hud-container.sillynpc-hud-dock {
+    gap: var(--sillynpc-space-sm);
+    /* The right-hand form is the base because the default corner is the top right. */
+    flex-direction: row-reverse;
+    padding: var(--sillynpc-space-xs) 0 var(--sillynpc-space-xs) var(--sillynpc-space-md);
+    border-right: 0;
+    border-radius: 2em 0 0 2em;
+}
+.sillynpc-hud-dock .sillynpc-hud-portrait {
+    margin-right: calc(var(--sillynpc-hud-portrait-size, 60px) / -2.4);
+    box-shadow: 0 0 0 2px var(--sillynpc-bg-primary);
+}
+.sillynpc-hud-dock .sillynpc-hud-stats { gap: 3px; }
+.sillynpc-hud-dock .sillynpc-hud-bar-wrap {
+    height: calc(var(--sillynpc-hud-meter-height, 14px) * 0.7);
+    border-radius: 1em 0 0 1em;
+    border-right: 0;
+}
+
+/* Which way the dock faces is the corner's decision, not the Portrait Side setting's. The
+   portrait hugs the screen edge and the panel is cut on that same side, so a dock whose
+   portrait points inland is just a lozenge. This layout therefore overrides Portrait Side;
+   the setting still applies to the other seven. */
+.sillynpc-hud-container.sillynpc-hud-dock.top-left,
+.sillynpc-hud-container.sillynpc-hud-dock.bottom-left {
+    flex-direction: row;
+    padding: var(--sillynpc-space-xs) var(--sillynpc-space-md) var(--sillynpc-space-xs) 0;
+    border-left: 0;
+    border-right: 1px solid var(--sillynpc-border);
+    border-radius: 0 2em 2em 0;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.top-left .sillynpc-hud-portrait,
+.sillynpc-hud-container.sillynpc-hud-dock.bottom-left .sillynpc-hud-portrait {
+    margin-left: calc(var(--sillynpc-hud-portrait-size, 60px) / -2.4);
+    margin-right: 0;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.top-left .sillynpc-hud-bar-wrap,
+.sillynpc-hud-container.sillynpc-hud-dock.bottom-left .sillynpc-hud-bar-wrap {
+    border-radius: 0 1em 1em 0;
+    border-left: 0;
+    border-right: 1px solid var(--sillynpc-border);
+}
+
+/* An explicit Portrait Side wins over the corner. Making the corner decide outright was
+   meant to stop a dock pointing inland, but it also made the Left/Right setting do nothing
+   at all on this layout - a control that silently ignores you is worse than one that lets
+   you make it look wrong. The corner is still the default, on "Follow the corner". */
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-left {
+    flex-direction: row;
+    padding: var(--sillynpc-space-xs) var(--sillynpc-space-md) var(--sillynpc-space-xs) 0;
+    border-left: 0;
+    border-right: 1px solid var(--sillynpc-border);
+    border-radius: 0 2em 2em 0;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-left .sillynpc-hud-portrait {
+    margin-left: calc(var(--sillynpc-hud-portrait-size, 60px) / -2.4);
+    margin-right: 0;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-left .sillynpc-hud-bar-wrap {
+    border-radius: 0 1em 1em 0;
+    border-left: 0;
+    border-right: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-right {
+    flex-direction: row-reverse;
+    padding: var(--sillynpc-space-xs) 0 var(--sillynpc-space-xs) var(--sillynpc-space-md);
+    border-right: 0;
+    border-left: 1px solid var(--sillynpc-border);
+    border-radius: 2em 0 0 2em;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-right .sillynpc-hud-portrait {
+    margin-right: calc(var(--sillynpc-hud-portrait-size, 60px) / -2.4);
+    margin-left: 0;
+}
+.sillynpc-hud-container.sillynpc-hud-dock.portrait-right .sillynpc-hud-bar-wrap {
+    border-radius: 1em 0 0 1em;
+    border-right: 0;
+    border-left: 1px solid var(--sillynpc-border);
+}
+
+/* Icon-and-label buttons. SillyTavern styles .menu_button as a flex container, which turns
+   the space in `<i></i> Back` into an anonymous flex item and then discards it - so the
+   icon sat against its text. An explicit gap works whether the button is flex or not, and
+   the stray whitespace node is dropped either way, so nothing double-spaces.
+
+   Matched on any element of ours, and any popup holding one, rather than on a list of
+   container names: the list was correct when written and then every popup added after it
+   - the lore generator, the change review - started life without the gap again. */
+[class*="sillynpc-"] .menu_button,
+.popup:has([class*="sillynpc-"]) .menu_button,
+.sillynpc-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* SillyTavern's own .menu_button carries `width: min-content`, which sizes a button to its
+   longest single word rather than to its label. "Export everything" breaks onto two lines,
+   "Import a backup" onto three, and "Apply selected" in a narrow column onto one letter per
+   line. Themes that restyle buttons - Moonlit among them - override it, so this is only
+   visible on SillyTavern's stock theme, which is what somebody installing this for the
+   first time has.
+
+   min-width rather than width: these are usually flex items, and width alone still allows
+   flex-shrink to squeeze them back under their label. A row that cannot fit them all wraps
+   instead, which every row of ours is already set up to do. */
+[class*="sillynpc-"] .menu_button,
+.popup:has([class*="sillynpc-"]) .menu_button {
+    width: auto;
+    min-width: max-content;
+}
+
+/* Saved states of a system. Each row is a point you can go back to, so it reads as a list
+   of moments rather than a settings block. */
+.sillynpc-checkpoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    margin-top: var(--sillynpc-space-sm);
+}
+
+.sillynpc-checkpoint-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-md);
+    padding: var(--sillynpc-space-sm);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm, 4px);
+    background: var(--sillynpc-bg-secondary);
+}
+
+.sillynpc-checkpoint-when {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--sillynpc-text-md);
+    /* A long label must not push the buttons off the row. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─── Prompt cost and usage ─────────────────────────────────────────────── */
+
+/* The token count under a prompt box. Aligned right, so a column of them can be compared
+   down the page without reading each label, and set in the accent colour because it is a
+   measurement of the box above rather than more advice about it. */
+.sillynpc-token-count {
+    align-self: flex-end;
+    color: var(--sillynpc-accent);
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+/* An estimate is a different claim from a count. Italic rather than a warning colour:
+   it is still the right order of magnitude, just not from the tokenizer. */
+.sillynpc-token-count.is-estimate {
+    font-style: italic;
+    color: var(--sillynpc-fg-secondary);
+}
+
+/* Where else a prompt lives. Quieter than the help text above it - it answers a question
+   about the panel, not about the prompt. */
+.sillynpc-prompt-home {
+    display: block;
+    margin-top: var(--sillynpc-space-xs);
+    color: var(--sillynpc-fg-secondary);
+    opacity: 0.8;
+}
+
+/* A prompt and its reply budget belong together: what you may say and what you allow back
+   are one decision, and the pair reads as one block rather than two settings that happen
+   to be adjacent. */
+.sillynpc-prompt-section {
+    border-left: 2px solid var(--sillynpc-border);
+    padding-left: var(--sillynpc-space-md);
+    margin-bottom: var(--sillynpc-space-lg);
+}
+
+.sillynpc-prompt-section:hover {
+    border-left-color: var(--sillynpc-accent);
+}
+
+.sillynpc-prompt-hidden {
+    display: block;
+    margin-top: var(--sillynpc-space-md);
+    color: var(--sillynpc-fg-secondary);
+}
+
+.sillynpc-stat-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    margin: var(--sillynpc-space-md) 0;
+}
+
+.sillynpc-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-xs);
+    padding: 14px var(--sillynpc-space-lg);
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-md);
+}
+
+.sillynpc-stat-title {
+    margin: 0;
+    color: var(--sillynpc-fg-primary);
+    font-size: calc(var(--sillynpc-font-size-base) * var(--sillynpc-font-scale, 1));
+}
+
+/* Label left, number right. The numbers line up in a column whatever the label is, which
+   is what makes two generators comparable at a glance. */
+.sillynpc-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--sillynpc-space-md);
+    padding-top: var(--sillynpc-space-xs);
+    border-top: 1px solid color-mix(in srgb, var(--sillynpc-border) 50%, transparent);
+}
+
+.sillynpc-stat-name {
+    color: var(--sillynpc-fg-secondary);
+}
+
+.sillynpc-stat-value {
+    color: var(--sillynpc-fg-primary);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* A colour the model wrote into the reply. It sits inside the speech block and so beats
+   the colour the block sets, which meant Character Coloring Logic quietly stopped applying
+   to any line a persona prompt had told the model to colour. Neutralised only while the
+   extension is doing the colouring; the class is removed on the next decorate pass, so
+   turning colouring off gives the model's colours straight back. */
+.sillynpc-ignore-model-color {
+    color: inherit !important;
+}
+
+/* ─── Filling in a character card ───────────────────────────────────────── */
+
+.sillynpc-fill-plan {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    text-align: left;
+}
+
+
+/* Asking what to do about names already in use. Left-aligned and stacked for the same
+   reason the fill plan is: SillyTavern centres everything inside a popup, and a centred
+   question with a dropdown under it reads as a poster rather than a choice. */
+.sillynpc-import-collision {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    text-align: left;
+}
+
+.sillynpc-import-choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-sm);
+    font-weight: bold;
+}
+
+/* The three answers differ by a few words each, so the box has to show all of them. */
+.sillynpc-import-choice select {
+    width: 100%;
+    font-weight: normal;
+}
+
+/* Checkbox and description side by side, aligned to the top of the text so a two-line
+   summary does not push the box to the middle of the row. */
+.sillynpc-fill-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sillynpc-space-sm);
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-md);
+    cursor: pointer;
+}
+
+.sillynpc-fill-row .sillynpc-fill-check {
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+/* A stage with nothing to do is shown rather than hidden - "there was nothing to do" and
+   "it did nothing" are different answers - but it should not read as a choice. */
+.sillynpc-fill-row.is-done {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.sillynpc-fill-text {
+    line-height: var(--sillynpc-line-height);
+}
+
+/* ─── Character profile fields ──────────────────────────────────────────────
+   The four built-in fields on the character editor. A label above its box
+   rather than beside it: three of the four are paragraphs, and a label column
+   wide enough for "Speech & dialogue style" would leave the age box tiny. */
+.sillynpc-profile-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    margin-top: var(--sillynpc-space-sm);
+}
+
+.sillynpc-profile-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sillynpc-profile-label {
+    font-size: var(--sillynpc-text-md);
+    font-weight: bold;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* The label and its lock share a line, the lock pushed to the end of it. */
+.sillynpc-profile-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sillynpc-space-sm);
+}
+
+/* The controls travel together at the end of the row.
+ *
+ * They were three separate children of the row above, and space-between does what it is
+ * named for: the label went to one edge, the lock to the other, and the redo was left
+ * hovering in the middle of the field's width with nothing to do with either. Grouped, the
+ * row has two children again and the buttons sit in a line where a row of buttons belongs. */
+.sillynpc-profile-controls {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 2px;
+}
+
+/* Quiet while it is locked, which is the default and so the state you see most: a lock on
+   every one of four fields shouting for attention is noise. Lit only when it is open,
+   because that is the state worth noticing - something else may write here. */
+/* The redo button and the lock share a look: quiet until wanted. Redo is the more
+   consequential of the two - it replaces text - so it sits inboard of the lock, away from
+   the edge where a click lands by accident. */
+.sillynpc-profile-undo,
+.sillynpc-profile-redo,
+.sillynpc-profile-lock {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    font-size: var(--sillynpc-text-md);
+    line-height: 1;
+    opacity: 0.45;
+    color: inherit;
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.sillynpc-profile-undo:hover,
+.sillynpc-profile-undo:focus-visible,
+.sillynpc-profile-redo:hover,
+.sillynpc-profile-redo:focus-visible,
+.sillynpc-profile-lock:hover,
+.sillynpc-profile-lock:focus-visible {
+    opacity: 1;
+}
+
+.sillynpc-profile-lock.is-open {
+    opacity: 1;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-profile-redo:disabled { cursor: default; opacity: 0.3; }
+
+/* Lit rather than quiet: it is only there when something can be undone, and it is the one
+   control on the row whose moment passes. */
+.sillynpc-profile-undo {
+    opacity: 1;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sillynpc-profile-undo,
+    .sillynpc-profile-redo,
+    .sillynpc-profile-lock { transition: none; }
+}
+
+.sillynpc-profile-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+textarea.sillynpc-profile-input {
+    resize: vertical;
+    min-height: 58px;
+    font-family: inherit;
+    line-height: 1.45;
+}
+

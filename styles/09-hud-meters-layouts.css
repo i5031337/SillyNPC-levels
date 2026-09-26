@@ -1,0 +1,352 @@
+/* ── HUD meters ────────────────────────────────────────────────────────────
+
+   The colours used to be keyed to the stat's *name* - .hud-bar.hp was red, .energy blue
+   - so marking any other stat as Primary produced a meter with no background at all. It
+   appeared, drew nothing, and read as "Primary does nothing". The colour is set inline
+   from the stat now; what remains here is shape.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Ten notches filled from the left, for systems that count in pips rather than percent. */
+.sillynpc-hud-bar-wrap.segmented {
+    display: flex;
+    gap: 2px;
+    background: transparent;
+    border: 0;
+    overflow: visible;
+}
+
+.sillynpc-hud-segment {
+    flex: 1;
+    height: 100%;
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 1px;
+}
+
+/* A stat with no number in it cannot fill anything, so it is shown as its value alone
+   rather than as a bar stuck at 0% for the life of the chat. */
+.sillynpc-hud-stat-text {
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1.4;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Arcs around the portrait, nested inward, one per stat.
+
+   Drawn as SVG strokes. The first attempt was a conic-gradient div clipped by a
+   radial-gradient mask, and when the mask did not apply every ring rendered as a filled
+   square stacked behind the portrait - the HUD became a pile of coloured blocks. A stroked
+   circle has no clip to lose. */
+.sillynpc-hud-rings {
+    position: absolute;
+    /* Exactly the space the rings occupy, written by the painter that drew them. It was a
+       fraction of the portrait size, which meant the gap between the image and the first
+       ring grew with the portrait and had nothing to do with how thick the rings were. */
+    inset: calc(var(--sillynpc-hud-ring-overhang, 8px) * -1);
+    width: auto;
+    height: auto;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.sillynpc-hud-ring-track {
+    fill: none;
+    stroke: var(--sillynpc-border);
+    /* No stroke-width here: it is set per ring from the thickness setting, and a rule at
+       this level would beat the presentation attribute and pin every ring to one size. */
+    opacity: 0.35;
+}
+
+/* Both of them, or they disagree. The track carried no rotation while the arc did,
+   which was invisible while a track was a whole circle - a rotated circle is the same
+   circle - and obvious the moment the ring was split into segments, because then the
+   track is dashed too and its gaps sat a quarter turn from the arc's. */
+.sillynpc-hud-ring-track,
+.sillynpc-hud-ring-arc {
+    /* From the top rather than from three o'clock, which is where a meter is expected to
+       start filling. */
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+
+.sillynpc-hud-ring-arc {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.3s ease;
+}
+
+/* A square ring's seam, and why it was showing as a rounded bottom-left corner.
+
+   Two things met there. The arc is drawn with a round linecap, which suits a circular
+   meter and is a blob on a square one; and the rotation that starts a circle at twelve
+   o'clock does nothing useful to a rect, whose path already begins at its top-left corner
+   - it only moved that start, and both of its caps, round to the bottom left.
+
+   A square rotated a quarter turn about its centre maps onto itself, so dropping the
+   rotation changes nothing but where the fill begins: the top-left corner, which is what
+   the rotation was reaching for in the first place. */
+.sillynpc-hud-container.portrait-square .sillynpc-hud-ring-track,
+.sillynpc-hud-container.portrait-square .sillynpc-hud-ring-arc {
+    stroke-linecap: butt;
+    transform: none;
+}
+
+/* ── HUD proportions ───────────────────────────────────────────────────────
+
+   The portrait was a fixed 60px while the meter column grew with the number of stats, so
+   the two lined up only by coincidence: at two meters the column was about 36px against a
+   60px circle, which is the lopsidedness that made the whole HUD look wrong. The size is
+   computed from the row count in applyHudProportions and arrives as a variable.
+
+   The frame was also heavier than it needed to be - 8px/12px of padding, a further 12px
+   gap and a 12px radius around a panel only 60px tall.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.sillynpc-hud-container {
+    gap: var(--sillynpc-space-sm);
+    /* The only place these three are declared; see the note by the base rule. */
+    /* 4px rather than 8. The panel is a backing plate for the portrait and its meters,
+       and at 8 there was more panel than there was reason for it. */
+    padding: var(--sillynpc-space-xs);
+    border-radius: var(--sillynpc-radius-md);
+}
+
+.sillynpc-hud-portrait {
+    width: var(--sillynpc-hud-portrait-size, 60px);
+    height: var(--sillynpc-hud-portrait-size, 60px);
+    /* Rings are absolutely positioned against this. */
+    position: relative;
+    border-color: var(--sillynpc-hud-portrait-border, var(--sillynpc-accent));
+}
+
+/* Square means square, everywhere the panel draws a corner.
+
+   Each of these had its own rounding from the base rules - the panel 8px, the portrait 4,
+   the meter track 8, a segment 1 - so choosing "square" changed the outline of the picture
+   and left everything around it curved. The rings were the worst of it: they rounded by
+   6 plus their own thickness, so the thicker they were set the less square they looked. */
+.sillynpc-hud-container.portrait-square,
+.sillynpc-hud-container.portrait-square .sillynpc-hud-portrait,
+.sillynpc-hud-container.portrait-square .sillynpc-hud-bar-wrap,
+.sillynpc-hud-container.portrait-square .sillynpc-hud-segment {
+    border-radius: 0;
+}
+
+/* Explicit sides win over whatever the docked corner implies, so a HUD in the top-left
+   can still keep its portrait on the right. */
+.sillynpc-hud-container.portrait-left  { flex-direction: row; }
+.sillynpc-hud-container.portrait-right { flex-direction: row-reverse; }
+
+.sillynpc-hud-stats {
+    /* Follows the meter, so widening one does not leave the column clipping it. */
+    min-width: var(--sillynpc-hud-meter-width, 92px);
+}
+
+/* With rings there is often nothing in the column at all, and the reserved width became a
+   slab of empty panel beside the portrait - wider the wider the meter was set. An empty
+   column takes no room; a column holding text rows still sizes itself to its content
+   rather than to the bar width, which rings do not use. */
+.sillynpc-hud-stats:empty {
+    display: none;
+}
+
+/* A ring draws no bar, so it has no bar width to reserve a column for. Layouts that
+   also want their column to shrink to its content set this for themselves. */
+.sillynpc-hud-container.meter-ring .sillynpc-hud-stats {
+    min-width: 0;
+}
+
+/* Rings sit outside the portrait, so the panel needs room or they cross its edge. The
+   overhang is set on the portrait by the painter, so it is read from there. */
+.sillynpc-hud-container.meter-ring {
+    /* Cannot go below the overhang or the rings cross the panel edge - they are inset by
+       calc(overhang * -1) - so the 2px is clearance, not taste. */
+    padding: calc(var(--sillynpc-hud-ring-overhang, 8px) + 2px);
+}
+
+/* With rings and nothing else, the panel is a rounded rectangle wrapped around a circle -
+   which is the dark slab showing in the corners. Matching the portrait's shape makes the
+   background read as a backing plate rather than as a stray box. */
+.sillynpc-hud-container.meter-ring:not(.portrait-square) {
+    border-radius: 50%;
+}
+
+/* ═══ HUD layouts ═══════════════════════════════════════════════════════════
+   Eight looks, chosen from a gallery rather than argued about. Each decides both its
+   frame and how its meters are drawn, because those were never two separate decisions -
+   underlines drawn as segmented pips is not a thing anybody wants - which is why this
+   replaced the old Meter Style setting rather than sitting beside it.
+
+   Every one of them takes its colours from the theme tokens and from each stat's own
+   colour, so all nine themes keep working. None uses an image.
+
+   The stat's colour arrives on the row as --sillynpc-hud-stat-colour, set by
+   buildMeterRow, so a layout can reach it from CSS without painting each piece in JS. */
+
+/* Written by every layout, shown by the one built around it. */
+.sillynpc-hud-stat-name { display: none; }
+
+/* A halo in the theme's own background colour. The HUD floats over the story, so a layout
+   with no panel writes its numbers straight onto whatever the chat happens to be - and the
+   text colour comes from the theme, so a light theme over a dark chat is near-black on
+   near-black. Invisible on the layouts that do have a panel, since it matches what is
+   already behind the text. */
+.sillynpc-hud-bar-text,
+.sillynpc-hud-stat-name,
+.sillynpc-hud-stat-text {
+    text-shadow: 0 0 3px var(--sillynpc-bg-primary), 0 0 6px var(--sillynpc-bg-primary);
+}
+
+/* Shared by the four that draw nothing behind themselves. */
+.sillynpc-hud-container.sillynpc-hud-fan,
+.sillynpc-hud-container.sillynpc-hud-brackets,
+.sillynpc-hud-container.sillynpc-hud-underline,
+.sillynpc-hud-container.sillynpc-hud-pips {
+    background: none;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+/* ─── Bracket Plate ─────────────────────────────────────────────────────────
+   A panel with the portrait held at its corners. Closest to how the HUD has always
+   looked, so it is the default and the one an existing user migrates onto. */
+.sillynpc-hud-container.sillynpc-hud-plate {
+    padding: var(--sillynpc-space-sm);
+}
+.sillynpc-hud-plate .sillynpc-hud-portrait { position: relative; }
+.sillynpc-hud-plate .sillynpc-hud-portrait::before,
+.sillynpc-hud-plate .sillynpc-hud-portrait::after {
+    content: '';
+    position: absolute;
+    width: 0.75em;
+    height: 0.75em;
+    border: 2px solid var(--sillynpc-hud-portrait-border, var(--sillynpc-accent));
+}
+.sillynpc-hud-plate .sillynpc-hud-portrait::before {
+    top: -4px; left: -4px; border-right: 0; border-bottom: 0;
+}
+.sillynpc-hud-plate .sillynpc-hud-portrait::after {
+    bottom: -4px; right: -4px; border-left: 0; border-top: 0;
+}
+
+/* ─── Stepped Blades ────────────────────────────────────────────────────────
+   One plate cut off at the same angle as the meters, so the whole HUD is a single wedge
+   rather than a box with things in it. Each meter steps in from the one above. */
+.sillynpc-hud-container.sillynpc-hud-blades {
+    padding: var(--sillynpc-space-xs) 1.6em var(--sillynpc-space-xs) var(--sillynpc-space-xs);
+    border-radius: 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 1.4em) 100%, 0 100%);
+}
+.sillynpc-hud-blades .sillynpc-hud-stats { gap: 3px; }
+.sillynpc-hud-blades .sillynpc-hud-bar-wrap {
+    border-radius: 0;
+    border: 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.8em) 100%, 0 100%);
+}
+.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(2) { margin-left: 0.5em; }
+.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(3) { margin-left: 1em; }
+.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(4) { margin-left: 1.5em; }
+.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(n+5) { margin-left: 2em; }
+
+/* ─── Angled Fan ────────────────────────────────────────────────────────────
+   Slashes, not bars: no rail behind them, so what is on screen is only the value. The
+   staggered lengths are what make it read as a fan rather than as a list. */
+.sillynpc-hud-container.sillynpc-hud-fan { gap: var(--sillynpc-space-sm); }
+.sillynpc-hud-fan .sillynpc-hud-stats { gap: 4px; min-width: 0; }
+.sillynpc-hud-fan .sillynpc-hud-bar-wrap {
+    background: none;
+    border: 0;
+    border-radius: 1px;
+    overflow: visible;
+    transform: skewX(-26deg);
+}
+.sillynpc-hud-fan .sillynpc-hud-bar {
+    box-shadow: 0 0 0.6em -0.05em var(--sillynpc-hud-stat-colour, var(--sillynpc-accent));
+}
+/* Unskewed, or the number leans with its meter and stops being readable. */
+.sillynpc-hud-fan .sillynpc-hud-bar-text { transform: skewX(26deg); }
+.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(2) .sillynpc-hud-bar-wrap { width: 84%; }
+.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(3) .sillynpc-hud-bar-wrap { width: 70%; }
+.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(4) .sillynpc-hud-bar-wrap { width: 56%; }
+.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(n+5) .sillynpc-hud-bar-wrap { width: 42%; }
+
+/* ─── Corner Brackets ───────────────────────────────────────────────────────
+   Four marks and the content. The lightest thing here over a plain chat, and the first to
+   struggle over a background image - which is the trade, not a fault. */
+.sillynpc-hud-container.sillynpc-hud-brackets {
+    position: fixed;
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+}
+.sillynpc-hud-brackets::before,
+.sillynpc-hud-brackets::after {
+    content: '';
+    position: absolute;
+    width: 1em;
+    height: 1em;
+    border: 2px solid var(--sillynpc-accent);
+    opacity: 0.85;
+}
+.sillynpc-hud-brackets::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.sillynpc-hud-brackets::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.sillynpc-hud-brackets .sillynpc-hud-stats { gap: 4px; }
+.sillynpc-hud-brackets .sillynpc-hud-bar-wrap {
+    height: calc(var(--sillynpc-hud-meter-height, 14px) * 0.45);
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--sillynpc-fg-primary) 20%, transparent);
+}
+/* Beside the rail, not above it. The rail is too thin to hold a number, so the number
+   goes next to it - and the rail gives up the width to make room. Anchoring it to the
+   row's top edge put every number over the row above instead. */
+.sillynpc-hud-brackets .sillynpc-hud-stat-row { position: relative; }
+.sillynpc-hud-brackets .sillynpc-hud-bar-wrap {
+    position: static;
+    width: calc(var(--sillynpc-hud-meter-width, 92px) - 3.4em);
+}
+.sillynpc-hud-brackets .sillynpc-hud-bar-text {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: auto;
+    justify-content: flex-end;
+    font-size: var(--sillynpc-text-xs);
+}
+
+/* ─── Underlines ────────────────────────────────────────────────────────────
+   Typography rather than a widget: the stat is a word and the meter is the rule beneath
+   it. The only layout where the names are always readable. */
+.sillynpc-hud-container.sillynpc-hud-underline { gap: var(--sillynpc-space-md); }
+.sillynpc-hud-underline .sillynpc-hud-stats { gap: 7px; min-width: 0; }
+.sillynpc-hud-underline .sillynpc-hud-stat-row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: var(--sillynpc-hud-meter-width, 92px);
+}
+.sillynpc-hud-underline .sillynpc-hud-stat-name {
+    display: block;
+    font-size: var(--sillynpc-text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+.sillynpc-hud-underline .sillynpc-hud-bar-wrap {
+    position: static;
+    width: 100%;
+    height: 2px;
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--sillynpc-fg-primary) 20%, transparent);
+}
+.sillynpc-hud-underline .sillynpc-hud-bar-text {
+    position: absolute;
+    inset: 0 0 auto auto;
+    width: auto;
+    height: auto;
+    font-size: var(--sillynpc-text-xs);
+}
+

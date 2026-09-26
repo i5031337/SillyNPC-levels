@@ -1,10 +1,11 @@
 import { eventSource, event_types } from '../../../events.js';
+import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted } from './src/entry-message-events.js';
+import { wireAvatarClicks } from './src/entry-avatar-actions.js';
+import { offerChatScope } from './src/entry-chat-scope.js';
+import { dropCopiedWorldNote } from './src/entry-history-notes.js';
 import { renderExtensionTemplateAsync } from '../../../extensions.js';
 import { LOG_PREFIX, extensionName, debugLog } from './src/constants.js';
-import { getContext } from '../../../st-context.js';
 import { initSettings, getSettings } from './src/settings.js';
-import { getAllCharacters } from './src/character-repository.js';
-import { fillCharacter } from './src/ui-fill.js';
 import { REVIEW_EVENT } from './src/status-review.js';
 import { repairDefaultImages } from './src/default-portraits.js';
 import { migrateImagesToFolders } from './src/character-images.js';
@@ -15,23 +16,14 @@ import {
     reprocessAllMessages,
     reprocessMessage,
     setReprocessCallback,
-    triggerReprocess,
     invalidateChatRender,
 } from './src/chat.js';
 import { redrawStatusBoxes } from './src/status-ui.js';
-import { noteHistory, noteFieldNames, stripWorldNote } from './src/history-notes.js';
-import { promptText } from './src/prompt-texts.js';
-import {
-    createCharacter, addAlias, addCharacterToChat,
-    CAST_KEY, setChatCast, getAllCategories, UNCATEGORISED,
-} from './src/characters.js';
 import { syncLorebookScope, repairEntryIdentities } from './src/lorebook.js';
-import { initStatusLogic, hasOpenChat, setSwipeBaseAligner } from './src/status-logic.js';
-import { rebaseToSwipe, revertToBase, alignSwipeBaseToNow } from './src/status-snapshots.js';
-import { extractStateFromMessage, resetExtractionState, tidyThreadsOnLoad, forgetExtractionsFrom } from './src/status-extractor.js';
+import { initStatusLogic, setSwipeBaseAligner } from './src/status-logic.js';
+import { alignSwipeBaseToNow } from './src/status-snapshots.js';
+import { resetExtractionState, tidyThreadsOnLoad } from './src/status-extractor.js';
 import { initHUD, updateHUD, forgetPortrait } from './src/ui-hud.js';
-import { openPlayerModal } from './src/ui-player-modal.js';
-import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../popup.js';
 import { refreshScanButton } from './src/ui-scan-button.js';
 import { applyPortraitFraming, applySpeechPadding } from './src/ui-shared.js';
 import { applyCheckpointSchedule, applyScenePrompt } from './src/status-logic.js';
@@ -41,127 +33,6 @@ import { describeChatConnection } from './src/utils.js';
 import { applyDialogueFormatPrompt } from './src/dialogue-format.js';
 import { applyNarratorRulesPrompt } from './src/narrator-rules.js';
 import { applyBanList } from './src/banlist.js';
-
-function onMessageRendered(messageId) {
-    try {
-        const mesEl = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
-        reprocessMessage(mesEl);
-
-        // If "showOnlyAtBottom" is enabled, we need to reprocess the previous message
-        // to ensure its tracker is removed now that there's a new message.
-        if (getSettings().statusTracker?.showOnlyAtBottom) {
-            const prevMesId = Number(messageId) - 1;
-            if (prevMesId >= 0) {
-                const prevMesEl = document.querySelector(`#chat .mes[mesid="${prevMesId}"]`);
-                if (prevMesEl) reprocessMessage(prevMesEl);
-            }
-        }
-    } catch (err) {
-        console.error(LOG_PREFIX, 'onMessageRendered error', err);
-    }
-}
-
-/**
- * Runs the state-extraction pass for a freshly rendered AI message.
- *
- * Deliberately fire-and-forget: the reply is already on screen, and a slow or failing
- * extraction must never block reading it or throw into SillyTavern's event loop.
- */
-function onMessageForExtraction(messageId) {
-    try {
-        const context = getContext();
-        const message = context?.chat?.[Number(messageId)];
-        // Only the model's own prose is worth reading; user turns and system notes
-        // describe nothing that changed.
-        if (!message || message.is_user || message.is_system) return;
-
-        extractStateFromMessage(message.mes, messageId)
-            .then(result => {
-                if (!result.applied && result.reason && result.reason !== 'extraction disabled'
-                    && result.reason !== 'already extracted') {
-                    debugLog('Extraction skipped:', result.reason);
-                }
-            })
-            .catch(err => console.error(LOG_PREFIX, 'Extraction pass failed', err));
-    } catch (err) {
-        console.error(LOG_PREFIX, 'onMessageForExtraction error', err);
-    }
-}
-
-/**
- * The tracker follows the swipe, then the message is redrawn.
- *
- * The changes already applied describe the reply that was on screen a moment ago. Left
- * alone, the story continues from numbers that belong to a reply the user swiped away
- * from - silently, which is what made this worth fixing rather than living with.
- */
-function onSwipe(messageId) {
-    try {
-        const result = rebaseToSwipe(messageId);
-        if (!result.rebased && result.reason === 'no base') {
-            // Never a silent disagreement between the tracker and the reply on screen.
-            toastr.warning(
-                'The tracker could not follow that swipe, so it may not match this reply.',
-                'SillyNPC');
-        }
-    } catch (err) {
-        console.error(LOG_PREFIX, 'onSwipe error', err);
-    }
-    onMessageRendered(messageId);
-}
-
-/**
- * The tracker follows a Regenerate, which is not a swipe.
- *
- * Regenerate deletes the newest reply and writes another in its place. SillyTavern says so
- * only by emitting MESSAGE_DELETED - MESSAGE_SWIPED comes from the swipe arrows alone - and
- * the payload there is the new chat length, which is identical whether the tail or the
- * middle was removed. So the generation type is what this reads instead: it is unambiguous,
- * and it arrives before the truncation, while the doomed message is still the last one.
- *
- * Two things have to happen, and neither used to. The changes that reply applied are undone,
- * or the replacement stacks on top of a reply nobody can see. And the guard that remembers
- * which messages have been read has to forget this index, because the replacement lands on
- * the same number and would otherwise be waved through as already extracted - which is why
- * the numbers did not merely drift after a Regenerate, they stopped moving entirely.
- */
-function onRegenerateStarted(type, _data, dryRun) {
-    if (dryRun || type !== 'regenerate') return;
-    try {
-        const messageId = (getContext()?.chat?.length ?? 0) - 1;
-        if (messageId < 0) return;
-
-        forgetExtractionsFrom(messageId);
-        const result = revertToBase(messageId);
-        if (!result.reverted && result.reason === 'no base') {
-            // Same reasoning as the swipe path: never a silent disagreement between the
-            // tracker and the reply on screen.
-            toastr.warning(
-                'The tracker could not undo the reply being regenerated, so it may not '
-                + 'match the new one.',
-                'SillyNPC');
-        }
-    } catch (err) {
-        console.error(LOG_PREFIX, 'onRegenerateStarted error', err);
-    }
-}
-
-/**
- * Stale guard entries are dropped whenever messages go away.
- *
- * Message ids are positions, not identities, so anything from here on is a number that will
- * be handed to a different message later. Only the forgetting is safe to do here: the
- * payload cannot distinguish deleting the last message from deleting one in the middle, and
- * reverting the wrong one would discard state silently. See the regenerate handler above,
- * which knows exactly what it is undoing.
- */
-function onMessageDeleted(newLength) {
-    try {
-        forgetExtractionsFrom(newLength);
-    } catch (err) {
-        console.error(LOG_PREFIX, 'onMessageDeleted error', err);
-    }
-}
 
 async function addSettingsPanel() {
     try {
@@ -174,234 +45,6 @@ async function addSettingsPanel() {
         });
     } catch (err) {
         console.error(LOG_PREFIX, 'failed to load settings panel', err);
-    }
-}
-
-/**
- * Wire global click handling for injected avatars: your own portrait opens your sheet,
- * existing characters open their editor, and an unknown speaker gets a chat card and Fill.
- */
-function wireAvatarClicks() {
-    const filling = new Set();
-    document.addEventListener('keydown', (e) => {
-        if (e.target?.matches?.('.sillynpc-chat-avatar') && (e.key === 'Enter' || e.key === ' ')) {
-            e.preventDefault();
-            e.target.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: e.shiftKey }));
-        }
-    });
-    document.addEventListener('click', async (e) => {
-        const aliasButton = e.target.closest?.('.sillynpc-alias-link');
-        if (aliasButton) {
-            e.preventDefault();
-            e.stopPropagation();
-            const name = aliasButton.dataset.charName || '';
-            const choice = await askAboutUnknownSpeaker(name);
-            if (choice?.aliasOf) {
-                addCharacterToChat(choice.aliasOf);
-                if (addAlias(choice.aliasOf, name)) triggerReprocess();
-            }
-            return;
-        }
-        const avatar = e.target.closest?.('.sillynpc-chat-avatar');
-        if (!avatar) return;
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Checked before the card, because the avatar is drawn that way round too: this
-        // name is you, so it opens your sheet even if a card of the name exists.
-        if (avatar.dataset.persona) {
-            openPlayerModal();
-            return;
-        }
-
-        const charId = avatar.dataset.charId;
-        if (charId) {
-            await openManagePopup({ tab: 'characters', charId });
-            return;
-        }
-
-        // The thumbnail starts Fill. Shift-click opens the alias action; there is also
-        // a visible alias button beside an unknown speaker for touch and keyboard use.
-        const speakerName = avatar.dataset.charName || '';
-        if (e.shiftKey) {
-            const choice = await askAboutUnknownSpeaker(speakerName);
-            if (!choice) return;
-            if (choice.aliasOf) {
-            // Someone you are aliasing was spoken here, so they belong here.
-                addCharacterToChat(choice.aliasOf);
-                if (addAlias(choice.aliasOf, speakerName)) triggerReprocess();
-            }
-            return;
-        }
-
-        const key = `${getContext()?.getCurrentChatId?.() || ''}:${speakerName.toLowerCase()}`;
-        if (filling.has(key)) return;
-        filling.add(key);
-        try {
-            // A stale thumbnail can survive until the chat redraw. Reuse its card.
-            const char = getAllCharacters().find(c =>
-                String(c.name || '').toLowerCase() === speakerName.toLowerCase())
-                || createCharacter(speakerName);
-            addCharacterToChat(char.id);
-            triggerReprocess();
-            await fillCharacter(char, { preset: 'automatic', onSave: triggerReprocess });
-        } catch (err) {
-            console.error(LOG_PREFIX, 'Could not start character Fill', err);
-            toastr.error(`Fill could not start: ${err?.message || err}`, 'SillyNPC');
-        } finally {
-            filling.delete(key);
-        }
-    });
-}
-
-/**
- * Lets an uncarded speaker be linked to an existing card by name.
- *
- * @param {string} speakerName
- * @returns {Promise<{ aliasOf: string|null }|null>} Null when dismissed.
- */
-async function askAboutUnknownSpeaker(speakerName) {
-    const existing = getAllCharacters().filter(c => c.name);
-
-    const wrap = document.createElement('div');
-    const question = document.createElement('p');
-    question.textContent = speakerName
-        ? `Link "${speakerName}" as an alias of an existing character?`
-        : 'Link this speaker as an alias?';
-    wrap.append(question);
-
-    if (!existing.length || !speakerName) return null;
-
-    const select = document.createElement('select');
-    select.className = 'text_pole';
-    select.style.width = '100%';
-
-    const group = document.createElement('optgroup');
-    group.label = `Or record "${speakerName}" as another name for…`;
-    for (const char of existing) {
-        const option = document.createElement('option');
-        option.value = char.id;
-        option.textContent = char.name;
-        group.append(option);
-    }
-    select.append(group);
-    wrap.append(select);
-
-    const help = document.createElement('small');
-    help.className = 'notes';
-    help.style.cssText = 'display:block; margin-top:8px;';
-    help.textContent = 'An alias makes both names resolve to the same character '
-        + 'everywhere - the tracker, the lorebook and the scene cast, not only the avatar.';
-    wrap.append(help);
-
-    const result = await new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
-        okButton: 'OK', cancelButton: 'Cancel',
-    }).show();
-    if (result !== POPUP_RESULT.AFFIRMATIVE) return null;
-
-    return { aliasOf: select.value || null };
-}
-
-/**
- * Offers to scope a brand new chat to some of your categories.
- *
- * Deliberately narrow. It only asks for a chat that is genuinely new, has never been
- * scoped, and belongs to a system with more than one category to choose between - so it
- * appears when you are starting a story and never as noise on an ordinary chat switch.
- * Declining leaves the chat unscoped, which means everybody, the same as before.
- */
-async function offerChatScope() {
-    if (!hasOpenChat()) return;
-
-    const context = getContext();
-    if ((context?.chat?.length ?? 0) > 1) return;
-    if (context?.chatMetadata?.[CAST_KEY]) return;
-
-    const categories = getAllCategories();
-    if (categories.length < 2) return;
-
-    const wrap = document.createElement('div');
-    const question = document.createElement('p');
-    question.textContent = 'Which characters is this new story for?';
-    wrap.append(question);
-
-    const boxes = [];
-    for (const category of [UNCATEGORISED, ...categories]) {
-        const label = document.createElement('label');
-        label.style.cssText = 'display:flex; align-items:center; gap:6px; margin:4px 0;';
-        const box = document.createElement('input');
-        box.type = 'checkbox';
-        box.dataset.category = category;
-        boxes.push(box);
-        label.append(box, document.createTextNode(category || 'Uncategorised'));
-        wrap.append(label);
-    }
-
-    const help = document.createElement('small');
-    help.className = 'notes';
-    help.style.cssText = 'display:block; margin-top:8px;';
-    help.textContent = 'Tick nothing to include every character, which is what chats did '
-        + 'before this existed. You can change it any time from Manage SillyNPC.';
-    wrap.append(help);
-
-    const result = await new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
-        okButton: 'Use these', cancelButton: 'All characters',
-    }).show();
-    if (result !== POPUP_RESULT.AFFIRMATIVE) return;
-
-    const chosen = boxes.filter(b => b.checked).map(b => b.dataset.category);
-    if (!chosen.length) return;             // ticking nothing means the same as declining
-    setChatCast({ categories: chosen, include: [], exclude: [] });
-    triggerReprocess();
-}
-
-/**
- * SillyTavern's generation interceptor, named in manifest.json.
- *
- * Called with a copy of the history just before the prompt is built, and only for a story
- * generation - never for a dry run, and never for the tracker's own request. Each message
- * carries its own world snapshot, which is what the note is made of; see history-notes.js.
- *
- * It never aborts and never throws outward: a note is not worth losing a reply over.
- */
-globalThis.sillyNpcHistoryNotes = function sillyNpcHistoryNotes(chat) {
-    try {
-        const tracker = getSettings().statusTracker;
-        if (!tracker?.enabled || !tracker.historyNotes) return;
-        const added = noteHistory(chat, {
-            names: noteFieldNames(tracker),
-            render: (fields) => promptText('historyNote', { fields }),
-        });
-        if (added) debugLog(`World notes on ${added} messages of the history`);
-    } catch (err) {
-        console.warn(LOG_PREFIX, 'Could not put the world notes on the history', err);
-    }
-};
-
-/**
- * Takes a copied world note off a reply that starts with one.
- *
- * Told not to write them, a model still copies the shape it has just read on forty
- * messages. Removed here instead: before the message is drawn (MESSAGE_RECEIVED) and again
- * once it is (CHARACTER_MESSAGE_RENDERED), because a streamed reply skips the first.
- *
- * @param {string|number} messageId
- * @param {boolean} redraw Whether the message is already on screen.
- */
-function dropCopiedWorldNote(messageId, redraw) {
-    try {
-        const tracker = getSettings().statusTracker;
-        if (!tracker?.enabled || !tracker.historyNotes) return;
-        const context = getContext();
-        const message = context?.chat?.[Number(messageId)];
-        if (!message || message.is_user) return;
-        if (!stripWorldNote(message, noteFieldNames(tracker))) return;
-
-        debugLog(`Took a copied world note off message ${messageId}`);
-        if (redraw) context.updateMessageBlock?.(Number(messageId), message);
-        context.saveChat?.();
-    } catch (err) {
-        console.warn(LOG_PREFIX, 'Could not take the copied world note off the reply', err);
     }
 }
 

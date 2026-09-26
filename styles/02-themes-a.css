@@ -1,0 +1,434 @@
+/* ─── Popup Button Overrides ───────────────────────────────────────────── */
+
+/* Target SillyTavern Popup buttons inside SillyNPC modals */
+.popup:has(.sillynpc-manage),
+#dialogue_popup:has(.sillynpc-manage) {
+    --button-border: var(--sillynpc-border);
+}
+
+/* Force hide standard close buttons when our modals are active */
+#dialogue_popup:has(.sillynpc-player-sheet) .popup_close,
+#dialogue_popup:has(.sillynpc-player-sheet) #dialogue_popup_close,
+#dialogue_popup:has(.sillynpc-player-sheet) .close_button,
+#dialogue_popup:has(.sillynpc-player-sheet) .popup-close,
+#dialogue_popup:has(.sillynpc-player-sheet) .popup-button-close,
+.popup:has(.sillynpc-player-sheet) .popup_close,
+.popup:has(.sillynpc-player-sheet) #dialogue_popup_close,
+.popup:has(.sillynpc-player-sheet) .close_button,
+.popup:has(.sillynpc-player-sheet) .popup-close,
+.popup:has(.sillynpc-player-sheet) .popup-close-button,
+.popup:has(.sillynpc-player-sheet) .popup-button-close {
+    display: none !important;
+}
+
+.popup:has(.sillynpc-manage) .popup-close,
+#dialogue_popup:has(.sillynpc-manage) .popup-close,
+.popup:has(.sillynpc-manage) .menu_button,
+#dialogue_popup:has(.sillynpc-manage) .menu_button {
+    border-color: var(--button-border, var(--SmartThemeBorderColor, #444));
+}
+
+/* ─── Themes ───────────────────────────────────────────────────────────── */
+/* FIX: All themes now use a single consistent naming convention:
+   a modifier class on the root element (.sillynpc-theme-*).
+   The old mixed approach (some using .theme-*, others .sillynpc-theme-*)
+   has been unified. All theme child rules use .sillynpc-theme-* as the
+   parent selector throughout. */
+
+/* ── 1. Default (Seamless Native) ─────────────────────────────────────── */
+
+/* The pink panel and the invisible descriptions were one bug. --SmartThemeBodyColor is
+   SillyTavern's *text* colour - a salmon pink on Celestial Macaron - and this painted the
+   panel with it, then wrote text on top. --SmartThemeBlurTintColor is the background.
+   With the roles the right way round, "seamless" finally follows the user's ST theme. */
+.sillynpc-manage.sillynpc-theme-default,
+.sillynpc-review-panel.sillynpc-theme-default,
+.sillynpc-status-box.sillynpc-theme-default,
+.sillynpc-theme-default.sillynpc-hud-container,
+.sillynpc-theme-default.sillynpc-player-sheet,
+.sillynpc-theme-default.sillynpc-manage {
+    --sillynpc-bg-primary: var(--SmartThemeBlurTintColor, #1a1a1a);
+    --sillynpc-bg-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #fff) 14%, transparent);
+    --sillynpc-fg-primary: var(--SmartThemeBodyColor, #e5e5e5);
+    --sillynpc-fg-secondary: var(--SmartThemeEmColor, #9a9a9a);
+    --sillynpc-accent: var(--SmartThemeQuoteColor, #c9a96e);
+    --sillynpc-border: var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.12));
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    border: 0;
+}
+
+/* Seamless Native's whole palette hangs off --SmartThemeBlurTintColor, which is a
+   *translucent* tint: SillyTavern only ever paints it with a blur behind it, and the user
+   controls that blur - plenty of people set it to zero. At zero the panel is simply a
+   sheet of tinted glass over the chat, which is unreadable and looks wrong, and the
+   dropdown lists that take the same colour end up pale enough to lose their text on.
+
+   Relative colour syntax takes that exact tint and drops its alpha, so the panel keeps the
+   user's own SillyTavern colour and becomes a surface instead of a filter. The "/ 1" is
+   the whole point: without it relative colour syntax carries the origin's alpha straight
+   through, and the declaration computes to the very colour it was meant to replace.
+   A browser without relative colour keeps the translucent value above. */
+@supports (color: rgb(from white r g b / 1)) {
+    :root,
+    .sillynpc-manage.sillynpc-theme-default,
+    .sillynpc-review-panel.sillynpc-theme-default,
+    .sillynpc-status-box.sillynpc-theme-default,
+    .sillynpc-theme-default.sillynpc-hud-container,
+    .sillynpc-theme-default.sillynpc-player-sheet,
+    .sillynpc-theme-default.sillynpc-manage {
+        --sillynpc-bg-primary: rgb(from var(--SmartThemeBlurTintColor, #1a1a1a) r g b / 1);
+    }
+}
+
+.sillynpc-theme-default .sillynpc-setting {
+    /* Flat by design: rows told apart by a rule beneath them, not by a filled box. The
+       base .sillynpc-setting paints one, and only the :hover below took it away again -
+       so every row the cursor was not on wore a grey panel. */
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--sillynpc-border);
+    border-radius: 0;
+    padding: 10px 0;
+    box-shadow: none;
+}
+
+.sillynpc-theme-default .sillynpc-setting:hover {
+    background: transparent;
+    border-bottom-color: var(--sillynpc-accent);
+}
+
+.sillynpc-theme-default .sillynpc-status-divider {
+    border-top: 1px solid var(--sillynpc-border);
+    margin: 6px 0;
+}
+
+.sillynpc-theme-default .sillynpc-status-editable:hover {
+    background: var(--sillynpc-bg-secondary);
+}
+
+/* ── 5. Terminal (Dark - Monospace) ───────────────────────────────────── */
+
+.sillynpc-theme-terminal {
+    color-scheme: dark;
+    --sillynpc-bg-primary: #050505;
+    --sillynpc-bg-secondary: #0d0d0d;
+    --sillynpc-fg-primary: #00ff41;
+    --sillynpc-fg-secondary: #008f11;
+    --sillynpc-accent: #00ff41;
+    --sillynpc-border: #00ff41;
+    --sillynpc-font-family: var(--sillynpc-font-mono);
+    --sillynpc-font-size-base: 13px;
+    --sillynpc-radius-md: 0px;
+    --sillynpc-radius-lg: 0px;
+    --sillynpc-shadow: none;
+    --sillynpc-backdrop: none;
+    --sillynpc-glow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+.sillynpc-theme-terminal .sillynpc-manage,
+.sillynpc-theme-terminal .sillynpc-status-box,
+.sillynpc-theme-terminal.sillynpc-hud-container,
+.sillynpc-theme-terminal.sillynpc-player-sheet,
+.sillynpc-theme-terminal.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-mono);
+}
+
+.sillynpc-theme-terminal .sillynpc-manage *,
+.sillynpc-theme-terminal.sillynpc-hud-container *,
+.sillynpc-theme-terminal .sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+    font-family: var(--sillynpc-font-mono);
+}
+
+.sillynpc-theme-terminal .sillynpc-section-title::after {
+    content: "_";
+    animation: sillynpc-blink 1s step-end infinite;
+    margin-left: 5px;
+}
+
+.sillynpc-theme-terminal .sillynpc-setting {
+    border: 1px solid var(--sillynpc-border);
+    background: transparent;
+    border-radius: 0;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.sillynpc-theme-terminal .sillynpc-setting:hover {
+    background: rgba(0, 255, 65, 0.1);
+    border-color: var(--sillynpc-accent);
+}
+
+.sillynpc-theme-terminal .sillynpc-tab.active {
+    background: var(--sillynpc-accent);
+    color: #000000;
+}
+
+/* ── 6. Cyberpunk (Dark - Monospace) ──────────────────────────────────── */
+
+.sillynpc-theme-cyberpunk {
+    color-scheme: dark;
+    --sillynpc-bg-primary: #0a0a0f;
+    --sillynpc-bg-secondary: #16161d;
+    --sillynpc-fg-primary: #ffffff;
+    --sillynpc-fg-secondary: #a0a0a0;
+    --sillynpc-accent: #00ffcc;
+    --sillynpc-border: #ff00ea;
+    --sillynpc-font-family: var(--sillynpc-font-mono);
+    --sillynpc-radius-md: 0px;
+    --sillynpc-radius-lg: 0px;
+    --sillynpc-shadow: 0 0 15px rgba(255, 0, 234, 0.3);
+    --sillynpc-backdrop: blur(5px);
+    --sillynpc-glow: 0 0 10px #00ffcc;
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-manage,
+.sillynpc-theme-cyberpunk .sillynpc-status-box,
+.sillynpc-theme-cyberpunk.sillynpc-hud-container,
+.sillynpc-theme-cyberpunk.sillynpc-player-sheet,
+.sillynpc-theme-cyberpunk.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-family: var(--sillynpc-font-mono);
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-manage *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-cyberpunk.sillynpc-hud-container *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-cyberpunk .sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+    font-family: var(--sillynpc-font-mono);
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-section-title {
+    color: #fffb00;
+    text-shadow: 2px 2px var(--sillynpc-border);
+    border-bottom: 2px solid var(--sillynpc-accent);
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-section-title:hover {
+    animation: sillynpc-glitch 0.3s infinite;
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-setting {
+    border: 1px solid var(--sillynpc-border);
+    background: rgba(22, 22, 29, 0.9);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-setting:hover {
+    border-color: var(--sillynpc-accent);
+    box-shadow: 0 0 10px var(--sillynpc-accent);
+}
+
+.sillynpc-theme-cyberpunk .sillynpc-tab.active {
+    background: var(--sillynpc-border);
+    color: var(--sillynpc-fg-primary);
+    clip-path: polygon(0 0, 90% 0, 100% 10%, 100% 100%, 0 100%);
+}
+
+/* ── 7. Monochrome (Light - Serif) ────────────────────────────────────── */
+
+.sillynpc-theme-monochrome {
+    /* Native controls - the dropdown list, its scrollbar, and the closed select while
+       its list is open - are painted by the browser, which picks light or dark from
+       color-scheme rather than from the colours set here. The SillyTavern page is dark,
+       so on a light theme the browser was drawing white text on our white panel. */
+    color-scheme: light;
+    --sillynpc-bg-primary: #ffffff;
+    --sillynpc-bg-secondary: #f8f8f8;
+    --sillynpc-fg-primary: #222222;
+    --sillynpc-fg-secondary: #3f3f3f;
+    /* Light ground: the shared success and danger score under 2.5 here. These clear
+       4.5 against both this theme's surfaces. */
+    --sillynpc-success: #1b5e20;
+    --sillynpc-danger: #b3261e;
+    --sillynpc-warning: #8a5300;
+    --sillynpc-accent: #000000;
+    --sillynpc-border: #000000;
+    --sillynpc-success: #1a7a3c;
+    --sillynpc-danger: #b91c1c;
+    --sillynpc-font-family: var(--sillynpc-font-serif);
+    --sillynpc-font-size-base: 15px;
+    --sillynpc-radius-md: 0px;
+    --sillynpc-radius-lg: 0px;
+    --sillynpc-shadow: none;
+    --sillynpc-backdrop: none;
+    --sillynpc-glow: none;
+}
+
+.sillynpc-theme-monochrome .sillynpc-manage,
+.sillynpc-theme-monochrome .sillynpc-status-box,
+.sillynpc-theme-monochrome.sillynpc-hud-container,
+.sillynpc-theme-monochrome.sillynpc-player-sheet,
+.sillynpc-theme-monochrome.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-theme-monochrome .sillynpc-setting {
+    border: 1px solid var(--sillynpc-border);
+    margin-bottom: var(--sillynpc-space-md);
+    background: var(--sillynpc-bg-primary);
+}
+
+.sillynpc-theme-monochrome .sillynpc-setting:hover {
+    background: var(--sillynpc-accent);
+    color: var(--sillynpc-bg-primary);
+}
+
+/* Inverting the row on hover is about its text. A select or a text field keeps its own
+   surface, so recolouring it here wrote white on a near-white input - invisible while the
+   cursor was on the row, which is also the whole time its dropdown is open. */
+.sillynpc-theme-monochrome .sillynpc-setting:hover *:not(select):not(input):not(textarea):not(option) {
+    color: var(--sillynpc-bg-primary);
+}
+
+.sillynpc-theme-monochrome .sillynpc-tab.active {
+    background: var(--sillynpc-accent);
+    color: var(--sillynpc-bg-primary);
+    border-left: none;
+    font-weight: 900;
+}
+
+.sillynpc-theme-monochrome .sillynpc-section-title {
+    border-bottom: 4px solid var(--sillynpc-accent);
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.sillynpc-theme-monochrome .sillynpc-status-box {
+    border: 2px solid var(--sillynpc-border);
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+}
+
+/* ── 8. Modern Dark (Sans-serif) ──────────────────────────────────────── */
+
+.sillynpc-theme-modern-dark {
+    color-scheme: dark;
+    --sillynpc-bg-primary: #0a0a0c;
+    --sillynpc-bg-secondary: rgba(255, 255, 255, 0.03);
+    --sillynpc-fg-primary: #ffffff;
+    --sillynpc-fg-secondary: #94a3b8;
+    --sillynpc-accent: #3b82f6;
+    --sillynpc-border: rgba(255, 255, 255, 0.08);
+    --sillynpc-radius-md: 12px;
+    --sillynpc-radius-lg: 20px;
+    --sillynpc-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    --sillynpc-backdrop: blur(16px);
+    --sillynpc-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.sillynpc-theme-modern-dark .sillynpc-manage,
+.sillynpc-theme-modern-dark .sillynpc-status-box,
+.sillynpc-theme-modern-dark.sillynpc-hud-container,
+.sillynpc-theme-modern-dark.sillynpc-player-sheet,
+.sillynpc-theme-modern-dark.sillynpc-manage {
+    background: radial-gradient(circle at top left, #141418, #050506);
+}
+
+.sillynpc-theme-modern-dark .sillynpc-setting {
+    background: var(--sillynpc-bg-secondary);
+    backdrop-filter: var(--sillynpc-backdrop);
+    border: 1px solid var(--sillynpc-border);
+    /* FIX: Was transition:all — narrowed to specific properties */
+    transition: background 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                box-shadow 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                border-color 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.sillynpc-theme-modern-dark .sillynpc-setting:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: var(--sillynpc-glow);
+    border-color: var(--sillynpc-accent);
+}
+
+.sillynpc-theme-modern-dark .sillynpc-tab.active {
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent);
+    border-left: 4px solid var(--sillynpc-accent);
+    color: #60a5fa;
+}
+
+@keyframes modern-glow-pulse {
+    0%   { box-shadow: 0 0  5px rgba(59, 130, 246, 0.1); }
+    50%  { box-shadow: 0 0 25px rgba(59, 130, 246, 0.3); }
+    100% { box-shadow: 0 0  5px rgba(59, 130, 246, 0.1); }
+}
+
+.sillynpc-theme-modern-dark .sillynpc-status-box {
+    animation: modern-glow-pulse 5s infinite ease-in-out;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: radial-gradient(circle at top left, #141418, #050506);
+    color: var(--sillynpc-fg-primary);
+}
+
+.sillynpc-theme-modern-dark .sillynpc-attribute-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 9. Fantasy HUD (Dark - Serif) ────────────────────────────────────── */
+
+.sillynpc-theme-fantasy-hud {
+    color-scheme: dark;
+    --sillynpc-font-size-base: 16px;
+    --sillynpc-line-height: 1.6;
+    --sillynpc-bg-primary: #1a1c2c;
+    --sillynpc-bg-secondary: rgba(212, 175, 55, 0.1);
+    --sillynpc-fg-primary: #f0ebd8;
+    --sillynpc-fg-secondary: #c4bda6;
+    --sillynpc-accent: #d4af37;
+    --sillynpc-border: #d4af37;
+    --sillynpc-font-family: var(--sillynpc-font-serif);
+    --sillynpc-radius-md: 4px;
+    --sillynpc-radius-lg: 8px;
+    --sillynpc-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(212, 175, 55, 0.2);
+    --sillynpc-glow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+.sillynpc-theme-fantasy-hud .sillynpc-manage,
+.sillynpc-theme-fantasy-hud .sillynpc-status-box,
+.sillynpc-theme-fantasy-hud.sillynpc-hud-container,
+.sillynpc-theme-fantasy-hud.sillynpc-player-sheet,
+.sillynpc-theme-fantasy-hud.sillynpc-manage {
+    background: var(--sillynpc-bg-primary);
+    border: 1px solid var(--sillynpc-border);
+    font-family: var(--sillynpc-font-serif);
+}
+
+.sillynpc-theme-fantasy-hud .sillynpc-manage *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-fantasy-hud.sillynpc-hud-container *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
+.sillynpc-theme-fantasy-hud .sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+    font-family: var(--sillynpc-font-serif);
+}
+
+.sillynpc-theme-fantasy-hud .sillynpc-section-title {
+    border-bottom: 2px solid var(--sillynpc-accent);
+    padding-bottom: 4px;
+    text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+.sillynpc-theme-fantasy-hud .menu_button,
+.sillynpc-theme-fantasy-hud .sillynpc-tab.active {
+    background: rgba(212, 175, 55, 0.15);
+    border: 1px solid var(--sillynpc-accent);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* Glow only. The colour comes from the stat, so a theme adding its own here would
+   silently override whatever the user chose. */
+.sillynpc-theme-fantasy-hud .sillynpc-hud-bar { box-shadow: 0 0 8px rgba(0, 0, 0, 0.45); }
+
+.sillynpc-theme-terminal .sillynpc-hud-bar { box-shadow: 0 0 5px currentColor; }
+.sillynpc-theme-terminal .sillynpc-hud-bar-wrap { border-color: var(--sillynpc-accent); background: #000; }
+.sillynpc-theme-terminal.sillynpc-hud-container { box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); }
+
+.sillynpc-theme-cyberpunk .sillynpc-hud-bar { filter: saturate(1.4) brightness(1.1); }
+.sillynpc-theme-cyberpunk.sillynpc-hud-container { 
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+

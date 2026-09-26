@@ -1,0 +1,155 @@
+/* ─── Collection / Item Cards ──────────────────────────────────────────── */
+
+.sillynpc-collection-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sillynpc-collection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sillynpc-item-card {
+    background: var(--sillynpc-bg-secondary);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-md);
+    padding: var(--sillynpc-space-md);
+    position: relative;
+    transition: background 0.2s;
+}
+
+.sillynpc-item-card:hover {
+    background: color-mix(in srgb, var(--sillynpc-bg-secondary), white 5%);
+}
+
+.sillynpc-item-card .item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.sillynpc-item-card .item-name {
+    font-weight: bold;
+    font-size: var(--sillynpc-text-lg);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-item-card .item-quantity {
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.sillynpc-item-card .item-description {
+    font-size: var(--sillynpc-text-md);
+    opacity: 0.7;
+}
+
+.sillynpc-item-card .item-actions {
+    position: absolute;
+    top: var(--sillynpc-space-md);
+    right: var(--sillynpc-space-md);
+    display: flex;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.sillynpc-item-card:hover .item-actions {
+    opacity: 1;
+}
+
+.sillynpc-item-card .item-actions i {
+    cursor: pointer;
+    font-size: var(--sillynpc-text-base);
+}
+
+.sillynpc-item-card .item-actions i:hover {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────── */
+
+/* Narrow windows.
+ *
+ * Three widths, each owning one surface, and they are not interchangeable:
+ *
+ *   768px  the manage popup - its tab bar turns from a sidebar into a wrapping row
+ *   700px  the sheet, the character view and the editor - two columns become one
+ *   500px  a setting row - its label and control stop sharing a line
+ *
+ * Deliberately not one number. The popup runs out of room first because its sidebar is
+ * fixed width; a setting row survives much further because it is only a label and a
+ * control. Forcing them together would move two layouts that work.
+ *
+ * One element is governed twice on purpose: .sillynpc-editor-main tightens its gap at 768
+ * and stacks at 700. That arrived by accident - the sheet work swept it into the stacking
+ * group without noticing it already had a rule - but a gap that closes before the columns
+ * give up is the right order, so it stays and is written down here instead. Anything else
+ * appearing in two of these blocks is the accident this note exists to catch. */
+@media (max-width: 768px) {
+    /* The flex container is .sillynpc-manage-layout, NOT .sillynpc-manage.
+       This used to target the wrapper, so the layout stayed flex-direction: row
+       while the tab bar became a full-width row beside it. The tabs then ate the
+       whole width and the content panel was squeezed to ~30px off the right edge,
+       making the extension unusable in a narrow window. */
+    .sillynpc-manage-layout {
+        flex-direction: column;
+    }
+
+    .sillynpc-tabs {
+        width: 100%;
+        /* The base rule sets height:100%; in a row bar that stretched every tab
+           button to full popup height, leaving the labels floating mid-screen. */
+        height: auto;
+        flex-direction: row;
+        flex-shrink: 0;
+        /* position:sticky/top:0 only makes sense for the vertical sidebar. */
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--sillynpc-border);
+        padding: var(--sillynpc-space-sm);
+        /* Wrap onto a second row rather than scrolling horizontally: a scrollable
+           tab strip hides tabs with no visible affordance, and at 620px the eight
+           tabs need ~900px. */
+        flex-wrap: wrap;
+        overflow: visible;
+        row-gap: var(--sillynpc-space-xs);
+    }
+
+    .sillynpc-tabs .sillynpc-tab {
+        flex: 0 0 auto;
+        /* The base rule sets width:100% for the vertical sidebar. Left alone in a
+           horizontal bar every tab became ~555px wide, giving the bar 4500px of
+           scroll width and pushing all but the first two tabs out of reach. */
+        width: auto;
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 6px 6px 0 0;
+    }
+
+    .sillynpc-tabs .sillynpc-tab.active {
+        border-left-color: transparent;
+        border-bottom-color: var(--sillynpc-accent);
+    }
+
+    /* The spacer that right-aligns Import/Export in the vertical sidebar adds
+       hundreds of pixels of dead scroll width once the bar is horizontal. */
+    .sillynpc-tabs > div[style*="flex-grow"] {
+        display: none;
+    }
+
+    /* Without this the panel refuses to shrink inside the column flex and the
+       tab bar gets pushed off the top. */
+    .sillynpc-tab-panel {
+        min-height: 0;
+    }
+
+    .sillynpc-editor-main {
+        gap: var(--sillynpc-space-lg);
+    }
+}
+

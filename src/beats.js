@@ -216,13 +216,3 @@ export function messageBeats(textContainer) {
         };
     });
 }
-
-/**
- * The same, for a whole message element rather than its text container.
- *
- * @param {HTMLElement} mesEl A `.mes` from the chat.
- * @returns {Beat[]}
- */
-export function beatsOfMessage(mesEl) {
-    return messageBeats(mesEl?.querySelector('.mes_text'));
-}

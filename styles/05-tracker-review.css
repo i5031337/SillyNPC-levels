@@ -1,0 +1,408 @@
+/* ─── Status Tracker ───────────────────────────────────────────────────── */
+
+.sillynpc-status-tracker-container {
+    margin-top: 10px;
+    margin-bottom: var(--sillynpc-space-xs);
+    clear: both;
+    position: relative;
+}
+
+/* The swipe counter is drawn in the last message's footer, and the tracker box ended
+   directly underneath it - so the "2/3" sat on the box. Reserve the counter's own height
+   and margin, using SillyTavern's variables so this follows if it ever restyles them.
+   Only the last message: no other message has swipes to count. */
+.last_mes .sillynpc-status-tracker-container {
+    margin-bottom: calc(var(--swipeCounterHeight, 15px) + var(--swipeCounterMargin, 5px) + var(--sillynpc-space-xs));
+}
+
+/* The three-state eye that hides the tracker box.
+
+   A button in SillyTavern's own per-message toolbar, so it needs no placement of its own -
+   only the resting opacity its neighbours there use. It was absolutely positioned in the
+   message's left margin, borrowing the swipe chevron's offsets to sit beside it: exact
+   arithmetic against somebody else's layout, and a stray icon in the margin on any theme
+   that moved the arrows.
+
+   Every message carries one. They all show the same state and every one of them is
+   repainted on a click, so which message you happen to be hovering does not matter. */
+.sillynpc-tracker-eye {
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity var(--animation-duration, 125ms) ease-in-out;
+}
+
+.sillynpc-tracker-eye:hover {
+    opacity: 1;
+}
+
+.sillynpc-status-box {
+    all: unset !important;
+    display: block !important;
+    position: relative !important; /* Allow absolute positioning of buttons */
+    background: var(--sillynpc-bg-primary) !important;
+    border: 1px solid var(--sillynpc-border) !important;
+    border-radius: var(--sillynpc-radius-md) !important;
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md) !important;
+    font-family: var(--sillynpc-font-family) !important;
+    font-size: calc(var(--sillynpc-font-size-base) * var(--sillynpc-font-scale, 1)) !important;
+    line-height: var(--sillynpc-line-height) !important;
+    color: var(--sillynpc-fg-primary) !important;
+    box-shadow: var(--sillynpc-shadow) !important;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+    word-break: break-word;
+    backdrop-filter: var(--sillynpc-backdrop) !important;
+    box-sizing: border-box !important;
+}
+
+.sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.sillynpc-status-buttons-container):not(.sillynpc-status-add-btn):not(.sillynpc-status-settings-btn):not(.sillynpc-status-undo-btn):not(.sillynpc-status-meter):not(.sillynpc-status-meter-fill):not(.sillynpc-status-meter-text):not(.sillynpc-status-portrait):not(.sillynpc-status-divider):not(.sillynpc-char-columns .sillynpc-status-characters):not(.sillynpc-char-columns .sillynpc-status-characters > :not(.sillynpc-status-char)) {
+    all: revert !important;
+    box-sizing: border-box !important;
+    font-family: inherit !important;
+    color: inherit !important;
+}
+
+/* The header buttons, at the top right of the tracker box.
+   Floated rather than absolutely positioned, so the text beside them wraps around them
+   instead of running underneath. The room for them used to be a fixed padding-right on
+   the header - 50px, which is about two buttons - and the row can carry four: undo
+   appears once there is history, and the cast control was added later. Any count that
+   outgrew the guess put the world stats under the icons. A float needs no guess, and
+   cannot go stale the next time a button is added. */
+.sillynpc-status-buttons-container {
+    float: right !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    align-items: center !important;
+    /* Clear of the text it now sits beside rather than over. */
+    margin: 0 0 4px 10px !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.sillynpc-status-add-btn,
+.sillynpc-status-undo-btn,
+.sillynpc-status-settings-btn {
+    cursor: pointer !important;
+    opacity: 0.5 !important;
+    padding: 4px !important;
+    font-size: var(--sillynpc-text-base) !important;
+    color: inherit !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: opacity 0.2s, color 0.2s !important;
+}
+
+.sillynpc-status-add-btn:hover,
+.sillynpc-status-undo-btn:hover,
+.sillynpc-status-settings-btn:hover {
+    opacity: 1 !important;
+    /* Use the theme's readable accent rather than a raw SillyTavern variable, so the
+       hover colour follows the selected SillyNPC theme like everything else. */
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent)) !important;
+}
+
+/* Restore-recommended sits under its textarea, quiet: it replaces work someone may
+   have spent time on, so it must not read as the obvious thing to click. */
+.sillynpc-restore-recommended {
+    margin-top: 6px;
+    font-size: var(--sillynpc-text-md);
+    opacity: 0.7;
+}
+
+.sillynpc-restore-recommended:hover {
+    opacity: 1;
+}
+
+/* ─── Advanced settings block ─────────────────────────────────────────── */
+
+/* ─── Time rules ───────────────────────────────────────────────────────── */
+/* One rule reads as a sentence across the row: stat, by N, every M minutes, while X
+   is Y. Wraps rather than scrolls, since the tail of a rule is the part worth seeing. */
+
+.sillynpc-time-rule {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 6px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--sillynpc-border), transparent 60%);
+}
+
+.sillynpc-time-rule:last-child { border-bottom: none; }
+
+.sillynpc-time-rule select,
+.sillynpc-time-rule input[type="text"],
+.sillynpc-time-rule input[type="number"] {
+    height: 26px;
+    font-size: var(--sillynpc-text-md);
+    padding: 2px 6px;
+}
+
+.sillynpc-time-rule-label {
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.sillynpc-time-rule .delete-btn {
+    margin-left: auto;
+}
+
+/* ─── History scan button ──────────────────────────────────────────────── */
+/* Lives in #leftSendForm beside SillyTavern's own options button, so it has to match
+   that button's size and weight rather than the extension's own controls. */
+
+.sillynpc-scan-button {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.sillynpc-scan-button:hover {
+    opacity: 1;
+}
+
+.sillynpc-scan-button.sillynpc-scanning {
+    opacity: 1;
+    color: var(--sillynpc-accent);
+    animation: sillynpc-scan-pulse 1.2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes sillynpc-scan-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}
+
+/* ─── Historical status box ────────────────────────────────────────────── */
+/* Under an older message the box shows that moment, not now. It has to be obviously
+   not-live, or a past number reads as a current one. */
+
+.sillynpc-status-historical {
+    opacity: 0.82;
+}
+
+.sillynpc-status-historical .sillynpc-status-box {
+    border-left: 3px solid color-mix(in srgb, var(--sillynpc-accent), transparent 45%);
+}
+
+/* Nothing recorded for the messages after this one, so the rewind could not complete. */
+.sillynpc-status-approximate .sillynpc-status-box {
+    border-left-style: dotted;
+}
+
+/* ─── Change Review Panel ──────────────────────────────────────────────── */
+/* Sits under the message that proposed the changes, as a sibling of the status box
+   rather than inside it - the box applies `all: revert !important` to its descendants,
+   which would flatten this entirely. */
+
+.sillynpc-review-panel {
+    margin-top: var(--sillynpc-space-md);
+    padding: var(--sillynpc-space-md);
+    border: 1px solid var(--sillynpc-accent-text, var(--sillynpc-accent));
+    border-radius: var(--sillynpc-radius-md);
+    background: color-mix(in srgb, var(--sillynpc-bg-secondary), transparent 25%);
+    font-size: var(--sillynpc-text-md);
+}
+
+.sillynpc-review-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--sillynpc-space-sm);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-review-owner {
+    margin-top: var(--sillynpc-space-sm);
+    font-size: var(--sillynpc-text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+}
+
+.sillynpc-review-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    flex-wrap: wrap;
+}
+
+.sillynpc-review-toggle {
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.sillynpc-review-icon {
+    opacity: 0.55;
+    width: 1em;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sillynpc-review-label {
+    flex: 1;
+    min-width: 100px;
+    font-weight: 600;
+}
+
+.sillynpc-review-from {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.sillynpc-review-arrow {
+    opacity: 0.5;
+}
+
+/* Editable because "it says 5 but it should be 4" has a right answer, and rejecting the
+   row outright would leave the state wrong a different way. */
+input.sillynpc-review-to {
+    width: 90px;
+    padding: 2px 6px;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+    background: var(--sillynpc-bg-primary);
+    color: inherit;
+    font: inherit;
+}
+
+span.sillynpc-review-to {
+    font-weight: 600;
+}
+
+.sillynpc-review-why {
+    width: 100%;
+    padding-left: 32px;
+    opacity: 0.55;
+    font-size: var(--sillynpc-text-md);
+}
+
+/* The line carries the reader's own account of the change as well as the extension's
+   risk note, and that account is the thing being read - so it is not dimmed as far as a
+   bare "large swing" is, and it wraps rather than being cut off. */
+.sillynpc-review-why.has-note {
+    opacity: 0.8;
+    white-space: normal;
+}
+
+/* Reasons that matched no row, set apart from the rows so it is clear they explain nothing
+   on the list - and folded, since a reader that restates the whole state explains every
+   value it restates, which is thirty lines above seven rows.
+
+   A block with margins rather than the flex column it was: this is a <details> now, and a
+   details laid out as a flex container has shown its contents while shut in some browsers.
+   The gap is not worth finding out which. */
+.sillynpc-review-loose-notes {
+    display: block;
+    margin: var(--sillynpc-space-sm) 0;
+    padding: var(--sillynpc-space-sm);
+    border-left: 2px solid var(--sillynpc-border);
+    opacity: 0.75;
+    font-size: var(--sillynpc-text-md);
+}
+
+.sillynpc-review-loose-note {
+    display: block;
+    padding-left: var(--sillynpc-space-sm);
+    margin-top: var(--sillynpc-space-xs);
+}
+
+/* A deletion is the one thing that cannot be undone by simply waiting, so it reads as a
+   warning - and, when a scan rebuilt the list rather than the reader naming the item, it
+   also starts unticked. */
+.sillynpc-review-row.kind-item-remove .sillynpc-review-icon,
+.sillynpc-review-row.kind-item-remove .sillynpc-review-why {
+    color: var(--sillynpc-danger);
+    opacity: 0.85;
+}
+
+/* The name of the thing going away, struck through: the row says "Chocolate -> (gone)",
+   and at a glance that read the same as any other row. Now the difference is in the
+   words, not only in the icon's colour. */
+.sillynpc-review-row.kind-item-remove .sillynpc-review-label {
+    text-decoration: line-through;
+    text-decoration-color: var(--sillynpc-danger);
+    text-decoration-thickness: 1px;
+}
+
+.sillynpc-review-row.kind-item-add .sillynpc-review-icon {
+    color: var(--sillynpc-success);
+}
+
+/* Opt-in, and quiet: blacklisting an item forever is a rarer decision than declining
+   one, so it must not read as the obvious thing to click. */
+/* Where a row is going. Reads as part of the sentence rather than a form: an addition
+   and a move used to look identical, because neither named a collection. */
+.sillynpc-review-dest {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.sillynpc-review-dest > small {
+    opacity: 0.5;
+}
+
+.sillynpc-review-dest-fixed {
+    opacity: 0.7;
+}
+
+.sillynpc-review-dest-select {
+    height: 24px;
+    padding: 1px 4px;
+    font-size: var(--sillynpc-text-md);
+    max-width: 130px;
+    background: var(--sillynpc-bg-primary);
+    color: inherit;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+.sillynpc-review-never {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 32px;
+    font-size: var(--sillynpc-text-sm);
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.sillynpc-review-never:hover {
+    opacity: 0.9;
+}
+
+.sillynpc-review-never input {
+    cursor: pointer;
+}
+
+.sillynpc-review-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: var(--sillynpc-space-md);
+    flex-wrap: wrap;
+}
+
+/* ─── NPC Portraits in the tracker ─────────────────────────────────────── */
+
+.sillynpc-status-portrait {
+    display: inline-block !important;
+    width: 1.6em !important;
+    height: 1.6em !important;
+    object-fit: cover !important;
+    /* Round, so it crops the same way the HUD portrait does and needs the same framing. */
+    object-position: center var(--sillynpc-portrait-focus, top) !important;
+    border-radius: 50% !important;
+    vertical-align: -0.4em !important;
+    margin-right: 6px !important;
+    border: 1px solid color-mix(in srgb, var(--sillynpc-border), transparent 40%) !important;
+    /* The row is text-sized; a portrait that fails to load must not collapse the line. */
+    background: color-mix(in srgb, var(--sillynpc-fg-primary), transparent 85%) !important;
+    flex-shrink: 0 !important;
+}
+
