@@ -1,9 +1,11 @@
 import { getSettings, saveSettings, normalizeSettings } from './settings.js';
-import { createCharacter } from './characters.js';
+import { createCharacter, instantiateWorldCharacter } from './characters.js';
 import { adoptImageForCharacter, createLoreEntry, saveLoreContent } from './api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from './lorebook.js';
 import { loadWorldInfo } from '../../../../world-info.js';
 import { blankProfile, PROFILE_FIELDS, debugLog } from './constants.js';
+import { splitNpcStats, initialiseNpcStats } from './stat-persistence.js';
+import { getAllCharacters, isChatCharacter } from './character-repository.js';
 
 /**
  * Sending one character to somebody else, and taking one in.
@@ -29,7 +31,7 @@ import { blankProfile, PROFILE_FIELDS, debugLog } from './constants.js';
  */
 
 export const TRANSFER_FORMAT = 'sillynpc-characters';
-export const TRANSFER_VERSION = 1;
+export const TRANSFER_VERSION = 2;
 
 /* ─── Out ─────────────────────────────────────────────────────────────────── */
 
@@ -54,12 +56,12 @@ async function readLoreEntry(char) {
 }
 
 /**
- * One character, as something that can be sent: everything about them except their face.
+ * One character's identity, lore and innate values. Adventure state stays behind.
  *
  * @param {object} char
  * @returns {Promise<object>} The record.
  */
-export async function serialiseCharacter(char) {
+export async function serialiseCharacter(char, { npcStats = getSettings().statusTracker?.npcStats } = {}) {
     const profile = {};
     for (const field of PROFILE_FIELDS) {
         const value = String(char.profile?.[field.id] ?? '').trim();
@@ -73,9 +75,7 @@ export async function serialiseCharacter(char) {
         imageFit: String(char.imageFit || ''),
         aliases: Array.isArray(char.aliases) ? structuredClone(char.aliases) : [],
         profile,
-        statusOverrides: char.statusOverrides && typeof char.statusOverrides === 'object'
-            ? structuredClone(char.statusOverrides)
-            : {},
+        innateStats: splitNpcStats(char.statusOverrides, npcStats).innate,
         // No portraits. They used to be inlined as data URIs, which was the right instinct -
         // a stored portrait is a path into /user/images and names a file the recipient does
         // not have - and the wrong size by two orders of magnitude. A character's images list
@@ -96,9 +96,9 @@ export async function serialiseCharacter(char) {
  * @param {object[]} chars
  * @returns {Promise<object>} The payload.
  */
-export async function exportCharacters(chars) {
+export async function exportCharacters(chars, { npcStats } = {}) {
     const records = [];
-    for (const char of chars) records.push(await serialiseCharacter(char));
+    for (const char of chars) records.push(await serialiseCharacter(char, { npcStats }));
 
     return {
         format: TRANSFER_FORMAT,
@@ -148,7 +148,7 @@ export function parseTransferFile(text) {
 
 /** A name nobody is using yet: "Vesper", then "Vesper (2)", "Vesper (3)". */
 function freeName(wanted) {
-    const taken = new Set((getSettings().characters || [])
+    const taken = new Set(getAllCharacters()
         .map(c => String(c.name || '').toLowerCase()));
     if (!taken.has(wanted.toLowerCase())) return wanted;
     for (let n = 2; ; n++) {
@@ -158,14 +158,17 @@ function freeName(wanted) {
 }
 
 /** Writes the record's fields onto a card, leaving its id and its place alone. */
-function applyRecord(char, record, name) {
+function applyRecord(char, record, name, version) {
     char.name = name;
     char.color = String(record.color || char.color || '');
     char.imageFit = String(record.imageFit || '');
     char.aliases = Array.isArray(record.aliases) ? structuredClone(record.aliases) : [];
-    char.statusOverrides = record.statusOverrides && typeof record.statusOverrides === 'object'
-        ? structuredClone(record.statusOverrides)
-        : {};
+    // Version 1 mixed every override. The destination schema decides which of those
+    // values are innate; all variable fields receive its defaults instead.
+    const incoming = version >= 2 ? record.innateStats : record.statusOverrides;
+    char.statusOverrides = initialiseNpcStats(incoming, getSettings().statusTracker?.npcStats);
+    // Collections, conditions and inventory belong to the adventure instance.
+    char.statusCollections = {};
 
     // Field by field, for the same reason normalizeSettings does it that way: a file
     // written before a field existed should gain it blank, not replace the set.
@@ -244,19 +247,26 @@ async function restoreLore(char, record) {
  */
 export async function importCharacters(payload, { onCollision } = {}) {
     const result = { added: [], overwritten: [], skipped: [], notes: [] };
+    const seenIncoming = new Set();
 
     for (const record of payload.characters) {
         const wanted = String(record?.name || '').trim();
         if (!wanted) { result.skipped.push('(unnamed)'); continue; }
+        const repeatedInFile = seenIncoming.has(wanted.toLowerCase());
+        seenIncoming.add(wanted.toLowerCase());
 
-        const existing = (getSettings().characters || [])
+        const existing = getAllCharacters()
             .find(c => String(c.name || '').toLowerCase() === wanted.toLowerCase());
 
         let choice = 'rename';
-        if (existing) choice = onCollision ? await onCollision(wanted) : 'rename';
+        if (existing && !repeatedInFile) choice = onCollision ? await onCollision(wanted) : 'rename';
         if (existing && choice === 'skip') { result.skipped.push(wanted); continue; }
 
-        const overwriting = Boolean(existing) && choice === 'overwrite';
+        // Two distinct source NPCs in one file must never overwrite one another merely
+        // because they share a name, even when Replace Mine was chosen for local clashes.
+        const overwriting = Boolean(existing) && !repeatedInFile && choice === 'overwrite';
+        const localInstance = overwriting && !isChatCharacter(existing.id)
+            ? instantiateWorldCharacter(existing.id) : null;
 
         // Named before the card exists, not after. createCharacter adds one under this
         // name straight away, so asking afterwards what names are free finds the card it
@@ -266,14 +276,14 @@ export async function importCharacters(payload, { onCollision } = {}) {
         // Overwriting keeps the card that is already there - its id and its position -
         // and replaces what is on it. A fresh card would take the name while cast
         // decisions and anything else pointing at the old id kept pointing at a ghost.
-        const char = overwriting ? existing : createCharacter(name);
+        const char = localInstance || (overwriting ? existing : createCharacter(name));
 
-        applyRecord(char, record, name);
+        applyRecord(char, record, name, Number(payload.version) || 1);
         await restoreImages(char, record);
         const loreNote = await restoreLore(char, record);
         if (loreNote) result.notes.push(`${name}: ${loreNote}`);
 
-        (overwriting ? result.overwritten : result.added).push(name);
+        (overwriting && !localInstance ? result.overwritten : result.added).push(name);
     }
 
     // The same repair pass settings loaded at startup go through, for the same reason:

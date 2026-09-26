@@ -1,5 +1,6 @@
 import { paletteIndexFor } from './hash.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
+import { getContext } from '../../../../st-context.js';
 import { extension_settings } from '../../../../extensions.js';
 import {
     EXTENSION_VERSION,
@@ -14,6 +15,7 @@ import {
     PROFILE_FIELDS
 } from './constants.js';
 import { resolveImageFolder } from './utils.js';
+import { normaliseNpcPersistence } from './stat-persistence.js';
 
 export const defaultSettings = {
     version: EXTENSION_VERSION,
@@ -93,6 +95,8 @@ export const defaultSettings = {
     banScanDepth: 50,
     /** Colour a speaker who has no card, from their name. */
     autoColorUnknownSpeakers: true,
+    /** Automatic Fill after creating a card from an unknown speaker thumbnail. */
+    autoFillPortrait: false,
     hideSpeakerNames: false,
     caseInsensitive: true,
     /**
@@ -375,9 +379,9 @@ export const defaultSettings = {
         ],
         showGlobalStats: true,
         npcStats: [
-            { name: 'HP', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true },
-            { name: 'Energy', defaultValue: '5/5', format: '{{name}}: {{value}}', maxStatValue: '5', visible: true },
-            { name: 'Condition', defaultValue: 'Healthy', format: '{{value}}', maxStatValue: '', visible: true }
+            { name: 'HP', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true, persistence: 'variable' },
+            { name: 'Energy', defaultValue: '5/5', format: '{{name}}: {{value}}', maxStatValue: '5', visible: true, persistence: 'variable' },
+            { name: 'Condition', defaultValue: 'Healthy', format: '{{value}}', maxStatValue: '', visible: true, persistence: 'variable' }
         ],
         playerStats: [
             { name: 'HP', defaultValue: '20/20', format: '{{name}}: {{value}}', maxStatValue: '20', visible: true, isPrimary: true, color: '#e03131' },
@@ -1052,9 +1056,15 @@ export function normalizeSettings(settings) {
             }
         }
         
+        // The legacy characterStats name must be moved before normalising NPC policy.
+        if (settings.statusTracker.characterStats && !settings.statusTracker.npcStats) {
+            settings.statusTracker.npcStats = settings.statusTracker.characterStats;
+            delete settings.statusTracker.characterStats;
+        }
         for (const listName of ['globalStats', 'npcStats', 'playerStats']) {
             normaliseStatDefs(settings.statusTracker[listName]);
         }
+        normaliseNpcPersistence(settings.statusTracker.npcStats);
 
         // The same field a stat has had all along, on a collection. A stat could say how it
         // should be written and a collection could not say what it holds - so "pictures"
@@ -1071,12 +1081,6 @@ export function normalizeSettings(settings) {
             }
         }
         
-        // Phase 1 Migration: characterStats -> npcStats
-        if (settings.statusTracker.characterStats && !settings.statusTracker.npcStats) {
-            settings.statusTracker.npcStats = settings.statusTracker.characterStats;
-            delete settings.statusTracker.characterStats;
-        }
-
         if (Array.isArray(settings.statusTracker.npcStats)) {
             for (const stat of settings.statusTracker.npcStats) {
                 if (stat && stat.visible === undefined) stat.visible = true;
@@ -1257,6 +1261,13 @@ export function getSettings() {
 
 export function saveSettings() {
     saveSettingsDebounced();
+    // Card editors already save after in-place changes. If this chat owns cards,
+    // persist those metadata changes alongside the settings save.
+    const context = getContext();
+    if (Array.isArray(context?.chatMetadata?.sillynpc_npcs)
+        && context.getCurrentChatId?.() !== undefined) {
+        context.saveMetadataDebounced?.();
+    }
 }
 
 /**

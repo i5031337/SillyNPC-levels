@@ -2,6 +2,10 @@ import { getSettings, saveSettings } from './settings.js';
 import { makeId } from './utils.js';
 import { SPEAKER_PALETTE, paletteColorFor, blankProfile } from './constants.js';
 import { getContext } from '../../../../st-context.js';
+import { getAllCharacters, getLibraryCharacters, addCharacterRecord,
+    deleteCharacterRecord, findCharacterRecord, collectionForCharacter,
+    getWorldCharacters, getChatCharacters } from './character-repository.js';
+import { initialiseNpcStats } from './stat-persistence.js';
 
 /**
  * A colour no other card is already using.
@@ -15,7 +19,7 @@ import { getContext } from '../../../../st-context.js';
  */
 export function pickCharacterColor(seed = '') {
     const taken = new Set(
-        (getSettings().characters || [])
+        getLibraryCharacters()
             .map(c => String(c.color || '').trim().toLowerCase())
             .filter(Boolean),
     );
@@ -54,11 +58,11 @@ export function createCharacter(name = '') {
         aliases: [],
         lorebook: null,
         statusOverrides: {},
+        statusCollections: {},
         /** Who they are, as opposed to what is happening to them. See PROFILE_FIELDS. */
         profile: blankProfile(),
     };
-    getSettings().characters.push(char);
-    saveSettings();
+    addCharacterRecord(char);
     return char;
 }
 
@@ -68,7 +72,7 @@ export function deleteCategory(category) {
     // The register too, or an emptied category would come straight back the next time
     // the panel drew - and one with no members would be undeletable.
     settings.categories = settings.categories.filter(c => c !== category);
-    for (const char of settings.characters) {
+    for (const char of getLibraryCharacters()) {
         if (char.category === category) char.category = '';
     }
     saveSettings();
@@ -115,7 +119,7 @@ export function renameCategory(from, to) {
         settings.categories.push(clean);
     }
 
-    for (const char of settings.characters) {
+    for (const char of getLibraryCharacters()) {
         if (char.category === from) char.category = clean;
     }
 
@@ -174,7 +178,7 @@ export function getAllCategories() {
     const settings = getSettings();
     const register = (settings.categories || []).filter(Boolean);
     const known = new Set(register);
-    const strays = [...new Set((settings.characters || [])
+    const strays = [...new Set(getLibraryCharacters()
         .map(c => c.category)
         .filter(name => name && !known.has(name)))].sort();
     return [...register, ...strays];
@@ -258,7 +262,7 @@ export function isCharacterInChat(char, cast = getChatCast()) {
  */
 export function getActiveCharacters() {
     const cast = getChatCast();
-    return (getSettings().characters || []).filter(c => isCharacterInChat(c, cast));
+    return getAllCharacters().filter(c => isCharacterInChat(c, cast));
 }
 
 /** Puts one character in this chat regardless of category. */
@@ -274,15 +278,29 @@ export function addCharacterToChat(id) {
 }
 
 export function deleteCharacter(id) {
-    const characters = getSettings().characters;
-    const i = characters.findIndex(c => c.id === id);
-    if (i === -1) return;
-    characters.splice(i, 1);
-    saveSettings();
+    deleteCharacterRecord(id);
 }
 
 export function findCharacter(id) {
-    return getSettings().characters.find(c => c.id === id) ?? null;
+    return findCharacterRecord(id);
+}
+
+/** Bring a reusable world card into the open chat as its own instance. */
+export function instantiateWorldCharacter(id) {
+    if (getContext()?.getCurrentChatId?.() === undefined) return null;
+    const source = getWorldCharacters().find(card => card.id === id);
+    if (!source) return null;
+    const existing = getChatCharacters().find(card =>
+        String(card.name || '').toLowerCase() === String(source.name || '').toLowerCase());
+    if (existing) return existing;
+    const card = structuredClone(source);
+    card.id = makeId();
+    card.statusOverrides = initialiseNpcStats(source.statusOverrides,
+        getSettings().statusTracker?.npcStats);
+    card.statusCollections = {};
+    addCharacterRecord(card);
+    addCharacterToChat(card.id);
+    return card;
 }
 
 /**
@@ -330,9 +348,17 @@ export function addAlias(id, pattern) {
  * @param {string} toId The card it was dropped on.
  */
 export function reorderCharacters(fromId, toId) {
-    const chars = getSettings().characters;
+    const chars = collectionForCharacter(fromId);
     const fromIdx = chars.findIndex(c => c.id === fromId);
     if (fromIdx === -1) return;
+
+    // Each owner keeps its own array; dropping across owners only changes category.
+    const target = findCharacterRecord(toId);
+    if (target && !chars.some(c => c.id === toId)) {
+        chars[fromIdx].category = target.category;
+        saveSettings();
+        return;
+    }
 
     const [char] = chars.splice(fromIdx, 1);
 
@@ -363,7 +389,7 @@ export function reorderCharacters(fromId, toId) {
  * @param {string} category '' for uncategorised, which is a category like any other here.
  */
 export function moveCharacterToCategory(fromId, category) {
-    const chars = getSettings().characters;
+    const chars = collectionForCharacter(fromId);
     const fromIdx = chars.findIndex(c => c.id === fromId);
     if (fromIdx === -1) return;
 

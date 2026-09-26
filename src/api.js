@@ -1,6 +1,9 @@
 import { promptText, defaultPromptText } from './prompt-texts.js';
 import { chat, getRequestHeaders, extractMessageFromData } from '../../../../../script.js';
 import { getContext } from '../../../../st-context.js';
+import { getAllCharacters, getLibraryCharacters } from './character-repository.js';
+import { listChatHeaders } from './chat-listing.js';
+import { chatNpcImagePaths } from './chat-npc-sources.js';
 import { loadWorldInfo, saveWorldInfo, createWorldInfoEntry } from '../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../slash-commands.js';
 import { saveBase64AsFile } from '../../../../utils.js';
@@ -646,7 +649,7 @@ export async function scanFolderForCharacterImages() {
 
     if (!Array.isArray(files)) return { scanned: 0, added: 0, characters: 0 };
 
-    const characters = getSettings().characters || [];
+    const characters = getAllCharacters();
     // Longest prefix first, so "The Fae" cannot swallow a file belonging to "The Fae Queen".
     const byPrefix = characters
         .filter(char => char && char.name)
@@ -731,10 +734,19 @@ export async function removeCharacterImage(char, path, { deleteFile = false } = 
     // The player's card holds images the same way a character's does, so it has to be
     // counted here too - otherwise erasing a portrait from a character could take the
     // file the player is using with it.
-    const holders = [...(getSettings().characters || []), ...Object.values(getSettings().personaData || {})];
-    const stillUsed = holders.some(
-        other => other !== char && (other?.imageUrl === path || (other?.images || []).includes(path)),
+    const holders = [...getLibraryCharacters(), ...Object.values(getSettings().personaData || {})];
+    let stillUsed = holders.some(
+        other => other !== char && (other?.imageUrl === path
+            || other?.defaultPortrait === path || (other?.images || []).includes(path)),
     );
+    if (deleteFile && !stillUsed) {
+        try {
+            stillUsed = chatNpcImagePaths(await listChatHeaders()).has(path);
+        } catch {
+            // Without a complete reference list, leave the file in place.
+            stillUsed = true;
+        }
+    }
 
     let deletedFile = false;
     if (deleteFile && !stillUsed && !path.startsWith('data:')) {
@@ -781,7 +793,7 @@ export function referencedImagePaths(settings = getSettings()) {
         if (path) keep.add(path);
     };
 
-    for (const holder of [...(settings.characters || []),
+    for (const holder of [...getLibraryCharacters(),
                           ...Object.values(settings.personaData || {})]) {
         add(holder?.imageUrl);
         add(holder?.defaultPortrait);
@@ -789,6 +801,12 @@ export function referencedImagePaths(settings = getSettings()) {
     }
     for (const entry of settings.defaultImages || []) add(entry?.src);
 
+    return keep;
+}
+
+async function allReferencedImagePaths() {
+    const keep = referencedImagePaths();
+    for (const path of chatNpcImagePaths(await listChatHeaders())) keep.add(path);
     return keep;
 }
 
@@ -819,7 +837,7 @@ export async function findOrphanedImages() {
     }
     if (!Array.isArray(files)) return { folder, files: [], scanned: 0 };
 
-    const keep = referencedImagePaths();
+    const keep = await allReferencedImagePaths();
     const orphans = files
         .filter(file => typeof file === 'string')
         .map(file => `/user/images/${folder}/${file}`)
@@ -842,7 +860,11 @@ export async function deleteImageFiles(paths) {
     let deleted = 0;
     let failed = 0;
 
+    // Recheck at deletion time: another chat may have acquired a portrait since the scan.
+    const keep = await allReferencedImagePaths();
+
     for (const path of paths || []) {
+        if (keep.has(path)) { failed += 1; continue; }
         try {
             const response = await fetch('/api/images/delete', {
                 method: 'POST',

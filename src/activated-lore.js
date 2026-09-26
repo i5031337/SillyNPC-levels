@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js';
+import { getAllCharacters } from './character-repository.js';
 
 /**
  * Which lorebook entries SillyTavern fired for the turn being generated.
@@ -40,7 +40,7 @@ export function noteActivatedLore(entries) {
  */
 export function charactersFromActivatedLore() {
     if (!activatedEntries.length) return [];
-    const characters = getSettings().characters || [];
+    const characters = getAllCharacters();
     return characters.filter(char => char.lorebook && activatedEntries.some(entry =>
         String(entry?.world ?? entry?.book ?? '') === String(char.lorebook.world)
         && String(entry?.uid) === String(char.lorebook.uid)));

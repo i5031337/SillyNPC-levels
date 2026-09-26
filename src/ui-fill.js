@@ -2,10 +2,11 @@ import { Popup, POPUP_TYPE } from '../../../../popup.js';
 // The chat shows this picture beside every line the character speaks, so changing
 // it has to redraw. reprocess.js rather than chat.js: chat.js imports this file.
 import { triggerReprocess } from './reprocess.js';
-import { saveSettings } from './settings.js';
+import { getSettings, saveSettings } from './settings.js';
 import { LOG_PREFIX, debugLog } from './constants.js';
 import { auditCharacter, fillProfile, fillLore, fillData } from './character-fill.js';
 import { generateCharacterImageLogic } from './api.js';
+import { automaticFillStages } from './fill-preset.js';
 
 /**
  * One row of the plan: what this stage would do, and whether to do it.
@@ -94,9 +95,9 @@ async function askPlan(char, audit) {
  * is kept, since undoing good work to report a later failure helps nobody.
  *
  * @param {object} char
- * @param {{ onSave?: () => void }} [options]
+ * @param {{ onSave?: () => void, preset?: 'automatic' }} [options]
  */
-export async function fillCharacter(char, { onSave } = {}) {
+export async function fillCharacter(char, { onSave, preset } = {}) {
     if (!char?.name) {
         toastr.warning('Give the character a name first.', 'SillyNPC');
         return;
@@ -108,7 +109,9 @@ export async function fillCharacter(char, { onSave } = {}) {
         return;
     }
 
-    const chosen = await askPlan(char, audit);
+    const chosen = preset === 'automatic'
+        ? automaticFillStages(audit, getSettings().autoFillPortrait === true)
+        : await askPlan(char, audit);
     if (!chosen) return;
     if (!Object.values(chosen).some(Boolean)) return;
 

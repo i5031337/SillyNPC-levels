@@ -1,5 +1,6 @@
 import { getContext } from '../../../../st-context.js';
 import { getSettings } from './settings.js';
+import { getAllCharacters } from './character-repository.js';
 import { debugLog } from './constants.js';
 import { eventSource } from '../../../../events.js';
 import { loadStateFromMetadata, applyUpdate, saveStateToMetadata } from './status-logic.js';
@@ -251,7 +252,7 @@ export function resolvePendingChanges(messageId, accepted, dismissed = []) {
         // Cards too: an accepted row may name a character who is off stage, whose
         // belongings live on their card rather than in the scene.
         const update = buildUpdateFromChanges(
-            rows, loadStateFromMetadata(), trackerSettings, getSettings().characters || []);
+            rows, loadStateFromMetadata(), trackerSettings, getAllCharacters());
         // These rows have been looked at and accepted, so a character named in one is
         // wanted whether or not they are on stage - a scan proposes mostly about people
         // who are not. Without this, approving an NPC's spells silently did nothing.

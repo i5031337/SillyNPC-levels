@@ -7,6 +7,7 @@ import { triggerReprocess } from './chat.js';
 import { updateHUD } from './ui-hud.js';
 import { escapeHtml } from './utils.js';
 import { openItemLibrary } from './ui-item-library.js';
+import { exportWorldCharacters } from './world-character-export.js';
 
 /**
  * System Manager: saving, restoring and swapping whole Systems.
@@ -222,6 +223,38 @@ export function buildSystemManager(onRefresh) {
             expBtn.innerHTML = '<i class="fa-solid fa-file-export"></i>';
             expBtn.addEventListener('click', () => exportSystem(name));
 
+            const charsBtn = document.createElement('button');
+            charsBtn.className = 'menu_button';
+            charsBtn.textContent = 'Export World Characters';
+            charsBtn.title = 'Export reusable cards and NPCs in every chat assigned to this System.';
+            charsBtn.addEventListener('click', async () => {
+                charsBtn.disabled = true;
+                try {
+                    const payload = await exportWorldCharacters(name);
+                    if (!payload.characters.length) {
+                        toastr.info(`No characters found for "${name}".`, 'SillyNPC');
+                        return;
+                    }
+                    const defs = name === getActiveSystem()
+                        ? getSettings().statusTracker.npcStats
+                        : (profile.config?.statusTracker?.npcStats || profile.config?.npcStats || []);
+                    const innate = (defs || []).filter(stat => stat.persistence === 'innate')
+                        .map(stat => stat.name);
+                    const confirmed = await Popup.show.confirm('Export World Characters',
+                        `${payload.characters.length} characters from reusable cards and assigned chats. `
+                        + `Innate fields carried: ${innate.join(', ') || 'none'}. `
+                        + 'Variable stats, conditions and inventory reset on import. Export this file?');
+                    if (!confirmed) return;
+                    offerDownload(payload,
+                        `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_characters.json`);
+                    toastr.success(`Exported ${payload.characters.length} characters.`, 'SillyNPC');
+                } catch (err) {
+                    toastr.error(String(err?.message || err), 'SillyNPC');
+                } finally {
+                    charsBtn.disabled = false;
+                }
+            });
+
             const delBtn = document.createElement('button');
             delBtn.className = 'menu_button';
             delBtn.title = 'Delete';
@@ -245,7 +278,7 @@ export function buildSystemManager(onRefresh) {
                 }
             });
 
-            actionsCell.append(expBtn, delBtn);
+            actionsCell.append(expBtn, charsBtn, delBtn);
             row.append(activeCell, nameCell, actionsCell);
             table.appendChild(row);
         });

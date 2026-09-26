@@ -3,6 +3,8 @@ import { offerDownload } from './utils.js';
 import { exportCharacters, importCharacters, parseTransferFile } from './character-transfer.js';
 import { LOG_PREFIX } from './constants.js';
 import { POPUP_TYPE, Popup } from '../../../../popup.js';
+import { splitNpcStats } from './stat-persistence.js';
+import { getAllCharacters } from './character-repository.js';
 
 /**
  * Sending characters out of the grid and taking them in.
@@ -26,6 +28,17 @@ export async function exportCharacterFile(chars) {
     if (!list.length) return;
 
     try {
+        const definitions = getSettings().statusTracker?.npcStats || [];
+        const innateNames = definitions.filter(s => s?.persistence === 'innate').map(s => s.name);
+        const variableNames = definitions.filter(s => s?.persistence !== 'innate').map(s => s.name);
+        const values = list.map(char => splitNpcStats(char.statusOverrides, definitions));
+        const carried = values.reduce((n, entry) => n + Object.keys(entry.innate).length, 0);
+        const reset = values.reduce((n, entry) => n + Object.keys(entry.variable).length, 0);
+        const preview = `Export ${list.length} character${list.length === 1 ? '' : 's'}? `
+            + `Innate fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
+            + `Variable fields start from the destination defaults: ${variableNames.join(', ') || 'none'} `
+            + `(${reset} current values stay here). Inventory and conditions also stay here.`;
+        if (!await Popup.show.confirm('Character export preview', preview)) return;
         const payload = await exportCharacters(list);
         const fileName = list.length === 1
             ? `sillynpc-${safeFileName(list[0].name)}.json`
@@ -43,7 +56,7 @@ export async function exportCharacterFile(chars) {
 
 /** Which of the incoming names are already in use here. */
 function collidingNames(payload) {
-    const here = new Set((getSettings().characters || [])
+    const here = new Set(getAllCharacters()
         .map(c => String(c.name || '').toLowerCase()));
     return payload.characters
         .map(r => String(r?.name || '').trim())
@@ -94,8 +107,7 @@ async function askAboutCollisions(names) {
 
     const warning = document.createElement('small');
     warning.className = 'notes';
-    warning.textContent = 'Replacing cannot be undone. Everything on your card - its '
-        + 'portraits, its profile and anything the tracker holds for it - is written over.';
+    warning.textContent = 'Replacing a card cannot be undone. When a chat is open, a matching reusable world card is copied into that chat before the imported details are applied.';
     wrap.append(warning);
 
     const popup = new Popup(wrap, POPUP_TYPE.CONFIRM, '', { okButton: 'Import', cancelButton: 'Cancel' });

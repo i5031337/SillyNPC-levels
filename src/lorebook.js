@@ -3,6 +3,7 @@ import { getContext } from '../../../../st-context.js';
 import { LOG_PREFIX, debugLog } from './constants.js';
 import { getSettings, saveSettings } from './settings.js';
 import { getActiveCharacters, getChatCast, isCharacterInChat } from './characters.js';
+import { getAllCharacters } from './character-repository.js';
 
 /**
  * SillyTavern declares `export let world_names;` and only assigns it once its own
@@ -265,7 +266,7 @@ export async function tryAutoSyncLorebook(char, { silent = false, worlds: only =
  * @returns {Promise<number>} How many entries were flipped.
  */
 export async function syncLorebookScope() {
-    const characters = (getSettings().characters || []).filter(c => c.lorebook?.world);
+    const characters = getAllCharacters().filter(c => c.lorebook?.world);
     if (!characters.length) return 0;
 
     const byWorld = new Map();

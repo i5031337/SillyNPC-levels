@@ -3,6 +3,8 @@ import { LOG_PREFIX, BUILT_IN_DEFAULT_AVATAR, paletteColorFor, debugLog } from '
 import { getSettings } from './settings.js';
 import { getContext } from '../../../../st-context.js';
 import { findCharacter, getActiveCharacters, getChatCast } from './characters.js';
+import { getAllCharacters } from './character-repository.js';
+import { characterPatternSignature } from './character-scope.js';
 import { escapeRegExp, personaFileFromAvatar } from './utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from './status-ui.js';
 import {
@@ -36,7 +38,7 @@ function getOptimizedPatterns(characters) {
     const caseInsensitive = getSettings().caseInsensitive;
     
     // Generate a quick signature of the current characters list to invalidate the cache if names/aliases are edited, added, or reordered.
-    const signature = characters.map(c => `${c.name}:${(c.aliases || []).map(a => `${a.pattern}-${a.isRegex}`).join(',')}`).join('|');
+    const signature = characterPatternSignature(characters);
 
     // Keyed on the signature alone. It used to also require the same array instance, which
     // was free when the caller passed the settings array straight through - but the list is
@@ -141,7 +143,8 @@ function imageKey(url) {
 export function chatRenderSignature() {
     const settings = getSettings();
 
-    const characters = (settings.characters || []).map(char => [
+    const characters = getAllCharacters().map(char => [
+        char.id,
         char.name,
         char.color,
         char.category,
@@ -340,6 +343,7 @@ function clearDecorations(textContainer) {
     });
     textContainer.normalize();
     textContainer.querySelectorAll('.sillynpc-chat-avatar').forEach(el => el.remove());
+    textContainer.querySelectorAll('.sillynpc-alias-link').forEach(el => el.remove());
     // Turning colouring off has to give the model's own colours back, so this is undone
     // here with every other decoration.
     textContainer.querySelectorAll('.sillynpc-ignore-model-color').forEach(el => {
@@ -398,6 +402,16 @@ function injectAtBoldSpeakers(container, characters, pickFace, isLastMessage) {
 
        if (el.parentNode) {
             el.parentNode.insertBefore(avatar, el);
+            if (!char && trimmed && characters.some(card => card.name)) {
+                const link = document.createElement('button');
+                link.type = 'button';
+                link.className = 'sillynpc-alias-link';
+                link.dataset.charName = trimmed;
+                link.title = `Link ${trimmed} as an alias of an existing NPC`;
+                link.setAttribute('aria-label', link.title);
+                link.innerHTML = '<i class="fa-solid fa-link" aria-hidden="true"></i>';
+                el.parentNode.insertBefore(link, el);
+            }
         }
 
         if (shouldHideSpeakerName(char)) {
@@ -585,6 +599,7 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
     const size = getSettings().avatarSize || 'medium';
     img.className = `sillynpc-chat-avatar shape-${shape} size-${size}`;
     img.setAttribute('tabindex', '0');
+    img.setAttribute('role', 'button');
     img.onerror = () => img.remove();
 
     const globalFit = getSettings().defaultImageFit || 'contain';
@@ -628,7 +643,10 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
     } else {
         img.src = defaultImage || BUILT_IN_DEFAULT_AVATAR;
         img.alt = name || '';
-        img.title = name ? `${name} — click to create card` : 'click to create card';
+        img.title = name
+            ? `${name} — click to create and Fill; Shift-click to link as alias`
+            : 'click to create and Fill; Shift-click to link as alias';
+        img.setAttribute('aria-label', img.title);
         img.dataset.default = 'true';
         if (name) {
             img.dataset.charName = name;

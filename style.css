@@ -1219,6 +1219,16 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.sillynpc-alias-link {
+    align-self: center;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 999px;
+    background: var(--sillynpc-bg-secondary);
+    color: var(--sillynpc-fg-primary);
+    cursor: pointer;
+    padding: 3px 6px;
+}
+
 .sillynpc-chat-avatar.shape-square   { border-radius: 0 !important; }
 .sillynpc-chat-avatar.shape-rounded  { border-radius: 10px !important; }
 .sillynpc-chat-avatar.shape-circle   { border-radius: 50% !important; }
@@ -4226,6 +4236,21 @@ textarea.sillynpc-profile-input {
     display: flex;
     flex-direction: column;
     gap: var(--sillynpc-space-lg);
+}
+
+.sillynpc-cv-narrative,
+.sillynpc-narrative-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sillynpc-space-md);
+    min-width: 0;
+}
+
+.sillynpc-cv-narrative > h3,
+.sillynpc-narrative-editor > h3 {
+    margin: 0;
+    padding-bottom: var(--sillynpc-space-sm);
+    border-bottom: 1px solid var(--sillynpc-border);
 }
 
 .sillynpc-cv-portrait {

@@ -3,6 +3,7 @@ import { extractMessageFromData } from '../../../../../script.js';
 import { getContext } from '../../../../st-context.js';
 import { applyMacros } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
+import { getAllCharacters } from './character-repository.js';
 import {
     THREAD_KINDS, openThreads, coerceThread, addThread, closeThread,
     activeThreads, touchThreads, pruneThreads,
@@ -151,7 +152,7 @@ export function forgetExtractionsFrom(index) {
  * one yet.
  */
 function profileOwners() {
-    const cards = getSettings().characters || [];
+    const cards = getAllCharacters();
     try {
         return [...cards, getPlayerCard()];
     } catch {

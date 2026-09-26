@@ -4,7 +4,7 @@
 
 # SillyNPC XP
 
-This fork adds automatic player XP progression to SillyNPC. Install it **instead of**
+This fork adds automatic player XP progression and chat-owned NPCs to SillyNPC. Install it **instead of**
 the original extension; both use the same settings and events and must not run together.
 
 With the Status Tracker enabled, the reader can award XP for concrete accomplishments
@@ -65,7 +65,9 @@ SillyNPC operates across two core modules:
 
 ### Character & World Management
 * **Roster Categories:** Organize characters into distinct worlds, factions, or scenes — and limit a chat to only the categories it needs.
-* **Import / Export:** Share individual character cards and system configurations between installs. Portraits and lorebook entries travel with the card.
+* **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** creates an independent instance.
+* **Portable Character Files:** Export identity, profile, linked lore text, and Innate stats. Variable stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
+* **Export World Characters:** Under **Systems → Manager**, export reusable world cards and NPCs from every chat assigned to a Saved System, including chats that are closed and Systems that are not active. The existing full System export is still available separately.
 * **Integrated Generation:** Generates matching lorebook entries and portraits directly via connected APIs.
 
 ### Theming & Analytics
@@ -119,11 +121,20 @@ Reload SillyTavern.
    * **Ask The Model To Format Dialogue** is on out of the box — it asks for the `**Name**:` speaker line that everything else reads.
    * If your chat is not being decorated, check it is still enabled under **Extensions -> SillyNPC -> Manage SillyNPC -> Writing Rules**. A persona or preset asking for a different layout is the usual cause.
 2. **Assigning Avatars:**
-   * When a character speaks in chat, click their name or placeholder portrait to create/open their card.
-   * Upload an image, assign an accent color, and save.
+   * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore, profile details, tracker fields, and belongings; completed stages remain in place if a later stage fails. Open the card and press **Fill** to retry.
+   * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking an existing card's portrait opens its editor.
+   * Portrait generation is off in automatic Fill by default because it can incur a separate API cost. Enable **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
    * The HUD appears once the tracker is running; choose a meter style under the **HUD** tab.
+
+### NPC stats and character transfers
+
+In **Systems → Builder → NPC**, set each stat to **Innate** or **Variable**. Innate values travel with a character and the tracker may initialize one only while it is blank; later changes require a manual edit. Variable values can change during the adventure and reset to the destination System's defaults when a character is imported or instantiated from a reusable world card. Shipped HP, Energy, and Condition fields are Variable. Existing custom fields keep their stored values and show a review note until you choose their transfer behavior.
+
+**Export selected** on the Characters page previews which fields travel. Character files use version 2; older character files still import, with their mixed stat values classified by the destination System. Linked lore travels as text and can be recreated in the destination lorebook. Portrait paths are local to one installation, so exported files contain no portraits. **Export World Characters** retains each source chat and NPC ID in the file, allowing same-name NPCs from different chats to remain separate on import.
+
+The NPC page groups profile description and linked lore in **Description & Lore**. They remain in their respective card and lorebook fields so existing writing is preserved.
 
 ---
 
@@ -170,7 +181,10 @@ window.SILLYNPC_DEBUG = true;
 | `src/utils.js` | Escaping, JSON repair, image picking, stat-bar maths |
 | `src/chat.js` | Speaker detection and avatar injection |
 | `src/characters.js` | Character cards and categories |
+| `src/character-repository.js` · `src/character-scope.js` | Chat and reusable world card ownership and lookup |
 | `src/character-transfer.js` | Sending one character to somebody else, and taking one in |
+| `src/stat-persistence.js` | Innate/Variable migration and transfer rules |
+| `src/world-character-export.js` · `src/chat-listing.js` | Gathering characters from every chat in a Saved System |
 | `src/default-portraits.js` | Faces for speakers who have none |
 | `src/status-logic.js` | State, parsing, persona sync, collections, systems |
 | `src/status-extractor.js` | The separate reading pass |
@@ -186,6 +200,8 @@ window.SILLYNPC_DEBUG = true;
 | `src/usage.js` | What each generator has cost |
 | `src/status-ui.js` | Rendering the status box |
 | `src/ui-*.js` | One module per page of the menu, plus the HUD, sheet and review panel |
+
+Run the focused tests with `node --experimental-default-type=module --test tests/*.mjs`.
 
 ---
 

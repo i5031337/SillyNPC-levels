@@ -2,6 +2,7 @@ import { renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { POPUP_TYPE, Popup } from '../../../../popup.js';
 import { extensionName, LOG_PREFIX, PROFILE_FIELDS } from './constants.js';
 import { getSettings, saveSettings, exportSettingsData, importSettingsData } from './settings.js';
+import { getLibraryCharacters, isChatCharacter } from './character-repository.js';
 import { 
     createCharacter, 
     deleteCharacter, 
@@ -17,6 +18,7 @@ import {
     setChatCast,
     isCharacterInChat,
     addCharacterToChat,
+    instantiateWorldCharacter,
     UNCATEGORISED
 } from './characters.js';
 import { reprocessAllMessages, triggerReprocess, chatRenderSignature } from './chat.js';
@@ -501,7 +503,7 @@ function renderCardGrid() {
     root.replaceChildren();
 
     // The full list on purpose: you have to be able to see somebody to put them back.
-    const characters = getSettings().characters;
+    const characters = getLibraryCharacters();
     root.appendChild(buildChatScopeRow());
     root.appendChild(buildSyncAllRow(characters));
 
@@ -631,7 +633,7 @@ function ensureGridBulk() {
     if (gridBulk) return gridBulk;
     gridBulk = buildBulkBar({
         noun: 'character',
-        allIds: () => (getSettings().characters || []).map(c => c.id),
+        allIds: () => getLibraryCharacters().map(c => c.id),
         onDelete: (ids) => {
             for (const id of ids) deleteCharacter(id);
             toastr.success(`Deleted ${ids.length} character(s).`, 'SillyNPC');
@@ -816,6 +818,24 @@ function buildCard(char) {
     label.className = 'sillynpc-card-label';
     label.textContent = char.name || '(unnamed)';
     card.appendChild(label);
+
+    if (hasOpenChat() && !isChatCharacter(char.id) && char.name) {
+        const bring = document.createElement('button');
+        bring.type = 'button';
+        bring.className = 'menu_button';
+        bring.textContent = 'Use in this chat';
+        bring.title = 'Create an independent chat NPC from this reusable character.';
+        bring.addEventListener('click', e => {
+            e.stopPropagation();
+            const instance = instantiateWorldCharacter(char.id);
+            if (instance) {
+                renderCardGrid();
+                openEditor(instance.id);
+                triggerReprocess();
+            }
+        });
+        card.appendChild(bring);
+    }
 
     // While selecting, the card carries a checkbox instead of its own trash: two ways to
     // delete on one card, asking different questions, is how a tick becomes a deletion.
@@ -1226,10 +1246,13 @@ function renderEditor() {
     const collectionsContainer = document.createElement('div');
     collectionsContainer.className = 'sillynpc-editor-field collections-field-container';
     
-    // Lore last. It is a whole panel with three modes and it used to sit second, above
-    // the fields people actually come here to edit.
-    right.append(nameField, aliasField, profileContainer, overridesContainer,
-        collectionsContainer, loreContainer);
+    const narrativeEditor = document.createElement('section');
+    narrativeEditor.className = 'sillynpc-narrative-editor';
+    const narrativeHeading = document.createElement('h3');
+    narrativeHeading.textContent = 'Description & Lore';
+    narrativeEditor.append(narrativeHeading, profileContainer, loreContainer);
+    right.append(nameField, aliasField, narrativeEditor, overridesContainer,
+        collectionsContainer);
     
     main.append(left, vDivider, right);
     editView.append(sticky, main);

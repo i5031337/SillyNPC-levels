@@ -397,6 +397,13 @@ export async function renderProfileView(char, container) {
     const right = document.createElement('div');
     right.className = 'sillynpc-cv-right';
 
+    const narrative = document.createElement('section');
+    narrative.className = 'sillynpc-cv-narrative';
+    const narrativeHeading = document.createElement('h3');
+    narrativeHeading.textContent = 'Description & Lore';
+    narrative.append(narrativeHeading);
+    right.append(narrative);
+
     const aliasNames = (char.aliases || [])
         .filter(a => a?.pattern && !a.isRegex)
         .map(a => a.pattern);
@@ -404,14 +411,16 @@ export async function renderProfileView(char, container) {
         extraBadges: aliasNames.length ? [chip('Also called', aliasNames.join(', '))] : [],
     });
 
+    let emptyDescription = null;
     if (blocks.length) {
-        right.append(...blocks);
+        narrative.append(...blocks);
     } else {
         const empty = document.createElement('p');
         empty.className = 'notes sillynpc-cv-empty';
         empty.textContent = 'Nothing recorded about who they are yet. Fill reads the story '
             + 'and writes it, or open Edit and write it yourself.';
-        right.append(empty);
+        narrative.append(empty);
+        emptyDescription = empty;
     }
 
     // Tracker values: whatever is true now. A character on stage has live numbers and the
@@ -442,7 +451,7 @@ export async function renderProfileView(char, container) {
     // it just read as a block that had come loose from its heading.
     const loreBlock = document.createElement('div');
     loreBlock.className = 'sillynpc-cv-lore';
-    right.append(loreBlock);
+    narrative.append(loreBlock);
 
     body.append(left, right);
     container.append(body);
@@ -450,9 +459,10 @@ export async function renderProfileView(char, container) {
     if (char.lorebook?.world) {
         const text = await readLoreEntry(char);
         if (text) {
+            emptyDescription?.remove();
             const heading = document.createElement('div');
             heading.className = 'sillynpc-cv-label';
-            heading.textContent = `Lore · ${char.lorebook.world}`;
+            heading.textContent = `Linked lorebook · ${char.lorebook.world}`;
 
             const content = document.createElement('div');
             content.className = 'sillynpc-cv-lore-text';

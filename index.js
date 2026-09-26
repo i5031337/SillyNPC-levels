@@ -2,7 +2,9 @@ import { eventSource, event_types } from '../../../events.js';
 import { renderExtensionTemplateAsync } from '../../../extensions.js';
 import { LOG_PREFIX, extensionName, debugLog } from './src/constants.js';
 import { getContext } from '../../../st-context.js';
-import { initSettings, saveSettings, getSettings } from './src/settings.js';
+import { initSettings, getSettings } from './src/settings.js';
+import { getAllCharacters } from './src/character-repository.js';
+import { fillCharacter } from './src/ui-fill.js';
 import { REVIEW_EVENT } from './src/status-review.js';
 import { repairDefaultImages } from './src/default-portraits.js';
 import { migrateImagesToFolders } from './src/character-images.js';
@@ -23,7 +25,7 @@ import {
     createCharacter, addAlias, addCharacterToChat,
     CAST_KEY, setChatCast, getAllCategories, UNCATEGORISED,
 } from './src/characters.js';
-import { tryAutoSyncLorebook, syncLorebookScope, repairEntryIdentities } from './src/lorebook.js';
+import { syncLorebookScope, repairEntryIdentities } from './src/lorebook.js';
 import { initStatusLogic, hasOpenChat, setSwipeBaseAligner } from './src/status-logic.js';
 import { rebaseToSwipe, revertToBase, alignSwipeBaseToNow } from './src/status-snapshots.js';
 import { extractStateFromMessage, resetExtractionState, tidyThreadsOnLoad, forgetExtractionsFrom } from './src/status-extractor.js';
@@ -177,11 +179,29 @@ async function addSettingsPanel() {
 
 /**
  * Wire global click handling for injected avatars: your own portrait opens your sheet,
- * existing characters open their editor, default-image avatars prompt to create a card
- * for the speaker.
+ * existing characters open their editor, and an unknown speaker gets a chat card and Fill.
  */
 function wireAvatarClicks() {
+    const filling = new Set();
+    document.addEventListener('keydown', (e) => {
+        if (e.target?.matches?.('.sillynpc-chat-avatar') && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            e.target.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: e.shiftKey }));
+        }
+    });
     document.addEventListener('click', async (e) => {
+        const aliasButton = e.target.closest?.('.sillynpc-alias-link');
+        if (aliasButton) {
+            e.preventDefault();
+            e.stopPropagation();
+            const name = aliasButton.dataset.charName || '';
+            const choice = await askAboutUnknownSpeaker(name);
+            if (choice?.aliasOf) {
+                addCharacterToChat(choice.aliasOf);
+                if (addAlias(choice.aliasOf, name)) triggerReprocess();
+            }
+            return;
+        }
         const avatar = e.target.closest?.('.sillynpc-chat-avatar');
         if (!avatar) return;
         e.preventDefault();
@@ -200,62 +220,61 @@ function wireAvatarClicks() {
             return;
         }
 
-        // Default-image case: this name has no card. Offer both readings of that - a
-        // person nobody has carded yet, or another name for somebody already carded.
+        // The thumbnail starts Fill. Shift-click opens the alias action; there is also
+        // a visible alias button beside an unknown speaker for touch and keyboard use.
         const speakerName = avatar.dataset.charName || '';
-        const choice = await askAboutUnknownSpeaker(speakerName);
-        if (!choice) return;
-
-        if (choice.aliasOf) {
+        if (e.shiftKey) {
+            const choice = await askAboutUnknownSpeaker(speakerName);
+            if (!choice) return;
+            if (choice.aliasOf) {
             // Someone you are aliasing was spoken here, so they belong here.
-            addCharacterToChat(choice.aliasOf);
-            if (addAlias(choice.aliasOf, speakerName)) triggerReprocess();
+                addCharacterToChat(choice.aliasOf);
+                if (addAlias(choice.aliasOf, speakerName)) triggerReprocess();
+            }
             return;
         }
 
-        const char = createCharacter(speakerName);
-        // Created from this chat, so it is a member of it whatever the chat is scoped to -
-        // otherwise the card you just made would be invisible in the chat that prompted it.
-        addCharacterToChat(char.id);
-        if (speakerName) {
-            await tryAutoSyncLorebook(char);
+        const key = `${getContext()?.getCurrentChatId?.() || ''}:${speakerName.toLowerCase()}`;
+        if (filling.has(key)) return;
+        filling.add(key);
+        try {
+            // A stale thumbnail can survive until the chat redraw. Reuse its card.
+            const char = getAllCharacters().find(c =>
+                String(c.name || '').toLowerCase() === speakerName.toLowerCase())
+                || createCharacter(speakerName);
+            addCharacterToChat(char.id);
+            triggerReprocess();
+            await fillCharacter(char, { preset: 'automatic', onSave: triggerReprocess });
+        } catch (err) {
+            console.error(LOG_PREFIX, 'Could not start character Fill', err);
+            toastr.error(`Fill could not start: ${err?.message || err}`, 'SillyNPC');
+        } finally {
+            filling.delete(key);
         }
-        saveSettings();
-        await openManagePopup({ tab: 'characters', charId: char.id });
     });
 }
 
 /**
- * Asks what an uncarded speaker actually is.
+ * Lets an uncarded speaker be linked to an existing card by name.
  *
  * @param {string} speakerName
  * @returns {Promise<{ aliasOf: string|null }|null>} Null when dismissed.
  */
 async function askAboutUnknownSpeaker(speakerName) {
-    const existing = getSettings().characters.filter(c => c.name);
+    const existing = getAllCharacters().filter(c => c.name);
 
     const wrap = document.createElement('div');
     const question = document.createElement('p');
     question.textContent = speakerName
-        ? `"${speakerName}" has no character card.`
-        : 'This speaker has no character card.';
+        ? `Link "${speakerName}" as an alias of an existing character?`
+        : 'Link this speaker as an alias?';
     wrap.append(question);
 
-    // With nobody to alias to, the old single question is still the right one.
-    if (!existing.length || !speakerName) {
-        return await Popup.show.confirm(question.textContent, 'Create a character card?')
-            ? { aliasOf: null }
-            : null;
-    }
+    if (!existing.length || !speakerName) return null;
 
     const select = document.createElement('select');
     select.className = 'text_pole';
     select.style.width = '100%';
-
-    const createOption = document.createElement('option');
-    createOption.value = '';
-    createOption.textContent = 'Create a new character card';
-    select.append(createOption);
 
     const group = document.createElement('optgroup');
     group.label = `Or record "${speakerName}" as another name for…`;

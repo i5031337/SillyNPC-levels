@@ -1,5 +1,6 @@
 import { getPendingChanges, resolvePendingChanges, getLooseNotes, getRefusedValues } from './status-review.js';
 import { getSettings } from './settings.js';
+import { getAllCharacters } from './character-repository.js';
 import { acceptedByDefault } from './status-diff.js';
 
 /**
@@ -231,7 +232,7 @@ function buildDestination(row) {
     playerOption.selected = row.scope === 'player';
     ownerSelect.appendChild(playerOption);
 
-    const names = new Set((getSettings().characters || []).map(c => c.name).filter(Boolean));
+    const names = new Set(getAllCharacters().map(c => c.name).filter(Boolean));
     if (change.actor) names.add(change.actor);
     for (const name of names) {
         const option = document.createElement('option');

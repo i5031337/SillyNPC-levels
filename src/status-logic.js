@@ -17,6 +17,8 @@ import { getContext } from '../../../../st-context.js';
 import { power_user } from '../../../../power-user.js';
 import { setUserAvatar, getUserAvatar } from '../../../../personas.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from './settings.js';
+import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
+import { getAllCharacters, getLibraryCharacters } from './character-repository.js';
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from './constants.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from './utils.js';
 import { getIgnoredSpeakerLabels, normaliseSpeakerLabel } from './speaker-labels.js';
@@ -113,7 +115,7 @@ const PLAIN_NUMBER = /^\s*-?\d+(?:\.\d+)?\s*$/;
 const NUMBER_OVER_NUMBER = /^\s*(-?\d+(?:\.\d+)?)\s*\/\s*-?\d+(?:\.\d+)?\s*$/;
 
 /**
- * The locked stats' names, by scope - the ones only you change.
+ * The stats the tracker may only initialize while blank, by scope.
  *
  * @returns {{ world: string[], player: string[], characters: string[] }}
  */
@@ -122,7 +124,9 @@ export function lockedStats(trackerSettings = getSettings().statusTracker) {
     return {
         world: names(trackerSettings.globalStats),
         player: names(trackerSettings.playerStats),
-        characters: names(trackerSettings.npcStats),
+        characters: (trackerSettings.npcStats || [])
+            .filter(stat => stat?.name && (stat.locked || stat.persistence === 'innate'))
+            .map(stat => stat.name),
     };
 }
 
@@ -132,7 +136,7 @@ export function lockedStats(trackerSettings = getSettings().statusTracker) {
  * Only for replies from a model - the tracker's reader and the inline block. Your own edits
  * never come through here, so typing "120/150" on the sheet still sets a ceiling.
  *
- * - A locked stat is dropped after it has a value. A blank NPC stat can be
+ * - A locked or innate NPC stat is dropped after it has a value. A blank one can be
  *   initialized once, then only you can change it.
  * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
  *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
@@ -153,6 +157,10 @@ export function sanitizeModelUpdate(update, state, trackerSettings = getSettings
             if (!def) continue;
             const held = stored?.[findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[findMatchingStatKey(cardStats || {}, key) || key];
+            if (npc && !canTrackerSetNpcStat(def, held, cardHeld)) {
+                delete stats[key];
+                continue;
+            }
             if (def.locked) {
                 // A locked NPC stat may be seeded once, but a value already on its
                 // card must also protect it while the character is off stage.
@@ -262,7 +270,9 @@ export function describeNpcStatFields(trackerSettings) {
                 if (max) details.push(`starting maximum ${max}`);
             }
             if (String(stat.defaultValue ?? '').trim()) details.push(`default ${stat.defaultValue}`);
-            if (stat.locked) details.push('fill only while blank, then keep fixed');
+            if (stat.locked || stat.persistence === 'innate') {
+                details.push('fill only while blank, then keep fixed');
+            }
             return `- ${stat.name}: ${details.join('; ')}`;
         })
         .join('\n');
@@ -853,7 +863,7 @@ function snapshotProfiles() {
         const name = String(card?.name ?? '').trim();
         if (name) out[name.toLowerCase()] = { ...(card.profile || {}) };
     };
-    for (const card of getSettings().characters || []) record(card);
+    for (const card of getAllCharacters()) record(card);
     try { record(getPlayerCard()); } catch { /* no persona yet */ }
     return out;
 }
@@ -881,7 +891,7 @@ export function restoreProfiles(profiles) {
             restored += 1;
         }
     };
-    for (const card of getSettings().characters || []) put(card);
+    for (const card of getAllCharacters()) put(card);
     try { put(getPlayerCard()); } catch { /* no persona yet */ }
 
     if (restored) {
@@ -1831,7 +1841,7 @@ export function getStatusExample() {
     }
 
     const character = { name: first(state?.characters) || '<someone present>' };
-    const npcStat = first(settings.npcStats);
+    const npcStat = first(settings.npcStats.filter(stat => stat.persistence !== 'innate'));
     if (npcStat) character.stats = { [npcStat]: '<new value>' };
 
     return promptText('storyExample', { update: JSON.stringify({ player, characters: [character] }) });
@@ -2378,7 +2388,7 @@ export function findMatchingStatKey(existingStats, searchKey) {
  * Merges an update into the current state.
  *
  * @param {object} update
- * @param {{ dryRun?: boolean, label?: string, verbatim?: boolean }} [options]
+ * @param {{ dryRun?: boolean, label?: string, verbatim?: boolean, allowInnateChanges?: boolean }} [options]
  *   dryRun returns the resulting state without saving, syncing or emitting, so callers
  *   can diff what an update *would* do before letting it happen.
  *   verbatim says the values are whole values rather than readings of part of one, which
@@ -2390,7 +2400,7 @@ export function applyUpdate(update, options = {}) {
     // list in it is a mistake rather than an instruction to empty anything. The history
     // scan, which reads the whole story to produce a corrected list, passes it.
     const { dryRun = false, label = 'AI update', admitCharacters = false, allowReplace = false,
-        partOfMessage = false, verbatim = false } = options;
+        partOfMessage = false, verbatim = false, allowInnateChanges = false } = options;
     /* Refused here rather than at the end, because this function writes to two places and
        only one of them was guarded. Character cards live in settings, not in the cloned
        state, so the card writes below - and their saveSettings - happen before
@@ -2523,7 +2533,7 @@ export function applyUpdate(update, options = {}) {
                 .filter(c => c && typeof c.name === 'string')
                 .map(c => [c.name.toLowerCase(), c])
 );
-        const settingsChars = getSettings().characters;
+        const settingsChars = getAllCharacters();
         const settingsCharMap = new Map();
         const settingsCharRegexList = [];
         
@@ -2575,7 +2585,8 @@ export function applyUpdate(update, options = {}) {
                 offstageSkipped.push(updChar.name);
                 return;
             }
-            const detached = updateCardOffstage(matchedChar, updChar, state, settings, { dryRun, allowReplace });
+            const detached = updateCardOffstage(matchedChar, updChar, state, settings,
+                { dryRun, allowReplace, allowInnateChanges });
             // A dry run works on a throwaway clone, and the review panel can only show a
             // row for something the diff can see. Putting them in the clone gives the
             // panel its rows; the real apply above went to the card, so the scene itself
@@ -2619,6 +2630,10 @@ export function applyUpdate(update, options = {}) {
 
             for (const [canonicalKey, group] of charGroups) {
                 const statDef = settings.npcStats.find(s => s.name.toLowerCase() === canonicalKey.toLowerCase());
+                const cardStats = matchedChar?.statusOverrides || {};
+                if (!allowInnateChanges && !canTrackerSetNpcStat(statDef,
+                    charData.stats[canonicalKey],
+                    cardStats[findMatchingStatKey(cardStats, canonicalKey) || canonicalKey])) continue;
                 const merged = combineStatValue(charData.stats[canonicalKey], group, statDef, { verbatim });
                 charData.stats[canonicalKey] = constrainToDefinition(statDef, merged, charData.stats[canonicalKey]);
 
@@ -2697,7 +2712,7 @@ export function applyUpdate(update, options = {}) {
 export function findCardForName(name) {
     if (!name) return null;
     const lower = String(name).trim().toLowerCase();
-    const cards = getSettings().characters || [];
+    const cards = getAllCharacters();
 
     const byName = cards.find(c => (c.name || '').toLowerCase() === lower);
     if (byName) return byName;
@@ -3024,7 +3039,8 @@ export function reconcileScenePresence(names, messageId, options = {}) {
  * @param {object} settings Tracker settings.
  * @param {{dryRun?: boolean}} options
  */
-function updateCardOffstage(card, updChar, state, settings, { dryRun = false, allowReplace = false } = {}) {
+function updateCardOffstage(card, updChar, state, settings,
+    { dryRun = false, allowReplace = false, allowInnateChanges = false } = {}) {
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
@@ -3040,6 +3056,9 @@ function updateCardOffstage(card, updChar, state, settings, { dryRun = false, al
     for (const [key, value] of Object.entries(sourceStats)) {
         const matched = findMatchingStatKey(actor.stats, key) || key;
         if (!validKeys.has(matched.toLowerCase())) continue;
+        const cardStats = card.statusOverrides || {};
+        if (!allowInnateChanges && !canTrackerSetNpcStat(defOf(matched),
+            actor.stats[matched], cardStats[findMatchingStatKey(cardStats, matched) || matched])) continue;
         const merged = mergeStatValue(actor.stats[matched], String(value));
         actor.stats[matched] = constrainToDefinition(defOf(matched), merged, actor.stats[matched]);
     }
@@ -3072,7 +3091,7 @@ function buildCharacterState(charName, state, trackerSettings) {
     if (trackerSettings.sceneBindingStat) {
         charData.boundTo = state.global[trackerSettings.sceneBindingStat] ?? '';
     }
-    const matchedChar = (getSettings().characters || [])
+    const matchedChar = getAllCharacters()
         .find(c => (c.name || '').toLowerCase() === charName.toLowerCase());
 
     (trackerSettings.npcStats || []).forEach(stat => {
@@ -3113,7 +3132,7 @@ export function registerActiveCharacter(charName) {
         charData.boundTo = state.global[trackerSettings.sceneBindingStat] !== undefined ? state.global[trackerSettings.sceneBindingStat] : '';
     }
     
-    const settingsChars = settings.characters;
+    const settingsChars = getAllCharacters();
     const matchedChar = settingsChars.find(c => c.name.toLowerCase() === charName.toLowerCase());
 
     trackerSettings.npcStats.forEach(s => {
@@ -3623,7 +3642,7 @@ export function renameCollectionId(oldId, newId) {
     // omissions: a card is what a character walks back into a scene carrying, so a rename
     // left everyone off stage to return empty-handed - and the items were still in the
     // settings file under the old key, invisible and unreachable.
-    for (const card of settings.characters || []) {
+    for (const card of getLibraryCharacters()) {
         const cols = card?.statusCollections;
         if (cols && cols[oldId] !== undefined) {
             moved += (cols[oldId] || []).length;
@@ -3772,7 +3791,7 @@ export function renameStat(listKey, oldName, newName) {
             if (moveKey(actor?.stats, oldName, newName)) values += 1;
         }
         // Character cards - what someone off stage walks back in carrying.
-        for (const card of settings.characters || []) {
+        for (const card of getLibraryCharacters()) {
             if (moveKey(card?.statusOverrides, oldName, newName)) values += 1;
         }
         if (tracker.sceneBindingStat === oldName) {
@@ -3902,7 +3921,7 @@ export function renameCollectionField(collectionId, oldName, newName) {
     }
 
     // Character cards - what a character walks back into a scene carrying.
-    for (const card of settings.characters || []) {
+    for (const card of getLibraryCharacters()) {
         const cols = card?.statusCollections;
         if (cols?.[collectionId]) cols[collectionId] = renameInList(cols[collectionId]);
     }
@@ -4069,6 +4088,7 @@ export function migrateToActiveSystem() {
     saveSystemPreset(name,
         existing?.metadata?.description ?? '', existing?.metadata?.author ?? 'User');
     settings.activeSystem = name;
+    rememberChatSystem();
     saveSettings();
     debugLog(`Configuration adopted by system: ${name}`);
     return true;
@@ -4195,6 +4215,7 @@ export function applySystemPreset(profile) {
     for (const listName of ['globalStats', 'npcStats', 'playerStats']) {
         normaliseStatDefs(st[listName]);
     }
+    normaliseNpcPersistence(st.npcStats);
 
     // The theme was called displayStyle and lived in config; it is menuStyle at the root
     // now, and carried like anything else. Old profiles still name the old one.

@@ -469,6 +469,16 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
                     <option value="text" ${!isNumericStat(stat) ? 'selected' : ''}>Text</option>
                     <option value="number" ${isNumericStat(stat) ? 'selected' : ''}>Number</option>
                 </select>
+                ${settingsKey === 'npcStats' ? `
+                <select class="text_pole stat-persistence"
+                        title="Innate values travel with the character and can only be initialized by the tracker while blank. Variable values can change and start from the destination System's default."
+                        aria-label="${escapeHtml(stat.name)} persistence"
+                        style="width:80px; font-size:var(--sillynpc-text-md); height:24px;">
+                    <option value="variable" ${stat.persistence !== 'innate' ? 'selected' : ''}>Variable</option>
+                    <option value="innate" ${stat.persistence === 'innate' ? 'selected' : ''}>Innate</option>
+                </select>
+                ${stat.persistenceReview ? '<small class="sillynpc-field-note">Choose how this existing field transfers; its stored values are preserved.</small>' : ''}
+                ` : ''}
                 ${settingsKey === 'playerStats' ? `
                 <label class="sillynpc-check-group" style="margin-left:10px;"
                        title="Draw this on the floating HUD, as a meter with its name and value.">
@@ -601,6 +611,12 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
             onRefresh();
         });
         row.querySelector('.stat-visible').addEventListener('change', (e) => { stat.visible = e.target.checked; saveSettings(); onRefresh(); });
+        row.querySelector('.stat-persistence')?.addEventListener('change', (e) => {
+            stat.persistence = e.target.value;
+            delete stat.persistenceReview;
+            saveSettings();
+            onRefresh();
+        });
         row.querySelector('.stat-locked').addEventListener('change', (e) => { stat.locked = e.target.checked; saveSettings(); onRefresh(); });
         // A shortcut for writing Format, not a second mechanism: one place decides what
         // a field is labelled, and it is the box right there in the row.
@@ -654,6 +670,7 @@ function buildStatsEditor(label, settingsKey, onRefresh) {
     addBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Add New Field`;
     addBtn.addEventListener('click', () => {
         const newStat = { name: 'New Stat', defaultValue: '', format: '{{value}}', visible: true, type: 'text', min: '' };
+        if (settingsKey === 'npcStats') newStat.persistence = 'variable';
         newStat.maxStatValue = '';
         stats.push(newStat);
         saveSettings();

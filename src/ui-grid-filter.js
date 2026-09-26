@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js';
+import { getLibraryCharacters } from './character-repository.js';
 
 /**
  * Finding a character among many.
@@ -38,7 +38,7 @@ export function cardHaystack(char) {
  */
 export function applyGridFilter(root) {
     const needle = gridFilter.trim().toLowerCase();
-    const byId = new Map((getSettings().characters || []).map(c => [c.id, c]));
+    const byId = new Map(getLibraryCharacters().map(c => [c.id, c]));
     let shown = 0;
     let heading = null;
 
@@ -97,7 +97,7 @@ export function buildGridFilterRow(root) {
 
     const apply = () => {
         const shown = applyGridFilter(root);
-        const total = (getSettings().characters || []).length;
+        const total = getLibraryCharacters().length;
         count.textContent = gridFilter.trim()
             ? (shown ? `${shown} of ${total}` : 'Nobody by that name')
             : '';

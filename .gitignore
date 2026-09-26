@@ -3,6 +3,10 @@ tests/
 !tests/
 tests/*
 !tests/progression.mjs
+!tests/stat-persistence.mjs
+!tests/chat-npc-sources.mjs
+!tests/character-scope.mjs
+!tests/fill-preset.mjs
 
 # Scratch / editor debris
 temp_*.txt

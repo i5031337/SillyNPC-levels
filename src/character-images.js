@@ -23,6 +23,7 @@
 import { getRequestHeaders } from '../../../../../script.js';
 import { debugLog } from './constants.js';
 import { getSettings, saveSettings } from './settings.js';
+import { getLibraryCharacters } from './character-repository.js';
 
 /** SillyTavern's media type flags for /api/images/list: pictures and videos. */
 const IMAGES_AND_VIDEOS = 0b011;
@@ -368,7 +369,7 @@ export async function moveFolder(owner, name, options = {}) {
     const target = (await folderOnDisk(wanted)) || wanted;
     if (target !== wanted) result.note = capitalsNote(target);
 
-    const others = (options.others ?? getSettings().characters ?? []).filter(o => o && o !== owner);
+    const others = (options.others ?? getLibraryCharacters()).filter(o => o && o !== owner);
     if (others.some(o => same(folderFor(o), from))) {
         return { ...result, refused: `"${from}" is also used by someone else, so it stays where it is` };
     }
@@ -482,7 +483,7 @@ export async function migrateImagesToFolders() {
     let characters = 0;
     let failed = '';
 
-    for (const char of settings.characters || []) {
+    for (const char of getLibraryCharacters()) {
         const mine = (char.images || []).filter(p => p.startsWith(from) && !held.has(p));
         if (mine.length === 0) continue;
 

@@ -666,6 +666,20 @@ export function renderGenerationSettingsView(view) {
     view.append(buildLastLoreConnectionNote());
     view.append(buildPromptBudget(promptById('lore')));
     view.append(buildPromptEditor(promptById('lore')));
+
+    const autoFillTitle = document.createElement('h3');
+    autoFillTitle.className = 'sillynpc-section-title';
+    autoFillTitle.textContent = 'Unknown Speaker Fill';
+    view.append(autoFillTitle);
+    const autoFillNote = document.createElement('p');
+    autoFillNote.className = 'notes';
+    autoFillNote.textContent = 'Clicking an unknown speaker fills missing lore, profile and tracker fields, then belongings if empty. Completed fields are kept if you retry.';
+    view.append(autoFillNote);
+    view.append(buildSettingToggle({
+        key: 'autoFillPortrait',
+        label: 'Draw Portrait Automatically',
+        help: 'Include portrait generation in that automatic Fill. This can use a separately billed image API.',
+    }));
     
     const imgTitle = document.createElement('h3');
     imgTitle.className = 'sillynpc-section-title';
@@ -883,7 +897,7 @@ export function renderGenerationSettingsView(view) {
             const ok = await Popup.show.confirm(
                 'Remove unused portraits',
                 `${files.length} of ${scanned} file${scanned === 1 ? '' : 's'} in `
-                + `user/images/${folder} are not used by any character, persona or fallback `
+                + `user/images/${folder} are not used by any character in any chat, persona or fallback `
                 + `portrait:\n\n${sample}${more}\n\nDelete them? This cannot be undone.`);
             if (!ok) return;
 
