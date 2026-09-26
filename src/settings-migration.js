@@ -47,19 +47,6 @@ function settingsPredateHudFlagSplit(settings) {
 }
 
 /**
- * Fills in missing keys and runs every schema migration.
- *
- * This used to live inside initSettings() behind an "already on the current
- * version" early return, so settings arriving from an import were never
- * repaired: an older export whose characters lack an aliases array would then
- * throw in chat.js (char.aliases.filter) and kill all avatar injection.
- *
- * It is now a standalone pass, run unconditionally on startup and again after
- * every import.
- *
- * @param {object} settings The live extension_settings.sillynpc object.
- */
-/**
  * Brings a list of stat definitions up to the current shape.
  *
  * Type, and the lower bound, arrived when meters were introduced. hint and maxLength
@@ -90,11 +77,7 @@ export function normaliseStatDefs(list) {
     }
 }
 
-export function normalizeSettings(settings) {
-    if (!settings || typeof settings !== 'object') return;
-    const currentVersion = defaultSettings.version;
-
-    normaliseBaseSettings(settings);
+function normalizeCharactersAndCategories(settings) {
     debugLog('Processing characters');
     if (!Array.isArray(settings.characters)) settings.characters = [];
     for (const char of settings.characters) {
@@ -172,6 +155,9 @@ export function normalizeSettings(settings) {
         }
     }
 
+}
+
+function normalizeDefaultImagesAndPreferences(settings) {
     // The fallback portrait was one picture; it is a pool now. Migrated rather than
     // dropped, and checked first so running twice does not add it again.
     //
@@ -202,6 +188,9 @@ export function normalizeSettings(settings) {
     // set.
     if (settings.statusTracker?.historyDepth === 10) settings.statusTracker.historyDepth = 25;
 
+}
+
+function migrateLegacyTrackerLayout(settings) {
     debugLog('Status tracker migration');
 
     // hudMeterStyle became hudLayout: the meter's shape and the frame's shape turned out
@@ -239,6 +228,9 @@ export function normalizeSettings(settings) {
         saveSettings();
     }
 
+}
+
+function normalizeTrackerSchema(settings) {
     if (!settings.statusTracker) {
         settings.statusTracker = structuredClone(defaultSettings.statusTracker);
     } else {
@@ -346,5 +338,21 @@ export function normalizeSettings(settings) {
         }
     }
 
+}
+
+/**
+ * Repairs settings on startup and after every import, even for current versions.
+ * Imported character records can be missing fields that chat rendering requires.
+ * @param {object} settings The live extension settings object.
+ */
+export function normalizeSettings(settings) {
+    if (!settings || typeof settings !== 'object') return;
+    const currentVersion = defaultSettings.version;
+
+    normaliseBaseSettings(settings);
+    normalizeCharactersAndCategories(settings);
+    normalizeDefaultImagesAndPreferences(settings);
+    migrateLegacyTrackerLayout(settings);
+    normalizeTrackerSchema(settings);
     migratePresetsAndStores(settings, currentVersion);
 }

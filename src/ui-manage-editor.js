@@ -93,15 +93,7 @@ function buildViewTabs(char) {
     return bar;
 }
 
-export function renderEditor() {
-    const char = findCharacter(manageState.editingCharId);
-    if (!char) { manageState.editingCharId = null; renderManageView(); return; }
-
-    const editView = manageState.manageRoot.querySelector('#sillynpc-editor-view');
-    if (!editView) return;
-    
-    editView.replaceChildren();
-
+function buildEditorHeader(char) {
     const header = document.createElement('div');
     header.className = 'sillynpc-editor-header';
     
@@ -150,35 +142,10 @@ export function renderEditor() {
     sticky.className = 'sillynpc-editor-sticky';
     sticky.append(header, buildViewTabs(char));
 
-    /* A tab that is no longer offered must not stay open. Turning the addon off leaves
-       manageState.charView reading 'pictures' until the next character is opened, and the body would
-       then draw nothing under a bar with no matching tab - which looks like the page
-       failed rather than like a feature going away. */
-    if (manageState.charView === 'pictures' && taggedFields().length === 0) manageState.charView = 'profile';
+    return { sticky, title };
+}
 
-    // Profile is the whole body when it is showing: the form below is built only for the
-    // Edit tab, so nothing hidden is being assembled and wired on every draw.
-    if (manageState.charView === 'profile') {
-        const view = document.createElement('div');
-        editView.append(sticky, view);
-        renderProfileView(char, view)
-            .catch(err => console.error(LOG_PREFIX, 'renderProfileView failed', err));
-        return;
-    }
-
-    // Same reasoning: its own body, so the tag grid gets the popup's full width rather
-    // than sharing a column with the aliases, the overrides and the collections.
-    if (manageState.charView === 'pictures') {
-        const view = document.createElement('div');
-        view.className = 'sillynpc-charview-body';
-        editView.append(sticky, view);
-        renderPictureTagsSection(char, view);
-        return;
-    }
-
-    const main = document.createElement('div');
-    main.className = 'sillynpc-editor-main';
-    
+function buildEditorLeft(char) {
     // Left Column
     const left = document.createElement('div');
     left.className = 'sillynpc-editor-left';
@@ -225,13 +192,10 @@ export function renderEditor() {
     
     left.append(preview, imgBtns, fitField, colorField, catContainer);
     
-    const vDivider = document.createElement('div');
-    vDivider.className = 'sillynpc-editor-vdivider';
-    
-    // Right Column
-    const right = document.createElement('div');
-    right.className = 'sillynpc-editor-right';
-    
+    return { left, catContainer };
+}
+
+function buildEditorNameField(char, title) {
     const nameField = document.createElement('div');
     nameField.className = 'sillynpc-editor-field';
     nameField.innerHTML = '<label>Name</label>';
@@ -291,6 +255,24 @@ export function renderEditor() {
     });
     nameField.appendChild(nameInput);
     
+    return nameField;
+}
+
+function renderEditForm(char, editView, sticky, title) {
+    const main = document.createElement('div');
+    main.className = 'sillynpc-editor-main';
+
+    const { left, catContainer } = buildEditorLeft(char);
+
+    const vDivider = document.createElement('div');
+    vDivider.className = 'sillynpc-editor-vdivider';
+
+    // Right Column
+    const right = document.createElement('div');
+    right.className = 'sillynpc-editor-right';
+
+    const nameField = buildEditorNameField(char, title);
+
     const profileContainer = document.createElement('div');
     profileContainer.className = 'sillynpc-editor-field profile-field-container';
 
@@ -347,6 +329,37 @@ export function renderEditor() {
     renderLorebookSection(char, loreContainer, { onChange: renderEditor });
     renderOverridesSection(char, overridesContainer);
     renderCollectionsSection(char, collectionsContainer);
+}
+
+export function renderEditor() {
+    const char = findCharacter(manageState.editingCharId);
+    if (!char) { manageState.editingCharId = null; renderManageView(); return; }
+
+    const editView = manageState.manageRoot.querySelector('#sillynpc-editor-view');
+    if (!editView) return;
+    editView.replaceChildren();
+
+    // Resolve a removed Pictures tab before building the tab bar.
+    if (manageState.charView === 'pictures' && taggedFields().length === 0) manageState.charView = 'profile';
+    const { sticky, title } = buildEditorHeader(char);
+
+    if (manageState.charView === 'profile') {
+        const view = document.createElement('div');
+        editView.append(sticky, view);
+        renderProfileView(char, view)
+            .catch(err => console.error(LOG_PREFIX, 'renderProfileView failed', err));
+        return;
+    }
+
+    if (manageState.charView === 'pictures') {
+        const view = document.createElement('div');
+        view.className = 'sillynpc-charview-body';
+        editView.append(sticky, view);
+        renderPictureTagsSection(char, view);
+        return;
+    }
+
+    renderEditForm(char, editView, sticky, title);
 }
 
 /**

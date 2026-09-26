@@ -23,6 +23,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
+| `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
+| `tests/status-dependencies.mjs` | Shared status dependency provider contract test. |
+| `tests/ui-maintenance.mjs` | Lore generation and character editor routing tests. |
 
 ## Runtime and data
 
@@ -240,9 +243,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 
 ## Maintenance notes
 
-`src/status-logic.js` links state modules through a shared `bind(deps)` registry. Its
-implicit dependencies are a remaining refactor target; changing them requires care
-with module initialization and shared state. `normalizeSettings` in
-`src/settings-migration.js`, `generateLoreEntry` in `src/ui-api-lore.js`, and
-`renderEditor` in `src/ui-manage-editor.js` are also long functions that could be
-split after behavior-focused tests are in place.
+`src/status-logic.js` binds the state providers by name, then freezes the shared
+registry. `tests/status-dependencies.mjs` checks that each dependency has one
+provider. The registry still resolves cross-module calls at runtime, so changes to
+initialization and shared state need care. `normalizeSettings` now sequences focused
+migration passes, `generateLoreEntry` separates dialog construction from its async
+actions, and `renderEditor` routes among smaller view builders. Their key behavior
+paths have regression tests under `tests/`.

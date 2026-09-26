@@ -5,12 +5,7 @@ import { getSettings } from './settings.js';
 import { LOG_PREFIX } from './constants.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from './api.js';
 
-export async function generateLoreEntry(char, { onSave, template, facts, defaultWorld } = {}) {
-    if (!char.name) {
-        toastr.warning('Please give the character a name first.', 'SillyNPC');
-        return;
-    }
-
+function buildLoreDialog(char, defaultWorld) {
     const container = document.createElement('div');
     container.className = 'sillynpc-gen-popup';
     container.style.display = 'flex';
@@ -162,6 +157,23 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
 
     footer.append(genBtn, saveCloseBtn);
     container.append(footer);
+
+    return {
+        container, setupRow, worldSelect, nameInput, createBtn, statusBox,
+        resultsContainer, genBtn, saveCloseBtn, tagsInput, descText, resultWarning,
+    };
+}
+
+export async function generateLoreEntry(char, { onSave, template, facts, defaultWorld } = {}) {
+    if (!char.name) {
+        toastr.warning('Please give the character a name first.', 'SillyNPC');
+        return;
+    }
+
+    const {
+        container, setupRow, worldSelect, nameInput, createBtn, statusBox,
+        resultsContainer, genBtn, saveCloseBtn, tagsInput, descText, resultWarning,
+    } = buildLoreDialog(char, defaultWorld);
 
     /* ?? rather than ||: an entry's uid can be 0 - the first entry of a lorebook - and
        0 read as "no entry" made Generate and Regen do nothing at all for it. */

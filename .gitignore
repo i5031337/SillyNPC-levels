@@ -8,6 +8,9 @@ tests/*
 !tests/character-scope.mjs
 !tests/fill-preset.mjs
 !tests/status-apply-update.mjs
+!tests/settings-migration.mjs
+!tests/status-dependencies.mjs
+!tests/ui-maintenance.mjs
 
 # Scratch / editor debris
 temp_*.txt

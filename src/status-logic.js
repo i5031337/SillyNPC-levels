@@ -1,38 +1,43 @@
 // Public status API. Implementation is grouped by responsibility in status-*.js.
-import { bind as bind0 } from './status-stat-values.js';
-import { bind as bind1 } from './status-persona-state.js';
-import { bind as bind2 } from './status-chat-session.js';
-import { bind as bind3 } from './status-state-storage.js';
-import { bind as bind4 } from './status-status-summary.js';
-import { bind as bind5 } from './status-scene-prompt.js';
-import { bind as bind6 } from './status-update-parser.js';
-import { bind as bind7 } from './status-update-constraints.js';
-import { bind as bind8 } from './status-apply-update.js';
-import { bind as bind9 } from './status-cast-decisions.js';
-import { bind as bind10 } from './status-scene-presence.js';
-import { bind as bind11 } from './status-collection-updates.js';
-import { bind as bind12 } from './status-collection-schema.js';
-import { bind as bind13 } from './status-stat-schema.js';
-import { bind as bind14 } from './status-system-presets.js';
-import { bind as bind15 } from './status-checkpoints.js';
+import { bind as bind_stat_values } from './status-stat-values.js';
+import { bind as bind_persona_state } from './status-persona-state.js';
+import { bind as bind_chat_session } from './status-chat-session.js';
+import { bind as bind_state_storage } from './status-state-storage.js';
+import { bind as bind_status_summary } from './status-status-summary.js';
+import { bind as bind_scene_prompt } from './status-scene-prompt.js';
+import { bind as bind_update_parser } from './status-update-parser.js';
+import { bind as bind_update_constraints } from './status-update-constraints.js';
+import { bind as bind_apply_update } from './status-apply-update.js';
+import { bind as bind_cast_decisions } from './status-cast-decisions.js';
+import { bind as bind_scene_presence } from './status-scene-presence.js';
+import { bind as bind_collection_updates } from './status-collection-updates.js';
+import { bind as bind_collection_schema } from './status-collection-schema.js';
+import { bind as bind_stat_schema } from './status-stat-schema.js';
+import { bind as bind_system_presets } from './status-system-presets.js';
+import { bind as bind_checkpoints } from './status-checkpoints.js';
 
+// Bind every provider before callers use the shared API. Each provider registers
+// named getters, so cross-module calls resolve after initialization completes.
 const deps = {};
-bind0(deps);
-bind1(deps);
-bind2(deps);
-bind3(deps);
-bind4(deps);
-bind5(deps);
-bind6(deps);
-bind7(deps);
-bind8(deps);
-bind9(deps);
-bind10(deps);
-bind11(deps);
-bind12(deps);
-bind13(deps);
-bind14(deps);
-bind15(deps);
+for (const bind of [
+    bind_stat_values,
+    bind_persona_state,
+    bind_chat_session,
+    bind_state_storage,
+    bind_status_summary,
+    bind_scene_prompt,
+    bind_update_parser,
+    bind_update_constraints,
+    bind_apply_update,
+    bind_cast_decisions,
+    bind_scene_presence,
+    bind_collection_updates,
+    bind_collection_schema,
+    bind_stat_schema,
+    bind_system_presets,
+    bind_checkpoints,
+]) bind(deps);
+Object.freeze(deps);
 
 export const mergeStatValue = deps.mergeStatValue;
 export const resolveMaxValue = deps.resolveMaxValue;
