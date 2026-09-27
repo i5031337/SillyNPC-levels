@@ -193,9 +193,11 @@ export async function generateLoreContent(char, world, uid, options = {}) {
 
     if (!options.template && !char.isPlayer) {
         const existing = mergeLoreProfile(existingLore, char.profile, char.name).profile;
-        prompt += '\n\nThe same response must also contain these profile fields at the start of Content, '
-            + 'one labelled line per field. Keep established values exactly as given; fill only blanks '
-            + 'that the sources support. Never invent a value. After these lines, write the usual lore sections.\n'
+        prompt += '\n\nThe Content entry must contain all named character details and additional lore '
+            + 'in one response. Write one labelled line per named detail before the lore sections. '
+            + 'Keep established values exactly as given; fill only blanks that the sources support. '
+            + 'Never invent a value. This format replaces any older instruction above that omits '
+            + 'these fields.\n'
             + PROFILE_FIELDS.map(field => `${field.label}: ${existing[field.id] || '(fill if known)'}`)
                 .join('\n');
         if (options.preserveLore && existingLore.trim()) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { joinLoreProfile, mergeLoreProfile, splitLoreProfile } from '../src/lore-profile.js';
+import { defaultSettings } from '../src/settings-defaults.js';
 
 test('older lore and card fields are kept in one formatted entry', () => {
     const old = '### Mira\nRole: A watchmaker.\nHistory: She moved here last spring.';
@@ -22,6 +23,16 @@ test('named fields round trip without duplicating the lore body', () => {
     assert.equal(mergeLoreProfile(text, parsed.profile, 'Mira').content, text);
     assert.match(splitLoreProfile('### A separate heading\nRole: A watchmaker.', 'Mira').lore,
         /^### A separate heading/);
+});
+
+test('the default Fill lore prompt requests one ordered Content entry', () => {
+    const prompt = defaultSettings.generationPrompt;
+    const labels = ['Content:', 'Age: ...', 'Appearance: ...', 'Personality: ...',
+        'Warmth & attachment: ...', 'Speech & dialogue style: ...', 'Role: ...'];
+    const positions = labels.map(label => prompt.indexOf(label));
+    assert.ok(positions.every(position => position >= 0));
+    assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+    assert.doesNotMatch(prompt, /Do NOT describe their age/i);
 });
 
 test('Fill requests lore and missing profile fields together', async () => {

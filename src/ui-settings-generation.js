@@ -86,7 +86,7 @@ function renderUnknownSpeakerSettings(view) {
     view.append(autoFillTitle);
     const autoFillNote = document.createElement('p');
     autoFillNote.className = 'notes';
-    autoFillNote.textContent = 'Clicking an unknown speaker fills missing lore, profile and tracker fields, then belongings if empty. Completed fields are kept if you retry.';
+    autoFillNote.textContent = 'Clicking an unknown speaker writes missing description and lore fields together, then fills tracker fields and belongings if empty. Completed fields are kept if you retry.';
     view.append(autoFillNote);
     view.append(buildSettingToggle({
         key: 'autoFillPortrait',

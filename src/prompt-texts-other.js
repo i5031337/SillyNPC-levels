@@ -197,9 +197,9 @@ export const otherPromptTexts = [
     },
 
     {
-        id: 'profileSystem', group: 'Fill', label: 'Profile: system prompt',
-        where: 'The system prompt when Fill writes a character\'s profile.',
-        when: 'When you press Fill and a profile field is to be filled.',
+        id: 'profileSystem', group: 'Fill', label: 'One detail: system prompt',
+        where: 'The system prompt for regenerating one named character detail.',
+        when: 'When you deliberately regenerate a named detail.',
         placeholders: {},
         text: lines('You are filling in the profile of one character in a roleplaying session.',
             'Reply with a JSON object and nothing else. No prose, no markdown, no code fences.',
@@ -215,9 +215,9 @@ export const otherPromptTexts = [
             '- Third person. No preamble.'),
     },
     {
-        id: 'profileRequest', group: 'Fill', label: 'Profile: request',
-        where: 'The request when Fill writes a character\'s profile.',
-        when: 'When you press Fill and a profile field is to be filled.',
+        id: 'profileRequest', group: 'Fill', label: 'One detail: request',
+        where: 'The request for regenerating one named character detail.',
+        when: 'When you deliberately regenerate a named detail.',
         placeholders: {
             name: 'The character being filled in.',
             persona: 'Your persona\'s name, when it is somebody else.',
