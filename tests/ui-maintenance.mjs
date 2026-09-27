@@ -19,7 +19,7 @@ class Element {
 }
 
 function load(file, names, values, result) {
-    const source = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8')
+    const source = readFileSync(new URL(`../src/ui/${file}`, import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replaceAll('export async function ', 'async function ')
         .replaceAll('export function ', 'function ');
@@ -40,7 +40,7 @@ test('linked lore entry with UID zero can generate and save', async () => {
         completeCancelled() { this.closed = true; }
     }
     const saves = [];
-    const generateLoreEntry = load('ui-api-lore.js', [
+    const generateLoreEntry = load('api/ui-api-lore.js', [
         'document', 'Popup', 'POPUP_TYPE', 'world_names', 'getChatLorebookName',
         'getSettings', 'LOG_PREFIX', 'createLoreEntry', 'generateLoreContent',
         'saveLoreContent', 'toastr',
@@ -73,18 +73,36 @@ test('editor resolves a removed Pictures tab before building its tab bar', async
         manageRoot: { querySelector: () => editorView },
     };
     let profileRendered = false;
-    const renderEditor = load('ui-manage-editor.js', [
-        'document', 'manageState', 'findCharacter', 'renderManageView',
+    const renderEditor = load('manage/ui-manage-editor.js', [
+        'document', 'manageState', 'findCharacter',
         'taggedFields', 'renderProfileView', 'LOG_PREFIX',
     ], [
-        document, manageState, () => char, () => {}, () => [],
+        document, manageState, () => char, () => [],
         async () => { profileRendered = true; }, '[test]',
     ], 'renderEditor');
-    renderEditor();
+    let showGrid = 0;
+    renderEditor(() => showGrid++);
     await Promise.resolve();
     assert.equal(manageState.charView, 'profile');
     assert.equal(profileRendered, true);
     const sticky = editorView.children[0];
     const tabBar = sticky.children[1];
     assert.equal(tabBar.children.some(tab => tab.dataset.view === 'pictures'), false);
+    await sticky.children[0].children[0].click();
+    assert.equal(manageState.editingCharId, null);
+    assert.equal(showGrid, 1);
+});
+
+test('new character card opens its editor through the supplied callback', async () => {
+    const document = { createElement: tag => new Element(tag) };
+    const addedToChat = [];
+    const buildAddCard = load('manage/ui-manage-cards.js', [
+        'document', 'createCharacter', 'addCharacterToChat',
+    ], [
+        document, () => ({ id: 'new-character' }), id => addedToChat.push(id),
+    ], 'buildAddCard');
+    const opened = [];
+    await buildAddCard(id => opened.push(id)).click();
+    assert.deepEqual(addedToChat, ['new-character']);
+    assert.deepEqual(opened, ['new-character']);
 });

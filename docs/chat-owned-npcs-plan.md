@@ -26,17 +26,17 @@ merged into this development branch.
 ## Current code and constraints
 
 - Cards currently live in `getSettings().characters` and are included in Saved System
-  world snapshots (`src/characters.js`, `src/status-logic.js` `captureWorld` and
+  world snapshots (`src/characters/characters.js`, `src/tracker/status-logic.js` `captureWorld` and
   `restoreWorld`). This is world ownership, not chat ownership.
 - A chat already owns tracker state and cast selection in chat metadata
-  (`src/status-logic.js` and `src/characters.js`). Chats are tagged with their Saved
+  (`src/tracker/status-logic.js` and `src/characters/characters.js`). Chats are tagged with their Saved
   System under `sillynpc_system`; persona changes already have their own handling.
-- `src/character-transfer.js` can serialize an array of cards, and the character grid
-  already offers **Export selected**. `src/ui-system-manager.js` exports an entire
+- `src/characters/character-transfer.js` can serialize an array of cards, and the character grid
+  already offers **Export selected**. `src/ui/system/ui-system-manager.js` exports an entire
   System. Neither command gathers chat-owned NPCs across every chat in a System.
 - `index.js` `wireAvatarClicks` currently asks about an unknown speaker, creates a
-  world card, then opens the editor. `src/ui-fill.js` shows a separate Fill plan before
-  running the stages. `src/ui-profile.js` displays profile text and the linked lore
+  world card, then opens the editor. `src/ui/characters/ui-fill.js` shows a separate Fill plan before
+  running the stages. `src/ui/characters/ui-profile.js` displays profile text and the linked lore
   entry separately.
 - The transfer format deliberately omits portrait image files to avoid very large JSON
   exports. Decide explicitly whether a future portable format should include only the
@@ -70,8 +70,8 @@ merged into this development branch.
 
 ### 1. Stat persistence and transfer contract
 
-- Add the innate/variable control to NPC fields in `src/ui-system-builder.js`; normalize
-  old System definitions in `src/settings.js` and the Saved System load path.
+- Add the innate/variable control to NPC fields in `src/ui/system/ui-system-builder.js`; normalize
+  old System definitions in `src/core/settings.js` and the Saved System load path.
 - Define a single function that splits a card's stats by the active System's definitions.
   Use it for initialization, transfer, and export rather than repeating name checks.
 - Version the character transfer format. Export innate values and the identity fields;
@@ -112,7 +112,7 @@ merged into this development branch.
   profile fields and linked lorebook text during migration; show and edit them together
   without overwriting either source. Decide how the lorebook entry is synchronized so
   edits do not create two divergent descriptions.
-- Refactor `src/ui-fill.js` so its Fill pipeline can run from an explicit preset without
+- Refactor `src/ui/characters/ui-fill.js` so its Fill pipeline can run from an explicit preset without
   opening the stage-selection popup. The thumbnail click in `index.js` should create the
   chat card and start that pipeline immediately, with progress and a retry path after
   partial failure. Prevent repeated clicks from creating duplicate cards or requests.

@@ -1,38 +1,38 @@
 import { eventSource, event_types } from '../../../events.js';
-import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted } from './src/entry-message-events.js';
-import { wireAvatarClicks } from './src/entry-avatar-actions.js';
-import { offerChatScope } from './src/entry-chat-scope.js';
-import { dropCopiedWorldNote } from './src/entry-history-notes.js';
+import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted } from './src/entry/entry-message-events.js';
+import { wireAvatarClicks } from './src/entry/entry-avatar-actions.js';
+import { offerChatScope } from './src/entry/entry-chat-scope.js';
+import { dropCopiedWorldNote } from './src/entry/entry-history-notes.js';
 import { renderExtensionTemplateAsync } from '../../../extensions.js';
-import { LOG_PREFIX, extensionName, debugLog } from './src/constants.js';
-import { initSettings, getSettings } from './src/settings.js';
-import { REVIEW_EVENT } from './src/status-review.js';
-import { repairDefaultImages } from './src/default-portraits.js';
-import { migrateImagesToFolders } from './src/character-images.js';
+import { LOG_PREFIX, extensionName, debugLog } from './src/core/constants.js';
+import { initSettings, getSettings } from './src/core/settings.js';
+import { REVIEW_EVENT } from './src/tracker/status-review.js';
+import { repairDefaultImages } from './src/characters/default-portraits.js';
+import { migrateImagesToFolders } from './src/characters/character-images.js';
 import { 
     openManagePopup
-} from './src/ui-manage.js';
+} from './src/ui/manage/ui-manage.js';
 import {
     reprocessAllMessages,
     reprocessMessage,
     setReprocessCallback,
     invalidateChatRender,
-} from './src/chat.js';
-import { redrawStatusBoxes } from './src/status-ui.js';
-import { syncLorebookScope, repairEntryIdentities } from './src/lorebook.js';
-import { initStatusLogic, setSwipeBaseAligner } from './src/status-logic.js';
-import { alignSwipeBaseToNow } from './src/status-snapshots.js';
-import { resetExtractionState, tidyThreadsOnLoad } from './src/status-extractor.js';
-import { initHUD, updateHUD, forgetPortrait } from './src/ui-hud.js';
-import { refreshScanButton } from './src/ui-scan-button.js';
-import { applyPortraitFraming, applySpeechPadding } from './src/ui-shared.js';
-import { applyCheckpointSchedule, applyScenePrompt } from './src/status-logic.js';
-import { noteActivatedLore } from './src/activated-lore.js';
-import { setDebugLogging } from './src/constants.js';
-import { describeChatConnection } from './src/utils.js';
-import { applyDialogueFormatPrompt } from './src/dialogue-format.js';
-import { applyNarratorRulesPrompt } from './src/narrator-rules.js';
-import { applyBanList } from './src/banlist.js';
+} from './src/chat/chat.js';
+import { redrawStatusBoxes } from './src/tracker/ui/status-ui.js';
+import { syncLorebookScope, repairEntryIdentities } from './src/lore/lorebook.js';
+import { initStatusLogic, setSwipeBaseAligner } from './src/tracker/status-logic.js';
+import { alignSwipeBaseToNow } from './src/tracker/snapshots/status-snapshots.js';
+import { resetExtractionState, tidyThreadsOnLoad } from './src/tracker/extractor/status-extractor.js';
+import { initHUD, updateHUD, forgetPortrait } from './src/ui/hud/ui-hud.js';
+import { refreshScanButton } from './src/ui/tracker/ui-scan-button.js';
+import { applyPortraitFraming, applySpeechPadding } from './src/ui/shared/ui-shared.js';
+import { applyCheckpointSchedule, applyScenePrompt } from './src/tracker/status-logic.js';
+import { noteActivatedLore } from './src/lore/activated-lore.js';
+import { setDebugLogging } from './src/core/constants.js';
+import { describeChatConnection } from './src/core/utils.js';
+import { applyDialogueFormatPrompt } from './src/prompts/dialogue-format.js';
+import { applyNarratorRulesPrompt } from './src/prompts/narrator-rules.js';
+import { applyBanList } from './src/prompts/banlist.js';
 
 async function addSettingsPanel() {
     try {

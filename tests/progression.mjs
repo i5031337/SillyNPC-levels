@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { progressXp, boostStat } from '../src/progression.js';
+import { progressXp, boostStat } from '../src/tracker/progression.js';
 
 test('XP below the cap leaves level alone', () => {
     assert.deepEqual(progressXp('40/100', '65/100', '1'), {

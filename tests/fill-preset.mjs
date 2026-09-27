@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { automaticFillStages } from '../src/fill-preset.js';
+import { automaticFillStages } from '../src/prompts/fill-preset.js';
 
 test('automatic retry keeps completed stages and leaves portrait opt-in', () => {
     const audit = {

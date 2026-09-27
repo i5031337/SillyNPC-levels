@@ -1,0 +1,268 @@
+/**
+ * Which of a character's pictures means which field value.
+ *
+ * A card can hold a dozen portraits and `imageUrl` names the one in use. This says what
+ * the others are *for*: "this one is Elza wounded", "this one is Elza calm". A tag is a
+ * fact about the card, so it lives on the card - beside the picture it describes, carried
+ * by every copy of the settings, and removed when the picture is.
+ *
+ * Nothing in SillyNPC acts on a tag. Deciding *which* field wins when two of them name a
+ * picture is policy, and policy belongs to whatever is asking - see registerImageTagFields.
+ * This module stores explicit tags and reads values encoded in filenames.
+ *
+ * Imports settings and nothing else, so the whole of it runs in the Node harness.
+ */
+
+import { getSettings, saveSettings } from '../core/settings.js';
+
+/**
+ * Who wants pictures tagged, and by which fields.
+ *
+ * SillyNPC has no use for tags of its own, so the character page draws no tagging control
+ * until something registers an interest. That is the whole reason it is a registration
+ * rather than a check for a particular extension: this file is told "these fields want
+ * tagging", never "such-and-such is installed", so no addon's name appears here and the
+ * next one to want the same thing needs no edit. A check in the test suite asserts that
+ * nothing in SillyNPC names an addon, because a comment is the first step towards code.
+ *
+ * A function rather than a list, because the fields are a setting on the other side and
+ * asking each time is the difference between a live answer and a copy taken at load.
+ *
+ * @type {(() => string[]) | null}
+ */
+let fieldProvider = null;
+
+/**
+ * @param {(() => string[]) | null} provider Ordered field names, or null to withdraw.
+ */
+export function registerImageTagFields(provider) {
+    fieldProvider = typeof provider === 'function' ? provider : null;
+}
+
+/**
+ * The fields pictures should be tagged by, in the order whoever registered wants them.
+ *
+ * Empty when nothing has registered, which every caller reads as "draw no control".
+ *
+ * @returns {string[]}
+ */
+export function taggedFields() {
+    if (!fieldProvider) return [];
+    try {
+        const fields = fieldProvider();
+        return Array.isArray(fields) ? fields.filter(f => typeof f === 'string' && f) : [];
+    } catch {
+        // A broken provider must not take the character page down with it.
+        return [];
+    }
+}
+
+/** The tag map, created only when something is actually being written into it. */
+function tagsFor(char, { create = false } = {}) {
+    if (!char) return null;
+    if (!char.imageTags || typeof char.imageTags !== 'object') {
+        if (!create) return null;
+        char.imageTags = {};
+    }
+    return char.imageTags;
+}
+
+/**
+ * What this picture means for this field, or '' when it means nothing.
+ *
+ * @param {object} char
+ * @param {string} path One of char.images.
+ * @param {string} field A stat name.
+ * @returns {string}
+ */
+export function getImageTag(char, path, field) {
+    if (!path || !field) return '';
+    const value = tagsFor(char)?.[path]?.[field];
+    return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Says what this picture means, or unsays it.
+ *
+ * An empty value clears the tag, and clearing the last one on a picture takes the
+ * picture's entry with it - so a card nobody has tagged carries no key rather than a tree
+ * of empty objects, and the settings file does not grow a map per portrait per character
+ * for a feature nobody turned on.
+ *
+ * @param {object} char
+ * @param {string} path
+ * @param {string} field
+ * @param {string} value '' to clear.
+ * @returns {boolean} Whether anything changed.
+ */
+export function setImageTag(char, path, field, value) {
+    if (!char || !path || !field) return false;
+
+    const clean = String(value ?? '').trim();
+    const existing = getImageTag(char, path, field);
+    if (existing === clean) return false;
+
+    if (!clean) {
+        const tags = tagsFor(char);
+        if (!tags?.[path]) return false;
+        delete tags[path][field];
+        if (Object.keys(tags[path]).length === 0) delete tags[path];
+        if (Object.keys(tags).length === 0) delete char.imageTags;
+    } else {
+        const tags = tagsFor(char, { create: true });
+        if (!tags[path] || typeof tags[path] !== 'object') tags[path] = {};
+        tags[path][field] = clean;
+    }
+
+    saveSettings();
+    return true;
+}
+
+/**
+ * The values a filename says its picture is for.
+ *
+ * Forty pictures out of a generator, named for what they show, should not need forty
+ * dropdowns. `happy.png` says Happy; `happy-2.png` says Happy and is the second of them;
+ * `happy.rain.png` says Happy and Rain; `2.png` and `tier2.png` both say Tier 2.
+ *
+ * **A part only counts when some field in play actually declares it as a value.** That
+ * rule does the whole of the work, and it is what makes this safe to turn on over pictures
+ * that were never named for it: `Varga_Elza_1787665547660.png` parses to one part that no
+ * field has ever heard of, so it says nothing, rather than tagging fifty-eight existing
+ * files with a timestamp nobody can match. Nothing on disk has to be renamed first.
+ *
+ * Dots rather than a separator of our own, because that is SillyTavern's own sprite rule -
+ * it reads the label as everything before the first `-` or `.`, so it sees `happy` in
+ * `happy.rain.png` and ignores the rest. A sprite pack downloaded for Expressions drops
+ * into a character's folder and works.
+ *
+ * Derived, never written into the tag map. Rename the file and the tag follows it; delete
+ * the file and nothing is left behind.
+ *
+ * @param {string} path A file path or bare filename.
+ * @param {Record<string, string[]>} valuesByField The fields in play and what each allows.
+ * @returns {Record<string, string>} Field to value, for the parts that named something.
+ */
+export function tagsFromFilename(path, valuesByField) {
+    const found = {};
+    if (!path || !valuesByField) return found;
+
+    const base = String(path).split('/').pop().replace(/\.[^.]+$/, '');
+    if (!base) return found;
+
+    for (const rawPart of base.split('.')) {
+        const whole = rawPart.trim().toLowerCase();
+        if (!whole) continue;
+
+        /* Numbers are values too - Tier runs 0 to 10.
+
+           Tried as written first, so "2" is Tier 2 and "tier2" is Tier 2. Only then is a
+           variant counter taken off - one set apart by "-", "_" or a space first: "calm-2"
+           is the second Calm and "tier2-3" the third Tier 2.
+
+           Digits run straight onto a word come off last of all, only when nothing above
+           matched. That order is what lets "tier2" mean Tier 2 while "calm2" still means
+           the second Calm - and pictures named that way were already on disk before
+           numbers could be values at all. */
+        let hit = matchPart(whole, valuesByField, found);
+        for (const counter of [/[\s_-]+\d+$/, /\d+$/]) {
+            if (hit) break;
+            const stripped = whole.replace(counter, '').trim();
+            if (stripped && stripped !== whole) hit = matchPart(stripped, valuesByField, found);
+        }
+        if (hit) found[hit.field] = hit.value;
+    }
+    return found;
+}
+
+/**
+ * One part of a filename against the fields in play: a value as written, or a field's name
+ * with one of its values run straight on ("tier2") - which is how a filename says which
+ * field a number belongs to.
+ *
+ * First field wins a value two of them declare - the same precedence valuesForField uses,
+ * and the picker marks such a name as shared. A field an earlier part already named is
+ * skipped.
+ *
+ * @returns {{ field: string, value: string }|null}
+ */
+function matchPart(part, valuesByField, found) {
+    const fields = Object.entries(valuesByField).filter(([field]) => !(field in found));
+
+    for (const [field, values] of fields) {
+        const match = (values || []).find(v => String(v).trim().toLowerCase() === part);
+        if (match !== undefined) return { field, value: String(match) };
+    }
+    for (const [field, values] of fields) {
+        const prefix = String(field).toLowerCase().replace(/\s+/g, '');
+        if (!prefix || !part.startsWith(prefix)) continue;
+        const rest = part.slice(prefix.length);
+        const match = (values || []).find(v => String(v).trim().toLowerCase() === rest);
+        if (rest && match !== undefined) return { field, value: String(match) };
+    }
+    return null;
+}
+
+/**
+ * The fields in play and the values each allows for filename matching.
+ *
+ * @returns {Record<string, string[]>} In the registered order, which decides ties.
+ */
+export function valuesByField() {
+    const out = {};
+    for (const field of taggedFields()) out[field] = valuesForField(field);
+    return out;
+}
+
+/**
+ * Drops every tag on a picture that is no longer on the card.
+ *
+ * Called from removeCharacterImage rather than left to a sweep: the tag map is keyed by
+ * path, so a stale entry would come back to life the moment the same file was adopted
+ * again - and adopting the same file again is the ordinary case, since removing a picture
+ * from a character does not delete it.
+ *
+ * @param {object} char
+ * @param {string} path
+ * @returns {boolean} Whether anything was removed.
+ */
+export function forgetImageTags(char, path) {
+    const tags = tagsFor(char);
+    if (!tags || !path || !tags[path]) return false;
+
+    delete tags[path];
+    if (Object.keys(tags).length === 0) delete char.imageTags;
+    return true;
+}
+
+/**
+ * The values a tagging control should offer for a field.
+ *
+ * Only character stats, and only ones with an Allowed values list. A field whose values
+ * are not enumerated has no list to tag against - you cannot say "this picture is the
+ * angry one" when anything at all counts as a value - which is why the picker on the other
+ * side offers only these in the first place. Asked here too so the control cannot be
+ * handed a field it has no options for.
+ *
+ * @param {string} field
+ * @returns {string[]}
+ */
+export function valuesForField(field) {
+    const tracker = getSettings().statusTracker || {};
+    /* A character's own fields first, then the world's.
+     *
+     * Both can drive a picture - somebody looks different Wounded, and somebody looks
+     * different at Night - and they share one namespace here because a tag on a card is
+     * keyed by the field's name and nothing else. Two fields of the same name in the two
+     * scopes therefore collide, and the character's wins, which is the same order the
+     * value itself is resolved in. The picker says which scope each name came from so a
+     * collision is visible rather than merely documented.
+     */
+    for (const list of [tracker.npcStats, tracker.globalStats]) {
+        const stat = (list || []).find(s => String(s?.name ?? '') === field);
+        if (stat) {
+            return Array.isArray(stat.options) ? stat.options.filter(Boolean).map(String) : [];
+        }
+    }
+    return [];
+}

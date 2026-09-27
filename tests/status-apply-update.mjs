@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { canTrackerSetNpcStat } from '../src/stat-persistence.js';
-import { progressXp } from '../src/progression.js';
+import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
+import { progressXp } from '../src/tracker/progression.js';
 
 // This module's SillyTavern imports require a browser. Inject those boundaries
 // while exercising its real bind(deps) implementation in Node.
-const source = readFileSync(new URL('../src/status-apply-update.js', import.meta.url), 'utf8')
+const source = readFileSync(new URL('../src/tracker/status-apply-update.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
 const loadBind = new Function('eventSource', 'getSettings', 'saveSettings',

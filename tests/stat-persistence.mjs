@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats,
-    canTrackerSetNpcStat } from '../src/stat-persistence.js';
+    canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 
 test('legacy custom fields require review without changing stored values', () => {
     const definitions = [{ name: 'HP', defaultValue: '10/10' }, { name: 'Wisdom', defaultValue: '4' }];

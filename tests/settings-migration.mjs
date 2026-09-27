@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { NPC_LORE_FIELDS } from '../src/constants-profile.js';
+import { NPC_LORE_FIELDS } from '../src/core/constants-profile.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
-const source = readFileSync(new URL('../src/settings-migration.js', import.meta.url), 'utf8')
+const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replaceAll('export function ', 'function ');
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',

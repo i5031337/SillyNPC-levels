@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
 
 test('status providers uniquely supply every shared dependency', () => {
-    const directory = new URL('../src/', import.meta.url);
+    const directory = new URL('../src/tracker/', import.meta.url);
     const providers = new Map();
     const used = new Set();
     const modules = [];

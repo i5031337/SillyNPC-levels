@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chatNpcSources, chatNpcImagePaths } from '../src/chat-npc-sources.js';
+import { chatNpcSources, chatNpcImagePaths } from '../src/chat/chat-npc-sources.js';
 
 test('world export includes independent NPCs from every assigned chat', () => {
     const headers = [

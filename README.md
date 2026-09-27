@@ -178,12 +178,12 @@ window.SILLYNPC_DEBUG = true;
 
 | Path | Responsibility |
 | --- | --- |
-| `index.js`, `src/entry-*.js` | Extension startup and SillyTavern event handlers |
-| `src/settings*.js`, `src/constants*.js`, `src/utils*.js` | Settings, constants, and shared helpers |
-| `src/chat*.js`, `src/character*.js` | Message decoration and character ownership, editing, and transfer |
-| `src/status-*.js`, `src/progression.js` | Tracker state, extraction, reviews, history, and XP |
-| `src/ui-*.js` | Settings, character sheets, HUD, and other views |
-| `src/api*.js`, `src/lorebook.js` | Lore and portrait generation and storage |
+| `index.js`, `src/entry/` | Extension startup and SillyTavern event handlers |
+| `src/core/`, `src/prompts/` | Settings, constants, helpers, and prompt rules |
+| `src/chat/`, `src/characters/`, `src/lore/`, `src/story/` | Message decoration, character ownership, lore, and story history |
+| `src/tracker/` | Tracker state, extraction, reviews, history, and XP |
+| `src/ui/` | Settings, character sheets, HUD, and other views |
+| `src/api/` | Lore and portrait generation and storage |
 | `style.css`, `styles/*.css` | Ordered theme and interface styling |
 | `tests/*.mjs` | Focused behavior tests |
 

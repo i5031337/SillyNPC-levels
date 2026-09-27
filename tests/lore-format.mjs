@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/constants-profile.js';
-import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore-format.js';
-import { defaultSettings } from '../src/settings-defaults.js';
+import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
+import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore/lore-format.js';
+import { defaultSettings } from '../src/core/settings-defaults.js';
 
 test('every NPC lore field has one ordered line and round trips', () => {
     const values = { age: '34', role: 'Watchmaker', history: 'Moved here last spring.' };
@@ -32,7 +32,7 @@ test('the default Fill prompt names the complete field order', () => {
 });
 
 test('tracker schema offers NPC lore fields without adding them to the player', () => {
-    const source = readFileSync(new URL('../src/status-extractor-schema.js', import.meta.url), 'utf8')
+    const source = readFileSync(new URL('../src/tracker/extractor/status-extractor-schema.js', import.meta.url), 'utf8')
         .replace(/^import .*;\n/gm, '')
         .replaceAll('export function ', 'function ');
     const npc = { name: 'Mira', aiProfileFields: ['role'] };
@@ -48,7 +48,7 @@ test('tracker schema offers NPC lore fields without adding them to the player', 
 });
 
 test('Fill requests missing named fields in one generation call', async () => {
-    const source = readFileSync(new URL('../src/character-fill-lore.js', import.meta.url), 'utf8')
+    const source = readFileSync(new URL('../src/characters/character-fill-lore.js', import.meta.url), 'utf8')
         .replace(/^import .*;\n/gm, '')
         .replaceAll('export async function ', 'async function ');
     let calls = 0;

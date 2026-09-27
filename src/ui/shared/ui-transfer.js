@@ -1,0 +1,164 @@
+import { getSettings } from '../../core/settings.js';
+import { offerDownload } from '../../core/utils.js';
+import { exportCharacters, importCharacters, parseTransferFile } from '../../characters/character-transfer.js';
+import { LOG_PREFIX } from '../../core/constants.js';
+import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
+import { splitNpcStats } from '../../tracker/stat-persistence.js';
+import { getAllCharacters } from '../../characters/character-repository.js';
+
+/**
+ * Sending characters out of the grid and taking them in.
+ *
+ * The file-handling half of character-transfer.js, kept apart from it so the format and
+ * the merging can be tested without a DOM.
+ */
+
+/** Turns a filename into something a file system will accept. */
+function safeFileName(text) {
+    return String(text || 'character').replace(/[^\w\-. ]+/g, '_').trim() || 'character';
+}
+
+/**
+ * Writes the given characters to a file.
+ *
+ * @param {object[]} chars
+ */
+export async function exportCharacterFile(chars) {
+    const list = (chars || []).filter(Boolean);
+    if (!list.length) return;
+
+    try {
+        const definitions = getSettings().statusTracker?.npcStats || [];
+        const innateNames = definitions.filter(s => s?.persistence === 'innate').map(s => s.name);
+        const variableNames = definitions.filter(s => s?.persistence !== 'innate').map(s => s.name);
+        const values = list.map(char => splitNpcStats(char.statusOverrides, definitions));
+        const carried = values.reduce((n, entry) => n + Object.keys(entry.innate).length, 0);
+        const reset = values.reduce((n, entry) => n + Object.keys(entry.variable).length, 0);
+        const preview = `Export ${list.length} character${list.length === 1 ? '' : 's'}? `
+            + `Innate fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
+            + `Variable fields start from the destination defaults: ${variableNames.join(', ') || 'none'} `
+            + `(${reset} current values stay here). Inventory and conditions also stay here.`;
+        if (!await Popup.show.confirm('Character export preview', preview)) return;
+        const payload = await exportCharacters(list);
+        const fileName = list.length === 1
+            ? `sillynpc-${safeFileName(list[0].name)}.json`
+            : `sillynpc-${list.length}-characters.json`;
+        offerDownload(payload, fileName);
+
+        toastr.success(
+            list.length === 1 ? `Exported ${list[0].name || 'the character'}.` : `Exported ${list.length} characters.`,
+            'SillyNPC');
+    } catch (err) {
+        console.error(LOG_PREFIX, 'Character export failed', err);
+        toastr.error(String(err.message || err), 'SillyNPC');
+    }
+}
+
+/** Which of the incoming names are already in use here. */
+function collidingNames(payload) {
+    const here = new Set(getAllCharacters()
+        .map(c => String(c.name || '').toLowerCase()));
+    return payload.characters
+        .map(r => String(r?.name || '').trim())
+        .filter(name => name && here.has(name.toLowerCase()));
+}
+
+/**
+ * Asks once what to do about every name already in use.
+ *
+ * Once rather than per character: a file of ten people who are all already here would
+ * otherwise be ten dialogs, which is how somebody clicks Overwrite without reading.
+ *
+ * @returns {Promise<string|null>} 'rename' | 'overwrite' | 'skip', or null if cancelled.
+ */
+async function askAboutCollisions(names) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sillynpc-import-collision';
+
+    const heading = document.createElement('h3');
+    heading.textContent = names.length === 1
+        ? `You already have ${names[0]}`
+        : `You already have ${names.length} of these characters`;
+    wrap.append(heading);
+
+    const who = document.createElement('p');
+    who.className = 'notes';
+    who.textContent = names.join(', ');
+    wrap.append(who);
+
+    const label = document.createElement('label');
+    label.className = 'sillynpc-import-choice';
+    label.textContent = 'What should happen to them?';
+
+    const select = document.createElement('select');
+    select.className = 'text_pole';
+    for (const [value, text] of [
+        ['rename', 'Keep both - bring the new ones in under a free name'],
+        ['skip', 'Keep mine - leave the ones in the file out'],
+        ['overwrite', 'Replace mine with the ones in the file'],
+    ]) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = text;
+        select.append(option);
+    }
+    label.append(select);
+    wrap.append(label);
+
+    const warning = document.createElement('small');
+    warning.className = 'notes';
+    warning.textContent = 'Replacing a card cannot be undone. When a chat is open, a matching reusable world card is copied into that chat before the imported details are applied.';
+    wrap.append(warning);
+
+    const popup = new Popup(wrap, POPUP_TYPE.CONFIRM, '', { okButton: 'Import', cancelButton: 'Cancel' });
+    const confirmed = await popup.show();
+    return confirmed ? select.value : null;
+}
+
+/** What happened, as one line. */
+function describeResult(result) {
+    const parts = [];
+    if (result.added.length) parts.push(`${result.added.length} added`);
+    if (result.overwritten.length) parts.push(`${result.overwritten.length} replaced`);
+    if (result.skipped.length) parts.push(`${result.skipped.length} skipped`);
+    return parts.length ? parts.join(', ') : 'nothing to do';
+}
+
+/**
+ * Reads a character file and brings its contents in.
+ *
+ * @param {() => void} [onDone] Redraws whatever is showing.
+ */
+export async function importCharacterFile(onDone) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+
+        try {
+            const payload = parseTransferFile(await file.text());
+
+            const clashes = collidingNames(payload);
+            let choice = 'rename';
+            if (clashes.length) {
+                choice = await askAboutCollisions(clashes);
+                if (!choice) return;
+            }
+
+            const result = await importCharacters(payload, { onCollision: async () => choice });
+            toastr.success(describeResult(result), 'SillyNPC');
+            // Anything the import could not do exactly as asked - a lorebook it had
+            // nowhere to write, or an entry already kept for that name.
+            for (const note of result.notes) toastr.info(note, 'SillyNPC');
+            onDone?.();
+        } catch (err) {
+            console.error(LOG_PREFIX, 'Character import failed', err);
+            toastr.error(String(err.message || err), 'SillyNPC');
+        }
+    };
+
+    input.click();
+}

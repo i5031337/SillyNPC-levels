@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { visibleCharacters, characterPatternSignature } from '../src/character-scope.js';
+import { visibleCharacters, characterPatternSignature } from '../src/characters/character-scope.js';
 
 test('two chats can resolve the same speaker to independent local cards', () => {
     const world = [{ id: 'world', name: 'Mira' }, { id: 'other', name: 'Jon' }];
