@@ -15,6 +15,41 @@
     margin-bottom: calc(var(--swipeCounterHeight, 15px) + var(--swipeCounterMargin, 5px) + var(--sillynpc-space-xs));
 }
 
+/* One per reply, including replies whose tracker box is hidden or moved to the bottom. */
+.sillynpc-reader-report {
+    margin: 8px 0;
+    padding: 7px 10px;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    font-size: var(--sillynpc-text-md);
+    line-height: 1.45;
+    font-family: var(--sillynpc-font-family);
+    clear: both;
+}
+
+.sillynpc-reader-report.sillynpc-reader-running {
+    border-color: var(--sillynpc-accent);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    font-weight: 600;
+}
+
+.sillynpc-reader-running i { margin-right: 4px; }
+.sillynpc-reader-report summary { cursor: pointer; font-weight: 600; }
+.sillynpc-reader-report summary:hover { color: var(--sillynpc-accent-text, var(--sillynpc-accent)); }
+.sillynpc-reader-content {
+    max-height: 55vh;
+    overflow: auto;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--sillynpc-border);
+}
+.sillynpc-reader-row { margin: 3px 0; overflow-wrap: anywhere; }
+.sillynpc-reader-row > strong { margin-right: 8px; }
+.sillynpc-reader-children { margin: 3px 0 6px 12px; padding-left: 10px; border-left: 1px solid var(--sillynpc-border); }
+.sillynpc-reader-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* The three-state eye that hides the tracker box.
 
    A button in SillyTavern's own per-message toolbar, so it needs no placement of its own -
@@ -405,4 +440,3 @@ span.sillynpc-review-to {
     background: color-mix(in srgb, var(--sillynpc-fg-primary), transparent 85%) !important;
     flex-shrink: 0 !important;
 }
-

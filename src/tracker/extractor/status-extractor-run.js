@@ -12,15 +12,17 @@ import { buildExtractionSchema, strangersToClassify } from './status-extractor-s
 import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { addLevelBonus, applyThreadsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
+import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
+import { renderExtractionReport } from '../ui/status-ui-report.js';
 
 /** Guards against an extraction triggering the events that would start another. */
-let extractionInFlight = false;
+let activeExtraction = null;
 
 /** Message ids already extracted, so a re-render does not re-run the request. */
 const extractedMessages = new Set();
 
 export function resetExtractionState() {
-    extractionInFlight = false;
+    activeExtraction = null;
     extractedMessages.clear();
 }
 
@@ -94,9 +96,22 @@ export async function extractStateFromMessage(messageText, messageId, options = 
     const swipeId = getContext()?.chat?.[Number(messageId)]?.swipe_id ?? 0;
     const key = `${messageId}:${swipeId}`;
     if (!options.force && extractedMessages.has(key)) return { applied: false, reason: 'already extracted' };
-    if (extractionInFlight) return { applied: false, reason: 'already running' };
+    if (activeExtraction) return { applied: false, reason: 'already running' };
 
-    extractionInFlight = true;
+    const run = {};
+    activeExtraction = run;
+    const reportMessage = startExtractionReport(messageId);
+    const swipe = extractionSwipe(reportMessage);
+    let report = { swipe, status: 'failed', summary: 'The request did not complete', output: null };
+    const refreshReport = () => {
+        try {
+            const mesEl = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
+            if (mesEl) renderExtractionReport(mesEl, messageId);
+        } catch (err) {
+            console.warn(LOG_PREFIX, 'Could not draw the reader report.', err);
+        }
+    };
+    refreshReport();
     try {
         const state = loadStateFromMetadata();
         // Before anything is applied. A later swipe of this message rebuilds from here
@@ -109,24 +124,37 @@ export async function extractStateFromMessage(messageText, messageId, options = 
 
         debugLog('Extraction request for message', key);
         const raw = await requestExtraction(userPrompt, schema, trackerSettings);
+        if (getContext()?.chat?.[Number(messageId)] !== reportMessage
+            || extractionSwipe(reportMessage) !== swipe) {
+            return { applied: false, reason: 'reply changed while reading' };
+        }
 
         const parsed = coerceToUpdate(raw);
         if (!parsed || typeof parsed !== 'object') {
+            report = { swipe, status: 'failed', summary: 'The reply could not be read', output: raw ?? null };
             console.warn(LOG_PREFIX, 'Extraction returned nothing usable; state left unchanged.', raw);
             // Said out loud, not just to the console. A reply that could not be read and a
             // message that genuinely changed nothing look identical from the outside, so
             // silence here reads as "the tracker is broken" rather than "this one failed".
             reportExtractionProblem(
                 'The reader replied with something that could not be read, so nothing was '
-                + 'changed. A smaller or faster model is the usual cause; the full reply is '
-                + 'in the browser console.',
+                + 'changed. A smaller or faster model is the usual cause; expand the tracker '
+                + 'reading under this reply to see the full output.',
             );
             return { applied: false, reason: 'unparseable' };
         }
+        // Keep the reader's complete answer before sanitizing it or adding level bonuses.
+        // Those steps change the object in place, and the original is what explains the
+        // reader's decisions, including values the tracker later refuses.
+        const readerOutput = structuredClone(parsed);
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
         sanitizeModelUpdate(parsed, loadStateFromMetadata(), trackerSettings);
         await addLevelBonus(parsed, state, trackerSettings, String(messageText));
+        if (getContext()?.chat?.[Number(messageId)] !== reportMessage
+            || extractionSwipe(reportMessage) !== swipe) {
+            return { applied: false, reason: 'reply changed while reading' };
+        }
 
         // Presence first: applyUpdate refuses to introduce characters in speakers mode,
         // so anyone the extraction reports must be admitted to the scene before their
@@ -218,16 +246,26 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         }
 
         extractedMessages.add(key);
+        const appliedCount = auto.length + timed.rows.length;
+        const parts = [
+            `${appliedCount} applied`,
+            `${pending.length} awaiting review`,
+        ];
+        if (blocked) parts.push(`${blocked} blocked by standing decisions`);
+        report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput };
         // Cleared on success so a later failure is announced rather than swallowed as a
         // repeat of one the user has already dealt with.
         lastReportedProblem = '';
         debugLog('Extraction applied for message', key);
         return { applied: true, pending: pending.length };
     } catch (err) {
+        report = { ...report, status: 'failed', summary: String(err?.message || err) };
         console.error(LOG_PREFIX, 'Extraction failed; state left unchanged.', err);
         reportExtractionProblem(`The tracker could not read this message: ${err?.message || err}`);
         return { applied: false, reason: String(err?.message || err) };
     } finally {
-        extractionInFlight = false;
+        finishExtractionReport(messageId, reportMessage, report);
+        if (activeExtraction === run) activeExtraction = null;
+        refreshReport();
     }
 }

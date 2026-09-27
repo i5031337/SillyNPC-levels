@@ -13,6 +13,7 @@ import { hasVisibleContent } from './status-ui-hidden.js';
 import { buildStatusHtml } from './status-ui-template.js';
 import { showAddCharacterDropdown } from './status-ui-menu.js';
 import { attachInlineEditListeners } from './status-ui-edit.js';
+import { renderExtractionReport } from './status-ui-report.js';
 
 /**
  * Draws the tracker box again on every message, and nothing else.
@@ -121,6 +122,7 @@ export function renderStatusTrackerBox(mesEl) {
     // a decision has to stay reachable under the message that proposed it, or it can
     // only be resolved by scrolling back to a panel that is no longer drawn.
     renderReviewPanel(mesEl, messageId);
+    renderExtractionReport(mesEl, messageId);
 
     if (view === 'hidden') return;
 

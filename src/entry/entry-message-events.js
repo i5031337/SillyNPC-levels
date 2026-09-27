@@ -3,6 +3,7 @@ import { getSettings } from '../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { reprocessMessage } from '../chat/chat.js';
 import { extractStateFromMessage, forgetExtractionsFrom } from '../tracker/extractor/status-extractor.js';
+import { clearExtractionReport } from '../tracker/extractor/status-extraction-report.js';
 import { rebaseToSwipe, revertToBase } from '../tracker/snapshots/status-snapshots.js';
 
 export function onMessageRendered(messageId) {
@@ -95,6 +96,7 @@ export function onRegenerateStarted(type, _data, dryRun) {
         if (messageId < 0) return;
 
         forgetExtractionsFrom(messageId);
+        clearExtractionReport(messageId);
         const result = revertToBase(messageId);
         if (!result.reverted && result.reason === 'no base') {
             // Same reasoning as the swipe path: never a silent disagreement between the
@@ -125,4 +127,3 @@ export function onMessageDeleted(newLength) {
         console.error(LOG_PREFIX, 'onMessageDeleted error', err);
     }
 }
-

@@ -43,6 +43,7 @@
    With the roles the right way round, "seamless" finally follows the user's ST theme. */
 .sillynpc-manage.sillynpc-theme-default,
 .sillynpc-review-panel.sillynpc-theme-default,
+.sillynpc-reader-report.sillynpc-theme-default,
 .sillynpc-status-box.sillynpc-theme-default,
 .sillynpc-theme-default.sillynpc-hud-container,
 .sillynpc-theme-default.sillynpc-player-sheet,
@@ -73,6 +74,7 @@
     :root,
     .sillynpc-manage.sillynpc-theme-default,
     .sillynpc-review-panel.sillynpc-theme-default,
+    .sillynpc-reader-report.sillynpc-theme-default,
     .sillynpc-status-box.sillynpc-theme-default,
     .sillynpc-theme-default.sillynpc-hud-container,
     .sillynpc-theme-default.sillynpc-player-sheet,
@@ -431,4 +433,3 @@
 .sillynpc-theme-cyberpunk.sillynpc-hud-container { 
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
 }
-
