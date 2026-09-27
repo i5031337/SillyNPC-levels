@@ -8,6 +8,7 @@ import { getSettings, defaultSettings, resolveImagePrompt } from '../core/settin
 import { recordUsage } from '../core/usage.js';
 import { describeConnection } from '../core/utils.js';
 import { fillImagePrompt, describeCarriedItems } from './api-lore-facts.js';
+import { characterImageDescription } from './api-image-description.js';
 import { requestLore } from './api-lore-generate.js';
 import { persistGeneratedImage } from './api-image-files.js';
 
@@ -218,7 +219,7 @@ ${fullPrompt}` : fullPrompt;
  * @param {object} char Character object
  * @returns {Promise<string>} Image URL or base64
  */
-export async function generateCharacterImageLogic(char, { referenceImages = [] } = {}) {
+export async function generateCharacterImageLogic(char, { referenceImages = [], includeScene = true } = {}) {
     let loreContext = '';
     if (char.lorebook) {
         const worldData = await loadWorldInfo(char.lorebook.world);
@@ -235,17 +236,15 @@ export async function generateCharacterImageLogic(char, { referenceImages = [] }
     //
     // Empty rather than a stand-in when Lore Only is chosen: fillImagePrompt takes the
     // whole "Recent scene:" line out on empty, which is what that setting means.
-    const recentMessages = msgCount > 0
+    const recentMessages = includeScene && msgCount > 0
         ? chat.slice(-msgCount).map(m => `[${m.is_user ? 'User' : (m.name || 'Narrator')}] ${m.mes}`).join('\n')
         : '';
 
     const fullPrompt = fillImagePrompt(resolveImagePrompt(), {
         name: char.name,
-        // Appearance rides in on [LORE] rather than a placeholder of its own: a custom
-        // image template replaces the shipped one outright and would never contain a tag
-        // invented after it was written.
-        lore: [String(char?.profile?.appearance ?? '').trim(), loreContext]
-            .filter(Boolean).join('\n\n'),
+        // The existing lore placeholder also works in custom image templates. Fill has
+        // already written these fields, so composing them needs no second text request.
+        lore: characterImageDescription(char, loreContext),
         items: describeCarriedItems(char),
         context: recentMessages,
     });

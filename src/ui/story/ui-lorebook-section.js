@@ -66,7 +66,7 @@ export async function renderLorebookSection(char, container, options = {}) {
             <button type="button" class="menu_button gen-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
         `;
         actions.querySelector('.inject-btn').addEventListener('click', () => { lorebookMode = 'picking'; lorebookDraft = { world: '', uid: null }; onChange(); });
-        actions.querySelector('.sync-btn').addEventListener('click', async () => { await tryAutoSyncLorebook(char, { worlds: loreOptions.worlds }); onChange(); });
+        actions.querySelector('.sync-btn').addEventListener('click', async () => { await tryAutoSyncLorebook(char, { worlds: loreOptions.worlds, force: true }); onChange(); });
         actions.querySelector('.gen-btn').addEventListener('click', () => generateLoreEntry(char, { ...loreOptions, onSave: () => onChange() }));
         container.appendChild(actions);
     }

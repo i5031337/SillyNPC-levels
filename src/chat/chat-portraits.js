@@ -3,7 +3,7 @@ import { LOG_PREFIX, BUILT_IN_DEFAULT_AVATAR, paletteColorFor, debugLog } from '
 import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { findCharacter, getActiveCharacters, getChatCast } from '../characters/characters.js';
-import { getAllCharacters } from '../characters/character-repository.js';
+import { getAllCharacters, isChatCharacter } from '../characters/character-repository.js';
 import { characterPatternSignature } from '../characters/character-scope.js';
 import { escapeRegExp, personaFileFromAvatar } from '../core/utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from '../tracker/ui/status-ui.js';
@@ -221,7 +221,9 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
     } else if (char) {
         img.src = char.imageUrl || defaultImage || BUILT_IN_DEFAULT_AVATAR;
         img.alt = char.name || '';
-        img.title = `${char.name || 'unnamed'} — click to edit card`;
+        img.title = isChatCharacter(char.id)
+            ? `${char.name || 'unnamed'} — click to edit card`
+            : `${char.name || 'unnamed'} — click to create a new chat profile or edit the reusable card`;
         img.dataset.charId = char.id;
         if (char.name) {
             img.dataset.charName = char.name;
@@ -356,5 +358,4 @@ function wrapSingleSpeakerBlock(block, avatar) {
     for (const node of others) wrapper.appendChild(node);
     block.appendChild(wrapper);
 }
-
 

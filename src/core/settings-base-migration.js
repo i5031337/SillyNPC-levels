@@ -4,6 +4,9 @@ import { resolveImageFolder } from './utils.js';
 import { saveSettings } from './settings.js';
 
 export function normaliseBaseSettings(settings) {
+    // The old portrait switch was opt-in. Automatic Fill now draws portraits by default;
+    // use a new key so an old, default false does not silently disable the new behavior.
+    delete settings.autoFillPortrait;
     // Renames have to run before the defaults loop below. That loop fills in every absent
     // key, so by the time it has finished, portraitShape always exists and there is no way
     // left to tell "the user never set this" from "the user chose the default".

@@ -57,6 +57,9 @@ export function createCharacter(name = '') {
         imageFit: '',
         aliases: [],
         lorebook: null,
+        // A chat NPC is a new person even when a shared lorebook has the same name.
+        // The user can still explicitly link an entry from the card's Lore section.
+        autoLinkLorebook: getContext()?.getCurrentChatId?.() === undefined,
         statusOverrides: {},
         statusCollections: {},
         /** Named lore fields, mirrored into the linked entry. See NPC_LORE_FIELDS. */

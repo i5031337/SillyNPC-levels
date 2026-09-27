@@ -67,7 +67,7 @@ SillyNPC operates across two core modules:
 
 ### Character & World Management
 * **Roster Categories:** Organize characters into distinct worlds, factions, or scenes — and limit a chat to only the categories it needs.
-* **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** creates an independent instance.
+* **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** copies one, while **New profile in this chat** starts a blank NPC with the same name. New chat NPCs only link existing lorebook entries when you explicitly choose Sync.
 * **Portable Character Files:** Export identity, profile, linked lore text, and Innate stats. Variable stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
 * **Export World Characters:** Under **Systems → Manager**, export reusable world cards and NPCs from every chat assigned to a Saved System, including chats that are closed and Systems that are not active. The existing full System export is still available separately.
 * **Integrated Generation:** Generates matching lorebook entries and portraits directly via connected APIs.
@@ -124,7 +124,7 @@ Reload SillyTavern.
    * If your chat is not being decorated, check it is still enabled under **Extensions -> SillyNPC -> Manage SillyNPC -> Writing Rules**. A persona or preset asking for a different layout is the usual cause.
 2. **Assigning Avatars:**
    * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore, profile details, tracker fields, and belongings; completed stages remain in place if a later stage fails. Open the card and press **Fill** to retry.
-   * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking an existing card's portrait opens its editor.
+   * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking a reusable card's portrait offers a new profile for this chat or its editor; clicking a chat NPC's portrait opens its editor.
    * Portrait generation is off in automatic Fill by default because it can incur a separate API cost. Enable **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.

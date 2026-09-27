@@ -80,8 +80,8 @@ export const defaultSettings = {
     banScanDepth: 50,
     /** Colour a speaker who has no card, from their name. */
     autoColorUnknownSpeakers: true,
-    /** Automatic Fill after creating a card from an unknown speaker thumbnail. */
-    autoFillPortrait: false,
+    /** Draw a portrait when automatic Fill creates an NPC without one. */
+    autoPortraitOnFill: true,
     hideSpeakerNames: false,
     caseInsensitive: true,
     /**

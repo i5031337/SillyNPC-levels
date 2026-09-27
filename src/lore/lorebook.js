@@ -4,6 +4,7 @@ import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getActiveCharacters, getChatCast, isCharacterInChat } from '../characters/characters.js';
 import { getAllCharacters } from '../characters/character-repository.js';
+import { canAutoLinkLorebook } from '../characters/character-scope.js';
 
 /**
  * SillyTavern declares `export let world_names;` and only assigns it once its own
@@ -211,8 +212,8 @@ function entryMatches(entry, names) {
  *   locations keep a list of their own.
  * @returns {Promise<boolean>} Whether a link was made.
  */
-export async function tryAutoSyncLorebook(char, { silent = false, worlds: only = null } = {}) {
-    if (!char.name) return false;
+export async function tryAutoSyncLorebook(char, { silent = false, worlds: only = null, force = false } = {}) {
+    if (!canAutoLinkLorebook(char, force)) return false;
 
     // Worlds to scan: user selection -> current chat world -> first world name in list.
     let worlds = (Array.isArray(only) && only.length ? only : null) ?? getSettings().scanLorebooks ?? [];
@@ -318,7 +319,7 @@ export async function syncAllLorebooks() {
 
     let linked = 0;
     for (const char of candidates) {
-        if (await tryAutoSyncLorebook(char, { silent: true })) linked++;
+        if (await tryAutoSyncLorebook(char, { silent: true, force: true })) linked++;
     }
 
     if (linked) saveSettings();

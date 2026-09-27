@@ -1,6 +1,6 @@
 import { getContext } from '../../../../../st-context.js';
 import { LOG_PREFIX } from '../core/constants.js';
-import { getAllCharacters } from '../characters/character-repository.js';
+import { getAllCharacters, getChatCharacters, isChatCharacter } from '../characters/character-repository.js';
 import { fillCharacter } from '../ui/characters/ui-fill.js';
 import { openManagePopup } from '../ui/manage/ui-manage.js';
 import { openPlayerModal } from '../ui/characters/ui-player-modal.js';
@@ -14,6 +14,7 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../popup.js';
  */
 export function wireAvatarClicks() {
     const filling = new Set();
+    const choosing = new Set();
     document.addEventListener('keydown', (e) => {
         if (e.target?.matches?.('.sillynpc-chat-avatar') && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -47,6 +48,34 @@ export function wireAvatarClicks() {
 
         const charId = avatar.dataset.charId;
         if (charId) {
+            const char = getAllCharacters().find(card => card.id === charId);
+            if (char && !isChatCharacter(charId) && getContext()?.getCurrentChatId?.() !== undefined) {
+                const key = `${getContext().getCurrentChatId()}:${charId}`;
+                if (choosing.has(key)) return;
+                choosing.add(key);
+                try {
+                    const prompt = document.createElement('p');
+                    prompt.textContent = `Create a new profile for "${char.name}" in this chat? `
+                        + 'The reusable profile will stay available in other chats.';
+                    const choice = await new Popup(prompt, POPUP_TYPE.CONFIRM, '', {
+                        okButton: 'Create new profile', cancelButton: 'Edit reusable profile',
+                    }).show();
+                    if (choice === POPUP_RESULT.CANCELLED) return;
+                    if (choice !== POPUP_RESULT.AFFIRMATIVE) {
+                        await openManagePopup({ tab: 'characters', charId });
+                        return;
+                    }
+                    const local = getChatCharacters().find(card =>
+                        String(card.name || '').trim().toLowerCase() === String(char.name || '').trim().toLowerCase())
+                        || createCharacter(char.name);
+                    addCharacterToChat(local.id);
+                    triggerReprocess();
+                    await fillCharacter(local, { preset: 'automatic', onSave: triggerReprocess });
+                    return;
+                } finally {
+                    choosing.delete(key);
+                }
+            }
             await openManagePopup({ tab: 'characters', charId });
             return;
         }
@@ -132,4 +161,3 @@ async function askAboutUnknownSpeaker(speakerName) {
 
     return { aliasOf: select.value || null };
 }
-

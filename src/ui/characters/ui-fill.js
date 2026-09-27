@@ -108,7 +108,7 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
     }
 
     const chosen = preset === 'automatic'
-        ? automaticFillStages(audit, getSettings().autoFillPortrait === true)
+        ? automaticFillStages(audit, getSettings().autoPortraitOnFill !== false)
         : await askPlan(char, audit);
     if (!chosen) return;
     if (!Object.values(chosen).some(Boolean)) return;
@@ -154,7 +154,9 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
 
         if (chosen.image) {
             toastr.info('Drawing a portrait...', 'SillyNPC');
-            const imageUrl = await generateCharacterImageLogic(char, { referenceImages: [] });
+            const imageUrl = await generateCharacterImageLogic(char, {
+                referenceImages: [], includeScene: false,
+            });
             if (!Array.isArray(char.images)) char.images = [];
             if (!char.images.includes(imageUrl)) char.images.push(imageUrl);
             // The card had no portrait, which is why this stage ran - so it becomes the

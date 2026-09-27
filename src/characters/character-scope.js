@@ -10,3 +10,8 @@ export function characterPatternSignature(characters) {
         `${card.id}:${card.name}:${(card.aliases || [])
             .map(alias => `${alias.pattern}-${alias.isRegex}`).join(',')}`).join('|');
 }
+
+/** New chat cards only adopt shared lore when the user explicitly chooses Sync. */
+export function canAutoLinkLorebook(char, force = false) {
+    return Boolean(char?.name) && (force || char.autoLinkLorebook !== false);
+}

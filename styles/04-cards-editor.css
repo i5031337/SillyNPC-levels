@@ -75,6 +75,24 @@
     text-overflow: ellipsis;
 }
 
+.sillynpc-card-world-actions {
+    position: absolute;
+    z-index: 3;
+    right: 5px;
+    bottom: 38px;
+    left: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sillynpc-card-world-actions .menu_button {
+    width: 100%;
+    min-height: 0;
+    white-space: normal;
+    font-size: var(--sillynpc-text-sm);
+}
+
 .sillynpc-card-color-stripe {
     position: absolute;
     top: 0;
@@ -520,4 +538,3 @@
 .sillynpc-tab-panel[style*="display: flex"] {
     animation: sillynpc-fade-in 0.3s ease-out;
 }
-

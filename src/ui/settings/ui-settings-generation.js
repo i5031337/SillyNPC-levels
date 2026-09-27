@@ -82,15 +82,15 @@ function renderLoreSettings(view) {
 function renderUnknownSpeakerSettings(view) {
     const autoFillTitle = document.createElement('h3');
     autoFillTitle.className = 'sillynpc-section-title';
-    autoFillTitle.textContent = 'Unknown Speaker Fill';
+    autoFillTitle.textContent = 'Automatic NPC Fill';
     view.append(autoFillTitle);
     const autoFillNote = document.createElement('p');
     autoFillNote.className = 'notes';
-    autoFillNote.textContent = 'Clicking an unknown speaker writes missing description and lore fields together, then fills tracker fields and belongings if empty. Completed fields are kept if you retry.';
+    autoFillNote.textContent = 'Creating an NPC from an unknown speaker writes missing description and lore fields together, then fills tracker fields and belongings if empty. Completed fields are kept if you retry.';
     view.append(autoFillNote);
     view.append(buildSettingToggle({
-        key: 'autoFillPortrait',
+        key: 'autoPortraitOnFill',
         label: 'Draw Portrait Automatically',
-        help: 'Include portrait generation in that automatic Fill. This can use a separately billed image API.',
+        help: 'Draw and assign a portrait after automatic Fill when the NPC has none. Uses the generated age, appearance, and personality with your selected image source, which may be billed separately.',
     }));
 }

@@ -1,5 +1,5 @@
 import { Popup } from '../../../../../../popup.js';
-import { isChatCharacter } from '../../characters/character-repository.js';
+import { getChatCharacters, isChatCharacter } from '../../characters/character-repository.js';
 import {
     createCharacter,
     deleteCharacter,
@@ -159,6 +159,8 @@ export function buildCard(char, { refreshGrid, openEditor }) {
     card.appendChild(label);
 
     if (hasOpenChat() && !isChatCharacter(char.id) && char.name) {
+        const actions = document.createElement('div');
+        actions.className = 'sillynpc-card-world-actions';
         const bring = document.createElement('button');
         bring.type = 'button';
         bring.className = 'menu_button';
@@ -173,7 +175,26 @@ export function buildCard(char, { refreshGrid, openEditor }) {
                 triggerReprocess();
             }
         });
-        card.appendChild(bring);
+        actions.appendChild(bring);
+
+        if (!getChatCharacters().some(local =>
+            String(local.name || '').trim().toLowerCase() === char.name.trim().toLowerCase())) {
+            const fresh = document.createElement('button');
+            fresh.type = 'button';
+            fresh.className = 'menu_button';
+            fresh.textContent = 'New profile in this chat';
+            fresh.title = 'Create a blank chat NPC with this name.';
+            fresh.addEventListener('click', e => {
+                e.stopPropagation();
+                const local = createCharacter(char.name);
+                addCharacterToChat(local.id);
+                refreshGrid();
+                openEditor(local.id);
+                triggerReprocess();
+            });
+            actions.appendChild(fresh);
+        }
+        card.appendChild(actions);
     }
 
     // While selecting, the card carries a checkbox instead of its own trash: two ways to

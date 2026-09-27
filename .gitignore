@@ -12,6 +12,7 @@ tests/*
 !tests/status-dependencies.mjs
 !tests/ui-maintenance.mjs
 !tests/lore-format.mjs
+!tests/image-description.mjs
 
 # Scratch / editor debris
 temp_*.txt
