@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { NPC_LORE_FIELDS } from '../src/constants-profile.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/settings-migration.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replaceAll('export function ', 'function ');
-const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'PROFILE_FIELDS',
+const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings',
     `${source}\nreturn normalizeSettings;`);
@@ -20,7 +21,7 @@ function migration() {
         },
     };
     const normalize = loadMigration(() => {}, ['#111111', '#222222'],
-        [{ id: 'summary' }], () => 0, () => {}, defaults,
+        NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
         () => {});
@@ -39,7 +40,8 @@ test('imports repair character data and retain a single default portrait on repe
     normalize(settings);
     assert.deepEqual(settings.characters[0].images, ['portrait.png']);
     assert.deepEqual(settings.characters[0].aliases, []);
-    assert.equal(settings.characters[0].profile.summary, '');
+    assert.equal(settings.characters[0].profile.age, '');
+    assert.equal(settings.characters[0].profile.history, '');
     assert.deepEqual(settings.categories, ['Crew']);
     assert.deepEqual(settings.defaultImages, [{ src: 'fallback.png', tags: [] }]);
 });

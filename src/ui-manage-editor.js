@@ -1,6 +1,6 @@
 import { renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { POPUP_TYPE, Popup } from '../../../../popup.js';
-import { extensionName, LOG_PREFIX, PROFILE_FIELDS } from './constants.js';
+import { extensionName, LOG_PREFIX, NPC_LORE_FIELDS } from './constants.js';
 import { getSettings, saveSettings, exportSettingsData, importSettingsData } from './settings.js';
 import { getLibraryCharacters, isChatCharacter } from './character-repository.js';
 import { 
@@ -33,7 +33,7 @@ import { renderProfileView, renderProfileFields } from './ui-profile.js';
 import { renderThreadsView } from './ui-threads.js';
 import { fillCharacter } from './ui-fill.js';
 import { fillProfile, readLoreEntry } from './character-fill.js';
-import { profileFromLore } from './lore-profile-sync.js';
+import { readLoreValues } from './lore-sync.js';
 import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderGenerationSettingsView } from './ui-settings-tabs.js';
 import { renderPromptsView } from './ui-prompts.js';
 import { renderStatsView } from './ui-stats.js';
@@ -329,15 +329,16 @@ function renderEditForm(char, editView, sticky, title) {
     renderProfileFields(char, profileContainer);
     if (char.lorebook?.world) readLoreEntry(char).then(content => {
         if (!content || !profileContainer.isConnected) return;
-        const merged = profileFromLore(content, char.profile, char.name).profile;
-        const missing = PROFILE_FIELDS.filter(field => !char.profile?.[field.id] && merged[field.id]);
+        const merged = readLoreValues(content, char.profile);
+        if (!merged) return;
+        const missing = NPC_LORE_FIELDS.filter(field => !char.profile?.[field.id] && merged[field.id]);
         if (!missing.length) return;
         char.profile ||= {};
         for (const field of missing) char.profile[field.id] = merged[field.id];
         saveSettings();
         renderProfileFields(char, profileContainer);
     });
-    renderLorebookSection(char, loreContainer, { onChange: renderEditor, label: 'Additional lore' });
+    renderLorebookSection(char, loreContainer, { onChange: renderEditor, label: 'Linked lorebook entry' });
     renderOverridesSection(char, overridesContainer);
     renderCollectionsSection(char, collectionsContainer);
 }

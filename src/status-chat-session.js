@@ -14,7 +14,8 @@ import { getContext } from '../../../../st-context.js';
 import { setUserAvatar, getUserAvatar } from '../../../../personas.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from './settings.js';
 import { getAllCharacters, getLibraryCharacters } from './character-repository.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from './constants.js';
+import { LOG_PREFIX, debugLog, fieldsForCard, isStaticField } from './constants.js';
+import { syncProfileToLore } from './lore-sync.js';
 
 export function bind(deps) {
 const STATE_KEY = 'sillynpc_status_state';
@@ -183,15 +184,17 @@ function restoreProfiles(profiles) {
     if (!profiles || typeof profiles !== 'object') return 0;
 
     let restored = 0;
+    const touched = new Set();
     const put = (card) => {
         const was = profiles[String(card?.name ?? '').trim().toLowerCase()];
         if (!was) return;
         if (!card.profile || typeof card.profile !== 'object') card.profile = {};
-        for (const field of PROFILE_FIELDS) {
+        for (const field of fieldsForCard(card)) {
             const before = String(was[field.id] ?? '');
             if (String(card.profile[field.id] ?? '') === before) continue;
             card.profile[field.id] = before;
             restored += 1;
+            touched.add(card);
         }
     };
     for (const card of getAllCharacters()) put(card);
@@ -199,6 +202,8 @@ function restoreProfiles(profiles) {
 
     if (restored) {
         saveSettings();
+        for (const card of touched) syncProfileToLore(card).catch(err =>
+            console.error(LOG_PREFIX, 'Could not restore lorebook fields after swipe', err));
         debugLog(`Put ${restored} profile field(s) back to before that message`);
     }
     return restored;

@@ -1,10 +1,9 @@
-import { PROFILE_FIELDS, aiMayEditProfileField, LOG_PREFIX } from './constants.js';
+import { fieldsForCard, aiMayEditProfileField, LOG_PREFIX } from './constants.js';
 import { getSettings, saveSettings } from './settings.js';
 import { liveFactsFor } from './api.js';
 import { readLoreEntry, fillProfile } from './character-fill.js';
 import { openLightbox } from './ui-portrait.js';
-import { syncProfileToLore, profileFromLore } from './lore-profile-sync.js';
-import { renderLoreBlocks } from './ui-profile-lore.js';
+import { syncProfileToLore, readLoreValues } from './lore-sync.js';
 
 /**
  * The character page you land on: what is known about somebody, laid out to be read.
@@ -155,7 +154,7 @@ export function renderProfileFields(char, container) {
     const grid = document.createElement('div');
     grid.className = 'sillynpc-profile-grid';
 
-    for (const field of PROFILE_FIELDS) {
+    for (const field of fieldsForCard(char)) {
         const row = document.createElement('div');
         row.className = 'sillynpc-profile-row';
 
@@ -344,7 +343,7 @@ function buildPortrait(char) {
  */
 export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
     const profile = char?.profile || {};
-    const written = PROFILE_FIELDS.filter(f => String(profile[f.id] ?? '').trim());
+    const written = fieldsForCard(char).filter(f => String(profile[f.id] ?? '').trim());
     const out = [];
 
     // Age is one word and sits on a line of its own badly, so the short fields ride
@@ -370,7 +369,7 @@ export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
 export async function renderProfileView(char, container) {
     if (!container || !char) return;
     const linkedContent = char.lorebook?.world ? await readLoreEntry(char) : '';
-    const unified = profileFromLore(linkedContent, char.profile, char.name);
+    const unified = readLoreValues(linkedContent, char.profile) || char.profile || {};
     container.replaceChildren();
     container.className = 'sillynpc-charview';
 
@@ -403,11 +402,10 @@ export async function renderProfileView(char, container) {
     const aliasNames = (char.aliases || [])
         .filter(a => a?.pattern && !a.isRegex)
         .map(a => a.pattern);
-    const blocks = buildProfileBlocks({ ...char, profile: unified.profile }, {
+    const blocks = buildProfileBlocks({ ...char, profile: unified }, {
         extraBadges: aliasNames.length ? [chip('Also called', aliasNames.join(', '))] : [],
     });
 
-    let emptyDescription = null;
     if (blocks.length) {
         narrative.append(...blocks);
     } else {
@@ -416,7 +414,6 @@ export async function renderProfileView(char, container) {
         empty.textContent = 'Nothing recorded about who they are yet. Fill reads the story '
             + 'and writes it, or open Edit and write it yourself.';
         narrative.append(empty);
-        emptyDescription = empty;
     }
 
     // Tracker values: whatever is true now. A character on stage has live numbers and the
@@ -440,24 +437,7 @@ export async function renderProfileView(char, container) {
         if (row) right.append(row);
     }
 
-    // ── The lore entry, read in after the rest is on screen ─────────────────
-    //
-    // In the same column as everything else rather than full width below. Its own section
-    // would need a full-width rhythm to sit in, and there is nothing else out there - so
-    // it just read as a block that had come loose from its heading.
-    const loreBlock = document.createElement('div');
-    loreBlock.className = 'sillynpc-cv-lore';
-    narrative.append(loreBlock);
-
     body.append(left, right);
     container.append(body);
-
-    if (char.lorebook?.world) {
-        const text = unified.lore;
-        if (text) {
-            emptyDescription?.remove();
-            renderLoreBlocks(text, loreBlock);
-        }
-    }
 
 }

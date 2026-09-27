@@ -1,6 +1,6 @@
 import { promptText } from './prompt-texts.js';
 import { getSettings, saveSettings } from './settings.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, aiMayEditProfileField, anyProfileFieldUnlocked } from './constants.js';
+import { LOG_PREFIX, debugLog, fieldsForCard, aiMayEditProfileField, anyProfileFieldUnlocked } from './constants.js';
 import { getPlayerCard, findCardForName, loadStateFromMetadata, saveStateToMetadata } from './status-logic.js';
 import { currentMessageIndex, splitValue } from './utils.js';
 import { progressXp, boostStat } from './progression.js';
@@ -9,7 +9,7 @@ import { requestExtraction, coerceToUpdate } from './status-extractor-request.js
 import { mentionsName } from './mentions.js';
 import { coerceThread, addThread, closeThread, openThreads, touchThreads, pruneThreads } from './threads.js';
 import { recordThreadChanges } from './status-snapshots.js';
-import { syncProfileToLore } from './lore-profile-sync.js';
+import { syncProfileToLore } from './lore-sync.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
 export async function addLevelBonus(parsed, state, trackerSettings, messageText) {
@@ -73,7 +73,7 @@ export function applyProfileFromReply(parsed) {
         if (!card || !incoming || typeof incoming !== 'object') return;
         if (!card.profile || typeof card.profile !== 'object') card.profile = {};
 
-        for (const field of PROFILE_FIELDS) {
+        for (const field of fieldsForCard(card)) {
             if (!aiMayEditProfileField(card, field.id)) continue;
             const value = String(incoming[field.id] ?? '').trim();
             // An omitted field means "unchanged", and a blank one is the model failing to

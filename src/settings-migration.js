@@ -1,4 +1,4 @@
-import { debugLog, SPEAKER_PALETTE, PROFILE_FIELDS } from './constants.js';
+import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS } from './constants.js';
 import { paletteIndexFor } from './hash.js';
 import { normaliseNpcPersistence } from './stat-persistence.js';
 import { defaultSettings } from './settings-defaults.js';
@@ -108,7 +108,7 @@ function normalizeCharactersAndCategories(settings) {
         // Field by field rather than whole-object, so a profile written before a field
         // existed gains the new one instead of being replaced by a blank set.
         if (!char.profile || typeof char.profile !== 'object') char.profile = {};
-        for (const field of PROFILE_FIELDS) {
+        for (const field of NPC_LORE_FIELDS) {
             if (typeof char.profile[field.id] !== 'string') char.profile[field.id] = '';
         }
         // Which profile fields Fill is allowed to write. Absent means none, which is the

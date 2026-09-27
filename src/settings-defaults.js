@@ -1,5 +1,6 @@
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { EXTENSION_VERSION, DEFAULT_PORTRAIT_SHAPE } from './constants.js';
+import { DEFAULT_LORE_PROMPT, DEFAULT_IMAGE_REFERENCE_PREAMBLE } from './default-prompt-texts.js';
 
 export const defaultSettings = {
     version: EXTENSION_VERSION,
@@ -205,88 +206,14 @@ export const defaultSettings = {
     /**
      * Reply budget for lore generation.
      *
-     * The default prompt asks for six sections; 500 tokens truncated that reliably.
+     * The combined named fields and lore sections need room for a complete reply.
      */
     loreMaxTokens: 1200,
-    /**
-     * The lore writer's instructions.
-     *
-     * Appearance first and in concrete terms, because this text is also what the portrait
-     * generator reads. The old version asked for six sections of detail and got a wall of
-     * prose that buried the visual description in the middle of it.
-     *
-     * Macros: {{name}}, {{facts}}, {{lore}}, {{context}}, {{world}}.
-     */
     // What each generator has cost so far. Kept out of a System on purpose: a system is
     // a world and its rules, and rolling one back should not rewrite what you spent.
     usage: {},
-    generationPrompt: [
-        'Write a Lorebook entry for "{{name}}".',
-        '',
-        'Established facts - treat these as true and do not contradict them:',
-        '{{facts}}',
-        '',
-        'Setting reference:',
-        '{{world}}',
-        '',
-        'Existing entry:',
-        '{{lore}}',
-        '',
-        'Recent story:',
-        '{{context}}',
-        '',
-        'Write one Content entry with these named fields in this order. Keep each one short.',
-        '',
-        '- Age: their age, or an approximation when supported by the sources.',
-        '- Appearance: two or three concrete sentences about how they look and carry themselves.',
-        '- Personality: their lasting traits and ordinary behavior.',
-        '- Warmth & attachment: how they show care toward people close to them.',
-        '- Speech & dialogue style: cadence, accent, verbal habits, and how they sound when relaxed.',
-        '- Role: one plain sentence. Who this person is in ordinary terms. Not a title and not an epithet.',
-        '- Wants: one sentence. Something concrete they are trying to get, keep or avoid.',
-        '- Method: one or two sentences on how this person solve things.',
-        '- Limits: one or two sentences. What this person cannot do, does not know, has no authority over, or would refuse to do. Required. Do not leave it vague.',
-        '- Standing with the {{user}}: one or two sentences on how they actually treat {{user}} day to day, where they stand to it.',
-        '- Ties: one sentence on anyone else who matters to them.',
-        '- History: two or three sentences. Where they came from and what has happened to them recently.',
-        '',
-        'Rules:',
-        '- Keep established named fields unchanged. Fill only blanks supported by the sources.',
-        '- Revise the additional lore only when asked to regenerate it. Keep what still holds, drop what the story has overtaken.',
-        '- Weigh the whole history, not the most recent scene. A character who was frightened, angry or hurt in the last few messages is not permanently that way. ',
-        '- Write what is generally true of them, not what was true five minutes ago.',
-        '- Do NOT invent affiliations, factions, agendas, hidden links, secret knowledge or people they answer to.',
-        '- Do not repeat named details across fields or in the additional lore.',
-        '- Do NOT list their spells, items, skills or numbers.',
-        '- Invent nothing. If neither the facts nor the story supports a detail, leave it out.',
-        '- An entry that is short because little has happened is correct.',
-        '- Third person. No preamble and no closing remark.',
-        '',
-        'TAGS - read this carefully, it matters more than the rest:',
-        '- Tags are not topic labels. They are lorebook ACTIVATION KEYS for SillyTavern. Any tag that is an ordinary word will load this entry into unrelated scenes.',
-        "- Use ONLY: the character's given name, surname, full name, and nicknames actually used for them in the story.",
-        '- NEVER use job titles.',
-        '- NEVER use roles or types.',
-        '- NEVER use place names.',
-        '- NEVER use adjectives or states.',
-        '- Do not wrap tags in square brackets.',
-        '',
-        'Reply in exactly this format:',
-        'Tags: comma separated keywords',
-        'Content:',
-        'Age: ...',
-        'Appearance: ...',
-        'Personality: ...',
-        'Warmth & attachment: ...',
-        'Speech & dialogue style: ...',
-        'Role: ...',
-        'Wants: ...',
-        'Method: ...',
-        'Limits: ...',
-        'Standing with the {{user}}: ...',
-        'Ties: ...',
-        'History: ...',
-    ].join('\n'),
+    /** The editable lore template. Macros: {{name}}, {{facts}}, {{lore}}, {{context}}, {{world}}. */
+    generationPrompt: DEFAULT_LORE_PROMPT,
     imgGenContextMessages: 10,
     /** Folder name under user/images/ for generated portraits. */
     imageSaveRoute: 'sillynpc',
@@ -324,14 +251,7 @@ export const defaultSettings = {
      * So the reference has to come with a job. Editable because the wording that stops a
      * model answering conversationally is model-specific and worth tuning.
      */
-    imgGenReferencePreamble: [
-        '[Reference Image Directive]',
-        'Use the attached image(s) strictly as a visual anchor for character identity. Maintain precise consistency with their facial anatomy, eye shape and color, hair color and style, skin tone, and permanent bodily features. ',
-        '',
-        'Apply the attire, pose, and lighting specified in the main description above. Do not copy any background elements, text, or visual artifacts from the reference image. ',
-        '',
-        'Generate the image now. Do not output text, descriptions, explanations, or commentary: return only the generated image.',
-    ].join('\n'),
+    imgGenReferencePreamble: DEFAULT_IMAGE_REFERENCE_PREAMBLE,
     imgGenNegativePrompt: 'speech bubbles, text, logo, watermark, username, signature, frames, panels, comic, multiple characters, crowd, busy background, character sheet, grid, reference sheet',
     /**
      * @type {{

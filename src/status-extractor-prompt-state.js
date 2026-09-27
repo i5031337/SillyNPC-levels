@@ -1,4 +1,4 @@
-import { PROFILE_FIELDS, isStaticField } from './constants.js';
+import { fieldsForCard, isStaticField } from './constants.js';
 import { statsInSystem, getPlayerCard, findCardForName, promptCeiling, highestCeiling } from './status-logic.js';
 
 /**
@@ -210,7 +210,7 @@ export function describeCurrentState(state, trackerSettings) {
  */
 export function profileBlock(card) {
     const profile = {};
-    for (const field of PROFILE_FIELDS) {
+    for (const field of fieldsForCard(card)) {
         const value = String(card?.profile?.[field.id] ?? '').trim();
         if (value) profile[field.id] = value;
     }
@@ -303,5 +303,4 @@ export function describeLimits(trackerSettings, state) {
         describeShapes(trackerSettings.npcStats, 'How to write character values'),
     ].filter(Boolean).join('\n');
 }
-
 

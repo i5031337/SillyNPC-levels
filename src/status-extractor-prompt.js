@@ -1,6 +1,6 @@
 import { promptText } from './prompt-texts.js';
 import { getContext } from '../../../../st-context.js';
-import { debugLog, PROFILE_FIELDS, aiMayEditProfileField } from './constants.js';
+import { debugLog, fieldsForCard, aiMayEditProfileField } from './constants.js';
 import { activeThreads } from './threads.js';
 import { currentMessageIndex } from './utils.js';
 import { getPlayerCard, findCardForName, describeNpcStatFields } from './status-logic.js';
@@ -166,7 +166,7 @@ function describeOpenProfileFields(state) {
     // Names only. The values are in the state block above, where every other fact about a
     // character lives - repeating them here sent an appearance twice in the same message.
     const describe = (card, label) => {
-        const open = PROFILE_FIELDS.filter(f => aiMayEditProfileField(card, f.id));
+        const open = fieldsForCard(card).filter(f => aiMayEditProfileField(card, f.id));
         for (const field of open) lines.push(`- ${label}.${field.id}`);
     };
 

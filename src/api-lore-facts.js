@@ -2,7 +2,7 @@ import { promptText } from './prompt-texts.js';
 import { chat } from '../../../../../script.js';
 import { loadWorldInfo, saveWorldInfo, createWorldInfoEntry } from '../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../slash-commands.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS } from './constants.js';
+import { LOG_PREFIX, debugLog, fieldsForCard } from './constants.js';
 import { applyMacros, modernisePlaceholders } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
 import { syncEntryIdentity } from './lorebook.js';
@@ -78,7 +78,7 @@ export function describeProfile(char, except = null) {
     // "already known, do not contradict it" and then asking for a new one is asking it to
     // paraphrase what is already there, which is not what regenerating means.
     const skip = except instanceof Set ? except : new Set(except || []);
-    return PROFILE_FIELDS
+    return fieldsForCard(char)
         .filter(field => !skip.has(field.id))
         .map(field => {
             const value = String(profile[field.id] ?? '').trim();

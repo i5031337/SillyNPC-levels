@@ -2,7 +2,7 @@ import { promptText } from './prompt-texts.js';
 import { getContext } from '../../../../st-context.js';
 import { fillTemplate } from './macros.js';
 import { getSettings, saveSettings } from './settings.js';
-import { PROFILE_FIELDS, hintFor } from './constants.js';
+import { fieldsForCard, hintFor } from './constants.js';
 import { requestExtraction, coerceToUpdate, describeCollections } from './status-extractor.js';
 import { applyUpdate, resolveMaxValue, loadStateFromMetadata } from './status-logic.js';
 import { describeTrackedFacts, describeProfile, buildLoreExcerpt } from './api.js';
@@ -10,7 +10,7 @@ import { tryAutoSyncLorebook } from './lorebook.js';
 import { charactersMentionedIn } from './mentions.js';
 import { getPersonaData } from './status-logic.js';
 import { readLoreEntry } from './character-fill-lore.js';
-import { syncProfileToLore } from './lore-profile-sync.js';
+import { syncProfileToLore } from './lore-sync.js';
 export { readLoreEntry, fillLore } from './character-fill-lore.js';
 
 /**
@@ -95,14 +95,15 @@ export function carriedItems(char) {
  */
 export async function auditCharacter(char) {
     const missingProfile = missingProfileFields(char);
+    const fields = fieldsForCard(char);
     const profile = missingProfile.length === 0
         // Built from the list rather than spelled out, so adding a field does not leave a
         // sentence here naming the four there used to be.
-        ? { done: true, summary: `${PROFILE_FIELDS.map(f => f.label).join(', ')} are all filled in.` }
+        ? { done: true, summary: `${fields.map(f => f.label).join(', ')} are all filled in.` }
         : {
             done: false,
             missing: missingProfile.map(f => f.id),
-            summary: `${missingProfile.length} of ${PROFILE_FIELDS.length} empty: `
+            summary: `${missingProfile.length} of ${fields.length} empty: `
                 + `${missingProfile.map(f => f.label).join(', ')}.`,
         };
 
@@ -147,7 +148,7 @@ export async function auditCharacter(char) {
  */
 export function missingProfileFields(char) {
     const profile = char?.profile || {};
-    return PROFILE_FIELDS.filter(field => !String(profile[field.id] ?? '').trim());
+    return fieldsForCard(char).filter(field => !String(profile[field.id] ?? '').trim());
 }
 
 /**
@@ -272,7 +273,7 @@ export async function fillProfile(char, { fields = null } = {}) {
      * meant clearing the box by hand first, per field and per character. Asking for a field by
      * name is that path, and every caller of it confirms first. */
     const wanted = Array.isArray(fields) && fields.length
-        ? PROFILE_FIELDS.filter(f => fields.includes(f.id))
+        ? fieldsForCard(char).filter(f => fields.includes(f.id))
         : missingProfileFields(char);
     if (wanted.length === 0) return { ok: true, filled: [] };
 

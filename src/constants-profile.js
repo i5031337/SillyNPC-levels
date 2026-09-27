@@ -1,13 +1,19 @@
-export const PROFILE_FIELDS = [
+/**
+ * Add or remove a named field here. NPC lore, Fill, the editor, tracker, transfer and
+ * prompt format all read this registry. `player: true` also puts it on the player sheet.
+ */
+const CHARACTER_FIELD_DEFS = [
     {
         id: 'age',
         label: 'Age',
+        player: true,
         placeholder: '34, or "late twenties"',
         hint: 'Their age. An approximation is fine when the story only implies one.',
     },
     {
         id: 'appearance',
         label: 'Appearance',
+        player: true,
         placeholder: 'Build, hair, eyes, distinguishing marks, how they carry themselves',
         hint: 'Two or three sentences somebody could picture: build, face, hair, marks, bearing. Plain description, no metaphor.',
         multiline: true,
@@ -15,6 +21,7 @@ export const PROFILE_FIELDS = [
     {
         id: 'personality',
         label: 'Personality',
+        player: true,
         placeholder: 'What they are like day to day, and how they treat people close to them',
         /* This asked for "the flaw that gets them into trouble" - the definite article, not
            optional, and the trouble specified. Nine of eleven filled-in personalities ended
@@ -28,6 +35,7 @@ export const PROFILE_FIELDS = [
     {
         id: 'warmth',
         label: 'Warmth & attachment',
+        player: true,
         placeholder: 'How they show they care - what they do, say, bring, or put up with',
         /* Relationships have a home already: the lore entry's Ties section, which asks how
            they stand with the player. This is the other half of it and does not move - Ties
@@ -41,6 +49,7 @@ export const PROFILE_FIELDS = [
     {
         id: 'speech',
         label: 'Speech & dialogue style',
+        player: true,
         placeholder: 'Cadence, accent, verbal tics, a turn of phrase that is theirs',
         /* "What they steer away from" resolved to emotional avoidance often enough to
            matter: eight of ten speech fields carried an avoidance clause, and where it
@@ -52,11 +61,26 @@ export const PROFILE_FIELDS = [
         hint: 'How they talk: cadence, accent, verbal tics, and a phrase or habit that is characteristically theirs. Describe how they sound when they are relaxed and among people they like. If they hold something back, name a topic they dodge - never write that they avoid warmth, affection, sincerity or vulnerability.',
         multiline: true,
     },
+    { id: 'role', label: 'Role', hint: 'One plain sentence about who this person is in ordinary terms, not an epithet.', placeholder: 'Their place in the world', multiline: true },
+    { id: 'wants', label: 'Wants', hint: 'One concrete thing they are trying to get, keep or avoid.', placeholder: 'A concrete goal or concern', multiline: true },
+    { id: 'method', label: 'Method', hint: 'One or two sentences on how they usually solve problems.', placeholder: 'How they approach problems', multiline: true },
+    { id: 'limits', label: 'Limits', hint: 'What they cannot do, do not know, lack authority over, or would refuse to do. Be specific.', placeholder: 'Real limits on their actions', multiline: true },
+    { id: 'standing', label: 'Standing', hint: 'How they treat {{user}} day to day and where they stand with them.', placeholder: 'Their relationship with the player', multiline: true },
+    { id: 'ties', label: 'Ties', hint: 'One sentence on other people who matter to them.', placeholder: 'People who matter to them', multiline: true },
+    { id: 'history', label: 'History', hint: 'Where they came from and what has happened to them recently, in two or three sentences.', placeholder: 'Relevant history', multiline: true },
 ];
 
+/** Player cards use the shared subset; NPCs use every field unless npc:false is set. */
+export const PROFILE_FIELDS = CHARACTER_FIELD_DEFS.filter(field => field.player);
+export const NPC_LORE_FIELDS = CHARACTER_FIELD_DEFS.filter(field => field.npc !== false);
+
+export function fieldsForCard(card) {
+    return card?.isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS;
+}
+
 /** An empty profile, with every field present so nothing has to check for a missing key. */
-export function blankProfile() {
-    return Object.fromEntries(PROFILE_FIELDS.map(field => [field.id, '']));
+export function blankProfile(isPlayer = false) {
+    return Object.fromEntries((isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => [field.id, '']));
 }
 
 /**

@@ -9,11 +9,11 @@ import {
 } from '../../../../../script.js';
 import { applyMacros } from './macros.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from './settings.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from './constants.js';
+import { LOG_PREFIX, debugLog, fieldsForCard, isStaticField } from './constants.js';
 
 export function bind(deps) {
 function describeProfileInline(card) {
-    return PROFILE_FIELDS
+    return fieldsForCard(card)
         .map(field => {
             const value = String(card?.profile?.[field.id] ?? '').trim();
             return value ? `${field.label}: ${value}` : null;

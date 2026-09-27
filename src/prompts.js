@@ -1,5 +1,5 @@
 import { getSettings, defaultSettings, recommendedImagePrompt } from './settings.js';
-import { SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT, NARRATOR_RULES_PROMPT, PROFILE_FIELDS } from './constants.js';
+import { SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT, NARRATOR_RULES_PROMPT, NPC_LORE_FIELDS } from './constants.js';
 import { PROMPT_TEXTS } from './prompt-texts.js';
 
 /**
@@ -167,13 +167,13 @@ export const PROMPTS = [
      * which is backwards: a line like "the flaw that gets them into trouble" wrote a
      * trouble-generating flaw into nine characters, and correcting it needed a code edit.
      *
-     * Generated, so a field added to PROFILE_FIELDS gets an entry without anybody
+     * Generated, so a field added to NPC_LORE_FIELDS gets an entry without anybody
      * remembering to add one here - the registry cannot fall behind the fields. And one
      * entry per field rather than a single editable block of all of them, so an override
      * of one hint does not freeze the set: a field added later still ships with its own
      * wording, which a block would have made impossible.
      */
-    ...PROFILE_FIELDS.map(field => ({
+    ...NPC_LORE_FIELDS.map(field => ({
         id: `profileHint-${field.id}`,
         key: `profileHints.${field.id}`,
         label: `Profile: ${field.label}`,

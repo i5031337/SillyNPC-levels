@@ -1,6 +1,6 @@
 import { renderExtensionTemplateAsync } from '../../../../extensions.js';
 import { POPUP_TYPE, Popup } from '../../../../popup.js';
-import { extensionName, LOG_PREFIX, PROFILE_FIELDS } from './constants.js';
+import { extensionName, LOG_PREFIX, NPC_LORE_FIELDS } from './constants.js';
 import { getSettings, saveSettings, exportSettingsData, importSettingsData } from './settings.js';
 import { getLibraryCharacters, isChatCharacter } from './character-repository.js';
 import { 
@@ -280,7 +280,7 @@ async function rewriteFieldOnMany(chars) {
 
     const pick = document.createElement('select');
     pick.className = 'text_pole';
-    for (const field of PROFILE_FIELDS) {
+    for (const field of NPC_LORE_FIELDS) {
         const option = document.createElement('option');
         option.value = field.id;
         option.textContent = field.label;
@@ -296,7 +296,7 @@ async function rewriteFieldOnMany(chars) {
         okButton: 'Rewrite', cancelButton: 'Cancel',
     }).show()) return;
 
-    const field = PROFILE_FIELDS.find(f => f.id === pick.value);
+    const field = NPC_LORE_FIELDS.find(f => f.id === pick.value);
     if (!field) return;
 
     toastr.info(`Rewriting ${field.label} on ${chars.length}...`, 'SillyNPC');

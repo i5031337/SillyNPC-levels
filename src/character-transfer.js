@@ -3,7 +3,7 @@ import { createCharacter, instantiateWorldCharacter } from './characters.js';
 import { adoptImageForCharacter, createLoreEntry, saveLoreContent } from './api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from './lorebook.js';
 import { loadWorldInfo } from '../../../../world-info.js';
-import { blankProfile, PROFILE_FIELDS, debugLog } from './constants.js';
+import { blankProfile, NPC_LORE_FIELDS, debugLog } from './constants.js';
 import { splitNpcStats, initialiseNpcStats } from './stat-persistence.js';
 import { getAllCharacters, isChatCharacter } from './character-repository.js';
 
@@ -63,7 +63,7 @@ async function readLoreEntry(char) {
  */
 export async function serialiseCharacter(char, { npcStats = getSettings().statusTracker?.npcStats } = {}) {
     const profile = {};
-    for (const field of PROFILE_FIELDS) {
+    for (const field of NPC_LORE_FIELDS) {
         const value = String(char.profile?.[field.id] ?? '').trim();
         if (value) profile[field.id] = value;
     }
@@ -173,7 +173,7 @@ function applyRecord(char, record, name, version) {
     // Field by field, for the same reason normalizeSettings does it that way: a file
     // written before a field existed should gain it blank, not replace the set.
     char.profile = blankProfile();
-    for (const field of PROFILE_FIELDS) {
+    for (const field of NPC_LORE_FIELDS) {
         const value = record.profile?.[field.id];
         if (typeof value === 'string') char.profile[field.id] = value;
     }

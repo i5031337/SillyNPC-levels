@@ -9,8 +9,8 @@ import { recordUsage } from './usage.js';
 import { syncEntryIdentity, mergeKeywords, namesFor } from './lorebook.js';
 import { escapeRegExp, describeConnection } from './utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
-import { PROFILE_FIELDS } from './constants-profile.js';
-import { mergeLoreProfile, splitLoreProfile, joinLoreProfile } from './lore-profile.js';
+import { NPC_LORE_FIELDS, hintFor } from './constants-profile.js';
+import { formatLoreContent, parseLoreContent, mergeLoreValues } from './lore-format.js';
 
 /**
  * The slice of story the lore writer is shown.
@@ -192,17 +192,17 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     }
 
     if (!options.template && !char.isPlayer) {
-        const existing = mergeLoreProfile(existingLore, char.profile, char.name).profile;
-        prompt += '\n\nThe Content entry must contain all named character details and additional lore '
-            + 'in one response. Write one labelled line per named detail before the lore sections. '
+        const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
+        const hints = getSettings().profileHints;
+        prompt += '\n\nThe Content entry must contain every named field in the exact order shown. '
+            + 'Write one labelled line per field and no unlabelled prose. '
             + 'Keep established values exactly as given; fill only blanks that the sources support. '
             + 'Never invent a value. This format replaces any older instruction above that omits '
             + 'these fields.\n'
-            + PROFILE_FIELDS.map(field => `${field.label}: ${existing[field.id] || '(fill if known)'}`)
+            + NPC_LORE_FIELDS.map(field => `${field.label}: ${existing[field.id] || '(fill if known)'} — ${hintFor(field, hints)}`)
                 .join('\n');
         if (options.preserveLore && existingLore.trim()) {
-            prompt += '\nThis is a Fill request. Supply the named profile fields; the existing additional lore '
-                + 'will be retained exactly and does not need rewriting.';
+            prompt += '\nThis is a Fill request. Keep all established field values exactly and fill only blanks.';
         }
     }
 
@@ -234,17 +234,23 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     content = content.replace(namePattern, '').trim();
 
     if (!options.template && !char.isPlayer) {
-        const merged = mergeLoreProfile(content, char.profile, char.name);
-        content = options.preserveLore && existingLore.trim()
-            ? joinLoreProfile(merged.profile, splitLoreProfile(existingLore, char.name).lore)
-            : merged.content;
+        const generated = parseLoreContent(content);
+        if (generated) {
+            const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
+            const values = Object.fromEntries(NPC_LORE_FIELDS.map(field => [field.id,
+                String(options.preserveLore
+                    ? (existing[field.id] || generated[field.id] || '')
+                    : (generated[field.id] || existing[field.id] || '')).trim()]));
+            content = formatLoreContent(values);
+        }
     }
 
     // The prompt asks for "Tags:" and "Content:". A reply with neither did not follow the
     // instruction, and the usual reason is that the instruction never arrived - the reply
     // is then the story model answering in character. Reported rather than hidden, so a
     // usable answer can still be salvaged.
-    const followedFormat = Boolean(tagsMatch || contentMatch);
+    const followedFormat = Boolean(tagsMatch && contentMatch
+        && (options.template || char.isPlayer || parseLoreContent(content)));
 
     return { tags, content, followedFormat, excerpt };
 }
@@ -275,9 +281,10 @@ export async function saveLoreContent(char, world, uid, tags, content) {
 
     entry.content = content.trim();
     if (!char.isPlayer) {
-        const merged = mergeLoreProfile(entry.content, char.profile, char.name);
-        entry.content = merged.content;
-        char.profile = { ...char.profile, ...merged.profile };
+        const parsed = parseLoreContent(entry.content);
+        if (!parsed) throw new Error('NPC lore must contain every named field in the required order.');
+        entry.content = formatLoreContent(parsed);
+        char.profile = { ...char.profile, ...parsed };
     }
     // The writer returns Abilities/History/Ties and never a name, so the heading is put
     // on here rather than asked for. Before the tags merge, which must not be lost.

@@ -1,10 +1,10 @@
 import { loadWorldInfo } from '../../../../world-info.js';
 import { debugLog } from './constants.js';
-import { getSettings } from './settings.js';
+import { getSettings, saveSettings } from './settings.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from './api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from './lorebook.js';
-import { PROFILE_FIELDS } from './constants-profile.js';
-import { splitLoreProfile } from './lore-profile.js';
+import { NPC_LORE_FIELDS } from './constants-profile.js';
+import { parseLoreContent } from './lore-format.js';
 
 /** The linked entry's text, or an empty string. Read fresh: it may have just been written. */
 export async function readLoreEntry(char) {
@@ -37,17 +37,18 @@ export async function fillLore(char) {
         existing = await readLoreEntry(char);
     }
 
-    const parsed = splitLoreProfile(existing, char.name);
+    const parsed = parseLoreContent(existing);
     char.profile ||= {};
-    for (const field of PROFILE_FIELDS) {
-        if (!String(char.profile[field.id] ?? '').trim() && parsed.profile[field.id]) {
-            char.profile[field.id] = parsed.profile[field.id];
+    let restored = false;
+    for (const field of NPC_LORE_FIELDS) {
+        if (!String(char.profile[field.id] ?? '').trim() && parsed?.[field.id]) {
+            char.profile[field.id] = parsed[field.id];
+            restored = true;
         }
     }
-    const missing = PROFILE_FIELDS.some(field => !String(char.profile[field.id] ?? '').trim());
-    if (existing.trim() && !missing) {
-        // Saving also migrates older entries into the common format, without a model call.
-        await saveLoreContent(char, char.lorebook.world, char.lorebook.uid, '', existing);
+    if (restored) saveSettings();
+    const missing = NPC_LORE_FIELDS.some(field => !String(char.profile[field.id] ?? '').trim());
+    if (parsed && !missing) {
         return { ok: true, action: 'linked entry is complete' };
     }
 
@@ -74,7 +75,7 @@ export async function fillLore(char) {
     // previous attempt, reuse that empty entry instead of treating the link as done.
     const uid = char.lorebook?.uid ?? (await createLoreEntry(char, world, char.name)).uid;
     const { content, tags } = await generateLoreContent(char, world, uid,
-        { preserveLore: Boolean(existing.trim()) });
+        { preserveLore: Boolean(parsed) });
     if (!String(content || '').trim()) {
         return { ok: false, action: 'none', reason: 'The lore writer returned nothing usable.' };
     }

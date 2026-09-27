@@ -59,7 +59,7 @@ export function createCharacter(name = '') {
         lorebook: null,
         statusOverrides: {},
         statusCollections: {},
-        /** Who they are, as opposed to what is happening to them. See PROFILE_FIELDS. */
+        /** Named lore fields, mirrored into the linked entry. See NPC_LORE_FIELDS. */
         profile: blankProfile(),
     };
     addCharacterRecord(char);

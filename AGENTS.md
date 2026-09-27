@@ -6,4 +6,8 @@
 - Settings live in SillyTavern's `extension_settings.sillynpc` and are normalized by `src/settings*.js`. Chat-specific NPC cards and tracker state live in chat metadata. Preserve save, migration, persona, and chat boundaries when changing persistence; existing chats and exports must remain readable.
 - Tracker and XP logic is mainly in `src/status-*.js` and `src/progression.js`; character ownership is in `src/chat*.js` and `src/character*.js`; views are in `src/ui-*.js`. XP extraction reports an absolute total, which progression converts to the stored remainder and level.
 - Run focused tests with `node --experimental-default-type=module --test tests/*.mjs`. For UI or SillyTavern event changes, also verify behavior in a running SillyTavern instance, since the Node tests do not cover the full host UI.
+
+# Coding practices
+
 - No source file should exceed 20kB, for agentic efficiency. Keep code clear and concise. When appropriate, recommend a refactor strategy. 
+- This project is a prototype. Never make something more complicated for the sake of legacy compatibility.

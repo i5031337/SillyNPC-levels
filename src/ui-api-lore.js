@@ -238,8 +238,8 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
             // presented as though it worked.
             resultWarning.style.display = followedFormat ? 'none' : '';
             if (!followedFormat) {
-                resultWarning.textContent = 'This reply did not use the requested Tags/Content '
-                    + 'format, which usually means the instruction never reached the model - '
+                resultWarning.textContent = `This reply did not use the required ${template ? 'Tags/Content' : 'Tags/Content and named-field'} `
+                    + 'format. Check it before saving. The instruction may not have reached the model - '
                     + 'most often because the request was too large. Try a smaller Chat To Read '
                     + 'or Excerpt Size Limit. Check it before saving.';
             }

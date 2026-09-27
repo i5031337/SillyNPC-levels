@@ -38,10 +38,11 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/entry-history-notes.js` | Manage copied historical notes on messages. |
 | `src/constants.js` | Extension constants, themes, profile schema, and built-in writing/image prompts. |
 | `src/constants-base.js` | Base extension, theme, layout, and image constants. |
-| `src/constants-profile.js` | Profile field definitions and helpers. |
+| `src/constants-profile.js` | Single registry for player profile and NPC lore fields. |
 | `src/constants-prompts.js` | Built-in status and image prompt constants. |
 | `src/settings.js` | Default settings, normalization, persistence, and settings transfer. |
 | `src/settings-defaults.js` | Default settings catalog. |
+| `src/default-prompt-texts.js` | Editable prompt defaults; NPC field instructions and format come from the field registry. |
 | `src/settings-tracker-defaults.js` | Default tracker settings. |
 | `src/settings-migration.js` | Normalize settings across versions. |
 | `src/settings-base-migration.js` | Normalize common settings and their defaults. |
@@ -129,8 +130,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/default-portraits.js` | Stranger portrait pool and assignments. |
 | `src/image-tags.js` | Portrait tag fields and tag lookup. |
 | `src/lorebook.js` | Lorebook linking, identity, and synchronization. |
-| `src/lore-profile.js` | Shared format for profile fields and legacy lore text. |
-| `src/lore-profile-sync.js` | Sync the unified lore entry with card profile fields. |
+| `src/lore-format.js` | Parse and format the strict named NPC lore entry. |
+| `src/lore-sync.js` | Sync NPC fields with the linked lorebook entry. |
 | `src/activated-lore.js` | Capture activated lore entries and their characters. |
 | `src/beats.js` | Segment visible message content into story beats. |
 | `src/mentions.js` | Detect named character mentions. |
@@ -186,7 +187,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui-player-sections.js` | Player sheet content sections. |
 | `src/ui-portrait.js` | Portrait gallery and lightbox. |
 | `src/ui-profile.js` | Character profile blocks and editor. |
-| `src/ui-profile-lore.js` | Format named lore sections in the character view. |
 | `src/ui-prompts.js` | Prompt editor and budget view. |
 | `src/ui-scan-button.js` | History scan trigger. |
 | `src/ui-setting-controls.js` | Shared settings form controls. |

@@ -145,8 +145,8 @@ export const DIALOGUE_FORMAT_PROMPT = [
 /**
  * What a character *is*, as named fields rather than a paragraph.
  *
- * These fields have named lines at the start of the lore entry and a card mirror for
- * tracker and portrait consumers. Named fields can be laid out and corrected individually.
+ * The NPC lore fields have named lines in the entry and a card mirror for tracker and
+ * portrait consumers. Named fields can be laid out and corrected individually.
  *
  * Four, and fixed. Everything else a character might have - their job, their ties, their
  * rank, what they are hiding - varies by system and belongs in System Builder where you

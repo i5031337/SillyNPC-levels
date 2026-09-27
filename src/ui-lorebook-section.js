@@ -6,7 +6,7 @@ import { escapeHtml } from './utils.js';
 import { LOG_PREFIX } from './constants.js';
 import { tryAutoSyncLorebook, updateLorebookEntry, deleteLorebookEntry } from './lorebook.js';
 import { generateLoreEntry } from './ui-api.js';
-import { profileFromLore, saveUnifiedLore, syncProfileToLore } from './lore-profile-sync.js';
+import { readLoreValues, syncProfileToLore } from './lore-sync.js';
 
 /**
  * The lorebook block: link an entry, write one, generate one, or replace the link.
@@ -172,25 +172,25 @@ async function buildLorebookView(char) {
             renderBrokenLink(wrap, char, titleEl, contentEl);
         } else {
             titleEl.textContent = `${char.lorebook.world} / ${entry.comment || `Entry #${entry.uid}`}`;
-            const unified = char.isPlayer
-                ? { lore: entry.content || '', profile: char.profile || {} }
-                : profileFromLore(entry.content, char.profile, char.name);
-            if (!char.isPlayer) {
+            const values = char.isPlayer ? null : readLoreValues(entry.content, char.profile);
+            if (!char.isPlayer && values) {
                 char.profile ||= {};
                 let restored = false;
-                for (const [id, value] of Object.entries(unified.profile)) {
+                for (const [id, value] of Object.entries(values)) {
                     if (!char.profile[id] && value) { char.profile[id] = value; restored = true; }
                 }
                 if (restored) saveSettings();
                 await syncProfileToLore(char);
             }
-            contentEl.textContent = unified.lore || '(No additional lore)';
-            editBtn.disabled = false;
-            editBtn.addEventListener('click', () => {
+            contentEl.textContent = char.isPlayer ? (entry.content || '(empty)')
+                : values ? 'All lore fields are editable in Character details above.'
+                    : 'This entry does not use the required field format. Regenerate it to replace its content.';
+            editBtn.style.display = char.isPlayer ? '' : 'none';
+            editBtn.disabled = !char.isPlayer;
+            if (char.isPlayer) editBtn.addEventListener('click', () => {
                 lorebookMode = 'editing'; lorebookDraft = {
                     world: char.lorebook.world, uid: char.lorebook.uid,
-                    comment: entry.comment || '', content: unified.lore,
-                    profile: unified.profile,
+                    comment: entry.comment || '', content: entry.content || '',
                 };
                 onChange();
             });
@@ -258,7 +258,7 @@ function buildLorebookEditor(char) {
     wrap.innerHTML = `
         <div class="sillynpc-lorebook-meta">${escapeHtml(lorebookDraft.world)} / Entry #${escapeHtml(lorebookDraft.uid)}</div>
         <label>Title (comment)</label><input type="text" class="text_pole comment-input" value="${escapeHtml(lorebookDraft.comment)}">
-        <label>${char.isPlayer ? 'Content' : 'Additional lore'}</label><textarea class="text_pole sillynpc-lorebook-textarea" rows="10">${escapeHtml(lorebookDraft.content)}</textarea>
+        <label>Content</label><textarea class="text_pole sillynpc-lorebook-textarea" rows="10">${escapeHtml(lorebookDraft.content)}</textarea>
         <div class="sillynpc-lorebook-actions">
             <button type="button" class="menu_button cancel-btn">Cancel</button>
             <button type="button" class="menu_button save-btn"><i class="fa-solid fa-check"></i> Save</button>
@@ -270,14 +270,9 @@ function buildLorebookEditor(char) {
     wrap.querySelector('.save-btn').addEventListener('click', async () => {
         if (!lorebookDraft) return;
         try {
-            if (char.isPlayer) {
-                await updateLorebookEntry(lorebookDraft.world, lorebookDraft.uid, {
-                    comment: lorebookDraft.comment, content: lorebookDraft.content,
-                });
-            } else {
-                await saveUnifiedLore(char, lorebookDraft.world, lorebookDraft.uid,
-                    char.profile, lorebookDraft.content, lorebookDraft.comment);
-            }
+            await updateLorebookEntry(lorebookDraft.world, lorebookDraft.uid, {
+                comment: lorebookDraft.comment, content: lorebookDraft.content,
+            });
             toastr.success('Saved.');
             resetLorebookState();
             onChange();

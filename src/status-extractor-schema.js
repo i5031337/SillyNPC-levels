@@ -1,5 +1,5 @@
 import { getAllCharacters } from './character-repository.js';
-import { PROFILE_FIELDS, anyProfileFieldUnlocked } from './constants.js';
+import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from './constants.js';
 import { getPlayerCard } from './status-logic.js';
 import { poolTags, strangerKind } from './default-portraits.js';
 
@@ -86,19 +86,24 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
 
-    /* The four profile fields, but only if somebody has actually unlocked one.
+    /* Named profile and NPC lore fields, but only if somebody has unlocked one.
      *
      * A schema names what may come back, so listing these tells the model to look for
      * changes to them on every message - work and tokens nobody should pay for a feature
      * they have not switched on. The lock is per character and per field, so "any of them,
      * anywhere" is the only question the schema can ask; the apply side does the precise
      * filtering and drops anything for a field that is still locked. */
-    const profileProps = anyProfileFieldUnlocked(profileOwners()) ? {
+    const owners = profileOwners();
+    const profileShape = (fields) => ({
         type: 'object',
-        properties: Object.fromEntries(PROFILE_FIELDS.map(field => [
+        properties: Object.fromEntries(fields.map(field => [
             field.id, { type: 'string', description: field.hint },
         ])),
-    } : null;
+    });
+    const playerProfileProps = anyProfileFieldUnlocked(owners.filter(card => card.isPlayer))
+        ? profileShape(PROFILE_FIELDS) : null;
+    const npcProfileProps = anyProfileFieldUnlocked(owners.filter(card => !card.isPlayer))
+        ? profileShape(NPC_LORE_FIELDS) : null;
 
     return {
         type: 'object',
@@ -112,7 +117,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
                 properties: {
                     stats: stringMap(playerStatDefs),
                     ...(playerCollections ? { collections: playerCollections } : {}),
-                    ...(profileProps ? { profile: profileProps } : {}),
+                    ...(playerProfileProps ? { profile: playerProfileProps } : {}),
                 },
             },
             characters: {
@@ -124,7 +129,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
                         name: { type: 'string' },
                         stats: stringMap(npcStatDefs),
                         ...(npcCollections ? { collections: npcCollections } : {}),
-                        ...(profileProps ? { profile: profileProps } : {}),
+                        ...(npcProfileProps ? { profile: npcProfileProps } : {}),
                     },
                 },
             },
@@ -204,4 +209,3 @@ export function strangerValues(strangers, tags = poolTags()) {
         strangerExample: `${JSON.stringify(strangers[0])}: ${JSON.stringify(tags[0])}`,
     };
 }
-
