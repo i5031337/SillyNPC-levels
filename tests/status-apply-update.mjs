@@ -155,3 +155,34 @@ test('missing chat rejects before card writes', () => {
     assert.equal(calls.settings, 0);
     assert.equal(calls.saved.length, 0);
 });
+
+test('reader-reported NPC survives speaker redraw without speaking', () => {
+    const source = readFileSync(new URL('../src/tracker/status-scene-presence.js', import.meta.url), 'utf8')
+        .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
+        .replace('export function bind', 'function bind');
+    const bindPresence = new Function('eventSource', 'getSettings', 'getAllCharacters', 'debugLog',
+        `${source}\nreturn bind;`);
+    const settings = { statusTracker: {
+        castMode: 'speakers', castGraceMessages: 3, sceneBindingStat: '',
+        npcStats: [{ name: 'HP', defaultValue: '' }],
+    } };
+    const saved = [];
+    const deps = {
+        committedState: { global: {}, characters: [], presence: { tick: 0, messageId: null, seen: [] } },
+        resolveCanonicalName: name => name,
+        mayJoinScene: (name, { speaker = true } = {}) => name !== 'Rejected'
+            && (!speaker || name !== 'Mira'),
+        mergeDuplicateCharacters: () => false,
+        getInitialStatValue: value => value,
+        resolveMaxValue: () => '',
+        saveStateToMetadata(state) { saved.push(structuredClone(state)); this.committedState = state; },
+    };
+    bindPresence({ emit() {} }, () => settings, () => [], () => {})(deps);
+
+    deps.reconcileScenePresence(['Other'], '4');
+    deps.reconcileScenePresence(['Mira', 'Rejected'], '4', { authoritative: true });
+    assert.deepEqual(saved.at(-1).characters.map(char => char.name), ['Mira']);
+    deps.reconcileScenePresence(['Other'], '4');
+    assert.deepEqual(deps.committedState.characters.map(char => char.name), ['Mira']);
+    assert.deepEqual(deps.committedState.presence.seen, ['Mira']);
+});

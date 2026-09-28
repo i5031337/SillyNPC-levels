@@ -168,7 +168,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             const names = parsed.characters.map(c => c?.name).filter(Boolean);
             // The prompt asks for everyone present, not just whoever changed, so this
             // list is complete and absence means departure.
-            if (names.length) reconcileScenePresence(names, key, { authoritative: true });
+            reconcileScenePresence(names, messageId, { authoritative: true });
         }
 
         // Threads, applied on their own rather than through applyUpdate. They are not

@@ -144,14 +144,15 @@ function resolvePersonaSpeaker(name) {
  * @param {string} name
  * @returns {boolean}
  */
-function mayJoinScene(name) {
+function mayJoinScene(name, { speaker = true } = {}) {
     const canonical = resolveCanonicalName(name);
     if (!canonical) return false;
     if (getCastDecisions()[canonical.toLowerCase()]) return false;
 
-    // Only for names nobody has made a card for.
+    // The ignore list describes labels mistaken for speech, not NPCs named by the
+    // reader. An explicit cast decision above still excludes either source.
     if (findCardForName(canonical)) return true;
-    return !getIgnoredSpeakerLabels().has(normaliseSpeakerLabel(canonical));
+    return !speaker || !getIgnoredSpeakerLabels().has(normaliseSpeakerLabel(canonical));
 }
 
 /**

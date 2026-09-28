@@ -24,7 +24,8 @@ function reconcileScenePresence(names, messageId, options = {}) {
     // Anyone the reader has been told is not a character is dropped here rather than
     // admitted and removed again - both the decorator and the extractor arrive through
     // this function, which is what makes one decision cover both.
-    const incoming = (names || []).map(n => deps.resolveCanonicalName(n)).filter(n => n && deps.mayJoinScene(n));
+    const incoming = (names || []).map(n => deps.resolveCanonicalName(n))
+        .filter(n => n && deps.mayJoinScene(n, { speaker: !options.authoritative }));
 
     // Repairs a chat that already has both spellings, as well as preventing new ones.
     let changed = deps.mergeDuplicateCharacters(state);
@@ -46,9 +47,19 @@ function reconcileScenePresence(names, messageId, options = {}) {
         presence.tick = (Number(presence.tick) || 0) + 1;
         presence.messageId = key;
         presence.seen = [];
+        presence.authoritative = false;
     }
-    for (const name of incoming) {
-        if (!presence.seen.some(n => n.toLowerCase() === name.toLowerCase())) presence.seen.push(name);
+    if (options.authoritative) {
+        // The reader's cast is complete for this message. A later portrait redraw
+        // must not add a guessed speaker back to it.
+        presence.seen = [];
+        presence.authoritative = true;
+        changed = true;
+    }
+    if (!presence.authoritative || options.authoritative) {
+        for (const name of incoming) {
+            if (!presence.seen.some(n => n.toLowerCase() === name.toLowerCase())) presence.seen.push(name);
+        }
     }
 
     const seenLower = new Set(presence.seen.map(n => n.toLowerCase()));
@@ -70,7 +81,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
     const survivors = state.characters.filter(ch => {
         if (seenLower.has(ch.name.toLowerCase())) return true;
         // A complete cast list makes absence conclusive rather than merely unobserved.
-        if (options.authoritative) return false;
+        if (presence.authoritative) return false;
         // Characters that predate presence tracking get this tick as their baseline
         // rather than being dropped immediately.
         if (ch.lastSeenTick === undefined) { ch.lastSeenTick = presence.tick; return true; }
