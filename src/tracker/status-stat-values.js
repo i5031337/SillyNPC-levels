@@ -1,5 +1,6 @@
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
+import { isTurnStat, canAdvanceStat, earnsLevel } from './stat-update-policy.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from '../core/utils.js';
 
 export function bind(deps) {
@@ -93,7 +94,7 @@ const PLAIN_NUMBER = /^\s*-?\d+(?:\.\d+)?\s*$/;
 const NUMBER_OVER_NUMBER = /^\s*(-?\d+(?:\.\d+)?)\s*\/\s*-?\d+(?:\.\d+)?\s*$/;
 
 /**
- * The stats the tracker may only initialize while blank, by scope.
+ * Fields held out of ordinary turn updates, by scope.
  *
  * @returns {{ world: string[], player: string[], characters: string[] }}
  */
@@ -103,7 +104,7 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
         world: names(trackerSettings.globalStats),
         player: names(trackerSettings.playerStats),
         characters: (trackerSettings.npcStats || [])
-            .filter(stat => stat?.name && (stat.locked || stat.persistence === 'innate'))
+            .filter(stat => stat?.name && (stat.locked || !isTurnStat(stat)))
             .map(stat => stat.name),
     };
 }
@@ -114,7 +115,7 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * Only for replies from a model - the tracker's reader and the inline block. Your own edits
  * never come through here, so typing "120/150" on the sheet still sets a ceiling.
  *
- * - An innate NPC stat is never changed by a model reply. A locked NPC stat may be
+ * - An advancement-only stat is never changed by a turn reply. A locked NPC stat may be
  *   initialized while blank, then only you can change it.
  * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
  *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
@@ -125,17 +126,22 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * @param {object} update Changed in place, and returned.
  * @param {object} state The state the reply is applied to.
  */
-function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker) {
+function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker,
+    { allowInlineLevelBonus = false } = {}) {
     if (!update || typeof update !== 'object') return update;
+    const levelUp = allowInlineLevelBonus && earnsLevel(update, state);
 
-    const clean = (stats, defs, stored, { npc = false, cardStats = {} } = {}) => {
+    const clean = (stats, defs, stored, { npc = false, player = false, cardStats = {} } = {}) => {
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
             if (!def) continue;
+            const inlineBonus = player && levelUp
+                && (def.name.toLowerCase() === 'level bonus' || canAdvanceStat(def));
+            if (!isTurnStat(def) && !inlineBonus) { delete stats[key]; continue; }
             const held = stored?.[deps.findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, key) || key];
-            if (npc && (def.persistence === 'innate' || !canTrackerSetNpcStat(def, held, cardHeld))) {
+            if (npc && !canTrackerSetNpcStat(def)) {
                 delete stats[key];
                 continue;
             }
@@ -160,7 +166,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         // applyUpdate reads update.player.stats, or update.player itself when it is flat.
         const playerStats = update.player.stats && typeof update.player.stats === 'object'
             ? update.player.stats : update.player;
-        clean(playerStats, trackerSettings.playerStats, state?.player?.stats);
+        clean(playerStats, trackerSettings.playerStats, state?.player?.stats, { player: true });
     }
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
@@ -237,7 +243,7 @@ function isNumericStat(statDef) {
 /** The configured NPC fields, included in both tracker prompts for new arrivals. */
 function describeNpcStatFields(trackerSettings) {
     return (trackerSettings?.npcStats || [])
-        .filter(stat => stat?.name && stat.persistence !== 'innate')
+        .filter(stat => stat?.name && isTurnStat(stat))
         .map(stat => {
             const details = [isNumericStat(stat) ? 'number' : 'text'];
             const choices = deps.allowedValues(stat);
@@ -248,7 +254,7 @@ function describeNpcStatFields(trackerSettings) {
                 if (max) details.push(`starting maximum ${max}`);
             }
             if (String(stat.defaultValue ?? '').trim()) details.push(`default ${stat.defaultValue}`);
-            if (stat.locked || stat.persistence === 'innate') {
+            if (stat.locked) {
                 details.push('fill only while blank, then keep fixed');
             }
             return `- ${stat.name}: ${details.join('; ')}`;

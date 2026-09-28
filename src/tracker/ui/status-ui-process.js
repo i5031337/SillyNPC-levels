@@ -11,6 +11,11 @@ import { insideTracker, isEditingInside } from './status-ui-guards.js';
 
 const processingMessages = new Set();
 
+function sanitizeInlineUpdate(update) {
+    return sanitizeModelUpdate(update, loadStateFromMetadata(), getSettings().statusTracker,
+        { allowInlineLevelBonus: true });
+}
+
 /**
  * Live MutationObservers, keyed by message id.
  *
@@ -169,7 +174,7 @@ export function processStatusUpdate(mesEl) {
 
             const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== text;
             if (textUpdate && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
-                applyUpdate(sanitizeModelUpdate(textUpdate, loadStateFromMetadata()));
+                applyUpdate(sanitizeInlineUpdate(textUpdate));
                 mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                 mesEl.setAttribute('data-sillynpc-last-update-text', text);
             }
@@ -199,7 +204,7 @@ export function processStatusUpdate(mesEl) {
             if (parsedUpdate && (parsedUpdate.global !== undefined || parsedUpdate.player !== undefined || parsedUpdate.characters !== undefined)) {
                 const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== statusTagEl.textContent;
                 if (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent) {
-                    applyUpdate(sanitizeModelUpdate(parsedUpdate, loadStateFromMetadata()));
+                    applyUpdate(sanitizeInlineUpdate(parsedUpdate));
                     mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                     mesEl.setAttribute('data-sillynpc-last-update-text', statusTagEl.textContent);
                 }
@@ -247,7 +252,7 @@ export function processStatusUpdate(mesEl) {
                     foundUpdate = true;
                     const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== extractedJson;
                     if (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent) {
-                        applyUpdate(sanitizeModelUpdate(parsedCandidate, loadStateFromMetadata()));
+                        applyUpdate(sanitizeInlineUpdate(parsedCandidate));
                         mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                         mesEl.setAttribute('data-sillynpc-last-update-text', extractedJson);
                     }
@@ -284,5 +289,4 @@ export function processStatusUpdate(mesEl) {
         processingMessages.delete(mesId);
     }
 }
-
 

@@ -134,6 +134,7 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
 export function buildLevelBonusPrompt(state, messageText, trackerSettings, leadUp, details) {
     return promptText('levelBonus', {
         ...readerValues(state, messageText, trackerSettings, leadUp),
+        state: describeCurrentState(state, trackerSettings, { includeAdvancement: true }),
         level: details.level,
         eligible: details.eligible,
         sheet: JSON.stringify(state?.player?.stats || {}),

@@ -120,7 +120,7 @@ export function bind(deps) {
     }
 
     function applyCharacterStats(charData, updChar, matchedChar, settings, validKeys, collectionIds,
-        { verbatim, allowInnateChanges, dryRun }) {
+        { verbatim, allowAdvancementChanges, dryRun }) {
         const sourceStats = updChar.stats || updChar;
         const groups = deps.groupIncomingStats(
             sourceStats,
@@ -138,10 +138,7 @@ export function bind(deps) {
         let cardChanged = false;
         for (const [canonicalKey, group] of groups) {
             const statDef = settings.npcStats.find(s => s.name.toLowerCase() === canonicalKey.toLowerCase());
-            const cardStats = matchedChar?.statusOverrides || {};
-            if (!allowInnateChanges && !canTrackerSetNpcStat(statDef,
-                charData.stats[canonicalKey],
-                cardStats[deps.findMatchingStatKey(cardStats, canonicalKey) || canonicalKey])) continue;
+            if (!allowAdvancementChanges && !canTrackerSetNpcStat(statDef)) continue;
             const merged = deps.combineStatValue(charData.stats[canonicalKey], group, statDef, { verbatim });
             charData.stats[canonicalKey] = deps.constrainToDefinition(statDef, merged, charData.stats[canonicalKey]);
 
@@ -157,7 +154,7 @@ export function bind(deps) {
 
     function applyCharacterUpdate(state, updChar, context) {
         const { settings, lookup, validKeys, collectionIds, newBindingValue,
-            admitCharacters, dryRun, allowReplace, allowInnateChanges, verbatim, offstageSkipped } = context;
+            admitCharacters, dryRun, allowReplace, allowAdvancementChanges, verbatim, offstageSkipped } = context;
         if (!updChar.name) return false;
         const canonicalName = deps.resolveCanonicalName(updChar.name);
         const lowerName = canonicalName.toLowerCase();
@@ -176,7 +173,7 @@ export function bind(deps) {
                 return false;
             }
             const detached = deps.updateCardOffstage(matchedChar, updChar, state, settings,
-                { dryRun, allowReplace, allowInnateChanges });
+                { dryRun, allowReplace, allowAdvancementChanges });
             // The review diff needs a row; the real card update leaves the cast untouched.
             if (dryRun && detached) state.characters.push(detached);
             return false;
@@ -192,7 +189,7 @@ export function bind(deps) {
         }
 
         let cardChanged = applyCharacterStats(charData, updChar, matchedChar, settings, validKeys,
-            collectionIds, { verbatim, allowInnateChanges, dryRun });
+            collectionIds, { verbatim, allowAdvancementChanges, dryRun });
         const collections = collectCollections(updChar, collectionIds, `character update for ${updChar.name}`);
         Object.keys(collections).forEach(id => {
             deps.applyCollectionUpdate(charData, id, collections[id], { allowReplace });
@@ -218,7 +215,7 @@ export function bind(deps) {
 
     function applyUpdate(update, options = {}) {
         const { dryRun = false, label = 'AI update', admitCharacters = false, allowReplace = false,
-            partOfMessage = false, verbatim = false, allowInnateChanges = false } = options;
+            partOfMessage = false, verbatim = false, allowAdvancementChanges = false } = options;
         // Card writes occur before the state save, so reject a missing chat before either.
         if (!dryRun && !deps.hasOpenChat()) {
             console.warn(LOG_PREFIX, 'Refused to apply a tracker update with no chat open.');
@@ -240,7 +237,7 @@ export function bind(deps) {
             ? applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace }) : false;
         if (update.characters && Array.isArray(update.characters)) {
             applyCharacters(state, update.characters, settings, {
-                newBindingValue, admitCharacters, dryRun, allowReplace, allowInnateChanges,
+                newBindingValue, admitCharacters, dryRun, allowReplace, allowAdvancementChanges,
                 verbatim, offstageSkipped,
             });
         }

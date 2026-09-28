@@ -1,5 +1,6 @@
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
+import { normaliseStatUpdatePolicies } from './stat-update-policy.js';
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
 
 export function bind(deps) {
@@ -267,6 +268,7 @@ function applySystemPreset(profile) {
         normaliseStatDefs(st[listName]);
     }
     normaliseNpcPersistence(st.npcStats);
+    normaliseStatUpdatePolicies(st);
 
     // The theme was called displayStyle and lived in config; it is menuStyle at the root
     // now, and carried like anything else. Old profiles still name the old one.

@@ -12,6 +12,7 @@ import { buildExtractionSchema, strangersToClassify } from './status-extractor-s
 import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { expandNumericDeltas } from './status-extractor-deltas.js';
+import { holdLevelBonusChanges } from '../stat-update-policy.js';
 import { addLevelBonus, applyThreadsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
@@ -153,7 +154,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
         sanitizeModelUpdate(parsed, liveState, trackerSettings);
-        await addLevelBonus(parsed, liveState, trackerSettings, String(messageText), leadUp);
+        const levelBonus = await addLevelBonus(parsed, liveState, trackerSettings,
+            String(messageText), leadUp);
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
             || extractionSwipe(reportMessage) !== swipe) {
             return { applied: false, reason: 'reply changed while reading' };
@@ -218,6 +220,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         }
 
         const { auto, pending } = partitionChanges(changes, trackerSettings);
+        holdLevelBonusChanges(auto, pending, levelBonus);
 
         // The parsed update is only safe to apply whole when nothing was held back. If a
         // row was blocked by a standing decision, applying `parsed` would carry out the

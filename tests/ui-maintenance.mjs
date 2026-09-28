@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { statPolicyMarkup } from '../src/ui/system/ui-system-stat-policy.js';
+
+test('System Builder separates update authority, transfer policy and level bonuses', () => {
+    const escape = text => text;
+    const npc = statPolicyMarkup({ name: 'Wisdom', persistence: 'innate',
+        updatePolicy: 'turn' }, 'npcStats', true, escape);
+    assert.match(npc, /class="text_pole stat-update-policy"/);
+    assert.match(npc, /value="turn" selected/);
+    assert.match(npc, /class="text_pole stat-persistence"/);
+    assert.doesNotMatch(npc, /stat-advance-on-level/);
+
+    const player = statPolicyMarkup({ name: 'Strength', advanceOnLevel: true },
+        'playerStats', true, escape);
+    assert.match(player, /stat-advance-on-level" checked/);
+    assert.doesNotMatch(player, /stat-persistence/);
+});
 
 class Element {
     constructor(tag) {

@@ -75,6 +75,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/tokens.js` | Token budget readout. |
 | `src/tracker/progression.js` | XP advancement and level bonus calculations. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
+| `src/tracker/stat-update-policy.js` | Turn and advancement update policy for stats. |
 | `src/tracker/status-clock.js` | Story clock parsing and elapsed time. |
 | `src/tracker/status-rules.js` | Time-based stat rules. |
 | `src/tracker/status-history.js` | Raw status block preservation and chat overhead measurement. |
@@ -223,6 +224,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-system-collections.js` | Collection schema editor. |
 | `src/ui/system/ui-collection-fields.js` | Collection field controls and row wiring for the schema editor. |
 | `src/ui/system/ui-system-stats.js` | Stat schema editor. |
+| `src/ui/system/ui-system-stat-policy.js` | Stat update policy and level-up eligibility controls. |
 | `src/ui/system/ui-system-manager.js` | System preset manager. |
 | `src/ui/shared/ui-template-tidy.js` | Prompt template cleanup UI. |
 | `src/ui/shared/ui-theme.js` | Apply themes and portrait/speech display options. |

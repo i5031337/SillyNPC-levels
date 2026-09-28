@@ -3,6 +3,7 @@ import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../../
 import { getPlayerCard } from '../status-logic.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames } from './status-extractor-deltas.js';
+import { isTurnStat } from '../stat-update-policy.js';
 
 /**
  * Everyone who has a profile that could be unlocked: the cards, and the player.
@@ -38,7 +39,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const stringMap = (stats) => ({
         type: 'object',
         properties: Object.fromEntries((stats || [])
-            .filter(stat => stat?.name && stat.persistence !== 'innate')
+            .filter(stat => stat?.name && isTurnStat(stat))
             .map(stat => [
                 stat.name,
                 stat.hint?.trim()
@@ -82,7 +83,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
 
     const globalStatDefs = trackerSettings.globalStats || [];
     const playerStatDefs = trackerSettings.playerStats || [];
-    const npcStatDefs = (trackerSettings.npcStats || []).filter(stat => stat.persistence !== 'innate');
+    const npcStatDefs = (trackerSettings.npcStats || []).filter(isTurnStat);
     const deltaMap = (keys) => ({
         type: 'object',
         properties: Object.fromEntries(keys.map(key => [key, { type: 'number' }])),

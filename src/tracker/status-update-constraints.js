@@ -192,7 +192,7 @@ function findMatchingStatKey(existingStats, searchKey) {
  * Merges an update into the current state.
  *
  * @param {object} update
- * @param {{ dryRun?: boolean, label?: string, verbatim?: boolean, allowInnateChanges?: boolean }} [options]
+ * @param {{ dryRun?: boolean, label?: string, verbatim?: boolean, allowAdvancementChanges?: boolean }} [options]
  *   dryRun returns the resulting state without saving, syncing or emitting, so callers
  *   can diff what an update *would* do before letting it happen.
  *   verbatim says the values are whole values rather than readings of part of one, which

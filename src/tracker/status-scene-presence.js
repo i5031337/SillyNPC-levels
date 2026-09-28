@@ -114,7 +114,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
  * @param {{dryRun?: boolean}} options
  */
 function updateCardOffstage(card, updChar, state, settings,
-    { dryRun = false, allowReplace = false, allowInnateChanges = false } = {}) {
+    { dryRun = false, allowReplace = false, allowAdvancementChanges = false } = {}) {
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
@@ -130,9 +130,7 @@ function updateCardOffstage(card, updChar, state, settings,
     for (const [key, value] of Object.entries(sourceStats)) {
         const matched = deps.findMatchingStatKey(actor.stats, key) || key;
         if (!validKeys.has(matched.toLowerCase())) continue;
-        const cardStats = card.statusOverrides || {};
-        if (!allowInnateChanges && !canTrackerSetNpcStat(defOf(matched),
-            actor.stats[matched], cardStats[deps.findMatchingStatKey(cardStats, matched) || matched])) continue;
+        if (!allowAdvancementChanges && !canTrackerSetNpcStat(defOf(matched))) continue;
         const merged = deps.mergeStatValue(actor.stats[matched], String(value));
         actor.stats[matched] = deps.constrainToDefinition(defOf(matched), merged, actor.stats[matched]);
     }

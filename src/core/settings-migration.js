@@ -1,6 +1,7 @@
 import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS } from './constants.js';
 import { paletteIndexFor } from './hash.js';
 import { normaliseNpcPersistence } from '../tracker/stat-persistence.js';
+import { normaliseStatUpdatePolicies } from '../tracker/stat-update-policy.js';
 import { defaultSettings } from './settings-defaults.js';
 import { saveSettings } from './settings.js';
 import { migratePresetsAndStores } from './settings-store-migration.js';
@@ -250,6 +251,7 @@ function normalizeTrackerSchema(settings) {
             normaliseStatDefs(settings.statusTracker[listName]);
         }
         normaliseNpcPersistence(settings.statusTracker.npcStats);
+        normaliseStatUpdatePolicies(settings.statusTracker);
 
         // The same field a stat has had all along, on a collection. A stat could say how it
         // should be written and a collection could not say what it holds - so "pictures"

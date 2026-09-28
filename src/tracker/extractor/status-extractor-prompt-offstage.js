@@ -3,16 +3,17 @@ import { charactersFromActivatedLore } from '../../lore/activated-lore.js';
 import { liveFactsFor } from '../../api/api.js';
 import { lockedStats } from '../status-logic.js';
 import { summariseCollections, profileBlock } from './status-extractor-prompt-state.js';
+import { isTurnStat } from '../stat-update-policy.js';
 
 export function describeLocked(trackerSettings) {
     const locked = lockedStats(trackerSettings);
-    const innate = new Set((trackerSettings.npcStats || []).filter(stat => stat.persistence === 'innate')
+    const hidden = new Set((trackerSettings.npcStats || []).filter(stat => !isTurnStat(stat))
         .map(stat => stat.name));
     return [
         locked.world.length ? `World: ${locked.world.join(', ')}` : '',
         locked.player.length ? `Player: ${locked.player.join(', ')}` : '',
-        locked.characters.some(name => !innate.has(name))
-            ? `Characters: ${locked.characters.filter(name => !innate.has(name)).join(', ')}` : '',
+        locked.characters.some(name => !hidden.has(name))
+            ? `Characters: ${locked.characters.filter(name => !hidden.has(name)).join(', ')}` : '',
     ].filter(Boolean).join('\n');
 }
 
@@ -58,7 +59,7 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
            the state is what makes them off-scene. liveFactsFor answers exactly that. */
         const { stats, collections } = liveFactsFor(char);
         const visibleStats = Object.fromEntries(Object.entries(stats || {}).filter(([name]) =>
-            !(trackerSettings.npcStats || []).some(def => def.persistence === 'innate'
+            !(trackerSettings.npcStats || []).some(def => !isTurnStat(def)
                 && def.name?.toLowerCase() === name.toLowerCase())));
         const listed = summariseCollections({ collections }, 'npc', trackerSettings);
         const profile = profileBlock(char);

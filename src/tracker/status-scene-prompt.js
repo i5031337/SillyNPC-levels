@@ -1,4 +1,5 @@
 import { promptText } from '../prompts/prompt-texts.js';
+import { isTurnStat } from './stat-update-policy.js';
 import { 
     setExtensionPrompt,
     extension_prompt_types,
@@ -119,7 +120,7 @@ function getStatusExample() {
     const first = (list) => (list || []).map(s => s?.name).filter(Boolean)[0];
 
     const player = {};
-    const playerStat = first(settings.playerStats);
+    const playerStat = first(settings.playerStats.filter(isTurnStat));
     if (playerStat) player.stats = { [playerStat]: '<new value>' };
     const col = (settings.collections || []).find(c => c?.target !== 'npc');
     if (col) {
@@ -132,7 +133,7 @@ function getStatusExample() {
     }
 
     const character = { name: first(state?.characters) || '<someone present>' };
-    const npcStat = first(settings.npcStats.filter(stat => stat.persistence !== 'innate'));
+    const npcStat = first(settings.npcStats.filter(isTurnStat));
     if (npcStat) character.stats = { [npcStat]: '<new value>' };
 
     return promptText('storyExample', { update: JSON.stringify({ player, characters: [character] }) });

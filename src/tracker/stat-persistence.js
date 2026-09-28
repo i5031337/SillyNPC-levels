@@ -42,8 +42,8 @@ export function initialiseNpcStats(values, definitions) {
     return { ...result, ...splitNpcStats(values, definitions).innate };
 }
 
-/** A filled innate stat can be edited by a person, but not changed by tracker output. */
-export function canTrackerSetNpcStat(definition, stateValue, cardValue) {
-    if (definition?.persistence !== 'innate') return true;
-    return !String(stateValue ?? '').trim() && !String(cardValue ?? '').trim();
+/** Manual edits bypass this; turn updates can touch only turn-managed fields. */
+export function canTrackerSetNpcStat(definition) {
+    return isTurnStat(definition);
 }
+import { isTurnStat } from './stat-update-policy.js';

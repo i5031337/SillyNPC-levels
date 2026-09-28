@@ -11,6 +11,7 @@ import { coerceThread, addThread, closeThread, openThreads, touchThreads, pruneT
 import { recordThreadChanges } from '../snapshots/status-snapshots.js';
 import { syncProfileToLore } from '../../lore/lore-sync.js';
 import { buildLevelBonusPrompt } from './status-extractor-prompt.js';
+import { canAdvanceStat } from '../stat-update-policy.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
 export async function addLevelBonus(parsed, state, trackerSettings, messageText, leadUp = []) {
@@ -26,7 +27,7 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
     if (!transition || transition.levelsGained < 1) return;
 
     const eligible = (trackerSettings.playerStats || []).filter(def => {
-        if (def.locked || ['xp', 'level', 'level bonus'].includes(def.name.toLowerCase())) return false;
+        if (!canAdvanceStat(def)) return false;
         const parts = splitValue(current[def.name]);
         return Number.isFinite(Number(parts.current)) && parts.current !== '';
     }).map(def => def.name);
@@ -52,7 +53,7 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
         console.warn(LOG_PREFIX, 'Level-up bonus request failed:', error);
     }
     const description = String(bonus?.description ?? '').trim().slice(0, 180);
-    if (!description) return;
+    if (!description) return null;
     const amount = Number(bonus?.amount);
     const target = eligible.find(name => name.toLowerCase() === String(bonus?.stat ?? '').toLowerCase());
     const sheetStats = parsed.player.stats || parsed.player;
@@ -61,6 +62,8 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
         if (boosted !== null) sheetStats[target] = boosted;
     }
     sheetStats[bonusName] = `Level ${transition.level}: ${description}`;
+    return { stat: target && Number.isInteger(amount) && amount >= 1 && amount <= 5 ? target : null,
+        bonusName };
 }
 
 export function applyProfileFromReply(parsed) {

@@ -7,7 +7,7 @@ function readable(value) {
 }
 
 function eligible(def, value) {
-    return Boolean(def?.name && !def.locked && def.persistence !== 'innate'
+    return Boolean(def?.name && !def.locked && isTurnStat(def)
         && !['level', 'level bonus'].includes(def.name.toLowerCase()) && readable(value));
 }
 
@@ -72,3 +72,4 @@ export function expandNumericDeltas(update, state, settings) {
     }
     return update;
 }
+import { isTurnStat } from '../stat-update-policy.js';

@@ -11,15 +11,16 @@ the original extension; both use the same settings and events and must not run t
 
 With the Status Tracker enabled, the reader can award XP for concrete accomplishments
 in the latest story message, including useful item acquisitions, resolved challenges,
-and successful NPC interactions. It reports the new absolute XP total. For example,
-an award of 20 when XP is `90/100` is reported as `110/100`.
+and successful NPC interactions. It reports the earned amount. For example,
+an award of 20 when XP is `90/100` is reported as a `+20` delta.
 
 The extension then automatically advances Level to 2 and stores `10/100` XP. The
 current XP maximum stays the threshold for subsequent levels, and large awards can
 cross multiple levels. On a level-up in separate extraction mode, the reader makes
 an additional request to choose a story-appropriate bonus. It may increase an
-existing numeric player stat by 1–5, or write a narrative perk. The latest bonus
-appears in the player's `Level Bonus` field. In inline mode, the narrator is asked
+eligible numeric player stat by 1–5, or write a narrative perk. The bonus waits for
+review while earned XP and Level apply. The latest accepted bonus appears in the
+player's `Level Bonus` field. In inline mode, the narrator is asked
 to supply that field with its status update. If no bonus can be read from the LLM,
 the level-up still occurs; the bonus can be entered on the player sheet.
 
@@ -132,7 +133,9 @@ Reload SillyTavern.
 
 ### NPC stats and character transfers
 
-In **Systems → Builder → NPC**, set each stat to **Innate** or **Variable**. Innate values travel with a character and the tracker may initialize one only while it is blank; later changes require a manual edit. Variable values can change during the adventure and reset to the destination System's defaults when a character is imported or instantiated from a reusable world card. Shipped HP, Energy, and Condition fields are Variable. Existing custom fields keep their stored values and show a review note until you choose their transfer behavior.
+In **Systems → Builder → NPC**, choose **Innate** or **Variable** for transfer. Innate values travel with a character; Variable values start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Separately, choose **Turn** or **Advancement** for update authority. Turn fields may change as the story unfolds; Advancement fields are hidden from turn extraction and can currently be edited manually for NPCs. Existing Innate fields default to Advancement, preserving their earlier behavior. Shipped HP, Energy, and Condition fields are Variable. Existing custom fields keep their stored values and show a review note until you choose their transfer behavior.
+
+In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. **Level bonus** independently chooses which numeric fields may be raised after a level-up. A Turn field such as HP may also be eligible for a level bonus, so current resource changes and maximum growth can share one field.
 
 **Export selected** on the Characters page previews which fields travel. Character files use version 2; older character files still import, with their mixed stat values classified by the destination System. Linked lore travels as text and can be recreated in the destination lorebook. Portrait paths are local to one installation, so exported files contain no portraits. **Export World Characters** retains each source chat and NPC ID in the file, allowing same-name NPCs from different chats to remain separate on import.
 

@@ -1,4 +1,5 @@
 import { fieldsForCard, isStaticField } from '../../core/constants.js';
+import { isTurnStat } from '../stat-update-policy.js';
 import { statsInSystem, getPlayerCard, findCardForName, promptCeiling, highestCeiling } from '../status-logic.js';
 
 /**
@@ -164,14 +165,15 @@ export function summariseCollections(actor, target, trackerSettings) {
         return out;
 }
 
-export function describeCurrentState(state, trackerSettings) {
+export function describeCurrentState(state, trackerSettings, { includeAdvancement = false } = {}) {
     const summarise = (actor, target) => summariseCollections(actor, target, trackerSettings);
-    const npcStats = (values) => {
-        const kept = statsInSystem(values, 'npcStats');
-        const innate = new Set((trackerSettings.npcStats || [])
-            .filter(def => def.persistence === 'innate').map(def => def.name?.toLowerCase()));
+    const visibleStats = (values, listKey) => {
+        const kept = statsInSystem(values, listKey);
+        if (includeAdvancement) return kept;
+        const hidden = new Set((trackerSettings[listKey] || [])
+            .filter(def => !isTurnStat(def)).map(def => def.name?.toLowerCase()));
         for (const key of Object.keys(kept)) {
-            if (innate.has(key.toLowerCase())) delete kept[key];
+            if (hidden.has(key.toLowerCase())) delete kept[key];
         }
         return kept;
     };
@@ -182,9 +184,9 @@ export function describeCurrentState(state, trackerSettings) {
        inviting it to report on something applyUpdate would then refuse to write. See
        statsInSystem. */
     const shape = {
-        global: statsInSystem(state.global, 'globalStats'),
+        global: visibleStats(state.global, 'globalStats'),
         player: {
-            stats: statsInSystem(state.player?.stats, 'playerStats'),
+            stats: visibleStats(state.player?.stats, 'playerStats'),
             ...(playerCollections ? { collections: playerCollections } : {}),
             // The player's four fields live on their persona record, not in the scene cast.
             ...profileBlock(safePlayerCard()),
@@ -193,7 +195,7 @@ export function describeCurrentState(state, trackerSettings) {
             const charCollections = summarise(char, 'npc');
             return {
                 name: char.name,
-                stats: npcStats(char.stats),
+                stats: visibleStats(char.stats, 'npcStats'),
                 ...(charCollections ? { collections: charCollections } : {}),
                 ...profileBlock(findCardForName(char.name)),
             };
@@ -300,15 +302,15 @@ export function describeLimits(trackerSettings, state) {
     };
 
     return [
-        describe(trackerSettings.playerStats, 'Player limits',
+        describe((trackerSettings.playerStats || []).filter(isTurnStat), 'Player limits',
             (name) => state?.player?.stats?.[name]),
-        describe((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'Character limits',
+        describe((trackerSettings.npcStats || []).filter(isTurnStat), 'Character limits',
             (name) => highestCeiling(state?.characters, name)),
-        describeChoices(trackerSettings.globalStats, 'World values'),
-        describeChoices(trackerSettings.playerStats, 'Player values'),
-        describeChoices((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'Character values'),
-        describeShapes(trackerSettings.globalStats, 'How to write world values'),
-        describeShapes(trackerSettings.playerStats, 'How to write player values'),
-        describeShapes((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'How to write character values'),
+        describeChoices((trackerSettings.globalStats || []).filter(isTurnStat), 'World values'),
+        describeChoices((trackerSettings.playerStats || []).filter(isTurnStat), 'Player values'),
+        describeChoices((trackerSettings.npcStats || []).filter(isTurnStat), 'Character values'),
+        describeShapes((trackerSettings.globalStats || []).filter(isTurnStat), 'How to write world values'),
+        describeShapes((trackerSettings.playerStats || []).filter(isTurnStat), 'How to write player values'),
+        describeShapes((trackerSettings.npcStats || []).filter(isTurnStat), 'How to write character values'),
     ].filter(Boolean).join('\n');
 }

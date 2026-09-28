@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { NPC_LORE_FIELDS } from '../src/core/constants-profile.js';
 import { PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, SYSTEM_PROMPT } from '../src/core/constants-prompts.js';
+import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
@@ -10,7 +11,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
     .replaceAll('export function ', 'function ');
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
-    'migratePresetsAndStores', 'normaliseBaseSettings',
+    'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -25,7 +26,7 @@ function migration() {
         NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
-        () => {});
+        () => {}, normaliseStatUpdatePolicies);
     return { normalize, saves };
 }
 

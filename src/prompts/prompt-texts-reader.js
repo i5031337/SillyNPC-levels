@@ -1,11 +1,10 @@
-const lines = (...parts) => parts.join('\n');
 export const readerPromptTexts = [
     {
         id: 'levelBonusSystem', group: 'Tracker reader', label: 'Level bonus instructions',
         where: 'The system prompt sent when the tracker chooses a bonus after an XP level-up.',
         when: 'When XP crosses its cap in separate reader mode.',
         placeholders: {},
-        text: 'Choose a level-up bonus for the player. Return only a JSON object.',
+        text: 'Choose a player level bonus and return a JSON object.',
     },
     {
         id: 'levelBonus', group: 'Tracker reader', label: 'Level bonus request',
@@ -25,29 +24,28 @@ export const readerPromptTexts = [
             pendingChanges: 'The tracker update that triggered this level-up.',
             eligible: 'Numeric stats the bonus may raise.',
         },
-        text: lines(
-            'The player just earned enough XP to reach level {{level}}.',
-            'Current state: {{state}}',
-            '{{#offstage}}',
-            'Named offstage characters: {{offstage}}',
-            '{{/offstage}}',
-            '{{#limits}}',
-            'Limits: {{limits}}',
-            '{{/limits}}',
-            '{{#collections}}',
-            'Collections: {{collections}}',
-            '{{/collections}}',
-            '{{notes}}',
-            '{{#openThreads}}',
-            'Open threads: {{openThreads}}',
-            '{{/openThreads}}',
-            '{{#earlier}}',
-            'Earlier messages (context only; already reflected in state): {{earlier}}',
-            '{{/earlier}}',
-            'Latest message: {{message}}',
-            'Update from that message, before level-up: {{pendingChanges}}',
-            'Eligible numeric stats: {{eligible}}',
-            'Choose one story-appropriate level-up bonus. It can be a new narrative perk, or a modest increase of one eligible numeric stat. Return JSON with a short description; for a stat increase, include the exact stat name and a positive integer amount of 1 to 5. For a perk, omit stat and amount.'),
+        text: `The player reached level {{level}}.
+Current state: {{state}}
+{{#offstage}}
+Named offstage characters: {{offstage}}
+{{/offstage}}
+{{#limits}}
+Limits: {{limits}}
+{{/limits}}
+{{#collections}}
+Collections: {{collections}}
+{{/collections}}
+{{notes}}
+{{#openThreads}}
+Open threads: {{openThreads}}
+{{/openThreads}}
+{{#earlier}}
+Earlier messages (reflected in state): {{earlier}}
+{{/earlier}}
+Latest message: {{message}}
+Pre-level-up update: {{pendingChanges}}
+Eligible numeric stats: {{eligible}}
+Choose one story-appropriate bonus: a narrative perk or an increase of 1 to 5 in one eligible numeric stat. Return JSON with a short description. For a stat increase, include its exact name and integer amount. For a perk, include the description.`,
     },
     {
         id: 'reader', group: 'Tracker reader', label: 'Reader request',
@@ -76,178 +74,127 @@ export const readerPromptTexts = [
             threads: 'Switch: on when threads are on.',
             openThreads: 'The quotes of the threads already in play.',
         },
-        text: lines(
-            '### THE ONLY STATS AND COLLECTIONS THAT EXIST',
-            'The stats are exactly the ones named in the current state and NPC fields below. The collections '
-                + 'are exactly the ones listed under their own heading. There are no others: a '
-                + 'name that does not appear below does not exist here, whatever it is called '
-                + 'in other games.',
-            '',
-            '### CURRENT STATE',
-            '{{state}}',
-            '{{#npcFields}}',
-            '',
-            '### NPC FIELDS TO INITIALIZE',
-            '{{npcFields}}',
-            'For every NPC present in the latest message, report a value for every field whose',
-            'current value is blank. For a new NPC absent from current state, initialize',
-            'fields without a configured default. Use the story and character background where possible;',
-            'otherwise invent a plausible value suited to that individual. Do not copy one',
-            'set of values across characters. Respect allowed values and numeric limits.',
-            'Initial values are a one-time exception to the change-only rule. Once a field',
-            'has a value, leave it out unless the story clearly changes it. A Locked NPC',
-            'field may be initialized while blank, but must never be changed afterward.',
-            '{{/npcFields}}',
-            '{{#xpProgression}}',
-            '',
-            '### PLAYER EXPERIENCE',
-            'Award XP when the latest message shows a meaningful player accomplishment, such as acquiring a useful item, resolving a challenge, or succeeding with an NPC. Award a small amount for a modest achievement and more for a major one. Do not award XP for merely repeating an earlier event or without a concrete accomplishment in this message.',
-            'Report earned XP as a positive delta. For example, if current XP is 90/100 and the player earns 20, return "deltas": { "XP": 20 }. The extension performs level-ups and carries excess XP forward. Leave Level and Level Bonus out of your reply.',
-            '{{/xpProgression}}',
-            '{{#offstage}}',
-            '',
-            '### KNOWN, BUT NOT IN THE SCENE',
-            'Named in the message and already tracked, but not on stage. This is what '
-                + 'is on file for them. Do not report them back: if the message puts one of '
-                + 'them into the scene, include them in "characters" and report changes and '
-                + 'initial values for any blank NPC fields.',
-            '{{offstage}}',
-            '{{/offstage}}',
-            '{{#limits}}',
-            '',
-            '### LIMITS',
-            '{{limits}}',
-            '{{/limits}}',
-            '{{#locked}}',
-            '',
-            '### THE PLAYER SETS THESE',
-            'Leave these fields out of your reply, and report everything else as usual. The player',
-            'sets them by hand after they have a value. A blank Locked NPC field is the sole',
-            'exception: initialize it once using the NPC field rules above.',
-            '{{locked}}',
-            '{{/locked}}',
-            '{{#numericDeltas}}',
-            '',
-            '### NUMERIC CHANGES',
-            'For an existing numeric reading, report the amount gained or lost as a JSON number.',
-            'Use "globalDeltas" for world stats, "player.deltas" for player stats, and',
-            '"characters[].deltas" for NPC stats. Eligible fields:',
-            '{{numericDeltas}}',
-            'Example: an Energy cost of 3 is "deltas": { "Energy": -3 }.',
-            'Do not calculate the new current/max value. Never report both a delta and a',
-            'replacement value for the same field. For a blank numeric field or a changed',
-            'maximum, use the ordinary "stats" value instead.',
-            '{{/numericDeltas}}',
-            '{{notes}}',
-            '{{#strangers}}',
-            '',
-            '### STRANGERS',
-            'These speakers have no character card: {{strangers}}.',
-            'Also return a "strangers" object giving each of them the one kind that fits them best,',
-            'chosen only from: {{strangerKinds}}.',
-            'For example: { {{strangerExample}} }. If none of those fits, give "".',
-            '{{/strangers}}',
-            '{{#collections}}',
-            '',
-            '### COLLECTIONS AND THEIR FIELDS',
-            '{{collections}}',
-            '{{/collections}}',
-            '{{#collections}}',
-            '',
-            '### WHEN A COLLECTION CHANGES',
-            'The lists above are the only record of what anybody has. If the latest message '
-                + 'shows one of them changing, say so - nothing else will.',
-            '- used up, eaten, drunk, spent, handed over, lost, destroyed: "remove"',
-            '- acquired, found, bought, taken, given, learned, taught: "add", with every '
-                + 'field the message states',
-            '- something already held is different now: "update", its name and the fields '
-                + 'that changed',
-            'Restraint is about restating, not about reporting. An item this message plainly '
-                + 'moves is a change, and leaving it out is an error rather than caution.',
-            '{{/collections}}',
-            '{{#collectionExample}}',
-            '',
-            '### A COLLECTION CHANGE LOOKS LIKE THIS',
-            '{{collectionExample}}',
-            'Omit any field the message does not state. Do not guess a value.',
-            '{{/collectionExample}}',
-            '{{#profileFields}}',
-            '',
-            '### PROFILE FIELDS YOU MAY UPDATE',
-            'Their current values are in the state above. These describe who somebody IS, not '
-                + 'what is happening to them, and they change rarely - a scar, a haircut, a lasting '
-                + 'change of manner. Update one only when the latest message plainly shows it. '
-                + 'Omitting a field means unchanged, which is almost always the right answer. Any '
-                + 'profile field not listed here must not be changed. Return them under "profile" '
-                + 'on that character, beside "stats".',
-            '{{profileFields}}',
-            '{{/profileFields}}',
-            '{{#minimalReply}}',
-            '',
-            '### WHEN NOTHING CHANGES, REPLY LIKE THIS',
-            '{{minimalReply}}',
-            'Everyone present is listed. Empty objects mean no stat or collection changed.',
-            '{{/minimalReply}}',
-            '{{#changedReply}}',
-            '',
-            '### WHEN ONE NUMERIC PLAYER STAT CHANGES, REPLY LIKE THIS',
-            '{{changedReply}}',
-            'The -1 is an example amount; use the amount shown by the latest message.',
-            'If reasons are enabled, replace the quote placeholder with actual words from that message.',
-            '{{/changedReply}}',
-            '{{#earlier}}',
-            '',
-            '### EARLIER MESSAGES (context only - already reflected in the state above)',
-            '{{earlier}}',
-            '{{/earlier}}',
-            '',
-            '### LATEST MESSAGE (apply what this one changes)',
-            '{{message}}',
-            '',
-            '### TASK',
-            'Return only JSON for changes in the latest message and the complete scene cast.',
-            '{{#collections}}',
-            'A collection changes by "add", "remove" and "update"; a list of everything somebody',
-            'holds is not a change, and costs a reply.',
-            '{{/collections}}',
-            'When reporting an initial or replacement value, keep the existing format:',
-            '"8/10" stays a pool, and a plain number stays a plain number.',
-            '{{#reasons}}',
-            'First identify the evidence for each proposed change. Put "why" first in',
-            'the JSON object, before the values. Use a short exact quote from the latest',
-            'message when possible; otherwise one short clause naming the event.',
-            'Key it by the stat - "Time" for a world stat, "Player.Health" for the player,',
-            '"<name>.Health" for a character.',
-            'For a blank NPC field being initialized, say "initial estimate" and briefly',
-            'name the context used, or say "invented" when there is no clear context.',
-            'For an existing value, if you cannot point at a change in the latest message,',
-            'do not change or list it.',
-            '{{/reasons}}',
-            '{{#threads}}',
-            'Also return a "threads" array for anything in the latest message that opened',
-            'one of these and is not finished with:',
-            '  promise - somebody undertook to do something',
-            '  threat - somebody said what would happen if',
-            '  debt - somebody owes or is owed',
-            '  secret - somebody was told something in confidence',
-            '  deadline - something must happen by a time or an event',
-            '  plan - somebody set out to do something later',
-            '  invitation - somebody invited somebody, or an arrangement to meet was made',
-            'Each: { "kind": "...", "text": "what is outstanding, one line",',
-            '"quote": "the words from the message that opened it", "who": "who it is about" }.',
-            'The quote must be words that appear in the latest message. If you cannot quote',
-            'it, do not list it.',
-            'Most messages open nothing. An empty array is the usual answer.',
-            '{{#openThreads}}',
-            'Already open, do not list again:',
-            '{{openThreads}}',
-            '{{/openThreads}}',
-            'Return "closed" as an array of the quoted lines above that this message',
-            'resolved, if any.',
-            '{{/threads}}',
-            '',
-            'Last of all: send changes and initial values for blank NPC fields, not the state.',
-            'Leave out every field that already has a value and did not change.'),
+        text: `### CONFIGURED STATS AND COLLECTIONS
+Use the stats in the current state and NPC fields, and the collections listed below.
+
+### CURRENT STATE
+{{state}}
+{{#npcFields}}
+
+### NPC FIELDS TO INITIALIZE
+{{npcFields}}
+For each NPC present in the latest message, fill blank fields. For a new NPC, initialize fields without defaults. Use the story and background, or invent individual, plausible values. Respect allowed values and numeric limits. Include filled fields when the story changes them. Initialize blank Locked NPC fields once.
+{{/npcFields}}
+{{#xpProgression}}
+
+### PLAYER EXPERIENCE
+Award XP for a new, meaningful player accomplishment in the latest message, such as gaining a useful item, resolving a challenge, or succeeding with an NPC. Scale the award to the achievement. Report earned XP as a positive delta: at 90/100 XP, earning 20 gives "deltas": { "XP": 20 }. The extension handles Level, Level Bonus, and excess XP.
+{{/xpProgression}}
+{{#offstage}}
+
+### OFFSTAGE CHARACTERS
+These tracked characters are named in the message. Include one in "characters" if they enter the scene, with changes and initial values for blank NPC fields.
+{{offstage}}
+{{/offstage}}
+{{#limits}}
+
+### LIMITS
+{{limits}}
+{{/limits}}
+{{#locked}}
+
+### PLAYER-CONTROLLED FIELDS
+Report updates for other fields. Initialize a blank Locked NPC field once; the player sets its later values.
+{{locked}}
+{{/locked}}
+{{#numericDeltas}}
+
+### NUMERIC CHANGES
+For an existing numeric value, report the amount gained or lost as a JSON number. Use "globalDeltas" for world stats, "player.deltas" for player stats, and "characters[].deltas" for NPC stats. Eligible fields:
+{{numericDeltas}}
+Example: an Energy cost of 3 is "deltas": { "Energy": -3 }.
+Use one delta per changed field. For a blank numeric field or changed maximum, use a replacement "stats" value.
+{{/numericDeltas}}
+{{notes}}
+{{#strangers}}
+
+### STRANGERS
+Speakers without cards: {{strangers}}. In "strangers", assign each the best matching kind from {{strangerKinds}}, or "". Example: { {{strangerExample}} }.
+{{/strangers}}
+{{#collections}}
+
+### COLLECTIONS AND THEIR FIELDS
+{{collections}}
+{{/collections}}
+{{#collections}}
+
+### WHEN A COLLECTION CHANGES
+For each new NPC absent from current state, initialize relevant collections with their starting possessions, especially clothing and equipment. Use items shown in the story or character background, and infer a few plausible items when details are sparse. Report them as "add" entries under that character's "collections", using the configured collection names and item fields. This first appearance counts as a collection change.
+Report each collection change shown in the latest message:
+- "remove" for used, spent, transferred, lost, or destroyed items
+- "add" for acquired items, with stated fields
+- "update" for changed items, with their name and changed fields
+{{/collections}}
+{{#collectionExample}}
+
+### A COLLECTION CHANGE LOOKS LIKE THIS
+{{collectionExample}}
+For new NPC starting items, use supported details from the story or character background and plausible inferred details. For later changes, include fields stated in the message.
+{{/collectionExample}}
+{{#profileFields}}
+
+### PROFILE FIELDS YOU MAY UPDATE
+These fields describe lasting traits, such as a scar, haircut, or changed manner. Report a listed field under the character's "profile" when the latest message clearly changes it.
+{{profileFields}}
+{{/profileFields}}
+{{#minimalReply}}
+
+### WHEN NOTHING CHANGES, REPLY LIKE THIS
+{{minimalReply}}
+List everyone present. Empty objects show an unchanged status.
+{{/minimalReply}}
+{{#changedReply}}
+
+### WHEN ONE NUMERIC PLAYER STAT CHANGES, REPLY LIKE THIS
+{{changedReply}}
+Use the amount shown in the latest message. When reasons are enabled, quote that message.
+{{/changedReply}}
+{{#earlier}}
+
+### EARLIER MESSAGES (reflected in state)
+{{earlier}}
+{{/earlier}}
+
+### LATEST MESSAGE
+{{message}}
+
+### TASK
+Return JSON with changes from the latest message and the complete scene cast.
+{{#collections}}
+Use "add", "remove", and "update" for collection changes.
+{{/collections}}
+Keep initial and replacement value formats: "8/10" stays a pool; a plain number stays a plain number.
+{{#reasons}}
+Put "why" first in the JSON object. For each change, use a short quote from the latest message or a short clause naming the event. Key it by stat: "Time" for a world stat, "Player.Health" for the player, "<name>.Health" for a character. For an initialized NPC field, say "initial estimate" with context, or "invented".
+{{/reasons}}
+{{#threads}}
+Return a "threads" array for unresolved commitments opened in the latest message:
+  promise - somebody undertook to do something
+  threat - somebody said what would happen if
+  debt - somebody owes or is owed
+  secret - somebody was told something in confidence
+  deadline - something must happen by a time or an event
+  plan - somebody set out to do something later
+  invitation - somebody invited somebody, or an arrangement to meet was made
+Each: { "kind": "...", "text": "outstanding matter", "quote": "exact words from the latest message", "who": "person involved" }. Use an empty array when the message opens no thread.
+{{#openThreads}}
+Existing threads:
+{{openThreads}}
+{{/openThreads}}
+Return "closed" with the quoted lines of existing threads resolved by this message.
+{{/threads}}
+
+Report changed fields and initial values for blank NPC fields.`,
     },
 
     {
@@ -265,57 +212,50 @@ export const readerPromptTexts = [
             sceneChange: 'Switch: on when a scene stat is set.',
             xpProgression: 'Switch: on when the player has XP and Level stats.',
         },
-        text: lines(
-            '### STATUS TRACKER ACTIVE',
-            'Update the following status realistically based on the latest events in the story.',
-            'Current Status:',
-            '{{status}}',
-            '',
-            'IMPORTANT: The "Current Status" block is the authoritative source of truth. If an item or character is missing from it, they are no longer present or in possession. Do NOT re-add items that were recently removed unless the current message explicitly describes acquiring them again.',
-            '',
-            'Rules: {{rules}}',
-            '{{#npcFields}}',
-            'NPC fields:',
-            '{{npcFields}}',
-            'For every NPC present, fill every blank NPC field in the status update. Infer a',
-            'plausible individual value from context, or invent one when context is unclear.',
-            'For a new NPC, fill fields without a configured default.',
-            'Respect allowed values and numeric limits. This is a one-time initialization:',
-            'leave filled fields unchanged unless the story clearly changes them. A Locked',
-            'NPC field can be initialized while blank and must stay fixed afterward.',
-            '{{/npcFields}}',
-            '{{#xpProgression}}',
-            'Player XP: award XP for meaningful accomplishments in the latest message, such as acquiring a useful item, overcoming a challenge, or a successful NPC interaction. Report the new absolute XP total even when it exceeds its current maximum (90/100 plus 20 becomes 110/100), keeping the XP cap unchanged. The extension performs the level-up and carries excess XP forward. When an award crosses the cap, also provide a story-appropriate Level Bonus on the player sheet. Do not award the same event twice.',
-            '{{/xpProgression}}',
-            '',
-            '### COSTS ARE PAID ONCE',
-            '- A cost already paid in an earlier turn - a resource spent, an item used up - is already in the "Current Status". Do not take it again when the outcome is described.',
-            '- Apply only what the latest turn itself changes.',
-            '{{#limits}}',
-            '',
-            '### STAT LIMITS (Maximums)',
-            '- Player Max Stats: {{playerLimits}}',
-            '- NPC Max Stats: {{npcLimits}}',
-            'A value written as two numbers and a slash, as in "8/10", keeps that form: change the current value, and the maximum only when the story changes it. A plain number stays a plain number.',
-            '{{/limits}}',
-            '',
-            '### COLLECTIONS',
-            'Report what changed in a collection, not the whole list:',
-            '- "add": [ { ...the item\'s fields } ] - gained, or more of something already held.',
-            '- "remove": [ "Item name" ] - used up, lost, given away or destroyed.',
-            '- "update": [ { ...its name and the fields that changed } ] - something held has changed.',
-            '- Leave out a collection that did not change. Not being mentioned is not a reason to remove anything.',
-            '- Both the \'player\' and any object in the \'characters\' array can have a \'collections\' object. To hand an item over, remove it from one and add it to the other in the same update.',
-            '{{#schemas}}',
-            '',
-            '### COLLECTION SCHEMAS',
-            '{{schemas}}',
-            '{{/schemas}}',
-            '',
-            'IMPORTANT: Always include the FULL list of characters currently present in the scene in the "characters" array. If a character is no longer present, remove them from the list.',
-            '{{#sceneChange}}',
-            'IMPORTANT: If the scene or location changes, ONLY include characters in the \'characters\' array who moved to the new scene. Omit any characters left behind.',
-            '{{/sceneChange}}',
-            'Format: At the absolute end of your response, add the update wrapped in <status_update> tags, and nothing after it. Include changes and initial values for blank NPC fields. No explanation of the changes, and no markdown code blocks inside the tags.'),
+        text: `### STATUS TRACKER ACTIVE
+Update the status from the latest story events.
+Current Status:
+{{status}}
+
+Current Status records the present scene and possessions. Include an acquired item when the latest message shows its acquisition.
+
+Rules: {{rules}}
+{{#npcFields}}
+NPC fields:
+{{npcFields}}
+For each present NPC, fill blank fields with plausible individual values from context or invention. For a new NPC, initialize fields without defaults. Respect allowed values and numeric limits. Update filled fields when the story clearly changes them. Initialize blank Locked NPC fields once.
+{{/npcFields}}
+{{#xpProgression}}
+Player XP: award XP for new, meaningful accomplishments in the latest message, such as acquiring a useful item, overcoming a challenge, or succeeding with an NPC. Report the new absolute XP total with the same cap (90/100 plus 20 becomes 110/100). The extension handles level-ups and excess XP. When the award crosses the cap, add a story-appropriate Level Bonus to the player sheet.
+{{/xpProgression}}
+
+### COSTS
+Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
+{{#limits}}
+
+### STAT LIMITS
+Player maximums: {{playerLimits}}
+NPC maximums: {{npcLimits}}
+Keep pool values such as "8/10" in that form. Change the maximum when the story changes it. Keep plain numbers as numbers.
+{{/limits}}
+
+### COLLECTIONS
+For each new NPC absent from Current Status, initialize relevant collections with starting possessions, especially clothing and equipment. Use story and character background details, and infer a few plausible items when details are sparse. Add them under that character's "collections" using the configured collection names and item fields.
+Report collection changes:
+- "add": [ { ...item fields } ] for gains
+- "remove": [ "Item name" ] for spent, lost, transferred, or destroyed items
+- "update": [ { ...name and changed fields } ] for changed items
+For a transfer, remove the item from one owner's collection and add it to the other's. Both player and characters can have collections.
+{{#schemas}}
+
+### COLLECTION SCHEMAS
+{{schemas}}
+{{/schemas}}
+
+Include every character currently present in the "characters" array.
+{{#sceneChange}}
+After a scene change, list the characters who moved to the new scene.
+{{/sceneChange}}
+End your response with changes and initial values for blank NPC fields inside <status_update> tags.`,
     },
 ];

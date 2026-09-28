@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { numericDeltaNames } from '../src/tracker/extractor/status-extractor-deltas.js';
+import { isTurnStat } from '../src/tracker/stat-update-policy.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore/lore-format.js';
 import { defaultSettings } from '../src/core/settings-defaults.js';
@@ -39,10 +40,10 @@ test('tracker schema offers NPC lore fields without adding them to the player', 
     const npc = { name: 'Mira', aiProfileFields: ['role'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['age'] };
     const build = new Function('getAllCharacters', 'getPlayerCard', 'PROFILE_FIELDS',
-        'NPC_LORE_FIELDS', 'anyProfileFieldUnlocked', 'numericDeltaNames',
+        'NPC_LORE_FIELDS', 'anyProfileFieldUnlocked', 'numericDeltaNames', 'isTurnStat',
         `${source}\nreturn buildExtractionSchema;`)(
         () => [npc], () => player, PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked,
-        numericDeltaNames,
+        numericDeltaNames, isTurnStat,
     );
     const schema = build({ globalStats: [], playerStats: [], npcStats: [], collections: [] });
     assert.ok(schema.properties.characters.items.properties.profile.properties.role);
