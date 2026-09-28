@@ -7,6 +7,7 @@ import { getPlayerCard, findCardForName, describeNpcStatFields } from '../status
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
 import { describeAbsentButNamed, describeLocked } from './status-extractor-prompt-offstage.js';
+import { describeNumericDeltas, numericDeltaNames } from './status-extractor-deltas.js';
 
 /**
  * Extra notes for the reader, from whoever registered one.
@@ -74,7 +75,7 @@ function describeExtractionNotes(state, messageText) {
  */
 // Exported for the tests: what reaches the model on every message is worth holding to
 // a shape, and the vocabulary in it is the whole point of this function.
-export function buildUserPrompt(state, messageText, trackerSettings, leadUp = [], { strangers = [] } = {}) {
+function readerValues(state, messageText, trackerSettings, leadUp = [], { strangers = [] } = {}) {
     // What is already open, so the reader is not asked to find it again every message.
     //
     // The active ones only. This listed every open thread, which made the block grow with
@@ -100,12 +101,13 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
      *   which can be answered from one message, and its quote rule is what keeps it from
      *   becoming invented plot - a quote can be checked against the message.
      */
-    return promptText('reader', {
+    return {
         state: describeCurrentState(state, trackerSettings) || '(empty)',
         offstage: describeAbsentButNamed(state, messageText, trackerSettings),
         limits: describeLimits(trackerSettings, state),
         locked: describeLocked(trackerSettings),
         npcFields: describeNpcStatFields(trackerSettings),
+        numericDeltas: describeNumericDeltas(state, trackerSettings),
         xpProgression: (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
             && (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
@@ -115,11 +117,27 @@ export function buildUserPrompt(state, messageText, trackerSettings, leadUp = []
         collectionExample: buildDeltaExample(trackerSettings),
         profileFields: describeOpenProfileFields(state),
         minimalReply: buildMinimalExample(state, trackerSettings),
+        changedReply: buildChangedExample(state, trackerSettings),
         earlier: leadUp.join('\n---\n'),
         message: messageText,
         reasons: trackerSettings.extractionReasons === false ? '' : 'on',
         threads: trackerSettings.threadsEnabled === true ? 'on' : '',
         openThreads: openText,
+    };
+}
+
+export function buildUserPrompt(state, messageText, trackerSettings, leadUp = [], options = {}) {
+    return promptText('reader', readerValues(state, messageText, trackerSettings, leadUp, options));
+}
+
+/** The level-up request gets the same scene and recent-message context as extraction. */
+export function buildLevelBonusPrompt(state, messageText, trackerSettings, leadUp, details) {
+    return promptText('levelBonus', {
+        ...readerValues(state, messageText, trackerSettings, leadUp),
+        level: details.level,
+        eligible: details.eligible,
+        sheet: JSON.stringify(state?.player?.stats || {}),
+        pendingChanges: JSON.stringify(details.pendingChanges),
     });
 }
 
@@ -182,38 +200,39 @@ function describeOpenProfileFields(state) {
 }
 
 /**
- * A minimal reply, in the stats this setup actually has.
+ * A quiet reply, in the cast this setup actually has.
  *
  * Small models copy the shape of an example far more reliably than they follow a
  * description of it, and an example is only useful if it is about them: a hard-coded
  * '"Stamina": "12/20"' teaches a model about a stat that may not exist here, and invites it
  * to report one that does not.
  *
- * Placeholders where a value would be, so nothing here can be mistaken for a fact about the
- * scene - the same reasoning as buildDeltaExample, which does this for collections.
+ * The no-change case is common and should have a concrete example too.
  */
 // Exported for the tests, as buildUserPrompt is.
-export function buildMinimalExample(state, trackerSettings) {
-    const firstNamed = (list) => (list || []).map(s => s?.name).filter(Boolean)[0];
-
-    const playerStat = firstNamed(trackerSettings.playerStats);
-    const npcStat = firstNamed(trackerSettings.npcStats);
+export function buildMinimalExample(state, trackerSettings = {}) {
     const present = (state?.characters || []).map(c => c?.name).filter(Boolean);
-    if (!playerStat && !npcStat && !present.length) return '';
+    return JSON.stringify({
+        ...(trackerSettings.extractionReasons === false ? {} : { why: {} }),
+        global: {},
+        player: {},
+        characters: present.map(name => ({ name })),
+    });
+}
 
-    const characters = present.length
-        ? present.slice(0, 2).map((name, i) => (i === 0 && npcStat
-            ? `    { "name": ${JSON.stringify(name)}, "stats": { ${JSON.stringify(npcStat)}: "<new value>" } }`
-            : `    { "name": ${JSON.stringify(name)} }`))
-        : [];
-
-    const example = '{\n'
-        + '  "global": {},\n'
-        + (playerStat
-            ? `  "player": { "stats": { ${JSON.stringify(playerStat)}: "<new value>" } },\n`
-            : '  "player": {},\n')
-        + `  "characters": [\n${characters.join(',\n')}\n  ]\n}`;
-    return example;
+/** Show a changed value only when this system has a stat to name in the example. */
+function buildChangedExample(state, trackerSettings) {
+    const stat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats)[0];
+    if (!stat) return '';
+    const cast = (state?.characters || []).map(c => c?.name).filter(Boolean);
+    return JSON.stringify({
+        ...(trackerSettings.extractionReasons === false ? {} : {
+            why: { [`Player.${stat}`]: '<short quote from the latest message>' },
+        }),
+        global: {},
+        player: { deltas: { [stat]: -1 } },
+        characters: cast.map(name => ({ name })),
+    });
 }
 
 /**

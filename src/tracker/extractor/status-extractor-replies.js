@@ -10,9 +10,10 @@ import { mentionsName } from '../../story/mentions.js';
 import { coerceThread, addThread, closeThread, openThreads, touchThreads, pruneThreads } from '../../story/threads.js';
 import { recordThreadChanges } from '../snapshots/status-snapshots.js';
 import { syncProfileToLore } from '../../lore/lore-sync.js';
+import { buildLevelBonusPrompt } from './status-extractor-prompt.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
-export async function addLevelBonus(parsed, state, trackerSettings, messageText) {
+export async function addLevelBonus(parsed, state, trackerSettings, messageText, leadUp = []) {
     const stats = parsed?.player?.stats || parsed?.player;
     const current = state?.player?.stats || {};
     const xpName = Object.keys(current).find(key => key.toLowerCase() === 'xp');
@@ -29,11 +30,10 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText)
         const parts = splitValue(current[def.name]);
         return Number.isFinite(Number(parts.current)) && parts.current !== '';
     }).map(def => def.name);
-    const prompt = promptText('levelBonus', {
+    const prompt = buildLevelBonusPrompt(state, messageText, trackerSettings, leadUp, {
         level: transition.level,
-        message: messageText,
-        sheet: JSON.stringify(current),
         eligible: eligible.join(', ') || '(none)',
+        pendingChanges: parsed,
     });
     const schema = {
         type: 'object', required: ['description'],

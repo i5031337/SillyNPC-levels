@@ -166,6 +166,15 @@ export function summariseCollections(actor, target, trackerSettings) {
 
 export function describeCurrentState(state, trackerSettings) {
     const summarise = (actor, target) => summariseCollections(actor, target, trackerSettings);
+    const npcStats = (values) => {
+        const kept = statsInSystem(values, 'npcStats');
+        const innate = new Set((trackerSettings.npcStats || [])
+            .filter(def => def.persistence === 'innate').map(def => def.name?.toLowerCase()));
+        for (const key of Object.keys(kept)) {
+            if (innate.has(key.toLowerCase())) delete kept[key];
+        }
+        return kept;
+    };
 
     const playerCollections = summarise(state.player, 'player');
     /* Filtered by the schema rather than spread wholesale. A stat deleted in System Builder
@@ -184,7 +193,7 @@ export function describeCurrentState(state, trackerSettings) {
             const charCollections = summarise(char, 'npc');
             return {
                 name: char.name,
-                stats: statsInSystem(char.stats, 'npcStats'),
+                stats: npcStats(char.stats),
                 ...(charCollections ? { collections: charCollections } : {}),
                 ...profileBlock(findCardForName(char.name)),
             };
@@ -293,14 +302,13 @@ export function describeLimits(trackerSettings, state) {
     return [
         describe(trackerSettings.playerStats, 'Player limits',
             (name) => state?.player?.stats?.[name]),
-        describe(trackerSettings.npcStats, 'Character limits',
+        describe((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'Character limits',
             (name) => highestCeiling(state?.characters, name)),
         describeChoices(trackerSettings.globalStats, 'World values'),
         describeChoices(trackerSettings.playerStats, 'Player values'),
-        describeChoices(trackerSettings.npcStats, 'Character values'),
+        describeChoices((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'Character values'),
         describeShapes(trackerSettings.globalStats, 'How to write world values'),
         describeShapes(trackerSettings.playerStats, 'How to write player values'),
-        describeShapes(trackerSettings.npcStats, 'How to write character values'),
+        describeShapes((trackerSettings.npcStats || []).filter(s => s.persistence !== 'innate'), 'How to write character values'),
     ].filter(Boolean).join('\n');
 }
-

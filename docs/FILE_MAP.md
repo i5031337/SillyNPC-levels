@@ -113,6 +113,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | --- | --- |
 | `src/tracker/extractor/status-extractor.js` | Public entry point for model extraction. |
 | `src/tracker/extractor/status-extractor-schema.js` | Structured extraction schema and unknown speaker classification. |
+| `src/tracker/extractor/status-extractor-deltas.js` | Numeric delta eligibility and conversion to stored stat values. |
 | `src/tracker/extractor/status-extractor-prompt.js` | Extraction prompt assembly and recent message context. |
 | `src/tracker/extractor/status-extractor-prompt-state.js` | Describe current state, collections, and limits for prompts. |
 | `src/tracker/extractor/status-extractor-prompt-offstage.js` | Describe locked and offstage characters for prompts. |

@@ -2,6 +2,7 @@ import { getAllCharacters } from '../../characters/character-repository.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../../core/constants.js';
 import { getPlayerCard } from '../status-logic.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
+import { numericDeltaNames } from './status-extractor-deltas.js';
 
 /**
  * Everyone who has a profile that could be unlocked: the cards, and the player.
@@ -30,14 +31,14 @@ export function profileOwners() {
  *
  * @param {object} trackerSettings
  */
-export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) {
+export function buildExtractionSchema(trackerSettings, { strangers = [], state = null } = {}) {
     // Takes the stat definitions rather than their names, so a field that says how it
     // should be written can pass that on. A free-text field used to arrive as nothing but
     // a name and `{ type: 'string' }`, which is how one grew into a running log.
     const stringMap = (stats) => ({
         type: 'object',
         properties: Object.fromEntries((stats || [])
-            .filter(stat => stat?.name)
+            .filter(stat => stat?.name && stat.persistence !== 'innate')
             .map(stat => [
                 stat.name,
                 stat.hint?.trim()
@@ -81,7 +82,15 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
 
     const globalStatDefs = trackerSettings.globalStats || [];
     const playerStatDefs = trackerSettings.playerStats || [];
-    const npcStatDefs = trackerSettings.npcStats || [];
+    const npcStatDefs = (trackerSettings.npcStats || []).filter(stat => stat.persistence !== 'innate');
+    const deltaMap = (keys) => ({
+        type: 'object',
+        properties: Object.fromEntries(keys.map(key => [key, { type: 'number' }])),
+    });
+    const worldDeltas = numericDeltaNames(globalStatDefs, state?.global);
+    const playerDeltas = numericDeltaNames(playerStatDefs, state?.player?.stats);
+    const npcDeltas = [...new Set((state?.characters || [])
+        .flatMap(actor => numericDeltaNames(npcStatDefs, actor.stats)))];
 
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
@@ -111,11 +120,16 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
         // which is exactly what happened while the schema was being rejected.
         required: ['global', 'player', 'characters'],
         properties: {
+            ...(trackerSettings.extractionReasons === false ? {} : {
+                why: { type: 'object', additionalProperties: { type: 'string' } },
+            }),
             global: stringMap(globalStatDefs),
+            ...(worldDeltas.length ? { globalDeltas: deltaMap(worldDeltas) } : {}),
             player: {
                 type: 'object',
                 properties: {
                     stats: stringMap(playerStatDefs),
+                    ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
                     ...(playerProfileProps ? { profile: playerProfileProps } : {}),
                 },
@@ -128,17 +142,12 @@ export function buildExtractionSchema(trackerSettings, { strangers = [] } = {}) 
                     properties: {
                         name: { type: 'string' },
                         stats: stringMap(npcStatDefs),
+                        ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),
                         ...(npcProfileProps ? { profile: npcProfileProps } : {}),
                     },
                 },
             },
-            /* Only when reasons are on, and for the reason threads are below: a schema names
-               what may come back, so a key it leaves out is a key the model is told not to
-               send. The ask would still be in the prompt and the answer would never arrive. */
-            ...(trackerSettings.extractionReasons === false ? {} : {
-                why: { type: 'object', additionalProperties: { type: 'string' } },
-            }),
             // Only when threads are on. A schema names what may come back, so a key it
             // does not mention is a key the model is told not to send - the ask would
             // still be in the prompt and the answer would never arrive, which is the

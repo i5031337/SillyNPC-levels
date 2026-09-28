@@ -3,6 +3,32 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 import { progressXp } from '../src/tracker/progression.js';
+import { expandNumericDeltas } from '../src/tracker/extractor/status-extractor-deltas.js';
+
+test('reader deltas become absolute values without changing ceilings or innate stats', () => {
+    const settings = {
+        globalStats: [{ name: 'Heat' }],
+        playerStats: [{ name: 'HP' }, { name: 'XP' }, { name: 'Level' }],
+        npcStats: [{ name: 'Energy' }, { name: 'Power', persistence: 'innate' }],
+    };
+    const state = {
+        global: { Heat: '2' },
+        player: { stats: { HP: '8/10', XP: '90/100', Level: '1' } },
+        characters: [{ name: 'Mira', stats: { Energy: '5/5', Power: '4' } }],
+    };
+    const reply = {
+        global: {}, globalDeltas: { Heat: 1 },
+        player: { stats: { HP: '6/10' }, deltas: { HP: -3, XP: 20, Level: 1 } },
+        characters: [{ name: 'Mira', deltas: { Energy: -2, Power: 3 } }],
+    };
+    expandNumericDeltas(reply, state, settings);
+    assert.deepEqual(reply.global, { Heat: '3' });
+    assert.equal(reply.player.stats.HP, '6/10');
+    assert.equal(reply.player.stats.XP, '110/100');
+    assert.equal(reply.characters[0].Energy, '3/5');
+    assert.equal(reply.characters[0].Power, undefined);
+    assert.equal(reply.player.deltas, undefined);
+});
 
 // This module's SillyTavern imports require a browser. Inject those boundaries
 // while exercising its real bind(deps) implementation in Node.

@@ -1,4 +1,4 @@
-import { GEMINI_IMAGE_MODELS, PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE, SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT } from './constants.js';
+import { GEMINI_IMAGE_MODELS, PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE, SYSTEM_PROMPT, PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT } from './constants.js';
 import { defaultSettings } from './settings-defaults.js';
 import { resolveImageFolder } from './utils.js';
 import { saveSettings } from './settings.js';
@@ -34,17 +34,14 @@ export function normaliseBaseSettings(settings) {
     // built-in, which is what someone who clears the box is asking for; this only fills a
     // box that has never been touched.
     //
-    // The cost is that a later version improving the built-in will not reach anyone who
-    // has been seeded - Restore recommended is how they take the new text.
-    // Same reason as the extraction instructions: the box shows what is actually sent
-    // rather than sitting blank until someone presses Restore.
+    // The box shows what is actually sent rather than sitting blank until someone
+    // presses Restore. The extraction instructions below use the same convention.
     if (!String(settings.dialogueFormatPrompt || '').trim()) {
         settings.dialogueFormatPrompt = DIALOGUE_FORMAT_PROMPT;
     }
 
-    // Shape only. An absent entry means "use the shipped hint", which is the default and
-    // needs no seeding - unlike the extraction prompt below, which is copied in once and
-    // then belongs to the user forever.
+    // Shape only. An absent entry means "use the shipped hint", which is the default
+    // and needs no seeding. The extraction prompt below is an editable copy.
     if (!settings.profileHints || typeof settings.profileHints !== 'object') {
         settings.profileHints = {};
     }
@@ -52,7 +49,10 @@ export function normaliseBaseSettings(settings) {
         settings.promptTexts = {};
     }
 
-    if (!String(settings.statusTracker.extractionPrompt || '').trim()) {
+    // A verbatim shipped copy is still ours to correct. A changed copy belongs to the
+    // user and must keep its wording, including when upgrading an existing install.
+    if ([PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT].includes(settings.statusTracker.extractionPrompt)
+        || !String(settings.statusTracker.extractionPrompt || '').trim()) {
         settings.statusTracker.extractionPrompt = SYSTEM_PROMPT;
     }
     if (settings.imageBackend !== 'gemini') settings.imageBackend = 'sd';

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { NPC_LORE_FIELDS } from '../src/core/constants-profile.js';
+import { PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, SYSTEM_PROMPT } from '../src/core/constants-prompts.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
@@ -57,4 +58,29 @@ test('old HUD visibility migration runs once, preserving later choices', () => {
     stat.isPrimary = true;
     normalize(settings);
     assert.equal(stat.isPrimary, true);
+});
+
+test('upgrades the shipped reader prompt while preserving an edited copy', () => {
+    const baseSource = readFileSync(new URL('../src/core/settings-base-migration.js', import.meta.url), 'utf8')
+        .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
+        .replace('export function normaliseBaseSettings', 'function normaliseBaseSettings');
+    const normalizeBase = new Function('SYSTEM_PROMPT', 'PREVIOUS_SYSTEM_PROMPT', 'RECENT_SYSTEM_PROMPT',
+        'GEMINI_IMAGE_MODELS', 'PORTRAIT_SHAPES', 'DEFAULT_PORTRAIT_SHAPE',
+        'DIALOGUE_FORMAT_PROMPT', 'defaultSettings', 'resolveImageFolder', 'saveSettings',
+        `${baseSource}\nreturn normaliseBaseSettings;`)(
+            SYSTEM_PROMPT, PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, [], { square: {} }, 'square',
+            '', { loreCharBudget: 100, loreMaxTokens: 100, imgGenContextMessages: 0 },
+            value => value, () => {},
+        );
+    const shipped = { statusTracker: { extractionPrompt: PREVIOUS_SYSTEM_PROMPT } };
+    const recent = { statusTracker: { extractionPrompt: RECENT_SYSTEM_PROMPT } };
+    const edited = { statusTracker: { extractionPrompt: `${PREVIOUS_SYSTEM_PROMPT}\nMy rule` } };
+
+    normalizeBase(shipped);
+    normalizeBase(recent);
+    normalizeBase(edited);
+
+    assert.equal(shipped.statusTracker.extractionPrompt, SYSTEM_PROMPT);
+    assert.equal(recent.statusTracker.extractionPrompt, SYSTEM_PROMPT);
+    assert.equal(edited.statusTracker.extractionPrompt, `${PREVIOUS_SYSTEM_PROMPT}\nMy rule`);
 });

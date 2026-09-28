@@ -201,10 +201,10 @@ export const defaultTrackerSettings = {
          * anything put in a message becomes part of the next turn's prompt, and the model
          * would start reading its own past justifications as story.
          *
-         * On by default, and a setting because it costs tokens and a weak extraction model
-         * can lose JSON quality when asked for prose alongside it.
+         * Off by default: a small reader should focus on the update. Turn this on when
+         * review rows need the model's evidence alongside the proposed value.
          */
-        extractionReasons: true,
+        extractionReasons: false,
         /**
          * Things said and done that are not finished with: promises, threats, debts,
          * secrets, deadlines, plans.

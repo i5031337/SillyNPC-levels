@@ -114,8 +114,8 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * Only for replies from a model - the tracker's reader and the inline block. Your own edits
  * never come through here, so typing "120/150" on the sheet still sets a ceiling.
  *
- * - A locked or innate NPC stat is dropped after it has a value. A blank one can be
- *   initialized once, then only you can change it.
+ * - An innate NPC stat is never changed by a model reply. A locked NPC stat may be
+ *   initialized while blank, then only you can change it.
  * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
  *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
  *   changed and then came back as "4/20" were this - a model copying the "current/maximum"
@@ -135,7 +135,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
             if (!def) continue;
             const held = stored?.[deps.findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, key) || key];
-            if (npc && !canTrackerSetNpcStat(def, held, cardHeld)) {
+            if (npc && (def.persistence === 'innate' || !canTrackerSetNpcStat(def, held, cardHeld))) {
                 delete stats[key];
                 continue;
             }
@@ -237,7 +237,7 @@ function isNumericStat(statDef) {
 /** The configured NPC fields, included in both tracker prompts for new arrivals. */
 function describeNpcStatFields(trackerSettings) {
     return (trackerSettings?.npcStats || [])
-        .filter(stat => stat?.name)
+        .filter(stat => stat?.name && stat.persistence !== 'innate')
         .map(stat => {
             const details = [isNumericStat(stat) ? 'number' : 'text'];
             const choices = deps.allowedValues(stat);

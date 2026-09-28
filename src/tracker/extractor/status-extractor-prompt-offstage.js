@@ -6,10 +6,13 @@ import { summariseCollections, profileBlock } from './status-extractor-prompt-st
 
 export function describeLocked(trackerSettings) {
     const locked = lockedStats(trackerSettings);
+    const innate = new Set((trackerSettings.npcStats || []).filter(stat => stat.persistence === 'innate')
+        .map(stat => stat.name));
     return [
         locked.world.length ? `World: ${locked.world.join(', ')}` : '',
         locked.player.length ? `Player: ${locked.player.join(', ')}` : '',
-        locked.characters.length ? `Characters: ${locked.characters.join(', ')}` : '',
+        locked.characters.some(name => !innate.has(name))
+            ? `Characters: ${locked.characters.filter(name => !innate.has(name)).join(', ')}` : '',
     ].filter(Boolean).join('\n');
 }
 
@@ -54,18 +57,21 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
            Their facts come from the card rather than the state, because being absent from
            the state is what makes them off-scene. liveFactsFor answers exactly that. */
         const { stats, collections } = liveFactsFor(char);
+        const visibleStats = Object.fromEntries(Object.entries(stats || {}).filter(([name]) =>
+            !(trackerSettings.npcStats || []).some(def => def.persistence === 'innate'
+                && def.name?.toLowerCase() === name.toLowerCase())));
         const listed = summariseCollections({ collections }, 'npc', trackerSettings);
         const profile = profileBlock(char);
 
         // Nothing at all to say is not worth a line. A card with only a profile still is:
         // that is who they are, and it is the half the reader most often lacks.
-        const hasStats = Object.keys(stats || {}).length > 0;
+        const hasStats = Object.keys(visibleStats).length > 0;
         const hasItems = Object.values(listed || {}).some(items => items.length);
         if (!hasStats && !hasItems && !profile.profile) continue;
 
         records.push({
             name: char.name,
-            ...(hasStats ? { stats } : {}),
+            ...(hasStats ? { stats: visibleStats } : {}),
             ...(hasItems ? { collections: listed } : {}),
             ...profile,
         });

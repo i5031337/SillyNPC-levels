@@ -11,6 +11,7 @@ import { triggerReprocess } from '../../chat/reprocess.js';
 import { buildExtractionSchema, strangersToClassify } from './status-extractor-schema.js';
 import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
+import { expandNumericDeltas } from './status-extractor-deltas.js';
 import { addLevelBonus, applyThreadsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
@@ -118,7 +119,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // rather than from what this one leaves behind.
         rememberSwipeBase(messageId, state);
         const strangers = strangersToClassify(messageId);
-        const schema = buildExtractionSchema(trackerSettings, { strangers });
+        const schema = buildExtractionSchema(trackerSettings, { strangers, state });
         const leadUp = collectLeadUp(messageId, Number(trackerSettings.extractionContextMessages ?? 2));
         const userPrompt = buildUserPrompt(state, String(messageText), trackerSettings, leadUp, { strangers });
 
@@ -147,10 +148,12 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // Those steps change the object in place, and the original is what explains the
         // reader's decisions, including values the tracker later refuses.
         const readerOutput = structuredClone(parsed);
+        const liveState = loadStateFromMetadata();
+        expandNumericDeltas(parsed, liveState, trackerSettings);
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
-        sanitizeModelUpdate(parsed, loadStateFromMetadata(), trackerSettings);
-        await addLevelBonus(parsed, state, trackerSettings, String(messageText));
+        sanitizeModelUpdate(parsed, liveState, trackerSettings);
+        await addLevelBonus(parsed, liveState, trackerSettings, String(messageText), leadUp);
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
             || extractionSwipe(reportMessage) !== swipe) {
             return { applied: false, reason: 'reply changed while reading' };

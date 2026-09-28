@@ -11,7 +11,8 @@ export const SPEAKER_PALETTE = Object.freeze([
  * It lives here rather than beside the code that sends it because the settings repair
  * seeds the editable copy from it, and settings.js must not import the extractor.
  */
-export const SYSTEM_PROMPT = [
+// Kept for the settings migration: only an untouched copy of this prompt is replaced.
+export const PREVIOUS_SYSTEM_PROMPT = [
     'You maintain the state of a roleplaying session.',
     'Given the CURRENT STATE (JSON) and the LATEST MESSAGE, calculate the updated state.',
     'Output ONLY raw JSON. Do not include markdown formatting, code fences (```), explanations, or notes.',
@@ -63,6 +64,34 @@ export const SYSTEM_PROMPT = [
     '- NEVER keep more than one, time-limited thread at once. Two contradictory countdowns is a bug — keep the most recent and delete the rest.',
     '- A thread must be something a character SAID or PROMISED. Never record an inferred obligation, a prediction, or a required action. Never phrase a thread as something the {{user}} "must" do.',
     '- Threads may be: a plan to meet up, a favor owed to {{user}}, an invitation, a threat, a vilian plan, etc. Record those with equal priority.',
+].join('\n');
+
+// Shipped before numeric deltas; existing untouched settings may hold this version.
+export const RECENT_SYSTEM_PROMPT = [
+    'Read the latest message of a roleplaying session and report what it changes.',
+    'Use earlier messages only to interpret the latest one; their effects are already in CURRENT STATE.',
+    'Return only raw JSON with "global", "player", and "characters". Add other top-level keys only when the request asks for them.',
+    '"global" and "player" contain changed values only. "characters" lists everyone present after the latest message, even when their values did not change.',
+    'Use exact configured names. Omit unchanged values and collections. An omitted value means unchanged, never deleted.',
+    'For collections, use "add" for acquisitions, "remove" for losses, and "update" for changes to something already held. Do not list everything held.',
+    'Keep the form of a stat: a pool such as "8/10" stays a pool, and a plain number stays a plain number.',
+    'Report values after the event. Do not invent changes. An announced cost is paid when the action resolves, not when a roll is requested; do not pay it again later.',
+    'Raise a relationship or public-standing stat for a concrete helpful or friendly act; lower it for an act that damages that relationship or reputation.',
+    'A temporary Condition can return to baseline when the latest message shows recovery or a scene change. Physical injury persists until treated or healed.',
+].join('\n');
+
+export const SYSTEM_PROMPT = [
+    'Read the latest message of a roleplaying session and report what it changes.',
+    'Use earlier messages only to interpret the latest one; their effects are already in CURRENT STATE.',
+    'Return raw JSON with "global", "player", and "characters". Add other top-level keys only when requested.',
+    '"characters" lists everyone present after the latest message. Omit unchanged stats and collections.',
+    'Use exact configured names. Never invent an event or apply a cost already paid.',
+    'For an existing numeric reading, report the amount gained or lost in a "deltas" map. Use "globalDeltas" for world stats. Do not calculate the new value.',
+    'Use ordinary "stats" values for text, blank numeric stats, or a changed maximum. Never report both forms for one stat.',
+    'Collections use "add" for acquisitions, "remove" for losses, and "update" for changes to something already held.',
+    'An announced cost is paid when the action resolves, not when a roll is requested.',
+    'Raise relationship or public-standing stats for concrete helpful acts; lower them for acts that damage that relationship or reputation.',
+    'A temporary Condition can return to baseline after recovery or a scene change. Physical injury persists until treated or healed.',
 ].join('\n');
 
 /**

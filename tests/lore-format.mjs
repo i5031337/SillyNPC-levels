@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { numericDeltaNames } from '../src/tracker/extractor/status-extractor-deltas.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore/lore-format.js';
 import { defaultSettings } from '../src/core/settings-defaults.js';
@@ -38,13 +39,20 @@ test('tracker schema offers NPC lore fields without adding them to the player', 
     const npc = { name: 'Mira', aiProfileFields: ['role'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['age'] };
     const build = new Function('getAllCharacters', 'getPlayerCard', 'PROFILE_FIELDS',
-        'NPC_LORE_FIELDS', 'anyProfileFieldUnlocked',
+        'NPC_LORE_FIELDS', 'anyProfileFieldUnlocked', 'numericDeltaNames',
         `${source}\nreturn buildExtractionSchema;`)(
         () => [npc], () => player, PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked,
+        numericDeltaNames,
     );
     const schema = build({ globalStats: [], playerStats: [], npcStats: [], collections: [] });
     assert.ok(schema.properties.characters.items.properties.profile.properties.role);
     assert.equal(schema.properties.player.properties.profile.properties.role, undefined);
+
+    const withDeltas = build({
+        globalStats: [], playerStats: [{ name: 'HP' }], npcStats: [], collections: [],
+        extractionReasons: false,
+    }, { state: { player: { stats: { HP: '7/10' } }, characters: [] } });
+    assert.equal(withDeltas.properties.player.properties.deltas.properties.HP.type, 'number');
 });
 
 test('Fill requests missing named fields in one generation call', async () => {
