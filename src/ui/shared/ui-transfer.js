@@ -3,7 +3,7 @@ import { offerDownload } from '../../core/utils.js';
 import { exportCharacters, importCharacters, parseTransferFile } from '../../characters/character-transfer.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
-import { splitNpcStats } from '../../tracker/stat-persistence.js';
+import { splitNpcStats, carriesNpcStat } from '../../tracker/stat-persistence.js';
 import { getAllCharacters } from '../../characters/character-repository.js';
 
 /**
@@ -29,14 +29,14 @@ export async function exportCharacterFile(chars) {
 
     try {
         const definitions = getSettings().statusTracker?.npcStats || [];
-        const innateNames = definitions.filter(s => s?.persistence === 'innate').map(s => s.name);
-        const variableNames = definitions.filter(s => s?.persistence !== 'innate').map(s => s.name);
+        const innateNames = definitions.filter(carriesNpcStat).map(s => s.name);
+        const variableNames = definitions.filter(s => !carriesNpcStat(s)).map(s => s.name);
         const values = list.map(char => splitNpcStats(char.statusOverrides, definitions));
         const carried = values.reduce((n, entry) => n + Object.keys(entry.innate).length, 0);
         const reset = values.reduce((n, entry) => n + Object.keys(entry.variable).length, 0);
         const preview = `Export ${list.length} character${list.length === 1 ? '' : 's'}? `
-            + `Innate fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
-            + `Variable fields start from the destination defaults: ${variableNames.join(', ') || 'none'} `
+            + `Advancement and locked fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
+            + `Turn fields start from the destination defaults: ${variableNames.join(', ') || 'none'} `
             + `(${reset} current values stay here). Inventory and conditions also stay here.`;
         if (!await Popup.show.confirm('Character export preview', preview)) return;
         const payload = await exportCharacters(list);

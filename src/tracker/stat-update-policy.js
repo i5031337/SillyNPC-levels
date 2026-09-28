@@ -4,7 +4,7 @@ const NUMERIC_VALUE = /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/;
 const PROGRESSION_FIELDS = new Set(['xp', 'level', 'level bonus']);
 const ADVANCEMENT_FIELDS = new Set(['level', 'level bonus']);
 
-/** Existing innate fields were effectively advancement-only; keep that behavior. */
+/** Missing legacy policies are inferred from the old transfer setting. */
 export function isTurnStat(def) {
     return Boolean(def && (def.updatePolicy === 'turn'
         || (def.updatePolicy !== 'advancement' && def.persistence !== 'innate')));

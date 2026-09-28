@@ -69,7 +69,7 @@ SillyNPC operates across two core modules:
 ### Character & World Management
 * **Roster Categories:** Organize characters into distinct worlds, factions, or scenes — and limit a chat to only the categories it needs.
 * **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** copies one, while **New profile in this chat** starts a blank NPC with the same name. New chat NPCs only link existing lorebook entries when you explicitly choose Sync.
-* **Portable Character Files:** Export identity, profile, linked lore text, and Innate stats. Variable stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
+* **Portable Character Files:** Export identity, profile, linked lore text, and NPC stats marked Advancement or Locked. Turn stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
 * **Export World Characters:** Under **Systems → Manager**, export reusable world cards and NPCs from every chat assigned to a Saved System, including chats that are closed and Systems that are not active. The existing full System export is still available separately.
 * **Integrated Generation:** Generates matching lorebook entries and portraits directly via connected APIs.
 
@@ -133,7 +133,7 @@ Reload SillyTavern.
 
 ### NPC stats and character transfers
 
-In **Systems → Builder → NPC**, choose **Innate** or **Variable** for transfer. Innate values travel with a character; Variable values start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Separately, choose **Turn** or **Advancement** for update authority. Turn fields may change as the story unfolds; Advancement fields are hidden from turn extraction and can currently be edited manually for NPCs. Existing Innate fields default to Advancement, preserving their earlier behavior. Shipped HP, Energy, and Condition fields are Variable. Existing custom fields keep their stored values and show a review note until you choose their transfer behavior.
+In **Systems → Builder → NPC**, choose **Turn** or **Advancement**. Turn fields may change as the story unfolds and start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Advancement fields travel with the character, are hidden from turn extraction, and can be edited manually. Locked fields also travel with the character. Existing Innate fields without an update policy become Advancement; their stored values are preserved.
 
 In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. **Level bonus** independently chooses which numeric fields may be raised after a level-up. A Turn field such as HP may also be eligible for a level bonus, so current resource changes and maximum growth can share one field.
 

@@ -8,9 +8,9 @@ export const defaultTrackerSettings = {
         ],
         showGlobalStats: true,
         npcStats: [
-            { name: 'HP', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true, persistence: 'variable' },
-            { name: 'Energy', defaultValue: '5/5', format: '{{name}}: {{value}}', maxStatValue: '5', visible: true, persistence: 'variable' },
-            { name: 'Condition', defaultValue: 'Healthy', format: '{{value}}', maxStatValue: '', visible: true, persistence: 'variable' }
+            { name: 'HP', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true },
+            { name: 'Energy', defaultValue: '5/5', format: '{{name}}: {{value}}', maxStatValue: '5', visible: true },
+            { name: 'Condition', defaultValue: 'Healthy', format: '{{value}}', maxStatValue: '', visible: true }
         ],
         playerStats: [
             { name: 'HP', defaultValue: '20/20', format: '{{name}}: {{value}}', maxStatValue: '20', visible: true, isPrimary: true, color: '#e03131', advanceOnLevel: true },

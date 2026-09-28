@@ -267,8 +267,8 @@ function applySystemPreset(profile) {
     for (const listName of ['globalStats', 'npcStats', 'playerStats']) {
         normaliseStatDefs(st[listName]);
     }
-    normaliseNpcPersistence(st.npcStats);
     normaliseStatUpdatePolicies(st);
+    normaliseNpcPersistence(st.npcStats);
 
     // The theme was called displayStyle and lived in config; it is menuStyle at the root
     // now, and carried like anything else. Old profiles still name the old one.

@@ -5,6 +5,7 @@ import { chatNpcSources, CHAT_NPCS_KEY } from '../chat/chat-npc-sources.js';
 import { serialiseCharacter, TRANSFER_FORMAT, TRANSFER_VERSION } from './character-transfer.js';
 import { listChatHeaders } from '../chat/chat-listing.js';
 import { normaliseNpcPersistence } from '../tracker/stat-persistence.js';
+import { normaliseStatUpdatePolicies } from '../tracker/stat-update-policy.js';
 
 export async function exportWorldCharacters(systemName) {
     const settings = getSettings();
@@ -15,6 +16,7 @@ export async function exportWorldCharacters(systemName) {
     const npcStats = structuredClone(active
         ? settings.statusTracker.npcStats
         : (profile.config?.statusTracker?.npcStats || profile.config?.npcStats || []));
+    normaliseStatUpdatePolicies({ npcStats });
     normaliseNpcPersistence(npcStats);
     const worldCards = active ? getWorldCharacters() : (profile.world?.characters || []);
     const headers = await listChatHeaders();

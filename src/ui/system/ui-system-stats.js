@@ -283,7 +283,6 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
     addBtn.addEventListener('click', () => {
         const newStat = { name: 'New Stat', defaultValue: '', format: '{{value}}', visible: true,
             type: 'text', min: '', updatePolicy: 'turn' };
-        if (settingsKey === 'npcStats') newStat.persistence = 'variable';
         if (settingsKey === 'playerStats') newStat.advanceOnLevel = false;
         newStat.maxStatValue = '';
         stats.push(newStat);

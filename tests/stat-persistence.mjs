@@ -5,36 +5,39 @@ import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats,
 import { normaliseStatUpdatePolicies, canAdvanceStat, holdLevelBonusChanges,
     earnsLevel } from '../src/tracker/stat-update-policy.js';
 
-test('legacy custom fields require review without changing stored values', () => {
-    const definitions = [{ name: 'HP', defaultValue: '10/10' }, { name: 'Wisdom', defaultValue: '4' }];
+test('legacy transfer settings are retired without changing stored values', () => {
+    const definitions = [{ name: 'HP', persistence: 'variable' },
+        { name: 'Wisdom', persistence: 'innate', persistenceReview: true }];
     const values = { HP: '2/10', Wisdom: '8' };
+    normaliseStatUpdatePolicies({ npcStats: definitions });
     normaliseNpcPersistence(definitions);
-    assert.equal(definitions[0].persistence, 'variable');
-    assert.equal(definitions[0].persistenceReview, undefined);
-    assert.equal(definitions[1].persistence, 'variable');
-    assert.equal(definitions[1].persistenceReview, true);
+    assert.equal(definitions[0].updatePolicy, 'turn');
+    assert.equal(definitions[1].updatePolicy, 'advancement');
+    assert.equal(definitions[0].persistence, undefined);
+    assert.equal(definitions[1].persistenceReview, undefined);
     assert.deepEqual(values, { HP: '2/10', Wisdom: '8' });
 });
 
-test('transfer carries only destination innate fields and resets adventure fields', () => {
+test('transfer carries advancement and locked fields and resets turn fields', () => {
     const destination = [
-        { name: 'HP', persistence: 'variable', defaultValue: '12/12' },
-        { name: 'Wisdom', persistence: 'innate', defaultValue: '3' },
-        { name: 'Level', persistence: 'variable', defaultValue: '1' },
+        { name: 'HP', updatePolicy: 'turn', defaultValue: '12/12' },
+        { name: 'Wisdom', updatePolicy: 'advancement', defaultValue: '3' },
+        { name: 'Level', updatePolicy: 'turn', locked: true, defaultValue: '1' },
     ];
     const mixedLegacyValues = { hp: '2/10', WISDOM: '8', Level: '7', Unknown: 'secret' };
     assert.deepEqual(splitNpcStats(mixedLegacyValues, destination), {
-        innate: { Wisdom: '8' }, variable: { HP: '2/10', Level: '7' },
+        innate: { Wisdom: '8', Level: '7' }, variable: { HP: '2/10' },
     });
     assert.deepEqual(initialiseNpcStats(mixedLegacyValues, destination), {
-        HP: '12/12', Wisdom: '8', Level: '1',
+        HP: '12/12', Wisdom: '8', Level: '7',
     });
 });
 
-test('NPC transfer persistence and turn update authority are independent', () => {
+test('legacy NPC policy remains editable after migration', () => {
     const innate = { name: 'Wisdom', persistence: 'innate' };
     const variable = { name: 'HP', persistence: 'variable' };
     normaliseStatUpdatePolicies({ npcStats: [innate, variable], playerStats: [] });
+    normaliseNpcPersistence([innate, variable]);
     assert.equal(innate.updatePolicy, 'advancement');
     assert.equal(canTrackerSetNpcStat(innate, '', undefined), false);
     assert.equal(canTrackerSetNpcStat(innate, '6', undefined), false);

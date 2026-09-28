@@ -250,8 +250,8 @@ function normalizeTrackerSchema(settings) {
         for (const listName of ['globalStats', 'npcStats', 'playerStats']) {
             normaliseStatDefs(settings.statusTracker[listName]);
         }
-        normaliseNpcPersistence(settings.statusTracker.npcStats);
         normaliseStatUpdatePolicies(settings.statusTracker);
+        normaliseNpcPersistence(settings.statusTracker.npcStats);
 
         // The same field a stat has had all along, on a collection. A stat could say how it
         // should be written and a collection could not say what it holds - so "pictures"

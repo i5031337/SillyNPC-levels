@@ -32,20 +32,20 @@ const CHARACTER_FIELD_DEFS = [
         hint: 'Two or three traits, shown as behaviour. What they are like to be around on an ordinary day, and how they treat the people they are close to. Mention a flaw only if the story has shown one, describe it as a limitation rather than as something that causes incidents, and do not end on it.',
         multiline: true,
     },
-    {
-        id: 'warmth',
-        label: 'Warmth & attachment',
-        player: true,
-        placeholder: 'How they show they care - what they do, say, bring, or put up with',
-        /* Relationships have a home already: the lore entry's Ties section, which asks how
-           they stand with the player. This is the other half of it and does not move - Ties
-           is where the relationship stands and grows, this is the habit that does not
-           change. Separated on purpose, because two fields describing the same thing is the
-           drift the lore prompt warns about.
-           Behaviour rather than feeling, so it says something the narrator can act on. */
-        hint: 'How they show they like the people close to them. Concrete behavior: what they do, say, bring, make time for, or put up with. Include how they behave toward {{user}}. If the material shows they are fond of somebody, say so plainly. Leave blank only if it shows no affection at all.',
-        multiline: true,
-    },
+    // {
+    //     id: 'warmth',
+    //     label: 'Warmth & attachment',
+    //     player: true,
+    //     placeholder: 'How they show they care - what they do, say, bring, or put up with',
+    //     /* Relationships have a home already: the lore entry's Ties section, which asks how
+    //        they stand with the player. This is the other half of it and does not move - Ties
+    //        is where the relationship stands and grows, this is the habit that does not
+    //        change. Separated on purpose, because two fields describing the same thing is the
+    //        drift the lore prompt warns about.
+    //        Behaviour rather than feeling, so it says something the narrator can act on. */
+    //     hint: 'How they show they like the people close to them. Concrete behavior: what they do, say, bring, make time for, or put up with. Include how they behave toward {{user}}. If the material shows they are fond of somebody, say so plainly. Leave blank only if it shows no affection at all.',
+    //     multiline: true,
+    // },
     {
         id: 'speech',
         label: 'Speech & dialogue style',
@@ -63,9 +63,9 @@ const CHARACTER_FIELD_DEFS = [
     },
     { id: 'role', label: 'Role', hint: 'One plain sentence about who this person is in ordinary terms, not an epithet.', placeholder: 'Their place in the world', multiline: true },
     { id: 'wants', label: 'Wants', hint: 'One concrete thing they are trying to get, keep or avoid.', placeholder: 'A concrete goal or concern', multiline: true },
-    { id: 'method', label: 'Method', hint: 'One or two sentences on how they usually solve problems.', placeholder: 'How they approach problems', multiline: true },
-    { id: 'limits', label: 'Limits', hint: 'What they cannot do, do not know, lack authority over, or would refuse to do. Be specific.', placeholder: 'Real limits on their actions', multiline: true },
-    { id: 'standing', label: 'Standing', hint: 'How they treat {{user}} day to day and where they stand with them.', placeholder: 'Their relationship with the player', multiline: true },
+    // { id: 'method', label: 'Method', hint: 'One or two sentences on how they usually solve problems.', placeholder: 'How they approach problems', multiline: true },
+    // { id: 'limits', label: 'Limits', hint: 'What they cannot do, do not know, lack authority over, or would refuse to do. Be specific.', placeholder: 'Real limits on their actions', multiline: true },
+    // { id: 'standing', label: 'Standing', hint: 'How they treat {{user}} day to day and where they stand with them.', placeholder: 'Their relationship with the player', multiline: true },
     { id: 'ties', label: 'Ties', hint: 'One sentence on other people who matter to them.', placeholder: 'People who matter to them', multiline: true },
     { id: 'history', label: 'History', hint: 'Where they came from and what has happened to them recently, in two or three sentences.', placeholder: 'Relevant history', multiline: true },
 ];

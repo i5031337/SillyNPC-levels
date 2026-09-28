@@ -56,7 +56,7 @@ async function readLoreEntry(char) {
 }
 
 /**
- * One character's identity, lore and innate values. Adventure state stays behind.
+ * One character's identity, lore and carried values. Adventure state stays behind.
  *
  * @param {object} char
  * @returns {Promise<object>} The record.
@@ -75,6 +75,7 @@ export async function serialiseCharacter(char, { npcStats = getSettings().status
         imageFit: String(char.imageFit || ''),
         aliases: Array.isArray(char.aliases) ? structuredClone(char.aliases) : [],
         profile,
+        // Keep the version 2 field name so existing character files remain readable.
         innateStats: splitNpcStats(char.statusOverrides, npcStats).innate,
         // No portraits. They used to be inlined as data URIs, which was the right instinct -
         // a stored portrait is a path into /user/images and names a file the recipient does
@@ -163,8 +164,8 @@ function applyRecord(char, record, name, version) {
     char.color = String(record.color || char.color || '');
     char.imageFit = String(record.imageFit || '');
     char.aliases = Array.isArray(record.aliases) ? structuredClone(record.aliases) : [];
-    // Version 1 mixed every override. The destination schema decides which of those
-    // values are innate; all variable fields receive its defaults instead.
+    // Version 1 mixed every override. The destination schema decides which values
+    // travel; turn fields receive its defaults instead.
     const incoming = version >= 2 ? record.innateStats : record.statusOverrides;
     char.statusOverrides = initialiseNpcStats(incoming, getSettings().statusTracker?.npcStats);
     // Collections, conditions and inventory belong to the adventure instance.

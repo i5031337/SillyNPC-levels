@@ -1,19 +1,16 @@
-/** The old schema did not distinguish identity from adventure state. */
-const LEGACY_VARIABLE_STATS = new Set(['hp', 'energy', 'condition', 'level', 'xp']);
-
-/** Assign a safe transfer policy without changing any stored stat values. */
+/** Retire the old transfer setting after update policy has been inferred from it. */
 export function normaliseNpcPersistence(definitions) {
     if (!Array.isArray(definitions)) return;
     for (const stat of definitions) {
         if (!stat || typeof stat !== 'object') continue;
-        if (stat.persistence === 'innate' || stat.persistence === 'variable') continue;
-        stat.persistence = 'variable';
-        // Custom fields need an explicit choice. Until then they remain local to the
-        // adventure, and their existing values stay exactly where they were.
-        if (!LEGACY_VARIABLE_STATS.has(String(stat.name || '').trim().toLowerCase())) {
-            stat.persistenceReview = true;
-        }
+        delete stat.persistence;
+        delete stat.persistenceReview;
     }
+}
+
+/** Advancement and locked values belong to the character across adventures. */
+export function carriesNpcStat(stat) {
+    return Boolean(stat && (stat.locked || !isTurnStat(stat)));
 }
 
 /** Split by definitions, never by the names of values found on a card. */
@@ -25,7 +22,7 @@ export function splitNpcStats(values, definitions) {
         if (!stat?.name) continue;
         const key = Object.keys(source).find(name => name.toLowerCase() === stat.name.toLowerCase());
         if (key === undefined) continue;
-        const target = stat.persistence === 'innate' ? innate : variable;
+        const target = carriesNpcStat(stat) ? innate : variable;
         target[stat.name] = structuredClone(source[key]);
     }
     return { innate, variable };

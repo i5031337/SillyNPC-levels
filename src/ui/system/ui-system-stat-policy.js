@@ -1,4 +1,4 @@
-/** Stat update authority is separate from NPC transfer persistence. */
+/** Stat update policy also determines whether an NPC value travels. */
 export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
     if (scope === 'globalStats') return '';
     const name = escapeHtml(stat.name);
@@ -8,7 +8,7 @@ export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
         && (numeric || stat.advanceOnLevel
             || /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(stat.defaultValue ?? '')));
     const policyHelp = scope === 'npcStats'
-        ? 'Turn fields can change after a story message. Advancement fields are kept out of turn extraction and can currently be edited by hand.'
+        ? 'Turn fields can change after a story message and reset in a new adventure. Advancement fields travel with the character and can be edited by hand. Locked fields also travel.'
         : 'Turn fields can change after a story message. Advancement fields change through a level-up bonus or manual editing.';
     return `
         <select class="text_pole stat-update-policy"
@@ -18,16 +18,6 @@ export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
             <option value="turn" ${policy === 'turn' ? 'selected' : ''}>Turn</option>
             <option value="advancement" ${policy === 'advancement' ? 'selected' : ''}>Advancement</option>
         </select>
-        ${scope === 'npcStats' ? `
-        <select class="text_pole stat-persistence"
-                title="Innate values travel with the character. Variable values start from the destination system's default. This choice does not control turn updates."
-                aria-label="${name} persistence"
-                style="width:80px; font-size:var(--sillynpc-text-md); height:24px;">
-            <option value="variable" ${stat.persistence !== 'innate' ? 'selected' : ''}>Variable</option>
-            <option value="innate" ${stat.persistence === 'innate' ? 'selected' : ''}>Innate</option>
-        </select>
-        ${stat.persistenceReview ? '<small class="sillynpc-field-note">Choose how this field transfers; its values are preserved.</small>' : ''}
-        ` : ''}
         ${scope === 'playerStats' && canShowBonus ? `
         <label class="sillynpc-check-group" title="Allow a level-up bonus to raise this stat. A Turn stat can also receive an advancement bonus to its maximum.">
             <input type="checkbox" class="stat-advance-on-level" ${stat.advanceOnLevel ? 'checked' : ''}>
@@ -39,12 +29,6 @@ export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
 export function bindStatPolicy(row, stat, saveSettings, onRefresh) {
     row.querySelector('.stat-update-policy')?.addEventListener('change', (event) => {
         stat.updatePolicy = event.target.value;
-        saveSettings();
-        onRefresh();
-    });
-    row.querySelector('.stat-persistence')?.addEventListener('change', (event) => {
-        stat.persistence = event.target.value;
-        delete stat.persistenceReview;
         saveSettings();
         onRefresh();
     });

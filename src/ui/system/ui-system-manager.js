@@ -8,6 +8,7 @@ import { updateHUD } from '../hud/ui-hud.js';
 import { escapeHtml } from '../../core/utils.js';
 import { openItemLibrary } from '../collections/ui-item-library.js';
 import { exportWorldCharacters } from '../../characters/world-character-export.js';
+import { carriesNpcStat } from '../../tracker/stat-persistence.js';
 
 /**
  * System Manager: saving, restoring and swapping whole Systems.
@@ -238,12 +239,12 @@ export function buildSystemManager(onRefresh) {
                     const defs = name === getActiveSystem()
                         ? getSettings().statusTracker.npcStats
                         : (profile.config?.statusTracker?.npcStats || profile.config?.npcStats || []);
-                    const innate = (defs || []).filter(stat => stat.persistence === 'innate')
+                    const innate = (defs || []).filter(carriesNpcStat)
                         .map(stat => stat.name);
                     const confirmed = await Popup.show.confirm('Export World Characters',
                         `${payload.characters.length} characters from reusable cards and assigned chats. `
-                        + `Innate fields carried: ${innate.join(', ') || 'none'}. `
-                        + 'Variable stats, conditions and inventory reset on import. Export this file?');
+                        + `Advancement and locked fields carried: ${innate.join(', ') || 'none'}. `
+                        + 'Turn stats, conditions and inventory reset on import. Export this file?');
                     if (!confirmed) return;
                     offerDownload(payload,
                         `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_characters.json`);
