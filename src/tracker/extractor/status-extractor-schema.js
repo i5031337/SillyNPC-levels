@@ -1,6 +1,6 @@
 import { resolveProfileFields } from '../../core/profile-fields.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
-import { numericDeltaNames } from './status-extractor-deltas.js';
+import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
 import { goalFields } from '../goals.js';
 
@@ -65,6 +65,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
 
     const globalStatDefs = trackerSettings.globalStats || [];
     const playerStatDefs = trackerSettings.playerStats || [];
+    const xpName = configuredXpName(trackerSettings);
     const npcStatDefs = (trackerSettings.npcStats || []).filter(isTurnStat);
     const deltaMap = (keys) => ({
         type: 'object',
@@ -119,7 +120,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
             player: {
                 type: 'object',
                 properties: {
-                    stats: stringMap(playerStatDefs),
+                    stats: stringMap(playerStatDefs.filter(stat => stat.name?.toLowerCase() !== xpName?.toLowerCase())),
                     ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
                     ...(playerProfileProps ? { profile: playerProfileProps } : {}),

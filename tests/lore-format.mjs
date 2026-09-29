@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { numericDeltaNames } from '../src/tracker/extractor/status-extractor-deltas.js';
+import { numericDeltaNames, configuredXpName } from '../src/tracker/extractor/status-extractor-deltas.js';
 import { isTurnStat } from '../src/tracker/stat-update-policy.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore/lore-format.js';
@@ -88,10 +88,10 @@ test('tracker schema follows System policies rather than old per-card unlocks', 
     const npc = { name: 'Mira', aiProfileFields: ['appearance'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['appearance'] };
     const build = new Function('getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
-        'anyProfileFieldUnlocked', 'numericDeltaNames', 'isTurnStat', 'goalFields',
+        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'goalFields',
         `${source}\nreturn buildExtractionSchema;`)(
         () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
-        numericDeltaNames, isTurnStat, scope => scope === 'player'
+        numericDeltaNames, configuredXpName, isTurnStat, scope => scope === 'player'
             ? [{ id: 'shortTerm', label: 'Short-term goal' }, { id: 'longTerm', label: 'Long-term goal' }]
             : [{ id: 'shortTerm', label: 'Short-term goal' }],
     );
@@ -110,6 +110,16 @@ test('tracker schema follows System policies rather than old per-card unlocks', 
         extractionReasons: false,
     }, { state: { player: { stats: { HP: '7/10' } }, characters: [] } });
     assert.equal(withDeltas.properties.player.properties.deltas.properties.HP.type, 'number');
+
+    const xpSchema = build({
+        globalStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }], npcStats: [], collections: [],
+    }, { state: { player: { stats: { XP: '90/100', Level: '1' } }, characters: [] } });
+    assert.equal(xpSchema.properties.player.properties.stats.properties.XP, undefined);
+    assert.equal(xpSchema.properties.player.properties.deltas.properties.XP.type, 'number');
+    const blankXpSchema = build({
+        globalStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }], npcStats: [], collections: [],
+    }, { state: { player: { stats: { XP: '', Level: '1' } }, characters: [] } });
+    assert.equal(blankXpSchema.properties.player.properties.stats.properties.XP, undefined);
 });
 
 test('Fill requests missing named fields in one generation call', async () => {

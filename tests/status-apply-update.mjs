@@ -31,6 +31,37 @@ test('reader deltas become absolute values without changing ceilings or innate s
     assert.equal(reply.player.deltas, undefined);
 });
 
+test('reader XP uses only a positive delta when raw XP is also present', () => {
+    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }] };
+    const state = { global: {}, characters: [], player: { stats: { XP: '90/100', Level: '1' } } };
+    const reply = { player: { stats: { XP: '2' }, deltas: { XP: 2 } }, characters: [] };
+    expandNumericDeltas(reply, state, settings);
+    assert.equal(reply.player.stats.XP, '92/100');
+    assert.equal(progressXp(state.player.stats.XP, reply.player.stats.XP, state.player.stats.Level).xp, '92/100');
+
+    const rollover = { player: { stats: { XP: '2' }, deltas: { XP: 20 } }, characters: [] };
+    expandNumericDeltas(rollover, state, settings);
+    assert.deepEqual(progressXp(state.player.stats.XP, rollover.player.stats.XP, state.player.stats.Level), {
+        xp: '10/100', level: '2', levelsGained: 1,
+    });
+});
+
+test('reader ignores raw-only XP and nonpositive XP deltas', () => {
+    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }] };
+    const state = { global: {}, characters: [], player: { stats: { XP: '90/100', Level: '1' } } };
+    for (const player of [{ stats: { XP: '2' } }, { XP: '2', XP_current: '2' },
+        { stats: { XP: '2' }, deltas: { XP: -2 } },
+        { stats: { XP: '2' }, deltas: { XP: 0 } }]) {
+        const reply = { player, characters: [] };
+        expandNumericDeltas(reply, state, settings);
+        assert.equal(reply.player.stats?.XP, undefined);
+        assert.equal(reply.player.XP, undefined);
+    }
+    const blank = { player: { stats: { XP: '2' }, deltas: { XP: 2 } }, characters: [] };
+    expandNumericDeltas(blank, { ...state, player: { stats: { XP: '', Level: '1' } } }, settings);
+    assert.equal(blank.player.stats.XP, undefined);
+});
+
 // This module's SillyTavern imports require a browser. Inject those boundaries
 // while exercising its real bind(deps) implementation in Node.
 const source = readFileSync(new URL('../src/tracker/status-apply-update.js', import.meta.url), 'utf8')

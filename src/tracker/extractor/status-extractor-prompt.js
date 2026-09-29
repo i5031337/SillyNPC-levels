@@ -7,7 +7,7 @@ import { getPlayerCard, findCardForName, describeNpcStatFields } from '../status
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
 import { describeAbsentButNamed, describeLocked } from './status-extractor-prompt-offstage.js';
-import { describeNumericDeltas, numericDeltaNames } from './status-extractor-deltas.js';
+import { describeNumericDeltas, numericDeltaNames, progressionXpName } from './status-extractor-deltas.js';
 
 /**
  * Extra notes for the reader, from whoever registered one.
@@ -95,8 +95,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         locked: describeLocked(trackerSettings),
         npcFields: describeNpcStatFields(trackerSettings),
         numericDeltas: describeNumericDeltas(state, trackerSettings),
-        xpProgression: (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
-            && (trackerSettings.playerStats || []).some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
+        xpProgression: progressionXpName(trackerSettings, state) ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
         notes: describeExtractionNotes(state, messageText),
         ...strangerValues(strangers),
@@ -224,13 +223,14 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 function buildChangedExample(state, trackerSettings) {
     const stat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats)[0];
     if (!stat) return '';
+    const xpName = progressionXpName(trackerSettings, state);
     const cast = (state?.characters || []).map(c => c?.name).filter(Boolean);
     return JSON.stringify({
         ...(trackerSettings.extractionReasons === false ? {} : {
             why: { [`Player.${stat}`]: '<short quote from the latest message>' },
         }),
         global: {},
-        player: { deltas: { [stat]: -1 } },
+        player: { deltas: { [stat]: stat.toLowerCase() === xpName?.toLowerCase() ? 1 : -1 } },
         characters: cast.map(name => ({ name })),
     });
 }

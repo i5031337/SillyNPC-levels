@@ -83,7 +83,7 @@ For each NPC present in the latest message, fill blank fields. For a new NPC, in
 {{#xpProgression}}
 
 ### PLAYER EXPERIENCE
-Award XP for concrete player progress in the latest message, including small successes: learning a useful clue, making headway on a task, helping someone, practicing a skill, acquiring an item, or overcoming a challenge. Minor progress earns a small award; major achievements earn more. Do not wait for a major milestone. Award each accomplishment once, only when it happens in the latest message; earlier messages are already reflected in the current state. Report earned XP as a positive delta: at 90/100 XP, earning 20 gives "deltas": { "XP": 20 }. The extension handles Level, Level Bonus, and excess XP.
+Award XP for concrete player progress in the latest message, including small successes: learning a useful clue, making headway on a task, helping someone, practicing a skill, acquiring an item, or overcoming a challenge. Minor progress earns a small award; major achievements earn more. Do not wait for a major milestone. Award each accomplishment once, only when it happens in the latest message; earlier messages are already reflected in the current state. Put earned XP only in "player.deltas" as a positive JSON number: at 90/100 XP, earning 20 gives "player": { "deltas": { "XP": 20 } }. Never put XP in "player.stats" or report an absolute XP total. The extension handles Level, Level Bonus, and excess XP.
 {{/xpProgression}}
 {{#offstage}}
 
@@ -108,7 +108,7 @@ Report updates for other fields. Initialize a blank Locked NPC field once; the p
 For an existing numeric value, report the amount gained or lost as a JSON number. Use "globalDeltas" for world stats, "player.deltas" for player stats, and "characters[].deltas" for NPC stats. Eligible fields:
 {{numericDeltas}}
 Example: an Energy cost of 3 is "deltas": { "Energy": -3 }.
-Use one delta per changed field. For a blank numeric field or changed maximum, use a replacement "stats" value.
+Use one delta per changed field. For a blank numeric field or changed maximum, use a replacement "stats" value, except for player XP: award XP only through a positive "player.deltas" number.
 {{/numericDeltas}}
 {{notes}}
 {{#strangers}}
@@ -180,7 +180,7 @@ Only report an explicit, meaningful change in the latest message. Under the rele
 {{/goals}}
 {{#xpProgression}}
 
-Before replying, check the latest message for small as well as major player progress. Include a positive XP delta for any concrete accomplishment not already counted in the current state; scale it to the achievement and award it once.
+Before replying, check the latest message for small as well as major player progress. Include a positive XP number in "player.deltas" for any concrete accomplishment not already counted in the current state; scale it to the achievement and award it once. Do not include XP in "player.stats".
 {{/xpProgression}}
 
 Report changed fields and initial values for blank NPC fields.`,

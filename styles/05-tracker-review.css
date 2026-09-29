@@ -90,11 +90,29 @@
     box-sizing: border-box !important;
 }
 
-.sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.sillynpc-status-buttons-container):not(.sillynpc-status-add-btn):not(.sillynpc-status-settings-btn):not(.sillynpc-status-undo-btn):not(.sillynpc-status-meter):not(.sillynpc-status-meter-fill):not(.sillynpc-status-meter-text):not(.sillynpc-status-portrait):not(.sillynpc-status-divider):not(.sillynpc-char-columns .sillynpc-status-characters):not(.sillynpc-char-columns .sillynpc-status-characters > :not(.sillynpc-status-char)) {
+.sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.sillynpc-status-buttons-container):not(.sillynpc-status-add-btn):not(.sillynpc-status-settings-btn):not(.sillynpc-status-undo-btn):not(.sillynpc-status-meter):not(.sillynpc-status-meter-fill):not(.sillynpc-status-meter-text):not(.sillynpc-status-portrait):not(.sillynpc-status-divider):not(.sillynpc-status-collection-item):not(.sillynpc-status-collection-more):not(.sillynpc-char-columns .sillynpc-status-characters):not(.sillynpc-char-columns .sillynpc-status-characters > :not(.sillynpc-status-char)) {
     all: revert !important;
     box-sizing: border-box !important;
     font-family: inherit !important;
     color: inherit !important;
+}
+
+.sillynpc-status-box .sillynpc-status-collection-item,
+.sillynpc-status-box .sillynpc-status-collection-more {
+    display: inline-block;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.05em 0.4em;
+    margin: 0.1em 0.3em 0.1em 0;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-radius: var(--sillynpc-radius-sm);
+    background: color-mix(in srgb, currentColor 7%, transparent);
+    vertical-align: baseline;
+    overflow-wrap: anywhere;
+}
+
+.sillynpc-status-box .sillynpc-status-collection-more {
+    opacity: 0.7;
 }
 
 /* The header buttons, at the top right of the tracker box.

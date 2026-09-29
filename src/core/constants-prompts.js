@@ -88,6 +88,7 @@ export const SYSTEM_PROMPT = [
     'Use exact configured names. Never invent an event or apply a cost already paid.',
     'For an existing numeric reading, report the amount gained or lost in a "deltas" map. Use "globalDeltas" for world stats. Do not calculate the new value.',
     'Use ordinary "stats" values for text, blank numeric stats, or a changed maximum. Never report both forms for one stat.',
+    'For player XP, award only a positive number in "player.deltas". Never put XP in "player.stats" or report an absolute XP total.',
     'Collections use "add" for acquisitions, "remove" for losses, and "update" for changes to something already held.',
     'An announced cost is paid when the action resolves, not when a roll is requested.',
     'Raise relationship or public-standing stats for concrete helpful acts; lower them for acts that damage that relationship or reputation.',

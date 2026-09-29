@@ -25,8 +25,13 @@ export function summarizeCollectionUI(collectionId, items, settings) {
         return (qty > 1) ? `${str} (x${qty})` : str;
     });
 
-    let output = `<b>${escapeHtml(colName)}:</b> ${escapeHtml(itemStrings.join(', '))}`;
-    if (remainingCount > 0) output += `, +${remainingCount} more...`;
+    // Item names can contain commas (for example, "weathered, silver sword").
+    // Give each item its own boundary so punctuation inside a name is unambiguous.
+    let output = `<b>${escapeHtml(colName)}:</b> `
+        + itemStrings.map(name => `<span class="sillynpc-status-collection-item">${escapeHtml(name)}</span>`).join(' ');
+    if (remainingCount > 0) {
+        output += ` <span class="sillynpc-status-collection-more">+${remainingCount} more...</span>`;
+    }
     return output;
 }
 
@@ -171,4 +176,3 @@ export function replaceStatTag(template, statDef, rawValue, type, index = null) 
 export const renderFieldSet = (stats, valueFor, type, index = null) => stats
     .map(stat => replaceStatTag(`{{${stat.name}}}`, stat, valueFor(stat), type, index))
     .join(' | ');
-

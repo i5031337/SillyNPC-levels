@@ -21,7 +21,7 @@ The user reports that the existing checklist appears to work, except XP and leve
 | Portrait provider | Configure SillyTavern Image Generation, generate a portrait, then choose Use or Discard. | `/imagine` returns an image through the host provider and the chosen action updates or leaves the card accordingly. | Pending interactive run |
 | NPC edit and lore | Edit a profile field, save, sync lore, then reopen both. | The edited value remains on the card and linked lore entry. | Pending interactive run |
 | Turn extraction and review | Generate a reply with a clear stat or item change and run the reader. | Proposed changes and reasons are visible; accepting a proposal updates the correct actor once. | Pending interactive run |
-| XP and level | Generate an accomplishment that awards XP across a level boundary. | Absolute XP from extraction becomes the stored remainder and next level; level bonus is retained. | Pending interactive run |
+| XP and level | Generate an accomplishment that awards XP across a level boundary. | The reader's positive XP delta advances the stored remainder and level once; level bonus is retained. | User reports XP now triggers more often; rollover retest pending |
 | Chat and persona scope | Switch to a different chat and persona, then return. | Cast and live tracker state follow the chat; player identity follows the selected persona. | Pending interactive run |
 | Latest reply changes | Swipe, regenerate, and edit the latest reply. | Review and tracked state correspond to the selected reply; no stale reply changes accumulate. | Pending interactive run |
 
@@ -47,4 +47,5 @@ For Phase 1, test with at least two personas and two chats, including one existi
 | Home screen | Leave the chat for SillyTavern's home screen. | No tracker box remains visible. | Source fix; host retest pending |
 | Image in chat | Generate an image message with tracker placement above, then below the latest prose message. | The tracker remains visible beside the latest prose message in both positions. | Source fix; host retest pending |
 | Underlines | Select Underlines with Energy and XP visible. | Each name and value is readable once, with no text overlap. | Source fix; host retest pending |
-| Small XP award | Generate a minor accomplishment, then one that crosses a level boundary. | The reader awards a scaled amount once, then stores the correct level and XP remainder. | Prompt updated; host retest pending |
+| Small XP award | Generate a minor accomplishment, then one that crosses a level boundary. Inspect the raw reader response if XP also appears under `player.stats`. | The reader awards a scaled amount once from `player.deltas.XP`; a stray raw XP value cannot reset the total. | Delta-only guard added; host retest pending |
+| Collection names with commas | Show two tracked items, one with comma-separated adjectives in its name. | Each item has a visible boundary in the tracker summary. | Source styling added; host retest pending |
