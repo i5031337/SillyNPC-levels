@@ -1,5 +1,6 @@
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
+import { normalizeHudLayoutId } from './constants-base.js';
 
 export const SYSTEM_SCHEMA_VERSION = 1;
 const PROFILE_POLICIES = new Set(['anchored', 'replaceable', 'memory']);
@@ -163,8 +164,13 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
         collections: collections(modern ? input.collections : tracker.collections ?? defaultTrackerSettings.collections),
         progression: progression(modern ? input.progression : {}, playerStats, npcStats),
         memories: { maxEntriesPerCharacter: memoryLimit(input.memories?.maxEntriesPerCharacter) },
+        goals: {
+            npcShortTerm: input.goals?.npcShortTerm !== false,
+            playerShortTerm: input.goals?.playerShortTerm !== false,
+            playerLongTerm: input.goals?.playerLongTerm !== false,
+        },
         hud: {
-            layout: string(hud.layout, string(hud.hudLayout, 'plate')),
+            layout: normalizeHudLayoutId(string(hud.layout, string(hud.hudLayout, 'plate'))),
             showWorld: hud.showWorld === undefined ? hud.showGlobalStats !== false : hud.showWorld === true,
             showNpcPortraits: hud.showNpcPortraits !== false,
             playerStatIds: Array.isArray(hud.playerStatIds) ? hud.playerStatIds.filter(value => playerStats.some(stat => stat.id === value))

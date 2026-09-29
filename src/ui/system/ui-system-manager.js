@@ -1,10 +1,9 @@
 import { getSettings } from '../../core/settings.js';
 import { offerDownload } from '../../core/utils.js';
 import { updateAllExtensionThemes } from '../shared/ui-shared.js';
-import { deleteSystemPreset, importSystemPreset, getActiveSystem, getChatSystem, chatHasStarted, setActiveSystem, createSystem, saveCheckpoint, restoreCheckpoint, deleteCheckpoint, getCheckpoints } from '../../tracker/status-logic.js';
+import { deleteSystemPreset, importSystemPreset, getActiveSystem, getChatSystem, chatHasStarted, setActiveSystem, createSystem } from '../../tracker/status-logic.js';
 import { Popup } from '../../../../../../popup.js';
 import { triggerReprocess } from '../../chat/chat.js';
-import { updateHUD } from '../hud/ui-hud.js';
 import { escapeHtml } from '../../core/utils.js';
 import { openItemLibrary } from '../collections/ui-item-library.js';
 import { exportWorldCharacters } from '../../characters/world-character-export.js';
@@ -12,7 +11,7 @@ import { carriesNpcStat } from '../../tracker/stat-persistence.js';
 import { normalizeSystemDefinition } from '../../core/system-schema.js';
 
 /**
- * System Manager: saving, restoring and swapping whole Systems.
+ * System Manager: importing, exporting, and switching reusable Systems.
  *
  * Split out of status-settings.js. What a System is made of is System Builder's job.
  */
@@ -24,135 +23,6 @@ function exportSystem(name) {
     
     offerDownload(profile.definition || normalizeSystemDefinition(profile, { name }),
         `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_system.json`);
-}
-
-/**
- * Save and restore controls for the active system.
- *
- * A system's snapshot is otherwise only rewritten when you switch away from it, so a
- * system you never leave keeps whatever it held the last time you did - which is how two
- * deleted characters stayed frozen inside one. These make the save deliberate, and keep
- * the previous ones so a change you regret is a restore rather than a rebuild.
- *
- * @param {() => void} onRefresh Redraws the manager, since saving changes the list.
- * @returns {HTMLElement}
- */
-function buildCheckpointControls(onRefresh) {
-    const wrap = document.createElement('div');
-    wrap.className = 'sillynpc-setting';
-
-    const active = getActiveSystem();
-    const preset = getSettings().statusTracker.presets?.[active];
-
-    const title = document.createElement('div');
-    title.className = 'sillynpc-setting-row';
-    title.style.fontWeight = 'bold';
-    title.textContent = active ? `Saved states of "${active}"` : 'Saved states';
-    wrap.append(title);
-
-    if (!active || !preset) {
-        const none = document.createElement('small');
-        none.className = 'notes';
-        none.textContent = 'No system is active, so there is nothing to save.';
-        wrap.append(none);
-        return wrap;
-    }
-
-    const buttons = document.createElement('div');
-    buttons.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin:8px 0;';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.className = 'menu_button';
-    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save state now';
-    saveBtn.addEventListener('click', async () => {
-        saveBtn.disabled = true;
-        const { saved, kept, reason } = await saveCheckpoint('Manual save');
-        saveBtn.disabled = false;
-        if (!saved && reason === 'unchanged') {
-            toastr.info('Nothing has changed since the last saved state.', 'SillyNPC');
-            return;
-        }
-        if (!saved) {
-            toastr.error('Could not write the saved state.', 'SillyNPC');
-            return;
-        }
-        toastr.success(`Saved. ${kept} state${kept === 1 ? '' : 's'} kept.`, 'SillyNPC');
-        onRefresh();
-    });
-    buttons.append(saveBtn);
-    wrap.append(buttons);
-
-    const history = getCheckpoints(preset);
-    if (!history.length) {
-        const none = document.createElement('small');
-        none.className = 'notes';
-        none.textContent = 'No states saved yet. Saving one now gives you something to come '
-            + 'back to before you change anything you might regret.';
-        wrap.append(none);
-        return wrap;
-    }
-
-    const list = document.createElement('div');
-    list.className = 'sillynpc-checkpoint-list';
-
-    history.forEach((point, index) => {
-        const row = document.createElement('div');
-        row.className = 'sillynpc-checkpoint-row';
-
-        const when = document.createElement('span');
-        when.className = 'sillynpc-checkpoint-when';
-        const cast = (point.world?.characters || []).length;
-        when.textContent = `${new Date(point.savedAt).toLocaleString()} — ${point.label}`
-            + ` (${cast} character${cast === 1 ? '' : 's'})`;
-
-        const restore = document.createElement('button');
-        restore.type = 'button';
-        restore.className = 'menu_button';
-        restore.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Restore';
-        restore.addEventListener('click', async () => {
-            const ok = await Popup.show.confirm(
-                'Restore this saved state?',
-                'Your characters, item library, persona records and this system\'s settings '
-                + 'are replaced with the saved ones. The current state is saved first, so '
-                + 'this can be undone by restoring that.',
-            );
-            if (!ok) return;
-            if (await restoreCheckpoint(index)) {
-                toastr.success('Restored.', 'SillyNPC');
-                triggerReprocess();
-                updateHUD();
-                onRefresh();
-            } else {
-                toastr.error('Could not read that saved state; its file may be gone.', 'SillyNPC');
-            }
-        });
-
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'menu_button';
-        remove.title = 'Delete this saved state';
-        remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
-        remove.addEventListener('click', async () => {
-            if (await deleteCheckpoint(index)) onRefresh();
-        });
-
-        row.append(when, restore, remove);
-        list.append(row);
-    });
-
-    wrap.append(list);
-
-    const note = document.createElement('small');
-    note.className = 'notes';
-    note.style.marginTop = '6px';
-    note.textContent = 'Each state holds a full copy of this system: its characters, item '
-        + 'library, persona records and settings. They are written to user/files/ rather '
-        + 'than into your settings, so keeping several costs nothing on every save. '
-        + 'Restoring saves the current one first, so nothing is a one-way door.';
-    wrap.append(note);
-
-    return wrap;
 }
 
 export function buildSystemManager(onRefresh) {
@@ -347,6 +217,6 @@ export function buildSystemManager(onRefresh) {
     libraryBtn.addEventListener('click', () => openItemLibrary());
 
     globalActions.append(newBtn, importBtn, libraryBtn);
-    wrap.append(listWrap, globalActions, buildCheckpointControls(onRefresh));
+    wrap.append(listWrap, globalActions);
     return wrap;
 }

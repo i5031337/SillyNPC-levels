@@ -1,5 +1,6 @@
 import { Popup } from '../../../../../../popup.js';
-import { LOG_PREFIX, NPC_LORE_FIELDS } from '../../core/constants.js';
+import { LOG_PREFIX } from '../../core/constants.js';
+import { resolveProfileFields } from '../../core/profile-fields.js';
 import { saveSettings } from '../../core/settings.js';
 import { deleteCharacter, findCharacter } from '../../characters/characters.js';
 import { renameLorebookEntry } from '../../lore/lorebook.js';
@@ -292,7 +293,8 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
         if (!content || !profileContainer.isConnected) return;
         const merged = readLoreValues(content, char.profile);
         if (!merged) return;
-        const missing = NPC_LORE_FIELDS.filter(field => !char.profile?.[field.id] && merged[field.id]);
+        const missing = resolveProfileFields('npc').filter(field =>
+            !char.profile?.[field.id] && merged[field.id]);
         if (!missing.length) return;
         char.profile ||= {};
         for (const field of missing) char.profile[field.id] = merged[field.id];

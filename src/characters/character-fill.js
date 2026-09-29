@@ -2,7 +2,8 @@ import { promptText } from '../prompts/prompt-texts.js';
 import { getContext } from '../../../../../st-context.js';
 import { fillTemplate } from '../prompts/macros.js';
 import { getSettings, saveSettings } from '../core/settings.js';
-import { fieldsForCard, hintFor } from '../core/constants.js';
+import { hintFor } from '../core/constants.js';
+import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 import { requestExtraction, coerceToUpdate, describeCollections } from '../tracker/extractor/status-extractor.js';
 import { applyUpdate, resolveMaxValue, loadStateFromMetadata } from '../tracker/status-logic.js';
 import { describeTrackedFacts, describeProfile, buildLoreExcerpt } from '../api/api.js';
@@ -244,7 +245,7 @@ export function buildProfilePrompt(char, wanted, sources) {
 
     values.facts = describeTrackedFacts(char, rewriting);
     values.fields = wanted.map(field => `- ${field.id}: `
-        + fillTemplate(hintFor(field, getSettings().profileHints), { name: char.name }))
+        + fillTemplate(hintFor(field), { name: char.name }))
         .join('\n');
 
     // One text, 'profileRequest' in prompt-texts.js.

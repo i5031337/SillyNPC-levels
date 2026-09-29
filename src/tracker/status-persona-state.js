@@ -9,7 +9,8 @@ import {
 import { getContext } from '../../../../../st-context.js';
 import { power_user } from '../../../../../power-user.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { resolveProfileFields } from '../core/profile-fields.js';
 
 export function bind(deps) {
 function getCurrentPersonaName() {
@@ -122,7 +123,7 @@ function getPlayerCard() {
     // blocks that draw them. Field by field, so a record written before a field existed
     // gains it rather than being replaced by a blank set.
     if (!record.profile || typeof record.profile !== 'object') record.profile = {};
-    for (const field of PROFILE_FIELDS) {
+    for (const field of resolveProfileFields('player')) {
         if (typeof record.profile[field.id] !== 'string') record.profile[field.id] = '';
     }
 

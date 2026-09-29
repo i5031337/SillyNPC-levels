@@ -1,6 +1,4 @@
 import { buildSettingSelect } from '../shared/ui-shared.js';
-import { buildPromptEditor } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { PORTRAIT_SHAPES } from '../../core/constants.js';
 import { buildBackendDestinationNote } from './ui-settings-generation-helpers.js';
 import { renderImageStorageSettings } from './ui-settings-generation-storage.js';
@@ -20,7 +18,5 @@ export function renderImageGenerationSettings(view, rerender) {
     }));
     view.append(buildSettingSelect({ key: 'imgGenContextMessages', advanced: true, label: 'Image Context Length',
         options: [{ value: 0, label: 'Lore Only' }, { value: 5, label: '5' }, { value: 10, label: '10' }, { value: 20, label: '20' }] }));
-    view.append(buildPromptEditor(promptById('image')));
-    view.append(buildPromptEditor(promptById('imageNegative')));
     renderImageStorageSettings(view);
 }

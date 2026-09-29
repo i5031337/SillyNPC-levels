@@ -26,7 +26,7 @@ export function migratePresetsAndStores(settings, currentVersion) {
                         npcStats: preset.npcStats || preset.characterStats || [],
                         playerStats: preset.playerStats || [],
                         collections: preset.collections || [],
-                        systemRules: settings.statusTracker.systemRules,
+                        profileHints: settings.profileHints || {},
                         displayStyle: settings.statusTracker.displayStyle,
                         template: settings.statusTracker.template,
                         customCSS: settings.statusTracker.customCSS,
@@ -65,6 +65,7 @@ export function migratePresetsAndStores(settings, currentVersion) {
             }
         }
     }
+    delete settings.profileHints;
     settings.version = currentVersion;
     debugLog('initSettings completed');
 }

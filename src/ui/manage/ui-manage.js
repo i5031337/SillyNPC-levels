@@ -5,14 +5,13 @@ import { extensionName, LOG_PREFIX } from '../../core/constants.js';
 import { getSettings } from '../../core/settings.js';
 import { reprocessAllMessages, chatRenderSignature } from '../../chat/chat.js';
 import { resetLorebookState } from '../story/ui-lorebook-section.js';
-import { renderThreadsView } from '../story/ui-threads.js';
+import { renderGoalsView } from '../story/ui-goals.js';
 import {
     renderAppearanceView,
     renderWritingRulesView,
     renderAdvancedView,
     renderGenerationSettingsView,
 } from '../settings/ui-settings-tabs.js';
-import { renderPromptsView } from '../shared/ui-prompts.js';
 import { renderStatsView } from '../shared/ui-stats.js';
 import { renderStatusView } from '../tracker/ui-tracker-settings.js';
 import { renderHudView } from '../hud/ui-hud-settings.js';
@@ -273,8 +272,8 @@ function settingsTabs() {
           render: v => renderAppearanceView(v, reprocessAllMessages, updateManageTheme) },
         { id: 'writing', label: 'Writing Rules', container: 'sillynpc-writing-view',
           render: v => renderWritingRulesView(v, reprocessAllMessages) },
-        { id: 'threads', label: 'Threads', container: 'sillynpc-threads-view',
-          render: v => renderThreadsView(v) },
+        { id: 'goals', label: 'Goals', container: 'sillynpc-goals-view',
+          render: v => renderGoalsView(v) },
         { id: 'status', label: 'Tracker', container: 'sillynpc-status-view',
           render: v => renderStatusView(v) },
         { id: 'hud', label: 'HUD', container: 'sillynpc-hud-view',
@@ -283,8 +282,6 @@ function settingsTabs() {
           render: v => renderSystemsView(v) },
         { id: 'generation', label: 'Generation', container: 'sillynpc-generation-settings-view',
           render: v => renderGenerationSettingsView(v) },
-        { id: 'prompts', label: 'Prompts', container: 'sillynpc-prompts-view',
-          render: v => renderPromptsView(v, reprocessAllMessages) },
         { id: 'stats', label: 'Stats', container: 'sillynpc-stats-view',
           render: v => renderStatsView(v) },
         { id: 'advanced', label: 'Advanced', container: 'sillynpc-advanced-view',

@@ -3,7 +3,8 @@ import { loadWorldInfo } from '../../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../../slash-commands.js';
 import { debugLog, PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE } from '../core/constants.js';
 import { applyMacros } from '../prompts/macros.js';
-import { getSettings, defaultSettings, resolveImagePrompt } from '../core/settings.js';
+import { getSettings, resolveImagePrompt } from '../core/settings.js';
+import { DEFAULT_IMAGE_NEGATIVE_PROMPT } from '../core/settings-defaults.js';
 import { recordUsage } from '../core/usage.js';
 import { fillImagePrompt, describeCarriedItems } from './api-lore-facts.js';
 import { characterImageDescription } from './api-image-description.js';
@@ -51,7 +52,7 @@ function imageUrlFromResult(result) {
 
 /** Return the generated image for caller review; the caller decides whether to use it. */
 export async function generateImage(fullPrompt, { owner = null, shape = resolvePortraitShape() } = {}) {
-    const negative = applyMacros(getSettings().imgGenNegativePrompt || defaultSettings.imgGenNegativePrompt);
+    const negative = applyMacros(DEFAULT_IMAGE_NEGATIVE_PROMPT);
     const pixels = shape?.pixels;
     const size = pixels ? `width=${pixels.width} height=${pixels.height} ` : '';
     // The host command handles provider selection, credentials, gallery saving and errors.

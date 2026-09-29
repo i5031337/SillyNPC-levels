@@ -1,6 +1,4 @@
 import { buildSettingSelect, buildSettingToggle, buildSettingNumber } from '../shared/ui-shared.js';
-import { buildPromptEditor, buildPromptBudget } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { world_names } from '../../../../../../world-info.js';
 import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
 import { buildLastLoreConnectionNote, updateExcerptReadout, buildWorldInfoScannerSettings } from './ui-settings-generation-helpers.js';
@@ -75,8 +73,8 @@ function renderLoreSettings(view) {
             + 'main API. Enable the Connection Manager extension to choose another model.',
     }));
     view.append(buildLastLoreConnectionNote());
-    view.append(buildPromptBudget(promptById('lore')));
-    view.append(buildPromptEditor(promptById('lore')));
+    view.append(buildSettingNumber({ key: 'loreMaxTokens', label: 'Lore Reply Budget',
+        suffix: 'tokens', help: 'Maximum tokens the lore writer may reply with.' }));
 }
 
 function renderUnknownSpeakerSettings(view) {

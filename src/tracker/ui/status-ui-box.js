@@ -5,7 +5,6 @@ import { loadStateFromMetadata, undoLastChange, getHistoryEntries } from '../sta
 import { makeActivatable } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { renderReviewPanel } from '../../ui/tracker/ui-change-review.js';
-import { stateAtMessage } from '../snapshots/status-snapshots.js';
 import { getTrackerView } from '../tracker-view.js';
 import { openCastPanel } from '../../ui/characters/ui-cast-panel.js';
 import { isEditingInside } from './status-ui-guards.js';
@@ -129,30 +128,17 @@ export function renderStatusTrackerBox(mesEl) {
     const context = getContext();
     const chat = (context && Array.isArray(context.chat)) ? context.chat : [];
 
-    if (settings.showOnlyAtBottom) {
-        const isLastMessage = chat.length > 0 ? Number(messageId) >= chat.length - 1 : true;
-        if (!isLastMessage) return;
-    }
+    // The tracker describes the current turn. Older messages keep their prose and
+    // extraction reports, but no longer reconstruct and display historical state.
+    const isLastMessage = chat.length > 0 ? Number(messageId) >= chat.length - 1 : true;
+    if (!isLastMessage) return;
 
     const textContainer = mesEl.querySelector('.mes_text');
     if (!textContainer) return;
 
     injectCustomCSS(settings.customCSS);
 
-    // Under an older message, show what the tracker held *then*. Drawing the current
-    // state under every message is what made "show under all messages" useless: a
-    // message from two hundred turns ago claimed the HP the character has today.
-    const past = settings.showOnlyAtBottom
-        ? { state: loadStateFromMetadata(), exact: true, reason: 'latest' }
-        : stateAtMessage(messageId);
-    const container = buildTrackerBox(past.state, {
-        mesEl,
-        view,
-        // Only mark it when it genuinely differs from live; an exact reconstruction of the
-        // latest message is just the current state.
-        reconstructed: past.reason !== 'latest',
-        exact: past.exact,
-    });
+    const container = buildTrackerBox(loadStateFromMetadata(), { mesEl, view });
     if (!container) return;
 
     if (settings.renderPosition === 'top') {
@@ -175,14 +161,12 @@ export function renderStatusTrackerBox(mesEl) {
  * @param {Element|null} [options.mesEl] The message it belongs to. Add character and the
  *     cast panel redraw that message's box when they are done.
  * @param {'full'|'globals'} [options.view] The eye's state.
- * @param {boolean} [options.reconstructed] Drawn from an older message's state.
- * @param {boolean} [options.exact] Whether that reconstruction is exact.
  * @param {() => void} [options.onRedraw] Also called after the cast panel or Add character
  *     changes the scene, for a box that lives somewhere other than a message.
  * @returns {HTMLElement|null} Null when there is nothing worth drawing.
  */
 export function buildTrackerBox(state, {
-    mesEl = null, view = getTrackerView(), reconstructed = false, exact = true, onRedraw = null,
+    mesEl = null, view = getTrackerView(), onRedraw = null,
 } = {}) {
     const settings = getSettings().statusTracker;
     const htmlToRender = buildStatusHtml(state,
@@ -206,14 +190,13 @@ export function buildTrackerBox(state, {
 
     // Undo is only offered when there is something to undo, so the button does not
     // sit there inert on a fresh chat.
-    const historyDepth = getHistoryEntries().length;
-    if (historyDepth > 0) {
+    const latestUndo = getHistoryEntries().at(-1);
+    if (latestUndo) {
         const undoBtn = document.createElement('div');
         undoBtn.className = 'sillynpc-status-undo-btn fa-solid fa-arrow-left';
-        const nextLabel = getHistoryEntries().at(-1)?.label || 'change';
-        undoBtn.title = `Undo last change (${nextLabel}) - ${historyDepth} step${historyDepth === 1 ? '' : 's'} available`;
+        undoBtn.title = `Undo last change (${latestUndo.label || 'change'})`;
         makeActivatable(undoBtn);
-    undoBtn.addEventListener('click', (e) => {
+        undoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const entry = undoLastChange();
             if (entry) {
@@ -265,14 +248,6 @@ export function buildTrackerBox(state, {
         box.appendChild(tempDiv.firstChild);
     }
     
-    if (reconstructed) {
-        container.classList.add('sillynpc-status-historical');
-        container.title = exact
-            ? 'The tracker as it stood at this message.'
-            : 'Approximate: no record exists for the messages after this one.';
-        if (!exact) container.classList.add('sillynpc-status-approximate');
-    }
-
     container.appendChild(box);
     
     attachInlineEditListeners(container, { state, mesEl, onRedraw, redrawMessage: renderStatusTrackerBox });

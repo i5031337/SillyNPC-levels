@@ -1,21 +1,19 @@
 # Rewrite progress
 
-This is the first implementation slice of `REWRITE_PLAN.md`.
+This records the implementation against `REWRITE_PLAN.md` as of 2026-09-28. Node tests cover data and policy behavior; interactive SillyTavern checks remain separate.
 
-## Implemented
+## Implemented in source
 
-- Phase 0: documented storage boundaries, added synthetic legacy fixtures, inventoried callers of history, Threads, prompt overrides, checkpoints, and the old player popup. Added a host smoke checklist.
-- Phase 1: Player renders in the normal extension menu; HUD and persona avatar actions open that tab. The separate player popup shell and styling are removed. Open stat edits commit on tab switch and close.
-- Phase 2 foundation: a versioned System definition normalizes old presets into stable field IDs, separate player/NPC profiles, guidance and policies, stats, collections, progression, HUD defaults, and a configurable memory limit. New System exports contain only this reusable definition. Imported legacy worlds are moved to `settings.systemWorldArchive` for recovery; old preset shapes remain readable. A chat can choose a System before its first player message, then is locked to it.
-- Player values: stats and collections now start from System defaults; goals and memories have chat-local slots. All four stay in chat metadata under the selected persona. Existing tracker chats missing a player slot can recover legacy values. Persona identity/profile/portrait/lore remain in persona settings. Removed the old global player sync path.
-- Portraits: use SillyTavern Image Generation's `/imagine` command and configured provider. Removed direct Gemini image requests, reference-image UI, and backend-specific controls.
-- New installs default to automatic application of valid reader changes. Existing saved review choices remain intact.
+- **Phase 0:** Documented storage boundaries, added legacy fixtures and a host smoke checklist, and traced callers of Threads, prompt overrides, checkpoints, and historical state.
+- **Phase 1:** Player renders in the normal menu. HUD and persona avatar actions open that tab. Open edits commit when the view changes or closes; the separate player popup is gone.
+- **Phase 2:** Versioned reusable System definitions carry stable player/NPC profile field IDs, guidance, policies, stats, collections, progression, HUD defaults, goals, and a memory limit. Fill, sheets, lore sync, transfers, and extraction use the active field registry. System Builder can add, rename, reorder, retire, and restore fields while preserving saved unknown values. New System exports omit live world data. A chat can choose a System before its first player message, then keeps it.
+- **Player ownership:** Persona identity, profile, portrait, and lore remain reusable. Stats, items, goals, and memories live in chat metadata for the selected persona; old tracker chats can recover legacy values.
+- **Phase 3:** Anchored fields can be seeded only when empty; replaceable fields accept sourced updates; memory fields append sourced, deduplicated entries. Manual edits remain available. Active memory count is configurable (default 50), with older entries archived. Reader application and review enforce field policy.
+- **Phase 4:** Configured player and NPC goals appear in sheets, HUD, and the Goals tab. The reader proposes sourced set, replace, and complete actions. Old Threads remain readable in the Goals archive; live Thread scanning, ranking, settings, and prompt injection are retired.
+- **Phase 5:** Latest-reply changes use one pre-turn base and are rebased on swipe, regeneration, latest-reply edit, and deletion. One-step undo remains visible. Historical tracker boxes, arbitrary old-message restore, multi-entry undo, and automatic System checkpoints are retired. Old stored records remain loadable.
+- **Phase 6 cleanup:** Reader and Fill prompts use System schema/guidance. Raw prompt editing and the Prompts tab are removed; extraction diagnostics remain. Portrait generation uses SillyTavern Image Generation's `/imagine` and its configured provider. The HUD reads the same current state as Player and offers Plate, Underlines, Pip Rows, and Split Ring layouts; older layout IDs map to a retained style. New installs auto-apply valid reader changes; saved review choices remain intact.
 
-## Remaining in the plan
+## Remaining verification and limits
 
-- Wire the resolved System profile registry through Fill, editors, lore, reader schema/prompts, transfers, and System Builder. The current runtime still uses fixed profile fields. Complete player/NPC schema editing and retirement without losing unknown card values.
-- Implement anchored/replaceable/memory policy enforcement, sourced memory entries, configured Goals, and the latest-turn base/one-step undo. Then retire live Threads, historical replay, checkpoints, and the general prompt editor while preserving old data readers.
-- Finish HUD simplification and the remaining docs cleanup after the new state paths are in place.
-- Run the interactive checks in `REWRITE_HOST_SMOKE.md` in an authenticated SillyTavern session. The host responded with HTTP 200, but no controllable session was available during this slice.
-
-The legacy System world archive is transitional. Existing System switching still restores archived worlds while the remaining chat ownership migration is pending; it is excluded from new System exports.
+- Run `REWRITE_HOST_SMOKE.md` in an authenticated SillyTavern session. The available host responded, but this rewrite has not had a controllable session for the full interactive check. In particular, verify Player/Goals menu behavior, Fill and lore sync, image generation, HUD redraws, review application, and swipe/regenerate/edit/delete rebase with real host events.
+- The legacy System world archive is transitional. Switching among old imported Systems can still restore their archived world payloads; new reusable System exports do not include that payload.

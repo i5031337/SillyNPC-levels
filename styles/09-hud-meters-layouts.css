@@ -135,8 +135,7 @@
     border-radius: 0;
 }
 
-/* Explicit sides win over whatever the docked corner implies, so a HUD in the top-left
-   can still keep its portrait on the right. */
+/* Portrait side is independent of the HUD corner. */
 .sillynpc-hud-container.portrait-left  { flex-direction: row; }
 .sillynpc-hud-container.portrait-right { flex-direction: row-reverse; }
 
@@ -175,7 +174,7 @@
 }
 
 /* ═══ HUD layouts ═══════════════════════════════════════════════════════════
-   Eight looks, chosen from a gallery rather than argued about. Each decides both its
+   Four supported looks. Each decides both its
    frame and how its meters are drawn, because those were never two separate decisions -
    underlines drawn as segmented pips is not a thing anybody wants - which is why this
    replaced the old Meter Style setting rather than sitting beside it.
@@ -200,9 +199,7 @@
     text-shadow: 0 0 3px var(--sillynpc-bg-primary), 0 0 6px var(--sillynpc-bg-primary);
 }
 
-/* Shared by the four that draw nothing behind themselves. */
-.sillynpc-hud-container.sillynpc-hud-fan,
-.sillynpc-hud-container.sillynpc-hud-brackets,
+/* The two layouts without a backing panel. */
 .sillynpc-hud-container.sillynpc-hud-underline,
 .sillynpc-hud-container.sillynpc-hud-pips {
     background: none;
@@ -231,88 +228,6 @@
 }
 .sillynpc-hud-plate .sillynpc-hud-portrait::after {
     bottom: -4px; right: -4px; border-left: 0; border-top: 0;
-}
-
-/* ─── Stepped Blades ────────────────────────────────────────────────────────
-   One plate cut off at the same angle as the meters, so the whole HUD is a single wedge
-   rather than a box with things in it. Each meter steps in from the one above. */
-.sillynpc-hud-container.sillynpc-hud-blades {
-    padding: var(--sillynpc-space-xs) 1.6em var(--sillynpc-space-xs) var(--sillynpc-space-xs);
-    border-radius: 0;
-    clip-path: polygon(0 0, 100% 0, calc(100% - 1.4em) 100%, 0 100%);
-}
-.sillynpc-hud-blades .sillynpc-hud-stats { gap: 3px; }
-.sillynpc-hud-blades .sillynpc-hud-bar-wrap {
-    border-radius: 0;
-    border: 0;
-    clip-path: polygon(0 0, 100% 0, calc(100% - 0.8em) 100%, 0 100%);
-}
-.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(2) { margin-left: 0.5em; }
-.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(3) { margin-left: 1em; }
-.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(4) { margin-left: 1.5em; }
-.sillynpc-hud-blades .sillynpc-hud-stat-row:nth-child(n+5) { margin-left: 2em; }
-
-/* ─── Angled Fan ────────────────────────────────────────────────────────────
-   Slashes, not bars: no rail behind them, so what is on screen is only the value. The
-   staggered lengths are what make it read as a fan rather than as a list. */
-.sillynpc-hud-container.sillynpc-hud-fan { gap: var(--sillynpc-space-sm); }
-.sillynpc-hud-fan .sillynpc-hud-stats { gap: 4px; min-width: 0; }
-.sillynpc-hud-fan .sillynpc-hud-bar-wrap {
-    background: none;
-    border: 0;
-    border-radius: 1px;
-    overflow: visible;
-    transform: skewX(-26deg);
-}
-.sillynpc-hud-fan .sillynpc-hud-bar {
-    box-shadow: 0 0 0.6em -0.05em var(--sillynpc-hud-stat-colour, var(--sillynpc-accent));
-}
-/* Unskewed, or the number leans with its meter and stops being readable. */
-.sillynpc-hud-fan .sillynpc-hud-bar-text { transform: skewX(26deg); }
-.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(2) .sillynpc-hud-bar-wrap { width: 84%; }
-.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(3) .sillynpc-hud-bar-wrap { width: 70%; }
-.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(4) .sillynpc-hud-bar-wrap { width: 56%; }
-.sillynpc-hud-fan .sillynpc-hud-stat-row:nth-child(n+5) .sillynpc-hud-bar-wrap { width: 42%; }
-
-/* ─── Corner Brackets ───────────────────────────────────────────────────────
-   Four marks and the content. The lightest thing here over a plain chat, and the first to
-   struggle over a background image - which is the trade, not a fault. */
-.sillynpc-hud-container.sillynpc-hud-brackets {
-    position: fixed;
-    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
-}
-.sillynpc-hud-brackets::before,
-.sillynpc-hud-brackets::after {
-    content: '';
-    position: absolute;
-    width: 1em;
-    height: 1em;
-    border: 2px solid var(--sillynpc-accent);
-    opacity: 0.85;
-}
-.sillynpc-hud-brackets::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
-.sillynpc-hud-brackets::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
-.sillynpc-hud-brackets .sillynpc-hud-stats { gap: 4px; }
-.sillynpc-hud-brackets .sillynpc-hud-bar-wrap {
-    height: calc(var(--sillynpc-hud-meter-height, 14px) * 0.45);
-    border: 0;
-    border-radius: 0;
-    background: color-mix(in srgb, var(--sillynpc-fg-primary) 20%, transparent);
-}
-/* Beside the rail, not above it. The rail is too thin to hold a number, so the number
-   goes next to it - and the rail gives up the width to make room. Anchoring it to the
-   row's top edge put every number over the row above instead. */
-.sillynpc-hud-brackets .sillynpc-hud-stat-row { position: relative; }
-.sillynpc-hud-brackets .sillynpc-hud-bar-wrap {
-    position: static;
-    width: calc(var(--sillynpc-hud-meter-width, 92px) - 3.4em);
-}
-.sillynpc-hud-brackets .sillynpc-hud-bar-text {
-    position: absolute;
-    inset: 0 0 0 auto;
-    width: auto;
-    justify-content: flex-end;
-    font-size: var(--sillynpc-text-xs);
 }
 
 /* ─── Underlines ────────────────────────────────────────────────────────────
@@ -349,4 +264,3 @@
     height: auto;
     font-size: var(--sillynpc-text-xs);
 }
-

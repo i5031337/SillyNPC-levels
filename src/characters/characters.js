@@ -1,6 +1,7 @@
 import { getSettings, saveSettings } from '../core/settings.js';
 import { makeId } from '../core/utils.js';
-import { SPEAKER_PALETTE, paletteColorFor, blankProfile } from '../core/constants.js';
+import { SPEAKER_PALETTE, paletteColorFor } from '../core/constants.js';
+import { blankActiveProfile } from '../core/profile-fields.js';
 import { getContext } from '../../../../../st-context.js';
 import { getAllCharacters, getLibraryCharacters, addCharacterRecord,
     deleteCharacterRecord, findCharacterRecord, collectionForCharacter,
@@ -62,8 +63,8 @@ export function createCharacter(name = '') {
         autoLinkLorebook: getContext()?.getCurrentChatId?.() === undefined,
         statusOverrides: {},
         statusCollections: {},
-        /** Named lore fields, mirrored into the linked entry. See NPC_LORE_FIELDS. */
-        profile: blankProfile(),
+        /** Named prose fields from the active System. */
+        profile: blankActiveProfile(),
     };
     addCharacterRecord(char);
     return char;

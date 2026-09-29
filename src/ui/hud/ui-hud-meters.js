@@ -329,7 +329,7 @@ export function paintSplitRing(portrait, meters, { square, size, thickness }) {
 /**
  * Portrait shape, side and border colour.
  *
- * The side used to be implied by the docked corner - the two left corners set
+ * The side used to be implied by the HUD corner - the two left corners set
  * flex-direction: row-reverse and that was the only way to move it - so a HUD in the top
  * left could not keep its portrait on the right. "Follow the corner" preserves that as a
  * choice rather than as the only behaviour.

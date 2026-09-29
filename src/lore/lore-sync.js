@@ -18,7 +18,7 @@ export function readLoreValues(content, cardProfile) {
 }
 
 /** Write current structured card values to its linked lorebook entry. */
-export async function syncProfileToLore(char) {
+export async function syncProfileToLore(char, memories) {
     if (!char?.lorebook?.world) return;
     const { world, uid } = char.lorebook;
     return inOrder(world, uid, async () => {
@@ -30,7 +30,7 @@ export async function syncProfileToLore(char) {
         const values = entry.content ? mergeLoreValues(entry.content, char.profile) : char.profile;
         const previous = entry.content;
         const title = entry.comment;
-        entry.content = formatLoreContent(values);
+        entry.content = formatLoreContent(values, previous, memories);
         syncEntryIdentity(char, entry);
         entry.comment = title;
         if (entry.content !== previous) await saveWorldInfo(world, data);

@@ -23,10 +23,6 @@ const bindPresets = loadBind('status-system-presets.js', [
 ], [() => settings, () => { saves++; }, { statusTracker: {}, characters: [], personaData: {}, master_items: {} },
     () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}]);
 bindPresets(deps);
-const bindCheckpoints = loadBind('status-checkpoints.js', [
-    'getSettings', 'saveSettings', 'debugLog',
-], [() => settings, () => { saves++; }, () => {}]);
-bindCheckpoints(deps);
 
 test('loaded legacy world moves to archive and stays outside new System export', () => {
     settings.statusTracker.presets['Harbor RPG'] = {
@@ -85,7 +81,7 @@ test('old profile import archives its world; modern definition import is usable'
     assert.equal(reset, 1);
     assert.equal(settings.activeSystem, 'Sci-Fi');
     deps.applySystemPreset({ config: { statusTracker: { globalStats: [], playerStats: [], npcStats: [], collections: [] } },
-        world: { characters: [{ name: 'Checkpoint NPC' }], personaData: {}, master_items: {} } });
-    assert.equal(settings.characters[0].name, 'Checkpoint NPC');
+        world: { characters: [{ name: 'Legacy NPC' }], personaData: {}, master_items: {} } });
+    assert.equal(settings.characters[0].name, 'Legacy NPC');
     assert.ok(saves > 0);
 });

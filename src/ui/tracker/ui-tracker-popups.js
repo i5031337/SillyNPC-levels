@@ -1,9 +1,7 @@
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
-import { buildPromptEditor } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { loadStateFromMetadata, saveStateToMetadata, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from '../../tracker/status-logic.js';
+import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';
@@ -209,55 +207,6 @@ function buildStatusDashboard() {
         charSection.appendChild(charWrap);
     });
 
-    const historySection = document.createElement('div');
-    historySection.style.marginTop = '15px';
-    historySection.innerHTML = '<strong>Undo History</strong>';
-    const entries = getHistoryEntries();
-    if (entries.length === 0) {
-        const none = document.createElement('div');
-        none.className = 'notes';
-        none.style.opacity = '0.6';
-        none.textContent = 'No changes recorded yet in this chat.';
-        historySection.appendChild(none);
-    } else {
-        // Newest first reads better, but restoreHistoryEntry indexes the raw array.
-        entries.slice().reverse().forEach((entry, revIdx) => {
-            const index = entries.length - 1 - revIdx;
-            const row = document.createElement('div');
-            row.className = 'sillynpc-setting-row';
-            row.style.margin = '4px 0';
-            row.style.gap = '10px';
-
-            const when = new Date(entry.timestamp);
-            const label = document.createElement('span');
-            label.style.flex = '1';
-            label.textContent = `${entry.label} - ${when.toLocaleTimeString()}`;
-
-            const where = document.createElement('small');
-            where.style.opacity = '0.6';
-            const loc = entry.state?.global ? Object.values(entry.state.global)[0] : '';
-            where.textContent = loc ? String(loc) : '';
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'menu_button';
-            btn.textContent = 'Restore';
-            btn.title = 'Return to this point, discarding everything after it';
-            btn.addEventListener('click', async () => {
-                const ok = await Popup.show.confirm('Restore this point?',
-                    `Everything recorded after "${entry.label}" will be discarded.`);
-                if (!ok) return;
-                restoreHistoryEntry(index);
-                const dashRoot = wrap.parentElement;
-                dashRoot.replaceChildren();
-                dashRoot.appendChild(buildStatusDashboard());
-            });
-
-            row.append(label, where, btn);
-            historySection.appendChild(row);
-        });
-    }
-
     const refreshBtn = document.createElement('button');
     refreshBtn.type = 'button';
     refreshBtn.className = 'menu_button';
@@ -269,6 +218,6 @@ function buildStatusDashboard() {
         dashRoot.appendChild(buildStatusDashboard());
     });
     
-    wrap.append(globalSection, playerSection, charSection, historySection, refreshBtn);
+    wrap.append(globalSection, playerSection, charSection, refreshBtn);
     return wrap;
 }

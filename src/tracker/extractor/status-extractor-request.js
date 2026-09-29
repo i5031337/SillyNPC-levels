@@ -31,10 +31,8 @@ export function readerTemperature(trackerSettings) {
 }
 
 export async function requestExtraction(userPrompt, schema, trackerSettings, systemPrompt = null, { usageKind = 'extraction' } = {}) {
-    // A caller may pass its own - the history scan does. Otherwise the user's, if they
-    // have written one, and the built-in if not.
-    systemPrompt = applyMacros(
-        systemPrompt || trackerSettings.extractionPrompt?.trim() || SYSTEM_PROMPT);
+    // History scans can supply a specialized prompt. Ordinary turns use the built-in.
+    systemPrompt = applyMacros(systemPrompt || SYSTEM_PROMPT);
     const context = getContext();
     const profileId = trackerSettings.extractionProfileId;
     const maxTokens = Number(trackerSettings.extractionMaxTokens) || 1200;

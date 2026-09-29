@@ -1,7 +1,6 @@
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
-import { loadStateFromMetadata } from '../status-logic.js';
-import { invalidateTimeline } from './status-snapshot-timeline.js';
+import { loadStateFromMetadata, recordTurnEffects } from '../status-logic.js';
 
 /**
  * What the tracker looked like when a given message was written.
@@ -37,7 +36,7 @@ export const APPLIED_KEY = 'sillynpc_applied';
  * with the reply it belongs to is what lets a reader tell it is looking at the wrong one.
  */
 export const APPLIED_SWIPE_KEY = 'sillynpc_applied_swipe';
-/** What a message opened or settled among the threads. See recordThreadChanges. */
+/** Legacy reply thread changes remain readable for saved chats. */
 export const THREADS_KEY = 'sillynpc_threads';
 
 /**
@@ -60,27 +59,6 @@ export const THREADS_KEY = 'sillynpc_threads';
  */
 export const GLOBALS_KEY = 'sillynpc_globals';
 
-/**
- * Everybody's stats as they stood at this message.
- *
- * The same argument as the globals above, for the other half of the state. The change
- * rows are enough to walk backwards until the walk reaches a gap, after which every
- * character's numbers are an approximation - fine for a tracker box that says so, and not
- * fine for anything that acts on the answer. A portrait chosen for message 45 from a guess
- * is the wrong face, intermittently, only in old parts of a story.
- *
- * Stats only, and by name. Collections stay derived: they are far larger, and knowing what
- * somebody was carrying is not what anything reads this for.
- *
- * This one is not small - measured at about 350 bytes for a two-character scene against
- * roughly 100 for the globals, so a long chat grows by a percent or two per character on
- * stage. `recordMessageHistory: false` turns the whole record off for anyone who would
- * rather have the file back.
- *
- * Like every other key here it lives in `extra`, which SillyTavern carries with the
- * message and never puts in a prompt.
- */
-export const CHARS_KEY = 'sillynpc_chars';
 
 function messageAt(messageId) {
     return getContext()?.chat?.[Number(messageId)] ?? null;
@@ -149,11 +127,16 @@ function trimRow(row) {
  * @param {Array<object>} changes Rows that were applied, from computeStateDiff.
  */
 export function recordAppliedChanges(messageId, changes) {
-    if (getSettings().statusTracker?.recordMessageHistory === false) return false;
-
     const message = messageAt(messageId);
     if (!message) return false;
     if (!message.extra || typeof message.extra !== 'object') message.extra = {};
+
+    // Reply consistency is required even when the optional old history display is off.
+    recordTurnEffects(messageId);
+    if (getSettings().statusTracker?.recordMessageHistory === false) {
+        saveChatSoon();
+        return true;
+    }
 
     const rows = (changes || []).map(trimRow);
     const existing = message.extra[APPLIED_KEY];
@@ -169,15 +152,10 @@ export function recordAppliedChanges(messageId, changes) {
      */
     const now = loadStateFromMetadata();
     message.extra[GLOBALS_KEY] = { ...(now?.global ?? {}) };
-    message.extra[CHARS_KEY] = Object.fromEntries(
-        (now?.characters ?? [])
-            .filter(c => c?.name)
-            .map(c => [c.name, { ...(c.stats ?? {}) }]));
     // Which reply these describe. The appended half belongs to the same one, so writing it
     // again is right rather than merely harmless.
     message.extra[APPLIED_SWIPE_KEY] = currentSwipeOf(message);
 
-    invalidateTimeline();
     saveChatSoon();
     return true;
 }
@@ -218,42 +196,6 @@ export function appliedChangesForCurrentSwipe(messageId) {
     return recorded === currentSwipeOf(message) ? rows : null;
 }
 
-/**
- * What a message did to the threads, filed on the message itself.
- *
- * Everything else a message changes is already recorded here as rows, and rebaseToSwipe
- * rebuilds a swipe from the base plus those rows. Threads were not recorded anywhere per
- * message - they lived only in state.threads - so the rebuild's structuredClone dropped
- * them, and the extraction guard, keyed on message and swipe together, then refused to
- * read that swipe again. Swipe away and back and the promise was gone for good: the one
- * path where the numbers were safe and the threads were not.
- *
- * Both halves, not only the openings. A swipe that settled something has to settle it
- * again on the way back, or returning to it quietly reopens what it closed.
- *
- * @param {string|number} messageId
- * @param {{ opened?: object[], closed?: string[] }} changes
- */
-export function recordThreadChanges(messageId, { opened = [], closed = [] } = {}) {
-    if (!opened.length && !closed.length) return false;
-    if (getSettings().statusTracker?.recordMessageHistory === false) return false;
-
-    const message = messageAt(messageId);
-    if (!message) return false;
-    if (!message.extra || typeof message.extra !== 'object') message.extra = {};
-
-    const existing = message.extra[THREADS_KEY];
-    // Appended for the same reason the rows are: one message can write threads more than
-    // once, and replacing would forget the earlier half.
-    message.extra[THREADS_KEY] = {
-        opened: (existing?.opened || []).concat(opened),
-        closed: (existing?.closed || []).concat(closed),
-    };
-
-    saveChatSoon();
-    return true;
-}
-
 /** What a message did to the threads, or null when it did nothing. */
 export function getThreadChanges(messageId) {
     const record = messageAt(messageId)?.extra?.[THREADS_KEY];
@@ -264,3 +206,12 @@ export function getThreadChanges(messageId) {
     };
 }
 
+/** Drops records for a reply whose text was edited before reading it again. */
+export function clearTurnRecord(messageId) {
+    const extra = messageAt(messageId)?.extra;
+    if (!extra) return false;
+    for (const key of [APPLIED_KEY, APPLIED_SWIPE_KEY, THREADS_KEY, GLOBALS_KEY,
+        'sillynpc_chars', 'sillynpc_turn_effects']) delete extra[key];
+    saveChatSoon();
+    return true;
+}

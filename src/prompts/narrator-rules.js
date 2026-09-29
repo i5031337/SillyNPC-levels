@@ -1,6 +1,6 @@
 import { placeWritingPrompt } from './prompt-slot.js';
 import { getSettings } from '../core/settings.js';
-import { debugLog } from '../core/constants.js';
+import { debugLog, NARRATOR_RULES_PROMPT } from '../core/constants.js';
 
 /** The key SillyTavern files this injection under. */
 export const NARRATOR_RULES_KEY = 'sillynpc-narrator-rules';
@@ -15,16 +15,9 @@ export const NARRATOR_RULES_KEY = 'sillynpc-narrator-rules';
  * for the same reason - depth 0 puts it after the newest message, the last thing read
  * before answering.
  *
- * Nothing is shipped in the box. What the narrator should do is yours to say; the
- * placement is the part this owns. The recommended text in the prompt editor is a
- * starting shape, not a default that gets sent when the box is empty - an empty box here
- * means send nothing, unlike the dialogue format, where empty means the built-in. The
- * difference is that a layout the extension depends on has a right answer and a narrator
- * does not.
+ * The built-in rules are sent only when this feature is enabled.
  */
-export function narratorRulesText() {
-    return String(getSettings().narratorRulesPrompt ?? '').trim();
-}
+export function narratorRulesText() { return NARRATOR_RULES_PROMPT; }
 
 /** Puts the narrator rules in front of the model, or takes them away. */
 export function applyNarratorRulesPrompt() {

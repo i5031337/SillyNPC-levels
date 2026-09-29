@@ -240,7 +240,7 @@ function saveStateToMetadata(state, options = {}) {
     // the initial state exists only in the in-memory cache. Fall back to it so that
     // first change is undoable too.
     const previous = metadata[deps.STATE_KEY] ?? deps.committedState;
-    if (recordHistory && previous) {
+    if (recordHistory && !partOfMessage && previous) {
         if (!Array.isArray(metadata[deps.HISTORY_KEY])) metadata[deps.HISTORY_KEY] = [];
         const history = metadata[deps.HISTORY_KEY];
         history.push({
@@ -248,8 +248,8 @@ function saveStateToMetadata(state, options = {}) {
             timestamp: Date.now(),
             label,
         });
-        const depth = Math.max(1, Number(getSettings().statusTracker?.historyDepth) || 10);
-        while (history.length > depth) history.shift();
+        // The rewrite keeps only the immediately previous user change.
+        if (history.length > 1) history.splice(0, history.length - 1);
     }
 
     metadata[deps.STATE_KEY] = state;
@@ -283,7 +283,7 @@ function saveStateToMetadata(state, options = {}) {
  */
 function getHistoryEntries() {
     const history = deps.getMetadata()?.[deps.HISTORY_KEY];
-    return Array.isArray(history) ? history : [];
+    return Array.isArray(history) ? history.slice(-1) : [];
 }
 
 /**
@@ -297,33 +297,16 @@ function undoLastChange() {
     if (!Array.isArray(history) || history.length === 0) return null;
 
     const entry = history.pop();
+    history.length = 0;
     saveStateToMetadata(entry.state, { recordHistory: false });
     eventSource.emit('sillynpc-status-updated', entry.state);
     return entry;
 }
-
-/**
- * Jumps back to a specific point, discarding everything recorded after it.
- * @param {number} index Index into getHistoryEntries().
- */
-function restoreHistoryEntry(index) {
-    const metadata = deps.getMetadata();
-    const history = metadata?.[deps.HISTORY_KEY];
-    if (!Array.isArray(history) || index < 0 || index >= history.length) return null;
-
-    const entry = history[index];
-    history.length = index;
-    saveStateToMetadata(entry.state, { recordHistory: false });
-    eventSource.emit('sillynpc-status-updated', entry.state);
-    return entry;
-}
-
 
 Object.defineProperties(deps, {
     loadStateFromMetadata: { enumerable: true, configurable: true, get: () => loadStateFromMetadata },
     saveStateToMetadata: { enumerable: true, configurable: true, get: () => saveStateToMetadata },
     getHistoryEntries: { enumerable: true, configurable: true, get: () => getHistoryEntries },
     undoLastChange: { enumerable: true, configurable: true, get: () => undoLastChange },
-    restoreHistoryEntry: { enumerable: true, configurable: true, get: () => restoreHistoryEntry },
 });
 }

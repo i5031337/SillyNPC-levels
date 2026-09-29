@@ -1,28 +1,3 @@
-# Keep upstream's local test suite ignored; publish the progression tests with this fork.
-tests/
-!tests/
-tests/*
-!tests/progression.mjs
-!tests/stat-persistence.mjs
-!tests/chat-npc-sources.mjs
-!tests/character-scope.mjs
-!tests/fill-preset.mjs
-!tests/status-apply-update.mjs
-!tests/settings-migration.mjs
-!tests/status-dependencies.mjs
-!tests/ui-maintenance.mjs
-!tests/lore-format.mjs
-!tests/image-description.mjs
-!tests/extraction-report.mjs
-!tests/rewrite-baseline-fixtures.mjs
-!tests/system-preset-migration.mjs
-!tests/system-schema.mjs
-!tests/player-chat-ownership.mjs
-!tests/system-preset-migration.mjs
-!tests/fixtures/
-!tests/fixtures/rewrite-baseline/
-!tests/fixtures/rewrite-baseline/*.json
-
 # Scratch / editor debris
 temp_*.txt
 *.bak

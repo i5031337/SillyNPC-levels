@@ -4,7 +4,8 @@ import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { reprocessMessage } from '../chat/chat.js';
 import { extractStateFromMessage, forgetExtractionsFrom } from '../tracker/extractor/status-extractor.js';
 import { clearExtractionReport } from '../tracker/extractor/status-extraction-report.js';
-import { rebaseToSwipe, revertToBase } from '../tracker/snapshots/status-snapshots.js';
+import { rebaseToSwipe, revertToBase, clearTurnRecord } from '../tracker/snapshots/status-snapshots.js';
+import { swipeBaseRecord } from '../tracker/status-logic.js';
 
 export function onMessageRendered(messageId) {
     try {
@@ -61,8 +62,11 @@ export function onMessageForExtraction(messageId) {
  */
 export function onSwipe(messageId) {
     try {
+        // SillyTavern can carry the outgoing extra into an empty over-swipe slot.
+        const incoming = getContext()?.chat?.[Number(messageId)];
+        if (incoming && !String(incoming.mes ?? '').trim()) clearTurnRecord(messageId);
         const result = rebaseToSwipe(messageId);
-        if (!result.rebased && result.reason === 'no base') {
+        if (!result.rebased) {
             // Never a silent disagreement between the tracker and the reply on screen.
             toastr.warning(
                 'The tracker could not follow that swipe, so it may not match this reply.',
@@ -123,7 +127,31 @@ export function onRegenerateStarted(type, _data, dryRun) {
 export function onMessageDeleted(newLength) {
     try {
         forgetExtractionsFrom(newLength);
+        const base = swipeBaseRecord();
+        if (!base || Number(base.messageId) < Number(newLength) || !base.turnId) return;
+        const survives = (getContext()?.chat || []).some(message =>
+            message?.extra?.sillynpc_turn_id === base.turnId);
+        if (!survives) revertToBase(base.messageId);
+        else toastr.warning(
+            'An earlier message was deleted. Review the tracker before continuing.', 'SillyNPC');
     } catch (err) {
         console.error(LOG_PREFIX, 'onMessageDeleted error', err);
     }
+}
+
+/** Re-reads an edited latest assistant reply from its pre-turn state. */
+export function onMessageEdited(messageId) {
+    const context = getContext();
+    const id = Number(messageId);
+    const message = context?.chat?.[id];
+    if (!message || id !== context.chat.length - 1 || message.is_user || message.is_system) return;
+    const result = revertToBase(id);
+    if (!result.reverted) {
+        toastr.warning('The tracker could not rebase this edited reply.', 'SillyNPC');
+        return;
+    }
+    clearTurnRecord(id);
+    forgetExtractionsFrom(id);
+    clearExtractionReport(id);
+    onMessageForExtraction(id);
 }

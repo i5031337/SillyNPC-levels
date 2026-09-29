@@ -1,4 +1,5 @@
-import { fieldsForCard, isStaticField } from '../../core/constants.js';
+import { isStaticField } from '../../core/constants.js';
+import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { isTurnStat } from '../stat-update-policy.js';
 import { statsInSystem, getPlayerCard, findCardForName, promptCeiling, highestCeiling } from '../status-logic.js';
 

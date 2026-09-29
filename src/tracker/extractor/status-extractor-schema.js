@@ -1,26 +1,8 @@
-import { getAllCharacters } from '../../characters/character-repository.js';
-import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../../core/constants.js';
-import { getPlayerCard } from '../status-logic.js';
+import { resolveProfileFields } from '../../core/profile-fields.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
-
-/**
- * Everyone who has a profile that could be unlocked: the cards, and the player.
- *
- * The player's four fields live on their persona record rather than in the character list,
- * so asking the list alone would miss a player who has opened one. Guarded because
- * getPlayerCard needs a persona, and the schema is built in places where there may not be
- * one yet.
- */
-export function profileOwners() {
-    const cards = getAllCharacters();
-    try {
-        return [...cards, getPlayerCard()];
-    } catch {
-        return cards;
-    }
-}
+import { goalFields } from '../goals.js';
 
 /**
  * A JSON schema describing exactly the stats and collections this user has configured.
@@ -96,24 +78,32 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
 
-    /* Named profile and NPC lore fields, but only if somebody has unlocked one.
-     *
-     * A schema names what may come back, so listing these tells the model to look for
-     * changes to them on every message - work and tokens nobody should pay for a feature
-     * they have not switched on. The lock is per character and per field, so "any of them,
-     * anywhere" is the only question the schema can ask; the apply side does the precise
-     * filtering and drops anything for a field that is still locked. */
-    const owners = profileOwners();
+    /* The active System names each eligible profile, memory and goal field. The apply
+     * side validates policy and source again, including responses from older prompts. */
     const profileShape = (fields) => ({
         type: 'object',
         properties: Object.fromEntries(fields.map(field => [
             field.id, { type: 'string', description: field.hint },
         ])),
     });
-    const playerProfileProps = anyProfileFieldUnlocked(owners.filter(card => card.isPlayer))
-        ? profileShape(PROFILE_FIELDS) : null;
-    const npcProfileProps = anyProfileFieldUnlocked(owners.filter(card => !card.isPlayer))
-        ? profileShape(NPC_LORE_FIELDS) : null;
+    const editable = scope => resolveProfileFields(scope).filter(field => field.policy === 'replaceable');
+    const memory = scope => resolveProfileFields(scope).filter(field => field.policy === 'memory');
+    const profileProps = scope => editable(scope).length ? profileShape(editable(scope)) : null;
+    const memoryProps = scope => memory(scope).length ? {
+        type: 'array', items: { type: 'object', required: ['fieldId', 'text', 'quote'], properties: {
+            fieldId: { type: 'string' }, text: { type: 'string' }, quote: { type: 'string' },
+        } },
+    } : null;
+    const playerProfileProps = profileProps('player');
+    const npcProfileProps = profileProps('npc');
+    const goalProps = scope => {
+        const fields = goalFields(scope);
+        return fields.length ? { type: 'object', properties: Object.fromEntries(fields.map(field => [
+            field.id, { type: 'object', required: ['action', 'text', 'quote'], properties: {
+                action: { type: 'string' }, text: { type: 'string' }, quote: { type: 'string' },
+            } },
+        ])) } : null;
+    };
 
     return {
         type: 'object',
@@ -133,6 +123,9 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                     ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
                     ...(playerProfileProps ? { profile: playerProfileProps } : {}),
+                    ...(playerProfileProps ? { profileEvidence: playerProfileProps } : {}),
+                    ...(memoryProps('player') ? { memories: memoryProps('player') } : {}),
+                    ...(goalProps('player') ? { goals: goalProps('player') } : {}),
                 },
             },
             characters: {
@@ -146,29 +139,12 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),
                         ...(npcProfileProps ? { profile: npcProfileProps } : {}),
+                        ...(npcProfileProps ? { profileEvidence: npcProfileProps } : {}),
+                        ...(memoryProps('npc') ? { memories: memoryProps('npc') } : {}),
+                        ...(goalProps('npc') ? { goals: goalProps('npc') } : {}),
                     },
                 },
             },
-            // Only when threads are on. A schema names what may come back, so a key it
-            // does not mention is a key the model is told not to send - the ask would
-            // still be in the prompt and the answer would never arrive, which is the
-            // worst shape of failure: a feature that is switched on and silent.
-            ...(trackerSettings.threadsEnabled === true ? {
-                threads: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        required: ['text', 'quote'],
-                        properties: {
-                            kind: { type: 'string' },
-                            text: { type: 'string' },
-                            quote: { type: 'string' },
-                            who: { type: 'string' },
-                        },
-                    },
-                },
-                closed: { type: 'array', items: { type: 'string' } },
-            } : {}),
             // Only when there are strangers to ask about - see strangerValues.
             ...(strangers.length ? {
                 strangers: {

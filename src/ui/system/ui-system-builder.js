@@ -1,6 +1,7 @@
 import { makeActivatable } from '../../core/utils.js';
 import { buildCollectionsEditor } from './ui-system-collections.js';
 import { buildStatsEditor } from './ui-system-stats.js';
+import { buildProfilesEditor } from './ui-system-profiles.js';
 
 /**
  * System Builder: the stats, collections and fields a System is made of.
@@ -20,6 +21,7 @@ export function buildSystemBuilder(onRefresh) {
 
     const tabs = document.createElement('div');
     tabs.style.display = 'flex';
+    tabs.style.flexWrap = 'wrap';
     tabs.style.background = 'var(--sillynpc-bg-secondary)';
     tabs.style.borderBottom = '1px solid var(--sillynpc-border)';
     tabs.setAttribute('role', 'tablist');
@@ -31,6 +33,8 @@ export function buildSystemBuilder(onRefresh) {
         { id: 'global', label: 'Global' },
         { id: 'npc', label: 'NPC' },
         { id: 'player', label: 'Player' },
+        { id: 'npc-profile', label: 'NPC Profile' },
+        { id: 'player-profile', label: 'Player Profile' },
         { id: 'collections', label: 'Collections' }
     ];
 
@@ -41,7 +45,7 @@ export function buildSystemBuilder(onRefresh) {
             btn.textContent = tab.label;
             btn.style.padding = '8px 15px';
             btn.style.cursor = 'pointer';
-            btn.style.flex = '1';
+            btn.style.flex = '1 1 105px';
             btn.style.textAlign = 'center';
             if (systemBuilderActiveTab === tab.id) {
                 // A white wash, which is no wash at all on the light themes - the open tab
@@ -68,6 +72,10 @@ export function buildSystemBuilder(onRefresh) {
             content.appendChild(buildStatsEditor('NPC Stats', 'npcStats', onRefresh));
         } else if (systemBuilderActiveTab === 'player') {
             content.appendChild(buildStatsEditor('Player Stats', 'playerStats', onRefresh));
+        } else if (systemBuilderActiveTab === 'npc-profile') {
+            content.appendChild(buildProfilesEditor('npc', onRefresh));
+        } else if (systemBuilderActiveTab === 'player-profile') {
+            content.appendChild(buildProfilesEditor('player', onRefresh));
         } else if (systemBuilderActiveTab === 'collections') {
             content.appendChild(buildCollectionsEditor(onRefresh));
         }

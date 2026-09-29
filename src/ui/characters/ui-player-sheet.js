@@ -2,7 +2,6 @@ import { renderSidebar, renderTabExtras, renderTabContent, commitInlineEdit, com
 export { commitInlineEdit, commitOpenEdits } from './ui-player-sections.js';
 import { debugLog } from '../../core/constants.js';
 import { eventSource } from '../../../../../../events.js';
-import { POPUP_TYPE, POPUP_RESULT, Popup } from '../../../../../../popup.js';
 import { getSettings } from '../../core/settings.js';
 import { escapeHtml } from '../../core/utils.js';
 import { buildPortraitBlock, openLightbox } from './ui-portrait.js';
@@ -10,7 +9,6 @@ import { renderLorebookSection, resetLorebookState } from '../story/ui-lorebook-
 import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { fillCharacter } from './ui-fill.js';
-import { playerHistory, restorePlayerFromMessage } from '../../tracker/snapshots/status-snapshots.js';
 import { renderCollectionUI, attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
 import { buildBulkBar, spliceIndexes } from '../shared/ui-bulk-select.js';
 import { choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
@@ -18,8 +16,7 @@ import {
     loadStateFromMetadata,
     applyUpdate,
     getPersonaData,
-    getPlayerCard,
-    statsInSystem
+    getPlayerCard
 } from '../../tracker/status-logic.js';
 
 /** 'profile' | 'edit' - the same two the character page has, for the same reason. */
@@ -96,10 +93,7 @@ export function renderPlayerView(view) {
                     <span class="persona-name">${escapeHtml(persona.name)}</span>
                     ${levelValue !== null ? `<div class="level-badge">Lvl ${escapeHtml(levelValue)}</div>` : ''}
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button type="button" class="menu_button sillynpc-sheet-fill" title="Read the story for who you are, a lore entry, your fields and a portrait - filling only what is still empty."><i class="fa-solid fa-fill-drip"></i> <span>Fill</span></button>
-                    <button type="button" class="menu_button sillynpc-restore-open" title="Put your stats and collections back to what they were after an earlier message"><i class="fa-solid fa-clock-rotate-left"></i></button>
-                </div>
+                <button type="button" class="menu_button sillynpc-sheet-fill" title="Read the story for who you are, a lore entry, your fields and a portrait - filling only what is still empty."><i class="fa-solid fa-fill-drip"></i> <span>Fill</span></button>
             </div>
             <div class="sillynpc-sheet-body">
                 <div class="sillynpc-sheet-sidebar"></div>
@@ -209,82 +203,6 @@ function attachSheetListeners(dom) {
         fillBtn.dataset.listenerAttached = 'true';
     }
 
-    const restoreBtn = dom.querySelector('.sillynpc-restore-open');
-    if (restoreBtn && !restoreBtn.dataset.listenerAttached) {
-        restoreBtn.addEventListener('click', () => {
-            openRestorePicker().then(changed => { if (changed) refreshPlayerSheet(dom); })
-                .catch(err => console.error('[SillyNPC] restore picker failed', err));
-        });
-        restoreBtn.dataset.listenerAttached = 'true';
-    }
-}
-
-/**
- * Choosing a point to put the player's stats and collections back to.
- *
- * Built on the per-message change records, which are the thing that actually survived
- * when a story's HP and Energy were overwritten - reading them was a manual dig through
- * the chat file, and this is that dig with a button on it.
- *
- * @returns {Promise<boolean>} Whether anything was restored.
- */
-async function openRestorePicker() {
-    const points = playerHistory();
-    if (points.length < 2) {
-        toastr.info('This chat has no earlier player state recorded yet.', 'SillyNPC');
-        return false;
-    }
-
-    const wrap = document.createElement('div');
-    const intro = document.createElement('p');
-    intro.textContent = 'Put your stats and collections back to how they were after a '
-        + 'message. Characters in the scene and world stats are left as they are.';
-    wrap.append(intro);
-
-    const select = document.createElement('select');
-    select.className = 'text_pole';
-    select.style.width = '100%';
-    for (const point of points) {
-        const option = document.createElement('option');
-        option.value = String(point.messageId);
-        // Through the schema: a point recorded before a stat was deleted still holds its
-        // value, and listing it here would name a stat the system no longer has.
-        const summary = Object.entries(statsInSystem(point.stats, 'playerStats'))
-            .filter(([, v]) => String(v).includes('/'))
-            .map(([k, v]) => `${k} ${v}`).join(', ');
-        option.textContent = `Message ${point.messageId} — ${summary || 'no meters'}`
-            + ` · ${point.itemCount} item${point.itemCount === 1 ? '' : 's'}`
-            // Older than the record, so it is reconstructed rather than known.
-            + (point.exact ? '' : ' (approximate)');
-        select.append(option);
-    }
-    // The newest point is where you already are; start one back, which is what you want.
-    select.selectedIndex = Math.min(1, points.length - 1);
-    wrap.append(select);
-
-    const note = document.createElement('small');
-    note.className = 'notes';
-    note.style.cssText = 'display:block; margin-top:8px;';
-    note.textContent = 'This lands as an ordinary undo step, so picking the wrong message '
-        + 'can be undone like anything else.';
-    wrap.append(note);
-
-    const result = await new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
-        okButton: 'Restore', cancelButton: 'Cancel',
-    }).show();
-    if (result !== POPUP_RESULT.AFFIRMATIVE) return false;
-
-    const outcome = restorePlayerFromMessage(Number(select.value));
-    if (!outcome) {
-        toastr.error('Nothing recorded for that message.', 'SillyNPC');
-        return false;
-    }
-    toastr.success(
-        outcome.exact
-            ? `Restored from message ${select.value}.`
-            : `Restored from message ${select.value}, reconstructed (${outcome.reason}).`,
-        'SillyNPC');
-    return true;
 }
 
 export function refreshPlayerSheet(dom) {

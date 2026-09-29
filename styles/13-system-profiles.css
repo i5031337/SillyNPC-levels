@@ -1,0 +1,9 @@
+.sillynpc-system-profiles { display: grid; gap: 12px; }
+.sillynpc-system-profiles > p { margin: 0; }
+.sillynpc-system-profile-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--sillynpc-border); border-radius: 8px; }
+.sillynpc-system-profile-row.is-retired { opacity: .75; }
+.sillynpc-system-profile-header, .sillynpc-system-profile-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sillynpc-system-profile-header .profile-label, .sillynpc-system-profile-add input { flex: 1 1 180px; }
+.sillynpc-system-profile-header small { overflow-wrap: anywhere; }
+.sillynpc-system-profile-row textarea { width: 100%; resize: vertical; }
+.sillynpc-system-profile-row select, .sillynpc-system-profile-row .profile-placeholder { width: 100%; }

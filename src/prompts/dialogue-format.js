@@ -5,18 +5,9 @@ import { DIALOGUE_FORMAT_PROMPT, debugLog } from '../core/constants.js';
 /** The key SillyTavern files this injection under. */
 export const DIALOGUE_FORMAT_KEY = 'sillynpc-dialogue-format';
 
-/**
- * What is actually sent: the user's text if they have written any, the built-in if not.
- *
- * Empty means the built-in rather than "send nothing", which is the same rule the
- * extraction instructions follow. Someone who wants none of it turns the setting off;
- * clearing the box is how you ask for the default back.
- *
- * @returns {string}
- */
+/** The dialogue layout understood by the extension's speaker parser. */
 export function dialogueFormatText() {
-    const settings = getSettings();
-    return String(settings.dialogueFormatPrompt ?? '').trim() || DIALOGUE_FORMAT_PROMPT;
+    return DIALOGUE_FORMAT_PROMPT;
 }
 
 /**

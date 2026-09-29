@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { NPC_LORE_FIELDS } from '../src/core/constants-profile.js';
-import { PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, SYSTEM_PROMPT } from '../src/core/constants-prompts.js';
 import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
+import { migratePresetsAndStores } from '../src/core/settings-store-migration.js';
+import { normalizeHudLayoutId } from '../src/core/constants-base.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
@@ -12,6 +13,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
+    'normalizeHudLayoutId',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -26,7 +28,7 @@ function migration() {
         NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
-        () => {}, normaliseStatUpdatePolicies);
+        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId);
     return { normalize, saves };
 }
 
@@ -61,30 +63,37 @@ test('old HUD visibility migration runs once, preserving later choices', () => {
     assert.equal(stat.isPrimary, true);
 });
 
-test('upgrades the shipped reader prompt while preserving an edited copy', () => {
+test('old raw prompt overrides are dropped while other settings normalize', () => {
     const baseSource = readFileSync(new URL('../src/core/settings-base-migration.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replace('export function normaliseBaseSettings', 'function normaliseBaseSettings');
-    const normalizeBase = new Function('SYSTEM_PROMPT', 'PREVIOUS_SYSTEM_PROMPT', 'RECENT_SYSTEM_PROMPT',
-        'GEMINI_IMAGE_MODELS', 'PORTRAIT_SHAPES', 'DEFAULT_PORTRAIT_SHAPE',
-        'DIALOGUE_FORMAT_PROMPT', 'defaultSettings', 'resolveImageFolder', 'saveSettings',
+    const normalizeBase = new Function('PORTRAIT_SHAPES', 'DEFAULT_PORTRAIT_SHAPE',
+        'defaultSettings', 'resolveImageFolder', 'saveSettings',
         `${baseSource}\nreturn normaliseBaseSettings;`)(
-            SYSTEM_PROMPT, PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, [], { square: {} }, 'square',
-            '', { loreCharBudget: 100, loreMaxTokens: 100, imgGenContextMessages: 0 },
+            { square: {} }, 'square',
+            { loreCharBudget: 100, loreMaxTokens: 100, imgGenContextMessages: 0 },
             value => value, () => {},
         );
-    const shipped = { statusTracker: { extractionPrompt: PREVIOUS_SYSTEM_PROMPT } };
-    const recent = { statusTracker: { extractionPrompt: RECENT_SYSTEM_PROMPT },
-        imageBackend: 'gemini', geminiImageModel: 'gemini-2.5-flash-image' };
-    const edited = { statusTracker: { extractionPrompt: `${PREVIOUS_SYSTEM_PROMPT}\nMy rule` } };
+    const settings = { statusTracker: { extractionPrompt: 'custom', systemRules: 'custom' },
+        dialogueFormatPrompt: 'custom', narratorRulesPrompt: 'custom',
+        generationPrompt: 'custom', imgGenPrompt: 'custom', imgGenNegativePrompt: 'custom',
+        promptTexts: { reader: 'custom' }, imageBackend: 'gemini' };
 
-    normalizeBase(shipped);
-    normalizeBase(recent);
-    normalizeBase(edited);
+    normalizeBase(settings);
 
-    assert.equal(shipped.statusTracker.extractionPrompt, SYSTEM_PROMPT);
-    assert.equal(recent.statusTracker.extractionPrompt, SYSTEM_PROMPT);
-    assert.equal('imageBackend' in recent, false);
-    assert.equal('geminiImageModel' in recent, false);
-    assert.equal(edited.statusTracker.extractionPrompt, `${PREVIOUS_SYSTEM_PROMPT}\nMy rule`);
+    for (const key of ['dialogueFormatPrompt', 'narratorRulesPrompt', 'generationPrompt',
+        'imgGenPrompt', 'imgGenNegativePrompt', 'promptTexts', 'imageBackend']) {
+        assert.equal(key in settings, false);
+    }
+    assert.equal('extractionPrompt' in settings.statusTracker, false);
+    assert.equal('systemRules' in settings.statusTracker, false);
+});
+
+test('legacy profile hints enter old System presets before the flat setting is removed', () => {
+    const settings = { statusTracker: { presets: { old: { playerStats: [] } } },
+        profileHints: { appearance: 'Describe distinguishing features' } };
+    migratePresetsAndStores(settings, '1.0.0');
+    assert.equal(settings.statusTracker.presets.old.config.profileHints.appearance,
+        'Describe distinguishing features');
+    assert.equal('profileHints' in settings, false);
 });

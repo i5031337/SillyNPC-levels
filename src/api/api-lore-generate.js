@@ -5,11 +5,13 @@ import { loadWorldInfo, saveWorldInfo } from '../../../../../world-info.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { fillTemplate } from '../prompts/macros.js';
 import { getSettings, saveSettings } from '../core/settings.js';
+import { DEFAULT_LORE_PROMPT } from '../prompts/default-prompt-texts.js';
 import { recordUsage } from '../core/usage.js';
 import { syncEntryIdentity, mergeKeywords, namesFor } from '../lore/lorebook.js';
 import { escapeRegExp, describeConnection } from '../core/utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
-import { NPC_LORE_FIELDS, hintFor } from '../core/constants-profile.js';
+import { hintFor } from '../core/constants-profile.js';
+import { resolveProfileFields } from '../core/profile-fields.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../lore/lore-format.js';
 
 /**
@@ -167,7 +169,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     const recentMessages = excerpt.text;
     const worldFacts = await retrieveWorldFacts(char.name);
 
-    const template = options.template || getSettings().generationPrompt;
+    const template = options.template || DEFAULT_LORE_PROMPT;
     const givenFacts = typeof options.facts === 'function' ? options.facts() : options.facts;
     /* Both spellings and SillyTavern's own macros, in one pass. The old [TAG] form is
        rewritten to {{tag}} first rather than replaced separately, so a [NAME] that happens
@@ -193,13 +195,12 @@ export async function generateLoreContent(char, world, uid, options = {}) {
 
     if (!options.template && !char.isPlayer) {
         const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
-        const hints = getSettings().profileHints;
         prompt += '\n\nThe Content entry must contain every named field in the exact order shown. '
             + 'Write one labelled line per field and no unlabelled prose. '
             + 'Keep established values exactly as given; fill only blanks that the sources support. '
             + 'Never invent a value. This format replaces any older instruction above that omits '
             + 'these fields.\n'
-            + NPC_LORE_FIELDS.map(field => `${field.label}: ${existing[field.id] || '(fill if known)'} — ${hintFor(field, hints)}`)
+            + resolveProfileFields('npc').map(field => `${field.label}: ${existing[field.id] || '(fill if known)'} — ${hintFor(field)}`)
                 .join('\n');
         if (options.preserveLore && existingLore.trim()) {
             prompt += '\nThis is a Fill request. Keep all established field values exactly and fill only blanks.';
@@ -237,11 +238,11 @@ export async function generateLoreContent(char, world, uid, options = {}) {
         const generated = parseLoreContent(content);
         if (generated) {
             const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
-            const values = Object.fromEntries(NPC_LORE_FIELDS.map(field => [field.id,
+            const values = Object.fromEntries(resolveProfileFields('npc').map(field => [field.id,
                 String(options.preserveLore
                     ? (existing[field.id] || generated[field.id] || '')
                     : (generated[field.id] || existing[field.id] || '')).trim()]));
-            content = formatLoreContent(values);
+            content = formatLoreContent(values, existingLore);
         }
     }
 
@@ -283,7 +284,7 @@ export async function saveLoreContent(char, world, uid, tags, content) {
     if (!char.isPlayer) {
         const parsed = parseLoreContent(entry.content);
         if (!parsed) throw new Error('NPC lore must contain every named field in the required order.');
-        entry.content = formatLoreContent(parsed);
+        entry.content = formatLoreContent(parsed, entry.content);
         char.profile = { ...char.profile, ...parsed };
     }
     // The writer returns Abilities/History/Ties and never a name, so the heading is put

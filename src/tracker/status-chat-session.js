@@ -14,8 +14,8 @@ import { getContext } from '../../../../../st-context.js';
 import { setUserAvatar, getUserAvatar } from '../../../../../personas.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { LOG_PREFIX, debugLog, fieldsForCard, isStaticField } from '../core/constants.js';
-import { syncProfileToLore } from '../lore/lore-sync.js';
+import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { diffTurnValues, applyTurnValues } from './snapshots/status-turn-delta.js';
 
 export function bind(deps) {
 const STATE_KEY = 'sillynpc_status_state';
@@ -95,20 +95,7 @@ function getMetadata() {
     return getContext()?.chatMetadata ?? null;
 }
 
-/**
- * The tracker state as it stood before the newest message was read.
- *
- * Swiping replaces the newest reply with another one, and the changes already applied
- * describe the reply you swiped away from. Rebuilding from the state before that message
- * is what lets a different swipe be applied cleanly instead of stacking on top.
- *
- * One slot, overwritten when the next message is read. Only the newest message can be
- * swiped in SillyTavern - the handlers are bound to `.last_mes` - so a second entry could
- * never be consulted, and a snapshot per message would put megabytes in a long chat file.
- *
- * @param {string|number} messageId
- * @param {StatusState} state The state before this message's changes are applied.
- */
+/** One pre-turn base per chat; only the latest reply can be swiped. */
 function rememberSwipeBase(messageId, state) {
     const metadata = getMetadata();
     if (!metadata || !state) return false;
@@ -127,35 +114,22 @@ function rememberSwipeBase(messageId, state) {
     return true;
 }
 
-/**
- * Every profile, by character name, as they stand right now.
- *
- * Rides the swipe base because a profile field the reader is allowed to change does not
- * live in the state - it lives on the card, in settings, shared by every chat. So the
- * rebase cannot rebuild it the way it rebuilds a stat, and without a snapshot a rewritten
- * personality would survive the swipe that undid everything else about that reply.
- *
- * Four short strings per character. The state clone beside it is far larger.
- */
+/** Profile and memory snapshots for cards visible to this chat. */
 function snapshotProfiles() {
     const out = {};
     const record = (card) => {
         const name = String(card?.name ?? '').trim();
-        if (name) out[name.toLowerCase()] = { ...(card.profile || {}) };
+        if (name) out[name.toLowerCase()] = {
+            profile: structuredClone(card.profile || {}),
+            memories: structuredClone(card.memories || []),
+        };
     };
     for (const card of getAllCharacters()) record(card);
     try { record(deps.getPlayerCard()); } catch { /* no persona yet */ }
     return out;
 }
 
-/**
- * Puts every profile back to how the snapshot found it.
- *
- * Only the fields that actually differ, so a card nobody touched is not rewritten and
- * saveSettings is not called for nothing.
- *
- * @returns {number} How many fields were put back.
- */
+/** Restores profile and memory values without saving unchanged cards. */
 function restoreProfiles(profiles) {
     if (!profiles || typeof profiles !== 'object') return 0;
 
@@ -164,11 +138,16 @@ function restoreProfiles(profiles) {
     const put = (card) => {
         const was = profiles[String(card?.name ?? '').trim().toLowerCase()];
         if (!was) return;
-        if (!card.profile || typeof card.profile !== 'object') card.profile = {};
-        for (const field of fieldsForCard(card)) {
-            const before = String(was[field.id] ?? '');
-            if (String(card.profile[field.id] ?? '') === before) continue;
-            card.profile[field.id] = before;
+        // Older bases stored the profile directly; new bases include memories too.
+        const profile = was.profile && typeof was.profile === 'object' ? was.profile : was;
+        if (JSON.stringify(card.profile || {}) !== JSON.stringify(profile)) {
+            card.profile = structuredClone(profile);
+            restored += 1;
+            touched.add(card);
+        }
+        if (Array.isArray(was.memories)
+            && JSON.stringify(card.memories || []) !== JSON.stringify(was.memories)) {
+            card.memories = structuredClone(was.memories);
             restored += 1;
             touched.add(card);
         }
@@ -178,38 +157,19 @@ function restoreProfiles(profiles) {
 
     if (restored) {
         saveSettings();
-        for (const card of touched) syncProfileToLore(card).catch(err =>
-            console.error(LOG_PREFIX, 'Could not restore lorebook fields after swipe', err));
         debugLog(`Put ${restored} profile field(s) back to before that message`);
     }
-    return restored;
+    return [...touched];
 }
 
-/**
- * The remembered state for a message, or null when there is none.
- *
- * Missing after a reload, or for a message written before this existed. The caller has to
- * say so rather than guess: applying a swipe's changes on top of numbers that already
- * include a different swipe is the double-counting this exists to prevent.
- *
- * @param {string|number} messageId
- * @returns {StatusState | null}
- */
+/** The pre-turn state for this message, when available. */
 function getSwipeBase(messageId) {
     const stored = getMetadata()?.[SWIPE_BASE_KEY];
     if (!stored || stored.messageId !== String(messageId)) return null;
     return structuredClone(stored.state);
 }
 
-/**
- * The stored base itself, not a copy.
- *
- * Every other reader gets a clone from getSwipeBase, which is what stops a caller
- * accidentally rewriting history. The aligner is the one caller whose whole job is to
- * rewrite it, so it needs the real thing.
- *
- * @returns {{ messageId: string, state: object, profiles: object }|null}
- */
+/** Mutable base for recording turn effects and manual corrections. */
 function swipeBaseRecord() {
     return getMetadata()?.[SWIPE_BASE_KEY] ?? null;
 }
@@ -235,6 +195,45 @@ function getProfileBase(messageId) {
     const stored = getMetadata()?.[SWIPE_BASE_KEY];
     if (!stored || stored.messageId !== String(messageId)) return null;
     return stored.profiles ? structuredClone(stored.profiles) : null;
+}
+
+/** Records all turn-owned writes, including goals, presence and profile memories. */
+function recordTurnEffects(messageId) {
+    const base = swipeBaseRecord();
+    const message = getContext()?.chat?.[Number(messageId)];
+    if (!base || base.messageId !== String(messageId) || !message) return false;
+    const state = structuredClone(deps.loadStateFromMetadata());
+    const profiles = snapshotProfiles();
+    const effectsState = base.beforeApply
+        ? applyTurnValues(base.state, diffTurnValues(base.beforeApply.state, state)) : state;
+    const effectsProfiles = base.beforeApply
+        ? applyTurnValues(base.profiles, diffTurnValues(base.beforeApply.profiles, profiles)) : profiles;
+    message.extra ||= {};
+    base.turnId ||= globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    message.extra.sillynpc_turn_id = base.turnId;
+    message.extra.sillynpc_turn_effects = {
+        swipe: Number(message.swipe_id ?? 0),
+        text: String(message.mes ?? ''),
+        state: diffTurnValues(base.state, effectsState),
+        profiles: diffTurnValues(base.profiles, effectsProfiles),
+    };
+    base.applied = { state: effectsState, profiles: effectsProfiles };
+    delete base.beforeApply;
+    return true;
+}
+
+/** Keeps edits made while the reader was waiting outside its reply-owned changes. */
+function refreshTurnBase(messageId) {
+    const base = swipeBaseRecord();
+    if (!base || base.messageId !== String(messageId)) return false;
+    const state = structuredClone(deps.loadStateFromMetadata());
+    const profiles = snapshotProfiles();
+    if (base.applied) base.beforeApply = { state, profiles };
+    else {
+        base.state = state;
+        base.profiles = profiles;
+    }
+    return true;
 }
 
 
@@ -450,6 +449,9 @@ Object.defineProperties(deps, {
     alignSwipeBase: { enumerable: true, configurable: true, get: () => alignSwipeBase, set: value => { alignSwipeBase = value; } },
     setSwipeBaseAligner: { enumerable: true, configurable: true, get: () => setSwipeBaseAligner },
     getProfileBase: { enumerable: true, configurable: true, get: () => getProfileBase },
+    snapshotProfiles: { enumerable: true, configurable: true, get: () => snapshotProfiles },
+    recordTurnEffects: { enumerable: true, configurable: true, get: () => recordTurnEffects },
+    refreshTurnBase: { enumerable: true, configurable: true, get: () => refreshTurnBase },
     initStatusLogic: { enumerable: true, configurable: true, get: () => initStatusLogic },
     PERSONA_KEY: { enumerable: true, configurable: true, get: () => PERSONA_KEY },
     hasOpenChat: { enumerable: true, configurable: true, get: () => hasOpenChat },

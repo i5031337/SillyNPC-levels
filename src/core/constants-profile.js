@@ -83,25 +83,9 @@ export function blankProfile(isPlayer = false) {
     return Object.fromEntries((isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => [field.id, '']));
 }
 
-/**
- * What Fill is told to write in one field: the user's wording if they have changed it.
- *
- * Overrides are stored per field and only where one exists, rather than as one editable
- * block of all of them. A block would be seeded once and then be the user's copy forever, so
- * a field added in a later version would never appear for anybody who had edited it - which
- * is exactly the state the extraction prompt is in, and the reason it had to be worked around
- * rather than fixed. Sparse overrides mean a new field always ships with its own hint.
- *
- * Takes the store rather than reading settings, so constants.js stays a leaf that imports
- * nothing.
- *
- * @param {{ id: string, hint: string }} field
- * @param {Record<string, string>} [overrides] settings.profileHints
- * @returns {string}
- */
-export function hintFor(field, overrides) {
-    const written = String(overrides?.[field?.id] ?? '').trim();
-    return written || String(field?.hint ?? '');
+/** Fill guidance from the active System field or the built-in fallback. */
+export function hintFor(field) {
+    return String(field?.hint ?? '');
 }
 
 /**

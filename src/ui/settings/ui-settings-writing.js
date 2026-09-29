@@ -1,18 +1,16 @@
 import { clearRuns } from '../../characters/default-portraits.js';
 import { triggerReprocess } from '../../chat/chat.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
+import { getSettings } from '../../core/settings.js';
 import { pickAndProcessImages, resolveImageFolder, describeSaveDestination } from '../../core/utils.js';
 import { promptListAvailable } from '../../prompts/prompt-slot.js';
 import { applyDialogueFormatPrompt } from '../../prompts/dialogue-format.js';
 import { applyNarratorRulesPrompt } from '../../prompts/narrator-rules.js';
 import { buildSettingSelect, buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingNumber, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
-import { buildPromptEditor, buildPromptBudget } from '../shared/ui-prompts.js';
 import { renderBanList } from '../shared/ui-banlist.js';
-import { promptById } from '../../prompts/prompts.js';
 import { world_names } from '../../../../../../world-info.js';
 import { extension_settings } from '../../../../../../extensions.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
-import { LOG_PREFIX, NARRATOR_RULES_PROMPT, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
+import { LOG_PREFIX, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
 import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, scanFolderForCharacterImages, persistGeneratedImage, findOrphanedImages, deleteImageFiles } from '../../api/api.js';
 import { getSecretLabelById } from '../../../../../../secrets.js';
 import { getRequestHeaders } from '../../../../../../../script.js';
@@ -55,12 +53,11 @@ export function renderWritingRulesView(view, onReprocessMessages) {
         onChange: rerender,
     }));
     if (getSettings().dialogueFormatEnabled) {
-        view.append(buildPromptEditor(promptById('dialogueFormat')));
         if (promptListAvailable()) {
             view.append(buildSettingToggle({
                 key: 'dialogueFormatInPromptList',
                 label: "Manage In SillyTavern's Prompt List",
-                help: "Puts the dialogue format into SillyTavern's own prompt list, under AI Response Configuration, where it can be dragged among the system prompts, given another depth, or switched off beside everything else. It goes in as In-Chat at depth 0, which is where it already sits, so switching this on moves nothing until you move it. The entry is kept in your chat completion preset: it is exported with that preset, and loading a different one drops it until SillyNPC puts it back. The text stays here - the list owns only where it goes and whether it is sent. Chat Completion only: there is no such list on Text Completion.",
+                help: "Puts the dialogue format into SillyTavern's own prompt list, under AI Response Configuration, where it can be dragged among the system prompts, given another depth, or switched off beside everything else. It goes in as In-Chat at depth 0, which is where it already sits, so switching this on moves nothing until you move it. The entry is kept in your chat completion preset: it is exported with that preset, and loading a different one drops it until SillyNPC puts it back. The extension supplies the built-in wording; the list controls where it goes and whether it is sent. Chat Completion only: there is no such list on Text Completion.",
                 onChange: () => {
                     // At once rather than at the next message: the list entry is
                     // what makes the block appear there at all, and a setting whose
@@ -78,7 +75,7 @@ export function renderWritingRulesView(view, onReprocessMessages) {
             advanced: true,
             label: 'Format Reminder Depth',
             suffix: 'messages back',
-            help: 'How far back from the newest message the prompt above is inserted. 0 '
+            help: 'How far back from the newest message the built-in format is inserted. 0 '
                 + 'puts it after the newest one, so it is the last thing the model reads '
                 + 'before answering - which is where a layout rule holds best, and why it '
                 + 'is the default. Raise it only if it crowds something you would rather '
@@ -99,28 +96,15 @@ export function renderWritingRulesView(view, onReprocessMessages) {
             + 'writing it. Written into a card those sit at the top of the prompt with the '
             + 'whole chat between them and the moment they apply, which is why rewording '
             + 'one so often changes nothing - where it sits was the problem, not how it '
-            + 'was phrased. Switching this on fills the box with a working set to edit; '
-            + 'emptying the box sends nothing.',
-        onChange: () => {
-            // Filled on the way on, not shipped as a default. Nothing is ever sent while
-            // the feature is off, so this cannot put words in a prompt nobody asked for -
-            // and a blank field beside "write something here" is not guidance.
-            const settings = getSettings();
-            if (settings.narratorRulesEnabled
-                && !String(settings.narratorRulesPrompt ?? '').trim()) {
-                settings.narratorRulesPrompt = NARRATOR_RULES_PROMPT;
-                saveSettings();
-            }
-            rerender();
-        },
+            + 'was phrased. Switching this on sends the built-in rules.',
+        onChange: rerender,
     }));
     if (getSettings().narratorRulesEnabled) {
-        view.append(buildPromptEditor(promptById('narratorRules')));
         if (promptListAvailable()) {
             view.append(buildSettingToggle({
                 key: 'narratorRulesInPromptList',
                 label: "Manage In SillyTavern's Prompt List",
-                help: "Puts the narrator rules into SillyTavern's own prompt list, under AI Response Configuration, where it can be dragged among the system prompts, given another depth, or switched off beside everything else. It goes in as In-Chat at depth 0, which is where it already sits, so switching this on moves nothing until you move it. The entry is kept in your chat completion preset: it is exported with that preset, and loading a different one drops it until SillyNPC puts it back. The text stays here - the list owns only where it goes and whether it is sent. Chat Completion only: there is no such list on Text Completion.",
+                help: "Puts the narrator rules into SillyTavern's own prompt list, under AI Response Configuration, where it can be dragged among the system prompts, given another depth, or switched off beside everything else. It goes in as In-Chat at depth 0, which is where it already sits, so switching this on moves nothing until you move it. The entry is kept in your chat completion preset: it is exported with that preset, and loading a different one drops it until SillyNPC puts it back. The extension supplies the built-in wording; the list controls where it goes and whether it is sent. Chat Completion only: there is no such list on Text Completion.",
                 onChange: () => {
                     // At once rather than at the next message: the list entry is
                     // what makes the block appear there at all, and a setting whose

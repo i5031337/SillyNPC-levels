@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../../core/constants.js';
-import { loadStateFromMetadata, rememberSwipeBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues } from '../status-logic.js';
+import { loadStateFromMetadata, rememberSwipeBase, refreshTurnBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues } from '../status-logic.js';
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from '../status-diff.js';
 import { setPendingChanges, isItemDecided } from '../status-review.js';
 import { recordAppliedChanges } from '../snapshots/status-snapshots.js';
@@ -13,7 +13,7 @@ import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { expandNumericDeltas } from './status-extractor-deltas.js';
 import { holdLevelBonusChanges } from '../stat-update-policy.js';
-import { addLevelBonus, applyThreadsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
+import { addLevelBonus, applyGoalsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
 
@@ -161,6 +161,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             return { applied: false, reason: 'reply changed while reading' };
         }
 
+        refreshTurnBase(messageId);
         // Presence first: applyUpdate refuses to introduce characters in speakers mode,
         // so anyone the extraction reports must be admitted to the scene before their
         // stats can land.
@@ -170,16 +171,6 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             // list is complete and absence means departure.
             reconcileScenePresence(names, messageId, { authoritative: true });
         }
-
-        // Threads, applied on their own rather than through applyUpdate. They are not
-        // tracker state - nothing about them is a stat or an item - and routing them
-        // through the update path would put them in the diff, the review rows and the
-        // undo history as if a number had moved.
-        //
-        // They are also not held for review. A thread costs a line in the prompt and
-        // closing a wrong one is a click; holding them would mean a decision per message
-        // about something that is only ever context.
-        applyThreadsFromReply(parsed, messageId, String(messageText));
 
         /* Strangers' kinds, recorded for everyone asked about - an answer that is missing or
            not one of the tags counts as none fitting, so nobody waits for good. The chat is
@@ -191,7 +182,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
 
         // Profiles, for whichever fields have been unlocked. Outside applyUpdate on
         // purpose: these live on the card rather than in the state.
-        applyProfileFromReply(parsed);
+        applyProfileFromReply(parsed, messageId, String(messageText));
 
         // Propose, then decide. A dry run says what the update would do, so additions,
         // removals and implausible jumps can be held back for a look rather than
@@ -239,6 +230,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // narrator wrote, not a reading of the prose, so it applies rather than being
         // proposed, and lands as its own undo step.
         const timed = applyTimeRules(messageId);
+        const goalChanges = applyGoalsFromReply(parsed, messageId, String(messageText));
 
         // Written even when nothing changed, so a quiet message is distinguishable from
         // a message older than the record. Costs no prompt tokens: extra is not read
@@ -252,7 +244,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         }
 
         extractedMessages.add(key);
-        const appliedCount = auto.length + timed.rows.length;
+        const appliedCount = auto.length + timed.rows.length + goalChanges.length;
         const parts = [
             `${appliedCount} applied`,
             `${pending.length} awaiting review`,

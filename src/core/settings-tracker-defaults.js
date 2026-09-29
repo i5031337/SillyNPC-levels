@@ -1,3 +1,6 @@
+/** Built-in guidance for the optional inline status block. */
+export const DEFAULT_INLINE_RULES = 'Update stats realistically based on events. HP and Energy should change according to combat or resting. Location and Time should progress logically. Avoid double-deducting spell or skill costs that were already paid in previous turns.';
+
 export const defaultTrackerSettings = {
         enabled: true,
         showOnlyAtBottom: false,
@@ -206,40 +209,6 @@ export const defaultTrackerSettings = {
          */
         extractionReasons: false,
         /**
-         * Things said and done that are not finished with: promises, threats, debts,
-         * secrets, deadlines, plans.
-         *
-         * Off by default. It adds to the extraction prompt on every message, and a reader
-         * that over-reports turns eight useful lines into fifty - so it is opt-in until
-         * you have looked at what it catches on your own chat.
-         */
-        threadsEnabled: false,
-        /**
-         * How many open threads ride along in the scene block - the "active" ones.
-         *
-         * Highest scoring rather than oldest: see threadScore in threads.js for why
-         * ordering by age alone picked badly at both ends of the list.
-         */
-        threadsInjectedMax: 8,
-        /**
-         * How many open threads are kept at all. Past this the lowest scoring is deleted.
-         *
-         * The reason there is a cap: nothing ever removed a thread, so a long chat reached
-         * eighty of them. Only the active handful were ever sent to the story, but every
-         * one of them was pasted into the extraction prompt on every message, so the pile
-         * cost more the bigger it got. Pinned threads do not count against this.
-         */
-        threadsOpenMax: 20,
-        /** How many settled threads stay as a record. Oldest deleted past this. */
-        threadsClosedKeep: 10,
-        /**
-         * Messages until a thread is worth half its kind's weight.
-         *
-         * Ageing is in messages, not time: a story left for a week and picked up where it
-         * stopped has not moved on, and one played hard for an hour has.
-         */
-        threadsHalfLife: 60,
-        /**
          * Remove the tracker's own status block from a message once it has been read.
          *
          * Left in, every block is saved to the chat file and re-sent on every later
@@ -279,19 +248,6 @@ export const defaultTrackerSettings = {
      * A system's snapshot is otherwise only rewritten when you switch away from it,
      * so a system you never leave keeps whatever it held the last time you did.
      */
-    /**
-     * Replaces the built-in extraction instructions when set. Empty uses the built-in.
-     *
-     * Stored empty rather than seeded with the text: the built-in runs to a couple of
-     * kilobytes, it changes between versions, and a copy in everyone's settings would
-     * freeze whatever shipped the day they installed it. Restore recommended fills the
-     * box with the current one to edit.
-     *
-     * The collection schema and the worked example are appended to the *user* message,
-     * not to this, so rewriting these instructions cannot delete the field list the
-     * reply depends on.
-     */
-    extractionPrompt: '',
     systemAutoSaveMinutes: 0,
     /**
      * How many checkpoints to keep per system.
@@ -334,7 +290,6 @@ export const defaultTrackerSettings = {
     </div>
 </div>`,
         customCSS: '',
-        systemRules: 'Update stats realistically based on events. HP and Energy should change according to combat or resting. Location and Time should progress logically. Avoid double-deducting spell or skill costs that were already paid in previous turns.',
         sceneBindingStat: '',
         renderPosition: 'bottom', // 'top' or 'bottom' of message
 };

@@ -6,6 +6,7 @@ import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '.
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { archiveNpcGoals } from './goals.js';
 
 export function bind(deps) {
 function reconcileScenePresence(names, messageId, options = {}) {
@@ -88,6 +89,8 @@ function reconcileScenePresence(names, messageId, options = {}) {
         return (presence.tick - ch.lastSeenTick) < grace;
     });
     if (survivors.length !== state.characters.length) {
+        state.characters.filter(ch => !survivors.includes(ch))
+            .forEach(ch => archiveNpcGoals(state, ch));
         debugLog('Scene presence: dropping',
             state.characters.filter(ch => !survivors.includes(ch)).map(ch => ch.name));
         state.characters = survivors;
@@ -176,6 +179,12 @@ function buildCharacterState(charName, state, trackerSettings) {
     }
     const matchedChar = getAllCharacters()
         .find(c => (c.name || '').toLowerCase() === charName.toLowerCase());
+    if (matchedChar?.id) charData.id = matchedChar.id;
+    const savedGoals = state.npcGoals?.[matchedChar?.id] || state.npcGoals?.[charName.toLowerCase()];
+    if (savedGoals) {
+        charData.goals = structuredClone(savedGoals.goals || {});
+        charData.goalSources = structuredClone(savedGoals.goalSources || {});
+    }
 
     (trackerSettings.npcStats || []).forEach(stat => {
         let value = stat.defaultValue || '';
@@ -217,6 +226,12 @@ function registerActiveCharacter(charName) {
     
     const settingsChars = getAllCharacters();
     const matchedChar = settingsChars.find(c => c.name.toLowerCase() === charName.toLowerCase());
+    if (matchedChar?.id) charData.id = matchedChar.id;
+    const savedGoals = state.npcGoals?.[matchedChar?.id] || state.npcGoals?.[charName.toLowerCase()];
+    if (savedGoals) {
+        charData.goals = structuredClone(savedGoals.goals || {});
+        charData.goalSources = structuredClone(savedGoals.goalSources || {});
+    }
 
     trackerSettings.npcStats.forEach(s => {
         let value = s.defaultValue || '';
@@ -241,6 +256,8 @@ function removeActiveCharacter(charName) {
     const state = JSON.parse(JSON.stringify(deps.committedState || deps.loadStateFromMetadata()));
     const initialLen = state.characters.length;
     
+    state.characters.filter(c => c.name.toLowerCase() === charName.toLowerCase())
+        .forEach(c => archiveNpcGoals(state, c));
     state.characters = state.characters.filter(c => c.name.toLowerCase() !== charName.toLowerCase());
     
     if (state.characters.length !== initialLen) {

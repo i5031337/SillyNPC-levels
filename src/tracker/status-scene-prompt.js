@@ -10,7 +10,9 @@ import {
 } from '../../../../../../script.js';
 import { applyMacros } from '../prompts/macros.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { LOG_PREFIX, debugLog, fieldsForCard, isStaticField } from '../core/constants.js';
+import { DEFAULT_INLINE_RULES } from '../core/settings-tracker-defaults.js';
+import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 
 export function bind(deps) {
 function describeProfileInline(card) {
@@ -94,7 +96,7 @@ function getStatusInstructions() {
     // One text, 'storyBlock' in prompt-texts.js, from the heading to the format line.
     return '\n' + promptText('storyBlock', {
         status: deps.formatCompactStatus(currentState, true),
-        rules: applyMacros(settings.systemRules),
+        rules: applyMacros(DEFAULT_INLINE_RULES),
         npcFields: deps.describeNpcStatFields(settings),
         limits: playerMaxes || npcMaxes ? 'on' : '',
         playerLimits: playerMaxes,

@@ -1,7 +1,6 @@
 import { promptText } from '../prompts/prompt-texts.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from '../core/utils.js';
-import { describeThreads } from '../story/threads.js';
+import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
 import { charactersFromActivatedLore } from '../lore/activated-lore.js';
 
 export function bind(deps) {
@@ -185,10 +184,6 @@ function formatCompactStatus(state, fullDetail = false) {
         profiles: deps.describeCastProfiles(state),
         // And who the story just named without putting on stage.
         offstage: describeNamedButUnlisted(state),
-        // What is still outstanding, riding the block that is already being sent. Nothing
-        // is retrieved to put it here - a thread was caught when it opened, which is the
-        // whole difference between this and searching a summary for it later.
-        threads: describeThreads(state, currentMessageIndex()),
         // What the bracketed lines on the earlier messages are, when they are being sent.
         rule: settings.historyNotes ? promptText('historyNoteRule') : '',
     }).trim();

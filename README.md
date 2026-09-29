@@ -18,16 +18,20 @@ The extension then automatically advances Level to 2 and stores `10/100` XP. The
 current XP maximum stays the threshold for subsequent levels, and large awards can
 cross multiple levels. On a level-up in separate extraction mode, the reader makes
 an additional request to choose a story-appropriate bonus. It may increase an
-eligible numeric player stat by 1–5, or write a narrative perk. The bonus waits for
-review while earned XP and Level apply. The latest accepted bonus appears in the
+eligible numeric player stat by 1–5, or write a narrative perk. The bonus follows
+the configured review policy. The latest accepted bonus appears in the
 player's `Level Bonus` field. In inline mode, the narrator is asked
 to supply that field with its status update. If no bonus can be read from the LLM,
-the level-up still occurs; the bonus can be entered on the player sheet.
+the level-up still occurs; the bonus can be entered on the Player tab.
 
-XP awards are model judgments and can be corrected on the player sheet. Each award
+XP awards are model judgments and can be corrected on the Player tab. Each award
 should correspond to an accomplishment in the latest message; events already counted
 should not be awarded again. The tracker review settings still govern proposed
 changes, including a review mode that holds all changes for approval.
+The in-chat tracker offers one undo step for the latest state change. Swiping,
+regenerating, or editing the latest assistant reply rebases that turn's tracker
+changes from its pre-reply state. Older messages no longer show reconstructed
+tracker boxes; the current box appears under the latest message.
 
 [![SillyTavern Compatible](https://img.shields.io/badge/SillyTavern-Extension-crimson?style=for-the-badge&logo=electron&logoColor=white)](https://github.com/SillyTavern/SillyTavern)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
@@ -56,11 +60,12 @@ SillyNPC operates across two core modules:
 * **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define.
 * **Dedicated Extraction Pass:** Processes state updates in a background pass to keep tracker logic from polluting the primary prompt context.
 * **Review Controls:** Valid reader changes apply automatically by default. You can switch to review modes that hold risky changes or all changes for approval.
-* **Interactive Sheets:** Detailed character sheet modal for inspecting and manually editing stats, appearance, and inventory.
+* **Interactive Sheets:** Edit the selected persona's profile, stats, items, memories, and goals on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.
 
-### Open Threads
-* **Nothing Gets Forgotten:** Promises, threats, debts, secrets, deadlines and plans are caught as they are made and sent with every message until they are settled.
-* **Kept With Their Source:** Each thread stores the line it came from, so one the reader invented is visible at a glance.
+### Goals & Memories
+* **Current Goals:** The reader may propose sourced changes to the player's short and long-term goals and NPC short-term goals. Edit them in **Goals** or on the character sheet; System Builder chooses which goal fields exist.
+* **Character Memories:** The reader appends sourced memories to profile fields marked **Memory**. Each character retains a configurable number of active entries, with older entries in a readable archive.
+* **Archived Threads:** The **Goals** tab keeps old Threads records readable. They no longer change or enter prompts.
 
 ### Floating HUD
 * **Four Meter Styles:** Bars, segmented bars, rings around the portrait, or text only.
@@ -71,11 +76,11 @@ SillyNPC operates across two core modules:
 * **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** copies one, while **New profile in this chat** starts a blank NPC with the same name. New chat NPCs only link existing lorebook entries when you explicitly choose Sync.
 * **Portable Character Files:** Export identity, profile, linked lore text, and NPC stats marked Advancement or Locked. Turn stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
 * **Export World Characters:** Under **Systems → Manager**, export reusable world cards and NPCs from every chat assigned to a Saved System, including chats that are closed and Systems that are not active. The existing full System export is still available separately.
-* **Integrated Generation:** Generates matching lorebook entries and portraits directly via connected APIs.
+* **Integrated Generation:** Generates lorebook entries and uses SillyTavern's Image Generation extension for portraits, with its configured provider.
 
 ### Theming & Analytics
 * **Built-in Themes:** Seamless Native, Terminal, Cyberpunk, Monochrome, Modern Dark, Fantasy HUD, Tabletop Parchment, Analog Horror, and Rosewater.
-* **Token Tracking:** Monitors token consumption, instruction costs, and average usage across tracker extractions, lore generation, and history scans.
+* **Token Tracking:** Monitors token consumption and average usage across tracker extractions, lore generation, and collection scans.
 * **Recommended for Better Visuals:** the [Moonlit Echoes](https://github.com/RivelleDays/SillyTavern-MoonlitEchoesTheme) theme.
 
 ---
@@ -126,17 +131,21 @@ Reload SillyTavern.
 2. **Assigning Avatars:**
    * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore, profile details, tracker fields, and belongings; completed stages remain in place if a later stage fails. Open the card and press **Fill** to retry.
    * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking a reusable card's portrait offers a new profile for this chat or its editor; clicking a chat NPC's portrait opens its editor.
-   * Portrait generation is off in automatic Fill by default because it can incur a separate API cost. Enable **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor.
+   * Automatic Fill draws a portrait by default when the NPC has none. Change **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor. Your selected image provider may charge separately.
    * Generated portraits use SillyTavern's Image Generation extension and its configured provider.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
-   * The HUD appears once the tracker is running; choose a meter style under the **HUD** tab.
+   * The HUD appears once the tracker is running; choose Plate, Underlines, Pip Rows, or Split Ring under the **HUD** tab.
 
 ### NPC stats and character transfers
 
 In **Systems → Builder → NPC**, choose **Turn** or **Advancement**. Turn fields may change as the story unfolds and start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Advancement fields travel with the character, are hidden from turn extraction, and can be edited manually. Locked fields also travel with the character. Existing Innate fields without an update policy become Advancement; their stored values are preserved.
 
 In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. **Level bonus** independently chooses which numeric fields may be raised after a level-up. A Turn field such as HP may also be eligible for a level bonus, so current resource changes and maximum growth can share one field.
+
+Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. A field's ID stays stable when its label changes. **Anchored** fields can be seeded by Fill when empty; **Replaceable** fields can change on a sourced turn; **Memory** fields collect sourced entries. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
+
+A chat chooses its System before play starts and keeps it after the first player message. Systems define reusable rules and fields; the current cast and player state belong to the chat. The selected persona's identity, profile, and portrait carry across chats, while stats, items, goals, and memories are kept per chat and persona.
 
 **Export selected** on the Characters page previews which fields travel. Character files use version 2; older character files still import, with their mixed stat values classified by the destination System. Linked lore travels as text and can be recreated in the destination lorebook. Portrait paths are local to one installation, so exported files contain no portraits. **Export World Characters** retains each source chat and NPC ID in the file, allowing same-name NPCs from different chats to remain separate on import.
 
@@ -151,17 +160,16 @@ Advanced settings and fine-tuning parameters remain hidden until **Show Every Se
 | Tab | Contents |
 | :--- | :--- |
 | **Characters** | Character cards, profiles, portraits, and roster categories |
-| **Player** | The selected persona's profile, portrait, stats, items, and level; also opens from the HUD |
+| **Player** | The selected persona's profile, portrait, stats, items, memories, goals, and level; also opens from the HUD |
 | **Appearance** | Themes, speech dividers, spacing, avatar shapes, and fallback faces |
 | **Writing Rules** | Dialogue format, narrator rules, ban list, and how replies are parsed |
-| **Threads** | Active plotlines, promises, debts, secrets, and deadlines |
+| **Goals** | Current player and NPC goals, plus readable archived Threads from older chats |
 | **Tracker** | Extraction passes, review settings, time rules, and history scans |
 | **HUD** | Floating on-screen widget configuration and display modes |
-| **Systems** | Custom attribute definitions, stat limits, and world presets |
+| **Systems** | Reusable rules, player and NPC profile fields, update policies, goals, and stat definitions |
 | **Generation** | Automated lorebook creation and portrait generation settings |
-| **Prompts** | Review prompt templates, token budgets, and injection depth |
 | **Stats** | Token analytics and cost tracking for background LLM passes |
-| **Advanced** | Master switches, console logging, backups, and UI sizing |
+| **Advanced** | Master switches, console logging, and UI sizing |
 
 ---
 
@@ -186,7 +194,7 @@ window.SILLYNPC_DEBUG = true;
 | `index.js`, `src/entry/` | Extension startup and SillyTavern event handlers |
 | `src/core/`, `src/prompts/` | Settings, constants, helpers, and prompt rules |
 | `src/chat/`, `src/characters/`, `src/lore/`, `src/story/` | Message decoration, character ownership, lore, and story history |
-| `src/tracker/` | Tracker state, extraction, reviews, history, and XP |
+| `src/tracker/` | Current tracker state, extraction, review, goals, memories, and XP |
 | `src/ui/` | Settings, character sheets, HUD, and other views |
 | `src/api/` | Lore and portrait generation and storage |
 | `style.css`, `styles/*.css` | Ordered theme and interface styling |

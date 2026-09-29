@@ -1,17 +1,21 @@
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
-import { LOG_PREFIX, debugLog, fieldsForCard, aiMayEditProfileField, anyProfileFieldUnlocked } from '../../core/constants.js';
+import { getContext } from '../../../../../../st-context.js';
+import { isChatCharacter } from '../../characters/character-repository.js';
+import { LOG_PREFIX, debugLog } from '../../core/constants.js';
+import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
+import { appendMemory } from '../../core/profile-memories.js';
+import { replaceableProfileValue, sourcedMemory } from '../../core/profile-update-policy.js';
 import { getPlayerCard, findCardForName, loadStateFromMetadata, saveStateToMetadata } from '../status-logic.js';
-import { currentMessageIndex, splitValue } from '../../core/utils.js';
+import { splitValue } from '../../core/utils.js';
 import { progressXp, boostStat } from '../progression.js';
-import { profileOwners } from './status-extractor-schema.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
-import { mentionsName } from '../../story/mentions.js';
-import { coerceThread, addThread, closeThread, openThreads, touchThreads, pruneThreads } from '../../story/threads.js';
-import { recordThreadChanges } from '../snapshots/status-snapshots.js';
 import { syncProfileToLore } from '../../lore/lore-sync.js';
 import { buildLevelBonusPrompt } from './status-extractor-prompt.js';
 import { canAdvanceStat } from '../stat-update-policy.js';
+import { goalFields, goalValue, setGoal } from '../goals.js';
+import { validGoalProposal } from '../goal-proposals.js';
+import { readNpcMemories, writeNpcMemories } from '../npc-memories.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
 export async function addLevelBonus(parsed, state, trackerSettings, messageText, leadUp = []) {
@@ -66,19 +70,24 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
         bonusName };
 }
 
-export function applyProfileFromReply(parsed) {
-    if (!anyProfileFieldUnlocked(profileOwners())) return [];
-
+export function applyProfileFromReply(parsed, messageId = null, messageText = '') {
     const changed = [];
     const touched = new Set();
+    const settings = getSettings();
+    const limit = settings.statusTracker?.presets?.[settings.activeSystem]?.definition?.memories?.maxEntriesPerCharacter;
+    const state = loadStateFromMetadata();
+    let memoriesChanged = false;
+    const memoryLore = new Map();
 
-    const write = (card, incoming) => {
+    const write = (card, incoming, isPlayer = false) => {
         if (!card || !incoming || typeof incoming !== 'object') return;
         if (!card.profile || typeof card.profile !== 'object') card.profile = {};
 
         for (const field of fieldsForCard(card)) {
-            if (!aiMayEditProfileField(card, field.id)) continue;
-            const value = String(incoming[field.id] ?? '').trim();
+            if (field.policy !== 'replaceable') continue;
+            const quote = incoming.profileEvidence?.[field.id]
+                ?? parsed?.why?.[`${card.name}.${field.id}`];
+            const value = replaceableProfileValue(field, incoming.profile?.[field.id], quote, messageText);
             // An omitted field means "unchanged", and a blank one is the model failing to
             // answer rather than deciding somebody has no personality.
             if (!value || value === String(card.profile[field.id] ?? '').trim()) continue;
@@ -86,154 +95,68 @@ export function applyProfileFromReply(parsed) {
             changed.push(`${card.name}.${field.label}`);
             touched.add(card);
         }
+        const memoryFields = new Map(fieldsForCard(card).map(f => [f.id, f]));
+        for (const proposed of Array.isArray(incoming.memories) ? incoming.memories : []) {
+            const candidate = sourcedMemory(memoryFields.get(proposed?.fieldId), proposed, messageId, messageText);
+            if (!candidate) continue;
+            const actor = isPlayer ? state.player : null;
+            if (isPlayer && !actor) continue;
+            const source = isPlayer ? actor.memories : readNpcMemories(state, card);
+            const { store, added } = appendMemory(source, candidate, limit);
+            if (!added) continue;
+            if (isPlayer) actor.memories = store;
+            else writeNpcMemories(state, card, store);
+            memoriesChanged = true;
+            memoryLore.set(card, store);
+            changed.push(`${card.name}.${proposed.fieldId}`);
+        }
     };
 
-    if (parsed?.player?.profile) {
-        try { write(getPlayerCard(), parsed.player.profile); } catch { /* no persona */ }
+    if (parsed?.player?.profile || parsed?.player?.memories) {
+        try { write(getPlayerCard(), parsed.player, true); } catch { /* no persona */ }
     }
 
     for (const incoming of Array.isArray(parsed?.characters) ? parsed.characters : []) {
-        if (incoming?.profile) write(findCardForName(incoming.name), incoming.profile);
+        if (incoming?.profile || incoming?.memories) write(findCardForName(incoming.name), incoming);
     }
 
+    if (memoriesChanged) saveStateToMetadata(state, { label: 'Memories', recordHistory: false });
     if (changed.length) {
-        saveSettings();
-        for (const card of touched) syncProfileToLore(card).catch(err =>
+        if (touched.size) saveSettings();
+        if ([...touched].some(card => card?.id && isChatCharacter(card.id))) {
+            getContext()?.saveMetadataDebounced?.();
+        }
+        for (const card of new Set([...touched, ...memoryLore.keys()])) syncProfileToLore(card, memoryLore.get(card)).catch(err =>
             console.error(LOG_PREFIX, 'Could not update profile in lorebook', err));
         debugLog('Profile fields the story changed:', changed);
     }
     return changed;
 }
 
-/**
- * Opens and closes threads from what the reader returned.
- *
- * Saved in its own step rather than through applyUpdate, and returns what it did so a
- * caller reading a whole history can report totals.
- *
- * @param {object} parsed The reply.
- * @param {string|number|null} messageId Which message opened them.
- * @param {string} [messageText] The message itself, used only to decide whether the player
- *   was named in it. The history scan does not pass one, and does not need to.
- * @returns {{ opened: number, closed: number }}
- */
-export function applyThreadsFromReply(parsed, messageId = null, messageText = '') {
-    const trackerSettings = getSettings().statusTracker;
-    if (trackerSettings.threadsEnabled !== true) return { opened: 0, closed: 0 };
-
-    const proposed = Array.isArray(parsed?.threads) ? parsed.threads : [];
-    const resolved = Array.isArray(parsed?.closed) ? parsed.closed : [];
+/** Apply only configured, evidenced goal changes in this turn. */
+export function applyGoalsFromReply(parsed, messageId, messageText) {
+    if (messageId == null) return [];
     const state = loadStateFromMetadata();
-    const present = (Array.isArray(parsed?.characters) ? parsed.characters : [])
-        .map(c => c?.name)
-        .filter(Boolean);
-
-    /* The player, who is never in `characters` - they are reported under `player` - and so
-       could never touch a thread about themselves. In a real chat most threads are about
-       the player, and those were the ones ageing fastest.
-
-       Only when the reply actually names them, rather than always. They are in every scene
-       by definition, so counting them unconditionally would mean their threads never
-       decayed at all and simply held the cap by weight. Naming is the honest signal: a
-       reply that says "Kristof, you're the one holding the line" is engaging with them,
-       and one that never mentions them is not. Second-person narration means this is
-       often false, which is the point. */
-    const playerName = String(state?.player?.name || '').trim();
-    if (playerName && mentionsName(messageText, playerName)) present.push(playerName);
-
-    // No early return on "nothing proposed" any more. Most messages open and close
-    // nothing, and those are exactly the messages that say a thread is still live: whoever
-    // it is about was in the scene. Leaving before touching them was what let a running
-    // obligation age as though the story had dropped it.
-    if (!proposed.length && !resolved.length && !present.length) return { opened: 0, closed: 0 };
-
-    const now = currentMessageIndex();
-    let opened = 0;
-    let closed = 0;
-    const touched = touchThreads(state, present, messageId ?? now);
-
-    // Kept so the message can be told what it did: rebaseToSwipe rebuilds a swipe from
-    // what was recorded against it, and a thread recorded nowhere is a thread that swipe
-    // loses on the way back.
-    const openedThreads = [];
-    const closedIds = [];
-
-    for (const raw of proposed) {
-        const thread = coerceThread(raw, { messageId });
-        // Refused rather than repaired. A thread with no quotable source is a thread
-        // nobody opened, and the whole value of these is that the line can be checked.
-        if (!thread) continue;
-        if (addThread(state, thread)) {
-            openedThreads.push(thread);
-            opened += 1;
+    const changed = [];
+    const apply = (actor, scope, proposed, label) => {
+        if (!actor || !proposed || typeof proposed !== 'object') return;
+        for (const field of goalFields(scope)) {
+            const valid = validGoalProposal(field, goalValue(actor, field.id), proposed[field.id], messageText);
+            if (!valid) continue;
+            if (setGoal(actor, field.id, valid.text, {
+                messageId, quote: valid.quote, action: valid.action,
+            })) changed.push(`${label}.${field.label}`);
         }
+    };
+    apply(state.player, 'player', parsed?.player?.goals, state.player?.name || 'Player');
+    for (const proposal of Array.isArray(parsed?.characters) ? parsed.characters : []) {
+        const actor = (state.characters || []).find(item =>
+            String(item.name).toLocaleLowerCase() === String(proposal?.name).toLocaleLowerCase());
+        apply(actor, 'npc', proposal?.goals, actor?.name || proposal?.name);
     }
-
-    for (const quote of resolved) {
-        const key = String(quote ?? '').trim().toLowerCase();
-        if (!key) continue;
-        const match = openThreads(state)
-            .find(t => String(t.quote).toLowerCase().includes(key)
-                || key.includes(String(t.quote).toLowerCase()));
-        if (match && closeThread(state, match.id)) {
-            closedIds.push(match.id);
-            closed += 1;
-        }
+    if (changed.length) {
+        saveStateToMetadata(state, { label: 'Goals', recordHistory: false });
+        debugLog('Goals the story changed:', changed);
     }
-
-    // Only ever grew before. Every open thread also went into the next extraction prompt
-    // as "already open, do not list again", so a chat that had collected eighty of them
-    // was paying for eighty lines on every message while only the injected handful ever
-    // reached the story.
-    const pruned = pruneThreads(state, now);
-
-    if (opened || closed || touched || pruned.open || pruned.closed) {
-        saveStateToMetadata(state, { label: 'Threads', recordHistory: false });
-        // Only when there is a message to record against. The catch-up scan passes none:
-        // it reads the whole story rather than one reply, so there is no swipe to return
-        // to and nothing for a rebuild to put back.
-        //
-        // Only what this message did, too - a thread dropped by the cap was not closed by
-        // the reply, so a swipe back has nothing to undo about it.
-        if ((opened || closed) && messageId !== null && messageId !== undefined) {
-            recordThreadChanges(messageId, { opened: openedThreads, closed: closedIds });
-        }
-        debugLog(`Threads: opened ${opened}, closed ${closed}, touched ${touched}, `
-            + `pruned ${pruned.open} open and ${pruned.closed} settled`);
-    }
-    return { opened, closed, touched, pruned };
-}
-
-/**
- * Brings an already-open chat within the caps.
- *
- * The caps arrived after the flooding did, so the chats that need them most are the ones
- * that already have eighty threads in them and would otherwise carry that until their next
- * extraction. Runs on chat load.
- *
- * It says what it removed rather than doing it quietly. Deleting sixty entries without a
- * word would look like the feature had lost them, and the number is the thing that makes
- * it read as tidying instead.
- *
- * @returns {{ open: number, closed: number }}
- */
-export function tidyThreadsOnLoad() {
-    const trackerSettings = getSettings().statusTracker;
-    if (trackerSettings.threadsEnabled !== true) return { open: 0, closed: 0 };
-
-    const state = loadStateFromMetadata();
-    if (!Array.isArray(state?.threads) || !state.threads.length) return { open: 0, closed: 0 };
-
-    const pruned = pruneThreads(state, currentMessageIndex());
-    if (!pruned.open && !pruned.closed) return pruned;
-
-    saveStateToMetadata(state, { label: 'Threads', recordHistory: false });
-
-    const parts = [];
-    if (pruned.open) parts.push(`${pruned.open} stale`);
-    if (pruned.closed) parts.push(`${pruned.closed} settled`);
-    toastr.info(`Tidied ${parts.join(' and ')} thread${pruned.open + pruned.closed === 1 ? '' : 's'}. `
-        + 'Pin one to keep it for good.', 'SillyNPC');
-    debugLog(`Threads tidied on load: ${pruned.open} open, ${pruned.closed} settled`);
-    return pruned;
+    return changed;
 }

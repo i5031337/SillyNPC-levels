@@ -1,7 +1,5 @@
 import { buildSettingToggle, buildSettingSlider, buildSettingSelect, buildSettingNumber } from '../shared/ui-shared.js';
 import { buildPlacementPicker, buildHistoryNoteFields } from './ui-tracker-history.js';
-import { buildPromptEditor } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { buildConnectionProfilePicker } from '../settings/ui-connection-profiles.js';
 
 export function renderTrackerDisplayAndReading({ container, settings, onApply, onChange, section }) {
@@ -73,15 +71,8 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
         onChange
     }));
 
-    // Which of the two applies is the registry's answer, not a second copy of the same
-    // condition. Only shown in the mode that sends it: the system rules used to sit under
-    // "AI & Customization" in every mode, quietly collecting text that in extract mode
-    // never reached a model at all.
     if (settings.extractionMode === 'extract') {
         container.appendChild(buildConnectionProfilePicker(onApply));
-        container.append(buildPromptEditor(promptById('extraction'), { onChange: onApply }));
-    } else {
-        container.append(buildPromptEditor(promptById('systemRules'), { onChange: onApply }));
     }
 
     container.append(buildSettingSlider({

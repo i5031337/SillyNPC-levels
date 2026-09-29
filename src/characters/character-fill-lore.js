@@ -3,7 +3,7 @@ import { debugLog } from '../core/constants.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from '../api/api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from '../lore/lorebook.js';
-import { NPC_LORE_FIELDS } from '../core/constants-profile.js';
+import { resolveProfileFields } from '../core/profile-fields.js';
 import { parseLoreContent } from '../lore/lore-format.js';
 
 /** The linked entry's text, or an empty string. Read fresh: it may have just been written. */
@@ -40,14 +40,14 @@ export async function fillLore(char) {
     const parsed = parseLoreContent(existing);
     char.profile ||= {};
     let restored = false;
-    for (const field of NPC_LORE_FIELDS) {
+    for (const field of resolveProfileFields('npc')) {
         if (!String(char.profile[field.id] ?? '').trim() && parsed?.[field.id]) {
             char.profile[field.id] = parsed[field.id];
             restored = true;
         }
     }
     if (restored) saveSettings();
-    const missing = NPC_LORE_FIELDS.some(field => !String(char.profile[field.id] ?? '').trim());
+    const missing = resolveProfileFields('npc').some(field => !String(char.profile[field.id] ?? '').trim());
     if (parsed && !missing) {
         return { ok: true, action: 'linked entry is complete' };
     }

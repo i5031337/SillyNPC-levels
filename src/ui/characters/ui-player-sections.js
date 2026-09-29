@@ -5,9 +5,12 @@ import { escapeHtml } from '../../core/utils.js';
 import { buildPortraitBlock, openLightbox } from './ui-portrait.js';
 import { renderLorebookSection } from '../story/ui-lorebook-section.js';
 import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
+import { renderMemorySection } from './ui-memories.js';
+import { renderGoalEditor } from '../story/ui-goals.js';
+import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { renderCollectionUI, choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
-import { applyUpdate, getPlayerCard } from '../../tracker/status-logic.js';
+import { applyUpdate, getPlayerCard, loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
 import { currentTab, isCollectionEditMode, bulkFor, refreshPlayerSheet } from './ui-player-sheet.js';
 
 export function renderSidebar(dom) {
@@ -77,6 +80,21 @@ export function renderTabExtras(dom) {
                 + 'write it, and the reader will be told it as established fact.';
             readOnly.replaceChildren(empty);
         }
+        renderMemorySection(readOnly, {
+            read: () => loadStateFromMetadata().player?.memories,
+            write: store => {
+                const state = loadStateFromMetadata();
+                state.player.memories = store;
+                saveStateToMetadata(state, { label: 'Player memories', recordHistory: false });
+            },
+            fields: profileFieldsForCard(card),
+            limit: getSettings().statusTracker?.presets?.[getSettings().activeSystem]
+                ?.definition?.memories?.maxEntriesPerCharacter,
+        });
+        const state = loadStateFromMetadata();
+        const goals = renderGoalEditor(state.player, 'player', state,
+            () => refreshPlayerSheet(dom));
+        if (goals) readOnly.append(goals);
     }
 
     const form = dom.querySelector('.sillynpc-sheet-content .sillynpc-sheet-profile-form');

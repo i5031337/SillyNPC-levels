@@ -14,7 +14,6 @@ import { bind as bind_collection_updates } from './status-collection-updates.js'
 import { bind as bind_collection_schema } from './status-collection-schema.js';
 import { bind as bind_stat_schema } from './status-stat-schema.js';
 import { bind as bind_system_presets } from './status-system-presets.js';
-import { bind as bind_checkpoints } from './status-checkpoints.js';
 
 // Bind every provider before callers use the shared API. Each provider registers
 // named getters, so cross-module calls resolve after initialization completes.
@@ -35,7 +34,6 @@ for (const bind of [
     bind_collection_schema,
     bind_stat_schema,
     bind_system_presets,
-    bind_checkpoints,
 ]) bind(deps);
 Object.freeze(deps);
 
@@ -63,6 +61,9 @@ export const getSwipeBase = deps.getSwipeBase;
 export const swipeBaseRecord = deps.swipeBaseRecord;
 export const setSwipeBaseAligner = deps.setSwipeBaseAligner;
 export const getProfileBase = deps.getProfileBase;
+export const snapshotProfiles = deps.snapshotProfiles;
+export const recordTurnEffects = deps.recordTurnEffects;
+export const refreshTurnBase = deps.refreshTurnBase;
 export const initStatusLogic = deps.initStatusLogic;
 export const PERSONA_KEY = deps.PERSONA_KEY;
 export const hasOpenChat = deps.hasOpenChat;
@@ -77,7 +78,6 @@ export const loadStateFromMetadata = deps.loadStateFromMetadata;
 export const saveStateToMetadata = deps.saveStateToMetadata;
 export const getHistoryEntries = deps.getHistoryEntries;
 export const undoLastChange = deps.undoLastChange;
-export const restoreHistoryEntry = deps.restoreHistoryEntry;
 export const formatCompactStatus = deps.formatCompactStatus;
 export const getStatusInstructions = deps.getStatusInstructions;
 export const getStatusExample = deps.getStatusExample;
@@ -119,10 +119,5 @@ export const setActiveSystem = deps.setActiveSystem;
 export const createSystem = deps.createSystem;
 export const saveSystemPreset = deps.saveSystemPreset;
 export const applySystemPreset = deps.applySystemPreset;
-export const getCheckpoints = deps.getCheckpoints;
-export const saveCheckpoint = deps.saveCheckpoint;
-export const restoreCheckpoint = deps.restoreCheckpoint;
-export const deleteCheckpoint = deps.deleteCheckpoint;
-export const applyCheckpointSchedule = deps.applyCheckpointSchedule;
 export const deleteSystemPreset = deps.deleteSystemPreset;
 export const importSystemPreset = deps.importSystemPreset;

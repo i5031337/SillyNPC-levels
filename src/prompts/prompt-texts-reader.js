@@ -18,7 +18,6 @@ export const readerPromptTexts = [
             limits: 'Configured stat limits and allowed values.',
             collections: 'Configured collections and their fields.',
             notes: 'Additional reader context registered by other extensions.',
-            openThreads: 'Relevant open story threads.',
             earlier: 'Recent messages, already reflected in the current state.',
             message: 'The latest story event.',
             pendingChanges: 'The tracker update that triggered this level-up.',
@@ -36,9 +35,6 @@ Limits: {{limits}}
 Collections: {{collections}}
 {{/collections}}
 {{notes}}
-{{#openThreads}}
-Open threads: {{openThreads}}
-{{/openThreads}}
 {{#earlier}}
 Earlier messages (reflected in state): {{earlier}}
 {{/earlier}}
@@ -64,15 +60,14 @@ Choose one story-appropriate bonus: a narrative perk or an increase of 1 to 5 in
             strangerExample: 'One stranger paired with one tag.',
             collections: 'Each collection and the fields its items have.',
             collectionExample: 'A worked change in your own collection and field names.',
-            profileFields: 'Profile fields you have unlocked for the reader, as Name.field.',
+            profileFields: 'System profile fields the reader may update, with their policies.',
             minimalReply: 'A no-change reply listing the cast present.',
             changedReply: 'A numeric delta, using one of your configured player stat names.',
             numericDeltas: 'Existing numeric stats eligible for delta updates, by owner.',
             earlier: 'The messages before this one, when you send any.',
             message: 'The message being read.',
             reasons: 'Switch: on when "Ask for reasons" is on.',
-            threads: 'Switch: on when threads are on.',
-            openThreads: 'The quotes of the threads already in play.',
+            goals: 'Configured player and NPC goals, with current values and guidance.',
         },
         text: `### CONFIGURED STATS AND COLLECTIONS
 Use the stats in the current state and NPC fields, and the collections listed below.
@@ -144,7 +139,7 @@ For new NPC starting items, use supported details from the story or character ba
 {{#profileFields}}
 
 ### PROFILE FIELDS YOU MAY UPDATE
-These fields describe lasting traits, such as a scar, haircut, or changed manner. Report a listed field under the character's "profile" when the latest message clearly changes it.
+For a replaceable field, report a new value under "profile" only when the latest message changes it. Put an exact supporting quote from that message under "profileEvidence" with the same field key. For a memory field, append a distinct event under "memories" as {"fieldId":"...","text":"...","quote":"exact words from latest message"}. Never rewrite a memory field under "profile". Omit anchored fields entirely. The reader cannot alter existing memories.
 {{profileFields}}
 {{/profileFields}}
 {{#minimalReply}}
@@ -177,22 +172,12 @@ Keep initial and replacement value formats: "8/10" stays a pool; a plain number 
 {{#reasons}}
 Put "why" first in the JSON object. For each change, use a short quote from the latest message or a short clause naming the event. Key it by stat: "Time" for a world stat, "Player.Health" for the player, "<name>.Health" for a character. For an initialized NPC field, say "initial estimate" with context, or "invented".
 {{/reasons}}
-{{#threads}}
-Return a "threads" array for unresolved commitments opened in the latest message:
-  promise - somebody undertook to do something
-  threat - somebody said what would happen if
-  debt - somebody owes or is owed
-  secret - somebody was told something in confidence
-  deadline - something must happen by a time or an event
-  plan - somebody set out to do something later
-  invitation - somebody invited somebody, or an arrangement to meet was made
-Each: { "kind": "...", "text": "outstanding matter", "quote": "exact words from the latest message", "who": "person involved" }. Use an empty array when the message opens no thread.
-{{#openThreads}}
-Existing threads:
-{{openThreads}}
-{{/openThreads}}
-Return "closed" with the quoted lines of existing threads resolved by this message.
-{{/threads}}
+{{#goals}}
+### GOAL CHANGES
+Configured fields and current goals:
+{{goals}}
+Only report an explicit, meaningful change in the latest message. Under the relevant actor's "goals", use a configured field key and an object with "action" ("set" for an empty field, "replace" for a changed goal, or "complete" for one finished or abandoned), "text" (new goal for set/replace; empty for complete), and "quote" (exact supporting words from the latest message). A goal is an actual objective the character pursues, not every promise, secret, invitation, or plot detail. Do not repeat unchanged goals.
+{{/goals}}
 
 Report changed fields and initial values for blank NPC fields.`,
     },

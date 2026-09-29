@@ -25,9 +25,9 @@ const settings = {
 let saves = 0;
 const deps = { getInitialStatValue: value => value };
 bindFrom('../src/tracker/status-persona-state.js',
-    ['getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'PROFILE_FIELDS'],
+    ['getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'resolveProfileFields'],
     [() => ({}), { personas: { 'Rhea.png': 'Rhea' } }, 'Rhea.png',
-        () => settings, () => { saves++; }, () => {}, []])(deps);
+        () => settings, () => { saves++; }, () => {}, () => []])(deps);
 
 test('fresh chat and persona values start at System defaults, without old global inventory', () => {
     const chatA = { player: { name: 'Rhea', personaKey: 'Rhea.png', ...deps.createChatPlayerSeed() } };

@@ -412,5 +412,3 @@ export function stripStats(parsed) {
     }
     return out;
 }
-
-export { threadScanSystemPrompt, scanHistoryForThreads, buildThreadScanPrompt } from './history-thread-scan.js';

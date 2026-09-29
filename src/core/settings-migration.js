@@ -1,4 +1,4 @@
-import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS } from './constants.js';
+import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS, normalizeHudLayoutId } from './constants.js';
 import { paletteIndexFor } from './hash.js';
 import { normaliseNpcPersistence } from '../tracker/stat-persistence.js';
 import { normaliseStatUpdatePolicies } from '../tracker/stat-update-policy.js';
@@ -209,6 +209,9 @@ function migrateLegacyTrackerLayout(settings) {
                 toLayout[settings.statusTracker.hudMeterStyle] || 'plate';
         }
         delete settings.statusTracker.hudMeterStyle;
+    }
+    if (settings.statusTracker) {
+        settings.statusTracker.hudLayout = normalizeHudLayoutId(settings.statusTracker.hudLayout);
     }
 
     // Schema Migration: Migrate old displayStyle to unified menuStyle

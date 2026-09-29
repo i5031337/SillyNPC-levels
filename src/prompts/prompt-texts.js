@@ -1,4 +1,3 @@
-import { getSettings } from '../core/settings.js';
 import { readerPromptTexts } from './prompt-texts-reader.js';
 import { otherPromptTexts } from './prompt-texts-other.js';
 
@@ -44,9 +43,7 @@ export function fillPromptText(template, values = {}) {
     return out.join('\n');
 }
 
-/** The text for an id - yours when you have written one, the built-in one otherwise - filled. */
+/** Fill the built-in wording for an id. */
 export function promptText(id, values = {}) {
-    const own = getSettings().promptTexts?.[id];
-    const template = typeof own === 'string' && own.trim() ? own : defaultPromptText(id);
-    return fillPromptText(template, values);
+    return fillPromptText(defaultPromptText(id), values);
 }

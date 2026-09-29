@@ -1,8 +1,8 @@
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
-import { debugLog, fieldsForCard, aiMayEditProfileField } from '../../core/constants.js';
-import { activeThreads } from '../../story/threads.js';
-import { currentMessageIndex } from '../../core/utils.js';
+import { debugLog } from '../../core/constants.js';
+import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
+import { goalFields, goalValue } from '../goals.js';
 import { getPlayerCard, findCardForName, describeNpcStatFields } from '../status-logic.js';
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
@@ -76,15 +76,6 @@ function describeExtractionNotes(state, messageText) {
 // Exported for the tests: what reaches the model on every message is worth holding to
 // a shape, and the vocabulary in it is the whole point of this function.
 function readerValues(state, messageText, trackerSettings, leadUp = [], { strangers = [] } = {}) {
-    // What is already open, so the reader is not asked to find it again every message.
-    //
-    // The active ones only. This listed every open thread, which made the block grow with
-    // the pile: a chat carrying eighty of them paid eighty lines here on every single
-    // message, to stop the model re-proposing threads that mostly were not being sent to
-    // it anyway. The ones worth naming are the ones in play, and addThread still refuses
-    // an exact repeat of any of the rest.
-    const openText = activeThreads(state, currentMessageIndex())
-        .map(t => `  - "${t.quote}"`).join('\n');
     /* One text, 'reader' in prompt-texts.js: every section of this request, in order. What
      * each section is for, since the wording is now yours to change:
      *
@@ -95,11 +86,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
      * - KNOWN, BUT NOT IN THE SCENE sits beside the state because it is state.
      * - The collections' fields come before the example, so they read as part of what is
      *   known. Without them a new item arrived with only the field the example showed.
-     * - The reasons and threads asks are here rather than in the system prompt: your own
-     *   extraction prompt replaces the shipped one outright, so anything added there would
-     *   never reach anybody who has written their own. The threads ask names speech acts,
-     *   which can be answered from one message, and its quote rule is what keeps it from
-     *   becoming invented plot - a quote can be checked against the message.
+     * - Goal and profile requests are grounded in the latest message by quoted evidence.
      */
     return {
         state: describeCurrentState(state, trackerSettings) || '(empty)',
@@ -121,9 +108,21 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         earlier: leadUp.join('\n---\n'),
         message: messageText,
         reasons: trackerSettings.extractionReasons === false ? '' : 'on',
-        threads: trackerSettings.threadsEnabled === true ? 'on' : '',
-        openThreads: openText,
+        goals: describeGoalFields(state),
     };
+}
+
+function describeGoalFields(state) {
+    const lines = [];
+    const add = (actor, scope, name) => {
+        for (const field of goalFields(scope)) {
+            const current = goalValue(actor, field.id);
+            lines.push(`- ${name}.${field.id}: ${current || '(empty)'}${field.guidance ? ` — ${field.guidance}` : ''}`);
+        }
+    };
+    add(state?.player, 'player', state?.player?.name || 'Player');
+    for (const actor of state?.characters || []) add(actor, 'npc', actor.name);
+    return lines.join('\n');
 }
 
 export function buildUserPrompt(state, messageText, trackerSettings, leadUp = [], options = {}) {
@@ -166,11 +165,11 @@ export function collectLeadUp(messageId, count) {
     return out;
 }
 /**
- * The unlocked profile fields, with what they currently say.
+ * Profile fields the active System permits the reader to change.
  *
  * The schema grew a `profile` key and nothing told the model it existed, which left a slot
  * with no instruction and no current value to compare against - it would have been writing
- * blind. Here rather than in the system prompt for the reason threads and the reasons
+ * blind. Here rather than in the system prompt for the same reason that the reasons
  * object are here: a user's own extraction prompt replaces the shipped one outright, and an
  * ask that lives only in the shipped text never reaches them.
  *
@@ -185,8 +184,8 @@ function describeOpenProfileFields(state) {
     // Names only. The values are in the state block above, where every other fact about a
     // character lives - repeating them here sent an appearance twice in the same message.
     const describe = (card, label) => {
-        const open = fieldsForCard(card).filter(f => aiMayEditProfileField(card, f.id));
-        for (const field of open) lines.push(`- ${label}.${field.id}`);
+        const open = fieldsForCard(card).filter(f => f.policy === 'replaceable' || f.policy === 'memory');
+        for (const field of open) lines.push(`- ${label}.${field.id} (${field.policy})`);
     };
 
     if (state?.player?.name) {

@@ -1,0 +1,7 @@
+.sillynpc-memory-section { width: 100%; display: grid; gap: 12px; margin-top: 16px; }
+.sillynpc-memory-section h3 { margin: 0; }
+.sillynpc-memory-group { display: grid; gap: 8px; }
+.sillynpc-memory-add { display: grid; gap: 6px; }
+.sillynpc-memory-row { display: grid; gap: 5px; padding: 8px; border: 1px solid var(--sillynpc-border); border-radius: 6px; }
+.sillynpc-memory-text { width: 100%; box-sizing: border-box; resize: vertical; }
+.sillynpc-memory-controls { display: flex; gap: 6px; justify-content: flex-end; }

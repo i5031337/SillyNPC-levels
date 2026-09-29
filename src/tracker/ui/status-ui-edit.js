@@ -1,29 +1,13 @@
-import { getContext } from '../../../../../../st-context.js';
 import { loadStateFromMetadata, applyUpdate, removeActiveCharacter } from '../status-logic.js';
-import { recordMessageEdit } from '../snapshots/status-snapshots.js';
 import { announceSceneChange } from './status-ui-menu.js';
-
-/**
- * Whether a box belongs to an older message rather than the newest.
- *
- * Worked out here from the message rather than trusted to the caller: the VN stage draws the
- * box for whatever message it is showing and does not say whether that one is old.
- */
-function isOlderMessage(mesEl) {
-    const id = Number(mesEl?.getAttribute?.('mesid'));
-    const chat = getContext()?.chat || [];
-    return Number.isInteger(id) && chat.length > 0 && id < chat.length - 1;
-}
 
 /**
  * @param {HTMLElement} container
  * @param {object} [drawn] What the box was drawn from.
  * @param {object} [drawn.state] The state it shows - which, under an older message, is that
  *   message's state, not the live one.
- * @param {HTMLElement|null} [drawn.mesEl] The message it belongs to.
- * @param {() => void} [drawn.onRedraw] Redraws a box that lives outside a message.
  */
-export function attachInlineEditListeners(container, { state: drawnState = null, mesEl = null, onRedraw = null, redrawMessage = null } = {}) {
+export function attachInlineEditListeners(container, { state: drawnState = null, redrawMessage = null } = {}) {
     container.querySelectorAll('.sillynpc-status-editable').forEach(el => {
         el.addEventListener('blur', () => {
             const type = el.dataset.type;
@@ -45,19 +29,6 @@ export function attachInlineEditListeners(container, { state: drawnState = null,
             const charName = type === 'character'
                 ? shown?.characters?.[parseInt(el.dataset.index)]?.name ?? ''
                 : '';
-
-            /* A box under an older message corrects what the record says *at that message*,
-               and nothing else - not later messages, not today's state. It used to change the
-               live state, so going back to the message showed its old value again and the edit
-               looked lost. See recordMessageEdit. */
-            if (isOlderMessage(mesEl)) {
-                const messageId = Number(mesEl.getAttribute('mesid'));
-                if (recordMessageEdit(messageId, { type, key, value: newValue, name: charName })) {
-                    redrawMessage?.(mesEl);
-                    onRedraw?.();
-                }
-                return;
-            }
 
             /* One branch per data-type buildStatusHtml emits. The player's was missing from
                the day player stats were first drawn in this box: the box rendered them

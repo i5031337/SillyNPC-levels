@@ -1,8 +1,50 @@
 import { debugLog } from '../../core/constants.js';
-import { loadStateFromMetadata, saveStateToMetadata, getSwipeBase, swipeBaseRecord, getProfileBase, restoreProfiles } from '../status-logic.js';
+import { getContext } from '../../../../../../st-context.js';
+import { loadStateFromMetadata, saveStateToMetadata, getSwipeBase, swipeBaseRecord, getProfileBase, restoreProfiles, snapshotProfiles } from '../status-logic.js';
 import { addThread, closeThread } from '../../story/threads.js';
 import { getAppliedChanges, appliedChangesForCurrentSwipe, getThreadChanges } from './status-snapshot-records.js';
-import { applyRows, invalidateTimeline } from './status-snapshot-timeline.js';
+import { applyRows } from './status-row-replay.js';
+import { diffTurnValues, applyTurnValues, turnEffectStatus } from './status-turn-delta.js';
+import { syncRebasedLore } from './status-rebase-lore.js';
+
+/** Rebuilds the chosen reply and carries corrections made after the outgoing one. */
+function rebaseRecordedTurn(messageId, { removed = false } = {}) {
+    const record = swipeBaseRecord();
+    if (!record || record.messageId !== String(messageId) || !record.applied) return null;
+    const current = loadStateFromMetadata();
+    const profilesNow = snapshotProfiles();
+    const manualState = diffTurnValues(record.applied.state, current);
+    const manualProfiles = diffTurnValues(record.applied.profiles, profilesNow);
+    const message = getContext()?.chat?.[Number(messageId)];
+    const effects = removed ? null : message?.extra?.sillynpc_turn_effects;
+    const effectStatus = turnEffectStatus(effects, message);
+    if (effectStatus === 'mismatch') return { rebased: false, reason: 'reply changed' };
+    const valid = effectStatus === 'valid';
+
+    let replyState = structuredClone(record.state);
+    let replyProfiles = structuredClone(record.profiles);
+    if (valid) {
+        replyState = applyTurnValues(replyState, effects.state);
+        replyProfiles = applyTurnValues(replyProfiles, effects.profiles);
+    } else if (!removed) {
+        // Saved replies written before turn effects still have stat/item and thread rows.
+        applyRows(replyState, appliedChangesForCurrentSwipe(messageId) || []);
+        const threads = getThreadChanges(messageId);
+        if (threads) {
+            for (const thread of threads.opened) addThread(replyState, thread);
+            for (const id of threads.closed) closeThread(replyState, id);
+        }
+    }
+    const state = applyTurnValues(replyState, manualState);
+    const profiles = applyTurnValues(replyProfiles, manualProfiles);
+    const changedProfiles = restoreProfiles(profiles);
+    saveStateToMetadata(state, { recordHistory: false });
+    syncRebasedLore(current, state, changedProfiles);
+    record.applied = { state: replyState, profiles: replyProfiles };
+    return removed
+        ? { reverted: true, reason: 'back to the base' }
+        : { rebased: true, reason: valid ? 'restored' : 'back to the base' };
+}
 
 /**
  * Puts the tracker back in step with the swipe now on screen.
@@ -44,6 +86,8 @@ import { applyRows, invalidateTimeline } from './status-snapshot-timeline.js';
 export function alignSwipeBaseToNow() {
     const record = swipeBaseRecord();
     if (!record?.state) return 0;
+    // New turn records track corrections as the difference from the applied reply.
+    if (record.applied) return 0;
 
     const base = record.state;
     const now = loadStateFromMetadata();
@@ -140,6 +184,8 @@ export function alignSwipeBaseToNow() {
 }
 
 export function rebaseToSwipe(messageId) {
+    const recorded = rebaseRecordedTurn(messageId);
+    if (recorded) return recorded;
     const base = getSwipeBase(messageId);
     if (!base) {
         // Missing after a reload, or for a message written before this existed. Applying
@@ -152,7 +198,8 @@ export function rebaseToSwipe(messageId) {
     // cannot carry them and a rewritten personality would otherwise outlive the reply that
     // wrote it. Deliberately not part of applyRows - that also builds the read-only history
     // view, and writing to settings from there would rewrite every card on a scroll.
-    restoreProfiles(getProfileBase(messageId));
+    const previous = loadStateFromMetadata();
+    const changedProfiles = restoreProfiles(getProfileBase(messageId));
 
     const rows = appliedChangesForCurrentSwipe(messageId) || [];
     const state = structuredClone(base);
@@ -169,7 +216,7 @@ export function rebaseToSwipe(messageId) {
     }
 
     saveStateToMetadata(state, { recordHistory: false });
-    invalidateTimeline();
+    syncRebasedLore(previous, state, changedProfiles);
     debugLog(`Rebased onto swipe of message ${messageId}: ${rows.length} change(s)`);
     return { rebased: true, reason: rows.length ? 'restored' : 'back to the base' };
 }
@@ -194,14 +241,17 @@ export function rebaseToSwipe(messageId) {
  * @returns {{ reverted: boolean, reason: string }}
  */
 export function revertToBase(messageId) {
+    const recorded = rebaseRecordedTurn(messageId, { removed: true });
+    if (recorded) return recorded;
     const base = getSwipeBase(messageId);
     // Same refusal as rebaseToSwipe: without a known starting point the only alternative is
     // to invent one, and a wrong revert throws away state silently.
     if (!base) return { reverted: false, reason: 'no base' };
 
-    restoreProfiles(getProfileBase(messageId));
+    const previous = loadStateFromMetadata();
+    const changedProfiles = restoreProfiles(getProfileBase(messageId));
     saveStateToMetadata(base, { recordHistory: false });
-    invalidateTimeline();
+    syncRebasedLore(previous, base, changedProfiles);
     debugLog(`Reverted to the state before message ${messageId}`);
     return { reverted: true, reason: 'back to the base' };
 }

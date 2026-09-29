@@ -1,20 +1,19 @@
 import { getSettings } from '../../core/settings.js';
+import { DEFAULT_IMAGE_NEGATIVE_PROMPT } from '../../core/settings-defaults.js';
+import { DEFAULT_LORE_PROMPT } from '../../prompts/default-prompt-texts.js';
 import { USAGE_KINDS, averageFor, resetUsage } from '../../core/usage.js';
 import { countTokens } from '../../core/tokens.js';
-import { PROMPTS } from '../../prompts/prompts.js';
 import { estimateTokens } from '../../tracker/status-history.js';
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
-import { SYSTEM_PROMPT } from '../../core/constants.js';
+import { SYSTEM_PROMPT, IMAGE_PROMPT } from '../../core/constants.js';
 import { Popup } from '../../../../../../popup.js';
 
 /** The text a generator sends every time, whatever the message. */
 function fixedPromptFor(kindId) {
     const settings = getSettings();
     const tracker = settings.statusTracker;
-    const byKey = (key) => PROMPTS.find(p => p.key === key);
-
-    if (kindId === 'extraction') return tracker.extractionPrompt || SYSTEM_PROMPT;
+    if (kindId === 'extraction') return SYSTEM_PROMPT;
     if (kindId === 'scan') return promptText('scanSystem');
     // Two prompts share this counter - the profile fill and the stat fill are separate
     // requests recorded under one kind. The card states a ceiling, so it is the longer of
@@ -25,10 +24,10 @@ function fixedPromptFor(kindId) {
         return profile.length > sheet.length ? profile : sheet;
     }
     if (kindId === 'banscan') return promptText('banScanSystem');
-    if (kindId === 'lore') return settings.generationPrompt || byKey('generationPrompt').recommended();
+    if (kindId === 'lore') return DEFAULT_LORE_PROMPT;
     if (kindId === 'image') {
-        const template = settings.imgGenPrompt || byKey('imgGenPrompt').recommended();
-        const negative = settings.imgGenNegativePrompt || '';
+        const template = IMAGE_PROMPT;
+        const negative = DEFAULT_IMAGE_NEGATIVE_PROMPT;
         return `${template} ${negative}`;
     }
     return '';

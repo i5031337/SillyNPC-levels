@@ -1,9 +1,6 @@
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
-import { buildPromptEditor } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { loadStateFromMetadata, saveStateToMetadata, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from '../../tracker/status-logic.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';

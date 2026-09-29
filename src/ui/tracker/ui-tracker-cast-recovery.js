@@ -1,7 +1,6 @@
 import { buildSettingSelect, buildSettingSlider } from '../shared/ui-shared.js';
 import { buildTimeRulesSection } from './ui-tracker-time.js';
 import { buildContextReport } from './ui-tracker-context.js';
-import { applyCheckpointSchedule } from '../../tracker/status-logic.js';
 import { openAdvancedSettingsPopup, openDashboardPopup } from './ui-tracker-popups.js';
 
 export function renderTrackerCastAndRecovery({ container, settings, onApply, onChange, section }) {
@@ -58,45 +57,6 @@ export function renderTrackerCastAndRecovery({ container, settings, onApply, onC
     /* -- Chat size --------------------------------------------------------- */
 
     container.appendChild(buildContextReport(onChange));
-
-    /* -- If something goes wrong ------------------------------------------- */
-
-    section('If Something Goes Wrong');
-
-    container.append(buildSettingSlider({
-        key: 'statusTracker.systemAutoSaveMinutes',
-        advanced: true,
-        label: 'Save System State Every',
-        min: 0, max: 120, step: 5, suffix: ' min',
-        help: "0 turns it off. A system's stored copy is otherwise only rewritten when you "
-            + 'switch away from it, so a system you never leave keeps whatever it held the '
-            + 'last time you did. Saving on a timer keeps something recent to fall back to. '
-            + 'A save that would be identical to the last one is skipped.',
-        onChange: () => { onApply(); applyCheckpointSchedule(); },
-    }));
-
-    container.append(buildSettingSlider({
-        key: 'statusTracker.systemCheckpointsKept',
-        advanced: true,
-        label: 'Saved States Kept',
-        min: 1, max: 20, step: 1,
-        help: 'Per system. Each holds a full copy of that system - its characters, item '
-            + 'library, persona records and settings - so a large world costs real space in '
-            + 'your settings file. Restore them from the System Manager.',
-        onChange: onApply,
-    }));
-
-    container.append(buildSettingSlider({
-        key: 'statusTracker.historyDepth',
-        advanced: true,
-        label: 'Undo Steps Kept',
-        min: 1,
-        max: 50,
-        step: 1,
-        help: 'Each step stores a copy of the tracker state in the chat file, so large '
-            + 'values grow the chat.',
-        onChange: onApply
-    }));
 
     /* -- Buttons ----------------------------------------------------------- */
 

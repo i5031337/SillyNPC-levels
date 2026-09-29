@@ -22,7 +22,7 @@ const SYSTEM_EXCLUDED_TRACKER = new Set([
     'presets',
     // Which connection reads, what it is capable of, and what it is allowed to spend.
     'extractionProfileId', 'scanProfileId',
-    // How often to checkpoint is a habit, not a property of a ruleset.
+    // Retired user checkpoint settings from old exported profiles.
     'systemAutoSaveMinutes', 'systemCheckpointsKept',
     'extractionMaxTokens', 'scanMaxTokens', 'extractionUseSchema',
     // Whether the tracker runs at all is not a property of a ruleset.
@@ -95,11 +95,6 @@ function configFromDefinition(definition) {
         fields: collection.fields.map(field => ({ ...field, hint: field.guidance })),
     }));
     return {
-        profileHints: Object.fromEntries(
-            [...definition.profiles.player, ...definition.profiles.npc]
-                .filter(field => field.guidance)
-                .map(field => [field.id, field.guidance]),
-        ),
         statusTracker: {
             globalStats: stat(definition.stats.world),
             playerStats: stat(definition.stats.player),
@@ -318,7 +313,6 @@ function saveSystemPreset(name, description = '', author = 'User') {
             ...copyExcept(settings, SYSTEM_EXCLUDED_ROOT),
             statusTracker: copyExcept(st, SYSTEM_EXCLUDED_TRACKER),
         },
-        checkpoints: previous?.checkpoints || [],
     };
     const liveDefinition = normalizeSystemDefinition(profile, { name });
     // Builder still edits the flat stat/collection config. Keep the imported profile
@@ -328,6 +322,7 @@ function saveSystemPreset(name, description = '', author = 'User') {
         ...liveDefinition,
         profiles: previous?.definition?.profiles || liveDefinition.profiles,
         memories: previous?.definition?.memories || liveDefinition.memories,
+        goals: previous?.definition?.goals || liveDefinition.goals,
     }, { name });
 
     if (!st.presets) st.presets = {};
@@ -383,30 +378,37 @@ function applySystemPreset(profile) {
         settings.menuStyle = legacyThemeMap[cfg.displayStyle] || cfg.displayStyle;
     }
 
-    // Checkpoints are historical whole-state snapshots; unlike reusable presets, their
-    // world is restored on purpose.
+    // Old profiles may still carry a world snapshot.
     restoreWorld(settings, profile.world);
 
     saveSettings();
 }
 
-/**
- * Saved states of a system.
- *
- * A system's stored copy is only rewritten when you switch away from it, so a system you
- * never leave keeps whatever it held the last time you did - which is how two deleted
- * characters and a 165KB image stayed frozen inside one for weeks. Checkpoints give it a
- * history instead of a single overwritten copy.
- *
- * The state itself is written to user/files/ and only an index entry - about a hundred
- * bytes - is kept in settings.json. The first version stored the whole thing inline, which
- * would have re-serialised and re-uploaded every saved world on every settings change:
- * five states of a 200KB world is a megabyte rewritten each time a slider moves. The
- * payload never changes after it is written, so it has no business in a file that does.
- *
- * @param {object} preset
- * @returns {Array<{ id: string, savedAt: number, label: string, path: string, characters: number }>}
- */
+function deleteSystemPreset(name) {
+    if (!name) return;
+    const settings = getSettings();
+    if (!settings.statusTracker.presets?.[name]) return;
+    delete settings.statusTracker.presets[name];
+    if (settings.systemWorldArchive) delete settings.systemWorldArchive[name];
+    saveSettings();
+}
+
+function importSystemPreset(jsonText) {
+    const profile = JSON.parse(jsonText);
+    if (!profile || typeof profile !== 'object'
+        || (!profile.config && profile.schemaVersion !== 1 && !profile.definition)
+        || !(profile.metadata?.name || profile.name)) {
+        throw new Error('Invalid System Profile format.');
+    }
+    const settings = getSettings();
+    if (!settings.statusTracker.presets) settings.statusTracker.presets = {};
+    const requested = profile.metadata?.name || profile.name;
+    let name = requested;
+    for (let number = 2; settings.statusTracker.presets[name]; number++) name = `${requested} (${number})`;
+    settings.statusTracker.presets[name] = deps.migratePreset(name, profile, settings);
+    saveSettings();
+    return settings.statusTracker.presets[name];
+}
 
 Object.defineProperties(deps, {
     SYSTEM_EXCLUDED_ROOT: { enumerable: true, configurable: true, get: () => SYSTEM_EXCLUDED_ROOT },
@@ -420,5 +422,7 @@ Object.defineProperties(deps, {
     createSystem: { enumerable: true, configurable: true, get: () => createSystem },
     saveSystemPreset: { enumerable: true, configurable: true, get: () => saveSystemPreset },
     applySystemPreset: { enumerable: true, configurable: true, get: () => applySystemPreset },
+    deleteSystemPreset: { enumerable: true, configurable: true, get: () => deleteSystemPreset },
+    importSystemPreset: { enumerable: true, configurable: true, get: () => importSystemPreset },
 });
 }

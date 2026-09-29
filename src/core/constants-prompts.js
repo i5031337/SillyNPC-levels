@@ -190,12 +190,7 @@ export const DIALOGUE_FORMAT_PROMPT = [
  * `hint` is what Fill tells the model to write, so the prompt is generated from this list
  * rather than spelled out a second time somewhere it can fall out of step.
  */
-/* Moved here from defaultSettings, where being a default meant normalizeSettings cloned
- * it into every settings.json and then never updated it - so a stored copy went stale the
- * day the built-in improved, and a key that looks editable but is not invited exactly that
- * misreading. It is a constant: recommendedImagePrompt reads it directly so a Restore
- * button hands back the suggestion rather than the text somebody was trying to replace.
- * The editable template is imgGenPrompt, which is a different key. */
+/* Kept outside settings so improvements to the built-in reach existing installs. */
 /** Portrait prompt sent to SillyTavern Image Generation. */
 export const IMAGE_PROMPT = 'masterpiece, best quality, highly detailed, portrait of {{name}}, ' +
     '{{lore}}, {{items}}, solo, upper body, looking at viewer, ' +

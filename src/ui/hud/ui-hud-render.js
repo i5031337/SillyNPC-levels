@@ -10,6 +10,7 @@ import { whyHidden, trapInlineDisplay, shortenStack } from '../shared/css-origin
 import { makeActivatable } from '../../core/utils.js';
 import { ensurePortraitImage, recordFaceState } from './ui-hud-portrait.js';
 import { portraitSizeFor, showPortraitAtSize, applyHudProportions, buildMeterRow, paintSplitRing, applyHudAppearance } from './ui-hud-meters.js';
+import { goalLines } from '../../tracker/goals.js';
 
 const HUD_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom, clampToViewport, placeHud }) {
@@ -184,6 +185,27 @@ export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom
     } else {
         portrait.querySelectorAll('.sillynpc-hud-rings').forEach(el => el.remove());
         meters.forEach(m => statsContainer.append(buildMeterRow(m.statDef, m.rawValue, m.bar, style)));
+    }
+
+    const goals = [
+        ...goalLines(state.player, 'player').filter(field => field.value.trim())
+            .map(field => ({ who: 'You', ...field })),
+        ...(state.characters || []).flatMap(actor => goalLines(actor, 'npc')
+            .filter(field => field.value.trim())
+            .map(field => ({ who: actor.name, ...field }))),
+    ];
+    hudContainer.classList.toggle('has-goals', goals.length > 0);
+    if (goals.length) {
+        const list = document.createElement('div');
+        list.className = 'sillynpc-hud-goals';
+        for (const goal of goals) {
+            const line = document.createElement('div');
+            line.className = 'sillynpc-hud-goal';
+            line.textContent = `${goal.who} · ${goal.label}: ${goal.value}`;
+            line.title = line.textContent;
+            list.append(line);
+        }
+        statsContainer.append(list);
     }
 
     applyHudProportions(hudContainer, meters.length, layout);

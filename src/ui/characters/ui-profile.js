@@ -1,26 +1,16 @@
-import { fieldsForCard, aiMayEditProfileField, LOG_PREFIX } from '../../core/constants.js';
+import { LOG_PREFIX } from '../../core/constants.js';
+import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { liveFactsFor } from '../../api/api.js';
 import { readLoreEntry, fillProfile } from '../../characters/character-fill.js';
 import { openLightbox } from './ui-portrait.js';
 import { syncProfileToLore, readLoreValues } from '../../lore/lore-sync.js';
+import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
+import { renderMemorySection } from './ui-memories.js';
+import { goalActorFor, goalLines } from '../../tracker/goals.js';
+import { readNpcMemories, writeNpcMemories } from '../../tracker/npc-memories.js';
 
-/**
- * The character page you land on: what is known about somebody, laid out to be read.
- *
- * The editor is a form, and a form is the right shape for changing things and the wrong
- * shape for looking at them. Opening a character gave you eleven labelled inputs and a
- * lorebook panel with three modes - practical, and nothing you would want to open twice.
- *
- * So the form moved behind a tab and this came in front of it. Nothing here is editable,
- * on purpose: read-only is what lets it be laid out at all, and the Edit tab stays on
- * screen while this scrolls. Everything it shows is written somewhere else - the profile
- * fields on the card, the tracker values wherever they currently live, the entry in the
- * lorebook.
- *
- * Built with createElement throughout rather than innerHTML so the panel can be walked in
- * a test; the fake DOM does not parse markup.
- */
+/** The character profile reads from the card, linked lore, and live tracker state. */
 
 /** A labelled block: a small caption over its text. */
 function block(label, value, className = '') {
@@ -77,19 +67,7 @@ function chipRow(label, chips) {
     return wrap;
 }
 
-/**
- * The button that puts the previous text back, beside the one that replaced it.
- *
- * It was a clickable toast, which was wrong twice over: a toast is gone in fifteen seconds
- * whether or not the new text has been read, and a message floating over the chat is a
- * strange place to keep the only way back. Here it sits next to the field it belongs to and
- * waits, and it is plainly a control rather than a notice that happens to be clickable.
- *
- * Hidden until there is something to undo, and hidden again once used. It holds the last
- * replaced value only - a second rewrite offers the text the second one replaced, not the
- * original - because anything more is a history, and a history wants somewhere better to
- * live than a button.
- */
+/** Restore the previous value after a single field is regenerated. */
 function buildUndoButton(field, char, input) {
     const undo = document.createElement('button');
     undo.type = 'button';
@@ -122,30 +100,15 @@ function buildUndoButton(field, char, input) {
     };
 }
 
-/**
- * Who this character is: the built-in profile fields.
- *
- * Above the tracker overrides on purpose. These describe the person and change almost
- * never; the overrides below are numbers that move. Reading down the column goes from what
- * is settled to what is in play.
- *
- * Each carries a lock, and it is locked by default. A locked field is still sent to the
- * narrator - it has to be, or they cannot be played - but the per-message reader is never
- * allowed to change it, so anything typed here stays as typed. That is what makes
- * hand-correcting worth the effort. Unlock one and it is kept up to date from the story
- * like a stat.
- *
- * Fill sits outside that either way: it only ever writes a field that is still empty.
- */
+/** Edit the active System fields while retaining older saved values below them. */
 export function renderProfileFields(char, container) {
     if (!container) return;
 
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
             <label>Character details</label>
-            <small class="notes">Who they are, rather than what is happening to them.
-                Sent with the scene so the narrator knows how to play them. The tracker
-                never changes a locked field, and a lock is the default.</small>
+            <small class="notes">The active System defines these fields and how the
+                story reader updates them.</small>
         </div>
     `;
 
@@ -154,7 +117,7 @@ export function renderProfileFields(char, container) {
     const grid = document.createElement('div');
     grid.className = 'sillynpc-profile-grid';
 
-    for (const field of fieldsForCard(char)) {
+    for (const field of profileFieldsForCard(char)) {
         const row = document.createElement('div');
         row.className = 'sillynpc-profile-row';
 
@@ -162,45 +125,15 @@ export function renderProfileFields(char, container) {
         label.className = 'sillynpc-profile-label';
         label.textContent = field.label;
 
-        /* Who owns this field.
-
-           Locked, the field is still sent - the narrator needs it to play them - but any
-           change the per-message reader proposes is dropped. Unlocked, it is maintained
-           from the story like a stat.
-
-           Locked by default, because these four are the part of a character somebody sits
-           down and decides, and a model quietly rewriting a speech style that took thought
-           is worse than leaving it alone. Per field and per character, so you can let a
-           walk-on drift and hold the one you care about still.
-
-           Fill is not affected either way: it only ever writes a blank, and a blank has
-           nothing to protect.
-
-           Only the four profile fields get this. Stats and collections are System
-           Builder's, and the tracker maintaining them from the story is the feature. */
-        const lock = document.createElement('button');
-        lock.type = 'button';
-        lock.className = 'sillynpc-profile-lock';
-        const paint = () => {
-            const open = aiMayEditProfileField(char, field.id);
-            lock.classList.toggle('is-open', open);
-            lock.innerHTML = `<i class="fa-solid ${open ? 'fa-wand-magic-sparkles' : 'fa-lock'}"></i>`;
-            lock.title = open
-                ? `The story may change ${field.label} as it goes. Click to keep it yours.`
-                : `${field.label} is yours - it is sent to the AI, but never changed by it. `
-                    + `Click to let the story keep it up to date.`;
-            lock.setAttribute('aria-pressed', String(open));
-            lock.setAttribute('aria-label', lock.title);
-        };
-        lock.addEventListener('click', () => {
-            if (!Array.isArray(char.aiProfileFields)) char.aiProfileFields = [];
-            const at = char.aiProfileFields.indexOf(field.id);
-            if (at >= 0) char.aiProfileFields.splice(at, 1);
-            else char.aiProfileFields.push(field.id);
-            saveSettings();
-            paint();
-        });
-        paint();
+        const policy = document.createElement('small');
+        policy.className = 'notes';
+        policy.textContent = field.policy === 'anchored' ? 'Anchored'
+            : field.policy === 'memory' ? 'Memory' : 'Replaceable';
+        policy.title = field.policy === 'anchored'
+            ? 'The story reader cannot change this field.'
+            : field.policy === 'memory'
+                ? 'The story reader adds new memories.'
+                : 'The story reader can propose changes.';
 
         /* Write this one field again, whatever it already says.
          *
@@ -269,7 +202,7 @@ export function renderProfileFields(char, container) {
 
         const controls = document.createElement('div');
         controls.className = 'sillynpc-profile-controls';
-        controls.append(undo.el, redo, lock);
+        controls.append(policy, undo.el, redo);
 
         const labelRow = document.createElement('div');
         labelRow.className = 'sillynpc-profile-label-row';
@@ -284,6 +217,33 @@ export function renderProfileFields(char, container) {
     }
 
     container.appendChild(grid);
+
+    // Saved fields from an older System remain editable even after that System retires
+    // them. Fill and the turn reader use only active fields.
+    const active = new Set(profileFieldsForCard(char).map(field => field.id));
+    const legacy = Object.entries(char.profile).filter(([id, value]) =>
+        !active.has(id) && String(value ?? '').trim());
+    if (legacy.length) {
+        const heading = document.createElement('label');
+        heading.textContent = 'Other / Legacy details';
+        container.append(heading);
+        for (const [id, value] of legacy) {
+            const row = document.createElement('div');
+            row.className = 'sillynpc-profile-row';
+            const label = document.createElement('label');
+            label.textContent = id;
+            const input = document.createElement('textarea');
+            input.className = 'text_pole sillynpc-profile-input';
+            input.rows = 3;
+            input.value = String(value);
+            input.addEventListener('input', () => {
+                char.profile[id] = input.value;
+                saveSettings();
+            });
+            row.append(label, input);
+            container.append(row);
+        }
+    }
 }
 
 /**
@@ -343,7 +303,8 @@ function buildPortrait(char) {
  */
 export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
     const profile = char?.profile || {};
-    const written = fieldsForCard(char).filter(f => String(profile[f.id] ?? '').trim());
+    const fields = profileFieldsForCard(char);
+    const written = fields.filter(f => String(profile[f.id] ?? '').trim());
     const out = [];
 
     // Age is one word and sits on a line of its own badly, so the short fields ride
@@ -355,6 +316,18 @@ export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
 
     for (const field of written.filter(f => f.multiline)) {
         out.push(block(field.label, profile[field.id]));
+    }
+    const active = new Set(fields.map(field => field.id));
+    const legacy = Object.entries(profile).filter(([id, value]) =>
+        !active.has(id) && String(value ?? '').trim());
+    if (legacy.length) {
+        const section = document.createElement('div');
+        section.className = 'sillynpc-cv-block';
+        const heading = document.createElement('div');
+        heading.className = 'sillynpc-cv-label';
+        heading.textContent = 'Other / Legacy details';
+        section.append(heading, ...legacy.map(([id, value]) => block(id, String(value))));
+        out.push(section);
     }
     return out;
 }
@@ -414,6 +387,30 @@ export async function renderProfileView(char, container) {
         empty.textContent = 'Nothing recorded about who they are yet. Fill reads the story '
             + 'and writes it, or open Edit and write it yourself.';
         narrative.append(empty);
+    }
+
+    renderMemorySection(right, {
+        read: () => readNpcMemories(loadStateFromMetadata(), char),
+        write: store => {
+            const state = loadStateFromMetadata();
+            writeNpcMemories(state, char, store);
+            saveStateToMetadata(state, { label: 'NPC memories', recordHistory: false });
+            syncProfileToLore(char, store).catch(err =>
+                console.error(LOG_PREFIX, 'Could not update lorebook memories', err));
+        },
+        fields: profileFieldsForCard(char),
+        limit: getSettings().statusTracker?.presets?.[getSettings().activeSystem]
+            ?.definition?.memories?.maxEntriesPerCharacter,
+    });
+    const goals = goalLines(goalActorFor(loadStateFromMetadata(), char.name, char.id), 'npc')
+        .filter(field => field.value.trim());
+    if (goals.length) {
+        const section = document.createElement('section');
+        section.className = 'sillynpc-cv-narrative';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Goals';
+        section.append(heading, ...goals.map(field => block(field.label, field.value)));
+        right.append(section);
     }
 
     // Tracker values: whatever is true now. A character on stage has live numbers and the

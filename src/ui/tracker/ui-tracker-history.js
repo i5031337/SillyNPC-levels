@@ -1,9 +1,6 @@
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
-import { buildPromptEditor } from '../shared/ui-prompts.js';
-import { promptById } from '../../prompts/prompts.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { loadStateFromMetadata, saveStateToMetadata, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from '../../tracker/status-logic.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';
@@ -63,14 +60,12 @@ export function buildHistoryNoteFields(settings, onApply) {
 /**
  * Where the tracker box goes.
  *
- * Two settings used to ask this: a toggle for whether older messages get one, and a
- * select for above or below. They were always answered together and never made sense
- * apart, so they are one question with four answers.
+ * The tracker represents the current turn and is drawn only on the last message.
+ * This picker controls its position there. Old placement values remain loadable.
  */
 export function buildPlacementPicker(settings, onApply) {
     const KEY = 'sillynpc-placement';
-    const value = (settings.showOnlyAtBottom === false ? 'every-' : 'last-')
-        + (settings.renderPosition === 'top' ? 'top' : 'bottom');
+    const value = settings.renderPosition === 'top' ? 'top' : 'bottom';
 
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-setting';
@@ -85,10 +80,8 @@ export function buildPlacementPicker(settings, onApply) {
     select.className = 'text_pole';
     select.id = KEY;
     for (const [v, text] of [
-        ['last-bottom', 'Below the last message'],
-        ['last-top', 'Above the last message'],
-        ['every-bottom', 'Below every message'],
-        ['every-top', 'Above every message'],
+        ['bottom', 'Below the last message'],
+        ['top', 'Above the last message'],
     ]) {
         const option = document.createElement('option');
         option.value = v;
@@ -98,20 +91,12 @@ export function buildPlacementPicker(settings, onApply) {
     }
     select.addEventListener('change', () => {
         const st = getSettings().statusTracker;
-        st.showOnlyAtBottom = select.value.startsWith('last-');
-        st.renderPosition = select.value.endsWith('top') ? 'top' : 'bottom';
+        st.renderPosition = select.value;
         onApply();
     });
 
     row.append(label, select);
     wrap.appendChild(row);
-
-    const help = document.createElement('small');
-    help.className = 'notes';
-    help.style.cssText = 'margin-top:4px; display:block;';
-    help.textContent = 'Under every message, each one shows the values as they stood at '
-        + 'that point in the story rather than today’s.';
-    wrap.appendChild(help);
 
     return wrap;
 }

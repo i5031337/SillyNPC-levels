@@ -120,25 +120,27 @@ export function themeClassFor(theme) {
 export const HUD_LAYOUTS = Object.freeze([
     { id: 'plate', label: 'Bracket Plate', meters: 'bar',
       note: 'A panel with the portrait held at its corners. The closest to how the HUD has always looked.' },
-    { id: 'blades', label: 'Stepped Blades', meters: 'bar',
-      note: 'One plate cut off at an angle, meters stepping in behind it.' },
-    { id: 'fan', label: 'Angled Fan', meters: 'bar',
-      note: 'Skewed slashes with nothing behind them, longest at the top. Depends on your stat colours being distinct.' },
-    { id: 'brackets', label: 'Corner Brackets', meters: 'bar',
-      note: 'No panel at all - four corner marks and thin meters. Lightest over a plain chat, hardest to read over a background image.' },
     { id: 'underline', label: 'Underlines', meters: 'bar',
       note: 'Each stat named, with its meter as a rule beneath it. The only layout where the names are always readable.' },
     { id: 'pips', label: 'Pip Rows', meters: 'pips',
       note: 'Notches rather than a fill, so a small change is a whole cell instead of a pixel.' },
     { id: 'splitring', label: 'Split Ring', meters: 'ring',
       note: 'One ring around the portrait, divided into a segment per stat. Compact enough for a corner.' },
-    { id: 'dock', label: 'Edge Dock', meters: 'bar',
-      note: 'Docked against the side of the screen with its outer half cut away. Takes the least room of any of them.' },
 ]);
 
-/** The chosen layout, or the default when the setting holds something unknown. */
+/** Retired layout choices map to the closest of the four supported styles. */
+const LEGACY_HUD_LAYOUTS = Object.freeze({
+    blades: 'plate', dock: 'plate', fan: 'underline', brackets: 'underline',
+});
+
+export function normalizeHudLayoutId(id) {
+    const resolved = LEGACY_HUD_LAYOUTS[id] || id;
+    return HUD_LAYOUTS.some(layout => layout.id === resolved) ? resolved : 'plate';
+}
+
+/** The chosen layout, or its supported successor. */
 export function hudLayoutFor(id) {
-    return HUD_LAYOUTS.find(l => l.id === id) || HUD_LAYOUTS[0];
+    return HUD_LAYOUTS.find(layout => layout.id === normalizeHudLayoutId(id));
 }
 
 /** Every layout class, so switching layouts can clear the one before it. */

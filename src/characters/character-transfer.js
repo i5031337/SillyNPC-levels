@@ -3,7 +3,8 @@ import { createCharacter, instantiateWorldCharacter } from './characters.js';
 import { adoptImageForCharacter, createLoreEntry, saveLoreContent } from '../api/api.js';
 import { tryAutoSyncLorebook, getChatLorebookName } from '../lore/lorebook.js';
 import { loadWorldInfo } from '../../../../../world-info.js';
-import { blankProfile, NPC_LORE_FIELDS, debugLog } from '../core/constants.js';
+import { debugLog } from '../core/constants.js';
+import { blankActiveProfile, profileStrings } from '../core/profile-fields.js';
 import { splitNpcStats, initialiseNpcStats } from '../tracker/stat-persistence.js';
 import { getAllCharacters, isChatCharacter } from './character-repository.js';
 
@@ -62,11 +63,8 @@ async function readLoreEntry(char) {
  * @returns {Promise<object>} The record.
  */
 export async function serialiseCharacter(char, { npcStats = getSettings().statusTracker?.npcStats } = {}) {
-    const profile = {};
-    for (const field of NPC_LORE_FIELDS) {
-        const value = String(char.profile?.[field.id] ?? '').trim();
-        if (value) profile[field.id] = value;
-    }
+    // A different System may have retired a field; exports must keep its prose.
+    const profile = profileStrings(char.profile);
 
     return {
         name: String(char.name || ''),
@@ -173,11 +171,8 @@ function applyRecord(char, record, name, version) {
 
     // Field by field, for the same reason normalizeSettings does it that way: a file
     // written before a field existed should gain it blank, not replace the set.
-    char.profile = blankProfile();
-    for (const field of NPC_LORE_FIELDS) {
-        const value = record.profile?.[field.id];
-        if (typeof value === 'string') char.profile[field.id] = value;
-    }
+    char.profile = { ...blankActiveProfile(), ...Object.fromEntries(
+        Object.entries(record.profile || {}).filter(([, value]) => typeof value === 'string')) };
 
     // The category name comes along; registering it is normalizeSettings' job, which the
     // import runs at the end. It already adopts any category a card names but the register

@@ -1,6 +1,6 @@
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { EXTENSION_VERSION, DEFAULT_PORTRAIT_SHAPE } from './constants.js';
-import { DEFAULT_LORE_PROMPT } from '../prompts/default-prompt-texts.js';
+export const DEFAULT_IMAGE_NEGATIVE_PROMPT = 'speech bubbles, text, logo, watermark, username, signature, frames, panels, comic, multiple characters, crowd, busy background, character sheet, grid, reference sheet';
 
 export const defaultSettings = {
     version: EXTENSION_VERSION,
@@ -43,8 +43,6 @@ export const defaultSettings = {
      * formatting block in their persona.
      */
     dialogueFormatEnabled: true,
-    /** Empty means the built-in text; the repair pass fills it in so the box is not blank. */
-    dialogueFormatPrompt: '',
     /** 0 puts it after the newest message - the last thing read before answering. */
     dialogueFormatDepth: 0,
     /**
@@ -59,12 +57,9 @@ export const defaultSettings = {
     /**
      * How the narrator should behave, injected late so a long chat cannot bury it.
      *
-     * Off, and empty, by default. Unlike the dialogue format there is no built-in text to
-     * fall back on: what a narrator should do is yours to say, and sending an opinion
-     * nobody asked for into every message is not a sensible default.
+     * Off by default. When enabled, the built-in rules are sent.
      */
     narratorRulesEnabled: false,
-    narratorRulesPrompt: '',
     narratorRulesDepth: 0,
     /** As above. The rules exist because a card's instructions sit too far from the reply. */
     narratorRulesInPromptList: false,
@@ -157,24 +152,6 @@ export const defaultSettings = {
      */
     loreUseDataBank: false,
     /**
-     * Per-field wording for what Fill should write in each profile field.
-     *
-     * Sparse on purpose: only fields somebody has actually rewritten appear here, and
-     * everything else reads the shipped hint. Storing all of them would freeze the set at
-     * whatever shipped that day, so a field added later would never reach anybody who had
-     * edited one - which is the state the extraction prompt is in.
-     *
-     * @type {Record<string, string>}
-     */
-    profileHints: {},
-    /**
-     * Your own wording for the texts the extension builds prompts from, by id - see
-     * prompt-texts.js. Absent or empty means the built-in text, like profileHints.
-     *
-     * @type {Record<string, string>}
-     */
-    promptTexts: {},
-    /**
      * Which connection writes lore. Empty means your main API.
      *
      * Its own setting rather than the tracker's: a small model chosen for returning JSON
@@ -199,8 +176,6 @@ export const defaultSettings = {
     // What each generator has cost so far. Kept out of a System on purpose: a system is
     // a world and its rules, and rolling one back should not rewrite what you spent.
     usage: {},
-    /** The editable lore template. Macros: {{name}}, {{facts}}, {{lore}}, {{context}}, {{world}}. */
-    generationPrompt: DEFAULT_LORE_PROMPT,
     imgGenContextMessages: 10,
     /** Folder name under user/images/ for generated portraits. */
     imageSaveRoute: 'sillynpc',
@@ -212,9 +187,6 @@ export const defaultSettings = {
     portraitShape: DEFAULT_PORTRAIT_SHAPE,
     personaData: {},
     master_items: {},
-    /** Custom template; empty uses the maintained Image Generation template. */
-    imgGenPrompt: '',
-    imgGenNegativePrompt: 'speech bubbles, text, logo, watermark, username, signature, frames, panels, comic, multiple characters, crowd, busy background, character sheet, grid, reference sheet',
     /**
      * @type {{
      *   id: string,

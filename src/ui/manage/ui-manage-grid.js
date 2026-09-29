@@ -1,5 +1,6 @@
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
-import { LOG_PREFIX, NPC_LORE_FIELDS } from '../../core/constants.js';
+import { LOG_PREFIX } from '../../core/constants.js';
+import { resolveProfileFields } from '../../core/profile-fields.js';
 import { getLibraryCharacters } from '../../characters/character-repository.js';
 import {
     deleteCharacter,
@@ -247,10 +248,12 @@ export function renderCardGrid(openEditor) {
  */
 async function rewriteFieldOnMany(chars, refreshGrid) {
     if (!chars.length) return;
+    const fields = resolveProfileFields('npc');
+    if (!fields.length) return;
 
     const pick = document.createElement('select');
     pick.className = 'text_pole';
-    for (const field of NPC_LORE_FIELDS) {
+    for (const field of fields) {
         const option = document.createElement('option');
         option.value = field.id;
         option.textContent = field.label;
@@ -266,7 +269,7 @@ async function rewriteFieldOnMany(chars, refreshGrid) {
         okButton: 'Rewrite', cancelButton: 'Cancel',
     }).show()) return;
 
-    const field = NPC_LORE_FIELDS.find(f => f.id === pick.value);
+    const field = fields.find(f => f.id === pick.value);
     if (!field) return;
 
     toastr.info(`Rewriting ${field.label} on ${chars.length}...`, 'SillyNPC');
