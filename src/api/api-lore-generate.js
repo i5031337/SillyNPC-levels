@@ -171,6 +171,11 @@ export async function generateLoreContent(char, world, uid, options = {}) {
 
     const template = options.template || DEFAULT_LORE_PROMPT;
     const givenFacts = typeof options.facts === 'function' ? options.facts() : options.facts;
+    const established = char.isPlayer ? (char.profile || {})
+        : (mergeLoreValues(existingLore, char.profile) || char.profile || {});
+    const profileFields = resolveProfileFields(char.isPlayer ? 'player' : 'npc').map(field =>
+        `- ${field.label}: ${hintFor(field)}${established[field.id]
+            ? ` (established: ${String(established[field.id]).trim()})` : ''}`).join('\n');
     /* Both spellings and SillyTavern's own macros, in one pass. The old [TAG] form is
        rewritten to {{tag}} first rather than replaced separately, so a [NAME] that happens
        to be inside the chat excerpt or the existing entry is left alone - it is somebody's
@@ -183,6 +188,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
         facts: (givenFacts !== undefined ? String(givenFacts ?? '').trim() : describeTrackedFacts(char))
             || '(Nothing tracked yet)',
         aliases: namesFor(char).slice(1).join(', ') || '(none)',
+        profileFields,
     });
 
     // A template written before [WORLD] existed - which is most of them, including any you
@@ -191,20 +197,6 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     // heading.
     if (worldFacts && !/\[WORLD\]|{{\s*world\s*}}/i.test(template)) {
         prompt += `\n\nFrom the setting's reference material:\n${worldFacts}`;
-    }
-
-    if (!options.template && !char.isPlayer) {
-        const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
-        prompt += '\n\nThe Content entry must contain every named field in the exact order shown. '
-            + 'Write one labelled line per field and no unlabelled prose. '
-            + 'Keep established values exactly as given; fill only blanks that the sources support. '
-            + 'Never invent a value. This format replaces any older instruction above that omits '
-            + 'these fields.\n'
-            + resolveProfileFields('npc').map(field => `${field.label}: ${existing[field.id] || '(fill if known)'} — ${hintFor(field)}`)
-                .join('\n');
-        if (options.preserveLore && existingLore.trim()) {
-            prompt += '\nThis is a Fill request. Keep all established field values exactly and fill only blanks.';
-        }
     }
 
     const text = await requestLore(prompt);
@@ -235,13 +227,12 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     content = content.replace(namePattern, '').trim();
 
     if (!options.template && !char.isPlayer) {
-        const generated = parseLoreContent(content);
+        const generated = parseLoreContent(content, { allowPartial: true });
         if (generated) {
-            const existing = mergeLoreValues(existingLore, char.profile) || char.profile || {};
             const values = Object.fromEntries(resolveProfileFields('npc').map(field => [field.id,
                 String(options.preserveLore
-                    ? (existing[field.id] || generated[field.id] || '')
-                    : (generated[field.id] || existing[field.id] || '')).trim()]));
+                    ? (established[field.id] || generated[field.id] || '')
+                    : (generated[field.id] || established[field.id] || '')).trim()]));
             content = formatLoreContent(values, existingLore);
         }
     }

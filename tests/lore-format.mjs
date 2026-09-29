@@ -71,14 +71,20 @@ test('malformed or free-form NPC lore is rejected', () => {
     assert.equal(parseLoreContent(formatLoreContent({}).replace('Age:', 'Years')), null);
 });
 
-test('the default Fill prompt names the complete field order', () => {
-    const prompt = DEFAULT_LORE_PROMPT;
-    const format = prompt.slice(prompt.lastIndexOf('Content:\n') + 'Content:\n'.length);
-    const labels = format.split('\n').map(line => line.slice(0, line.indexOf(':')));
-    assert.deepEqual(labels, NPC_LORE_FIELDS.map(field => field.label));
-    for (const field of NPC_LORE_FIELDS) {
-        assert.ok(prompt.includes(`- ${field.label}: ${field.hint}`));
-    }
+test('a lore generation may provide only supported fields before storage normalizes it', () => {
+    const partial = 'Role: Watchmaker\nHistory: Moved here.';
+    assert.deepEqual(parseLoreContent(partial, { allowPartial: true }),
+        { role: 'Watchmaker', history: 'Moved here.' });
+    assert.equal(parseLoreContent(formatLoreContent(parseLoreContent(partial, { allowPartial: true }))).role,
+        'Watchmaker');
+    assert.equal(parseLoreContent('History: Moved here.\nRole: Watchmaker', { allowPartial: true }), null);
+    assert.equal(parseLoreContent('Role: Watchmaker\nUnknown: text', { allowPartial: true }), null);
+});
+
+test('the default lore prompt allows unsupported fields to be omitted', () => {
+    assert.match(DEFAULT_LORE_PROMPT, /Omit fields with no supported value/);
+    assert.match(DEFAULT_LORE_PROMPT, /{{profileFields}}/);
+    assert.doesNotMatch(DEFAULT_LORE_PROMPT, /every named field|fill if known/i);
 });
 
 test('tracker schema follows System policies rather than old per-card unlocks', () => {

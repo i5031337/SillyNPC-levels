@@ -48,16 +48,15 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
             amount: { type: 'number' },
         },
     };
-    let bonus;
-    try {
-        bonus = coerceToUpdate(await requestExtraction(prompt, schema, trackerSettings,
-            promptText('levelBonusSystem'),
-            { usageKind: 'extraction' }));
-    } catch (error) {
-        console.warn(LOG_PREFIX, 'Level-up bonus request failed:', error);
-    }
+    const raw = await requestExtraction(prompt, schema, trackerSettings,
+        promptText('levelBonusSystem'), { usageKind: 'extraction' });
+    const bonus = coerceToUpdate(raw);
     const description = String(bonus?.description ?? '').trim().slice(0, 180);
-    if (!description) return null;
+    if (!description) {
+        const error = new Error('The level-up bonus reply could not be read. Retry this tracker reading.');
+        error.output = raw;
+        throw error;
+    }
     const amount = Number(bonus?.amount);
     const target = eligible.find(name => name.toLowerCase() === String(bonus?.stat ?? '').toLowerCase());
     const sheetStats = parsed.player.stats || parsed.player;

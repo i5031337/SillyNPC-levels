@@ -40,6 +40,7 @@ Make NPCs recognizable in chat and keep a coherent, visible record of the people
 - Preserve chat and persona ownership: NPCs and world state belong to the chat; player state follows the selected persona according to an explicit rule.
 - Show proposed changes and allow correction or rejection before uncertain or consequential changes are committed.
 - A reader failure leaves the last committed state intact and can be retried.
+- Each failed tracker, level-bonus, or Fill generation step offers a retry from its result. A failed level bonus leaves the XP update unapplied until the full turn succeeds; earlier completed Fill steps remain saved.
 
 ### 4. Current-turn consistency
 

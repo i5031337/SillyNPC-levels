@@ -27,11 +27,24 @@ export function formatLoreContent(values = {}, existingContent = '', memories) {
     return [...current, ...previous].join('\n') + section;
 }
 
-/** Return null for malformed text so it cannot silently overwrite structured fields. */
-export function parseLoreContent(content) {
+/** Parse stored entries strictly; accept ordered subsets only from fresh generation. */
+export function parseLoreContent(content, { allowPartial = false } = {}) {
     const lines = beforeMemories(content).trim().split(/\r?\n/);
     if (lines[0]?.startsWith('### ')) lines.shift();
     const active = resolveProfileFields('npc');
+    if (allowPartial) {
+        const values = {};
+        let previousIndex = -1;
+        for (const line of lines) {
+            const index = active.findIndex(field => line.startsWith(`${field.label}:`));
+            if (index <= previousIndex) return null;
+            const field = active[index];
+            if (!field) return null;
+            values[field.id] = line.slice(field.label.length + 1).trim();
+            previousIndex = index;
+        }
+        return previousIndex < 0 ? null : values;
+    }
     // Entries written before a System changed its fields keep their original labels.
     for (const fields of [active, NPC_LORE_FIELDS]) {
         if (lines.length < fields.length) continue;

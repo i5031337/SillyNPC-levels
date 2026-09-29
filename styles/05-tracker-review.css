@@ -49,6 +49,7 @@
 .sillynpc-reader-row > strong { margin-right: 8px; }
 .sillynpc-reader-children { margin: 3px 0 6px 12px; padding-left: 10px; border-left: 1px solid var(--sillynpc-border); }
 .sillynpc-reader-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sillynpc-reader-retry { margin-top: 8px; }
 
 /* The three-state eye that hides the tracker box.
 

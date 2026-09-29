@@ -114,17 +114,33 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
     if (!Object.values(chosen).some(Boolean)) return;
 
     const done = [];
+    const retryStage = async (label, action, succeeded = result => result?.ok) => {
+        while (true) {
+            let result;
+            let reason;
+            try {
+                result = await action();
+                if (succeeded(result)) return result;
+                reason = result?.reason || 'The response could not be used.';
+            } catch (err) {
+                console.error(LOG_PREFIX, `${label} failed`, err);
+                reason = String(err?.message || err);
+            }
+            onSave?.();
+            const message = document.createElement('div');
+            message.textContent = `${label} failed: ${reason} Completed parts were kept. Try this step again?`;
+            const retry = await new Popup(message, POPUP_TYPE.CONFIRM, '', {
+                okButton: 'Retry', cancelButton: 'Stop',
+            }).show();
+            if (!retry) return null;
+        }
+    };
 
-    /** @returns {Promise<boolean>} False when the run should stop. */
     /** @returns {Promise<boolean>} False when the run should stop. */
     const runLore = async () => {
         toastr.info('Looking for a lore entry...', 'SillyNPC');
-        const result = await fillLore(char);
-        if (!result.ok) {
-            toastr.error(`Lore: ${result.reason}`, 'SillyNPC');
-            onSave?.();
-            return false;
-        }
+        const result = await retryStage('Lore', () => fillLore(char));
+        if (!result) return false;
         done.push(`Lore: ${result.action}`);
         onSave?.();
         return true;
@@ -136,15 +152,11 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
 
         if (chosen.data || chosen.belongings) {
             toastr.info('Reading the story for their details...', 'SillyNPC');
-            const result = await fillData(char, {
+            const result = await retryStage('Fields', () => fillData(char, {
                 fields: chosen.data,
                 collections: chosen.belongings,
-            });
-            if (!result.ok) {
-                toastr.error(`Fields: ${result.reason}`, 'SillyNPC');
-                onSave?.();
-                return;
-            }
+            }));
+            if (!result) return;
             done.push(result.filled.length || result.items
                 ? `Fields: filled ${result.filled.join(', ') || 'none'}`
                     + (result.items ? ` and ${result.items} item(s)` : '')
@@ -154,7 +166,9 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
 
         if (chosen.image) {
             toastr.info('Drawing a portrait...', 'SillyNPC');
-            const imageUrl = await generateCharacterImageLogic(char, { includeScene: false });
+            const imageUrl = await retryStage('Portrait',
+                () => generateCharacterImageLogic(char, { includeScene: false }), Boolean);
+            if (!imageUrl) return;
             if (!Array.isArray(char.images)) char.images = [];
             if (!char.images.includes(imageUrl)) char.images.push(imageUrl);
             // The card had no portrait, which is why this stage ran - so it becomes the

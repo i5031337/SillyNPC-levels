@@ -257,7 +257,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         debugLog('Extraction applied for message', key);
         return { applied: true, pending: pending.length };
     } catch (err) {
-        report = { ...report, status: 'failed', summary: String(err?.message || err) };
+        report = { ...report, status: 'failed', summary: String(err?.message || err),
+            output: err?.output ?? report.output };
         console.error(LOG_PREFIX, 'Extraction failed; state left unchanged.', err);
         reportExtractionProblem(`The tracker could not read this message: ${err?.message || err}`);
         return { applied: false, reason: String(err?.message || err) };

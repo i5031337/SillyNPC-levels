@@ -4,7 +4,7 @@ export const readerPromptTexts = [
         where: 'The system prompt sent when the tracker chooses a bonus after an XP level-up.',
         when: 'When XP crosses its cap in separate reader mode.',
         placeholders: {},
-        text: 'Choose a player level bonus and return a JSON object.',
+        text: 'Choose one player level bonus. Reply with exactly one valid JSON object. Do not include reasoning, markdown, code fences, or any text before or after the JSON.',
     },
     {
         id: 'levelBonus', group: 'Tracker reader', label: 'Level bonus request',
@@ -24,24 +24,13 @@ export const readerPromptTexts = [
             eligible: 'Numeric stats the bonus may raise.',
         },
         text: `The player reached level {{level}}.
-Current state: {{state}}
-{{#offstage}}
-Named offstage characters: {{offstage}}
-{{/offstage}}
-{{#limits}}
-Limits: {{limits}}
-{{/limits}}
-{{#collections}}
-Collections: {{collections}}
-{{/collections}}
-{{notes}}
-{{#earlier}}
-Earlier messages (reflected in state): {{earlier}}
-{{/earlier}}
-Latest message: {{message}}
-Pre-level-up update: {{pendingChanges}}
+Current player stats: {{sheet}}
+Latest story message: {{message}}
 Eligible numeric stats: {{eligible}}
-Choose one story-appropriate bonus: a narrative perk or an increase of 1 to 5 in one eligible numeric stat. Return JSON with a short description. For a stat increase, include its exact name and integer amount. For a perk, include the description.`,
+Choose exactly one story-appropriate bonus. Return only one JSON object, with double-quoted keys and strings. Do not explain your choice outside the JSON.
+For a narrative perk, reply in this shape: {"description":"A short, specific perk tied to the story"}
+For a numeric increase, choose a name from Eligible numeric stats and reply in this shape: {"description":"A short description of the improvement","stat":"Exact eligible stat name","amount":1}
+Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, choose a narrative perk.`,
     },
     {
         id: 'reader', group: 'Tracker reader', label: 'Reader request',
