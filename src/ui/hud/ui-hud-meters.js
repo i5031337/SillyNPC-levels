@@ -109,7 +109,7 @@ function meterColour(statDef) {
  * @param {object} statDef
  * @param {string} rawValue
  * @param {{ percent: number, numeric: boolean }} bar
- * @param {string} style Either 'bar' or 'pips' - what the chosen layout draws.
+ * @param {string} style The chosen layout's meter style, or 'underline'.
  * @returns {HTMLElement}
  */
 export function buildMeterRow(statDef, rawValue, bar, style) {
@@ -139,7 +139,7 @@ export function buildMeterRow(statDef, rawValue, bar, style) {
         const text = document.createElement('div');
         text.className = 'sillynpc-hud-stat-text';
         text.style.color = meterColour(statDef);
-        text.textContent = label;
+        text.textContent = style === 'underline' ? rawValue : label;
         row.append(text);
         return row;
     }
@@ -169,10 +169,13 @@ export function buildMeterRow(statDef, rawValue, bar, style) {
 
     const text = document.createElement('div');
     text.className = 'sillynpc-hud-bar-text';
-    text.textContent = label;
-    wrap.append(text);
+    // Underlines already prints the stat name above its rule. Repeating the formatted
+    // "Energy: 10/10" here places a second "Energy" over that heading.
+    text.textContent = style === 'underline' ? rawValue : label;
+    if (style !== 'underline') wrap.append(text);
 
     row.append(wrap);
+    if (style === 'underline') row.append(text);
     return row;
 }
 

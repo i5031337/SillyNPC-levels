@@ -163,6 +163,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/characters/default-portraits.js` | Stranger portrait pool and assignments. |
 | `src/characters/image-tags.js` | Portrait tag fields and tag lookup. |
 | `src/lore/lorebook.js` | Lorebook linking, identity, and synchronization. |
+| `src/lore/lorebook-target.js` | Choose and name a chat lorebook for Fill without overwriting an existing book. |
 | `src/lore/lore-format.js` | Parse and format active System fields while retaining unknown saved lore lines. |
 | `src/lore/lore-sync.js` | Sync NPC fields with the linked lorebook entry. |
 | `src/lore/activated-lore.js` | Capture activated lore entries and their characters. |
@@ -190,6 +191,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/ui/status-ui-guards.js` | Detect tracker editing and visible message content. |
 | `src/tracker/ui/status-ui-hidden.js` | Hide raw status data in message content. |
 | `src/tracker/ui/status-ui-box.js` | Build and place tracker boxes. |
+| `src/tracker/ui/status-ui-placement.js` | Select the latest visible prose message when image-only messages are present. |
 | `src/tracker/ui/status-ui-menu.js` | Tracker menu and add-character controls. |
 | `src/tracker/ui/status-ui-template.js` | Assemble tracker HTML. |
 | `src/tracker/ui/status-ui-template-core.js` | Render core tracker fields. |

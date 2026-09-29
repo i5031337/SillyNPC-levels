@@ -83,7 +83,7 @@ For each NPC present in the latest message, fill blank fields. For a new NPC, in
 {{#xpProgression}}
 
 ### PLAYER EXPERIENCE
-Award XP for a new, meaningful player accomplishment in the latest message, such as gaining a useful item, resolving a challenge, or succeeding with an NPC. Scale the award to the achievement. Report earned XP as a positive delta: at 90/100 XP, earning 20 gives "deltas": { "XP": 20 }. The extension handles Level, Level Bonus, and excess XP.
+Award XP for concrete player progress in the latest message, including small successes: learning a useful clue, making headway on a task, helping someone, practicing a skill, acquiring an item, or overcoming a challenge. Minor progress earns a small award; major achievements earn more. Do not wait for a major milestone. Award each accomplishment once, only when it happens in the latest message; earlier messages are already reflected in the current state. Report earned XP as a positive delta: at 90/100 XP, earning 20 gives "deltas": { "XP": 20 }. The extension handles Level, Level Bonus, and excess XP.
 {{/xpProgression}}
 {{#offstage}}
 
@@ -178,6 +178,10 @@ Configured fields and current goals:
 {{goals}}
 Only report an explicit, meaningful change in the latest message. Under the relevant actor's "goals", use a configured field key and an object with "action" ("set" for an empty field, "replace" for a changed goal, or "complete" for one finished or abandoned), "text" (new goal for set/replace; empty for complete), and "quote" (exact supporting words from the latest message). A goal is an actual objective the character pursues, not every promise, secret, invitation, or plot detail. Do not repeat unchanged goals.
 {{/goals}}
+{{#xpProgression}}
+
+Before replying, check the latest message for small as well as major player progress. Include a positive XP delta for any concrete accomplishment not already counted in the current state; scale it to the achievement and award it once.
+{{/xpProgression}}
 
 Report changed fields and initial values for blank NPC fields.`,
     },
@@ -211,7 +215,7 @@ NPC fields:
 For each present NPC, fill blank fields with plausible individual values from context or invention. For a new NPC, initialize fields without defaults. Respect allowed values and numeric limits. Update filled fields when the story clearly changes them. Initialize blank Locked NPC fields once.
 {{/npcFields}}
 {{#xpProgression}}
-Player XP: award XP for new, meaningful accomplishments in the latest message, such as acquiring a useful item, overcoming a challenge, or succeeding with an NPC. Report the new absolute XP total with the same cap (90/100 plus 20 becomes 110/100). The extension handles level-ups and excess XP. When the award crosses the cap, add a story-appropriate Level Bonus to the player sheet.
+Player XP: award XP for concrete progress in the latest message, including small successes such as a useful clue, progress on a task, helping someone, practicing a skill, or acquiring an item. Scale the award to the accomplishment; do not wait for a major milestone. Award each accomplishment once, only when it happens in the latest message. Report the new absolute XP total with the same cap (90/100 plus 20 becomes 110/100). The extension handles level-ups and excess XP. When the award crosses the cap, add a story-appropriate Level Bonus to the player sheet.
 {{/xpProgression}}
 
 ### COSTS

@@ -1,7 +1,7 @@
 import { getSettings } from '../../core/settings.js';
 import { getContext } from '../../../../../../st-context.js';
 import { eventSource } from '../../../../../../events.js';
-import { loadStateFromMetadata, undoLastChange, getHistoryEntries } from '../status-logic.js';
+import { loadStateFromMetadata, undoLastChange, getHistoryEntries, hasOpenChat } from '../status-logic.js';
 import { makeActivatable } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { renderReviewPanel } from '../../ui/tracker/ui-change-review.js';
@@ -13,6 +13,7 @@ import { buildStatusHtml } from './status-ui-template.js';
 import { showAddCharacterDropdown } from './status-ui-menu.js';
 import { attachInlineEditListeners } from './status-ui-edit.js';
 import { renderExtractionReport } from './status-ui-report.js';
+import { trackerMessageIndex } from './status-ui-placement.js';
 
 /**
  * Draws the tracker box again on every message, and nothing else.
@@ -106,6 +107,9 @@ export function renderStatusTrackerBox(mesEl) {
 
     mesEl.querySelectorAll('.sillynpc-status-tracker-container').forEach(el => el.remove());
 
+    // SillyTavern can leave old message nodes behind while showing its home screen.
+    if (!hasOpenChat()) return;
+
     const settings = getSettings().statusTracker;
     if (!settings.enabled) return;
 
@@ -130,8 +134,7 @@ export function renderStatusTrackerBox(mesEl) {
 
     // The tracker describes the current turn. Older messages keep their prose and
     // extraction reports, but no longer reconstruct and display historical state.
-    const isLastMessage = chat.length > 0 ? Number(messageId) >= chat.length - 1 : true;
-    if (!isLastMessage) return;
+    if (Number(messageId) !== trackerMessageIndex(chat)) return;
 
     const textContainer = mesEl.querySelector('.mes_text');
     if (!textContainer) return;
@@ -141,11 +144,10 @@ export function renderStatusTrackerBox(mesEl) {
     const container = buildTrackerBox(loadStateFromMetadata(), { mesEl, view });
     if (!container) return;
 
-    if (settings.renderPosition === 'top') {
-        textContainer.prepend(container);
-    } else {
-        textContainer.appendChild(container);
-    }
+    // The host hides `.mes_text` when media replaces the message text. Keep the
+    // tracker beside that element so adding media to an existing reply cannot hide it.
+    if (settings.renderPosition === 'top') textContainer.before(container);
+    else textContainer.after(container);
 }
 
 /**

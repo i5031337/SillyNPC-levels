@@ -71,6 +71,16 @@ This plan implements [the product spec](PRODUCT_SPEC_DRAFT.md). It is a sequence
 
 **Done when:** dialogue recognition, Fill, extraction, review, XP, lore, and HUD work in a running SillyTavern instance; old data fixtures load; `node --experimental-default-type=module --test tests/*.mjs` passes.
 
+## Phase 7 — Host polish found during smoke checks
+
+1. When Fill needs a lorebook and neither the chat nor the extension has an active target, create a lorebook, bind it to the current chat, and write the new entry there. Preserve an existing chat/default lorebook choice.
+2. Hide the tracker when no chat is open, including on SillyTavern's home screen. Show it again when a chat with tracker data opens.
+3. Keep the tracker visible and attached to the correct latest message after an image is generated in chat, whether tracker placement is configured above or below that message.
+4. Verify the retained HUD layouts against real stat names and values, including Underlines with Energy and XP. Keep the text and meter layers readable.
+5. Award XP for evidenced minor accomplishments as well as larger milestones. Reiterate the XP rule near the end of the reader prompt and verify that extraction still reports an absolute XP total, which progression converts to a level and remainder.
+
+**Done when:** each behavior passes in an authenticated SillyTavern session, including chat switches, image messages, a chat without an active lorebook, and a player close to a level boundary.
+
 ## Decisions to settle while implementing
 
 - Memory retention: maximum entries, grouping, and whether old memories are summarized.

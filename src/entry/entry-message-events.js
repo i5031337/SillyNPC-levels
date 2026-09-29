@@ -1,25 +1,34 @@
 import { getContext } from '../../../../../st-context.js';
-import { getSettings } from '../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { reprocessMessage } from '../chat/chat.js';
 import { extractStateFromMessage, forgetExtractionsFrom } from '../tracker/extractor/status-extractor.js';
 import { clearExtractionReport } from '../tracker/extractor/status-extraction-report.js';
 import { rebaseToSwipe, revertToBase, clearTurnRecord } from '../tracker/snapshots/status-snapshots.js';
 import { swipeBaseRecord } from '../tracker/status-logic.js';
+import { isImageOnlyMessage, trackerMessageIndex } from '../tracker/ui/status-ui-placement.js';
 
 export function onMessageRendered(messageId) {
     try {
         const mesEl = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
         reprocessMessage(mesEl);
 
-        // If "showOnlyAtBottom" is enabled, we need to reprocess the previous message
-        // to ensure its tracker is removed now that there's a new message.
-        if (getSettings().statusTracker?.showOnlyAtBottom) {
-            const prevMesId = Number(messageId) - 1;
-            if (prevMesId >= 0) {
-                const prevMesEl = document.querySelector(`#chat .mes[mesid="${prevMesId}"]`);
-                if (prevMesEl) reprocessMessage(prevMesEl);
-            }
+        const chat = getContext()?.chat || [];
+        if (isImageOnlyMessage(chat[Number(messageId)])) {
+            // Image-only messages hide their text. The tracker belongs on the last
+            // visible prose message, which needs a redraw after this new message lands.
+            const anchorId = trackerMessageIndex(chat);
+            const anchor = document.querySelector(`#chat .mes[mesid="${anchorId}"]`);
+            if (anchor) reprocessMessage(anchor);
+            return;
+        }
+
+        // A new prose message takes the tracker from the previous visible prose
+        // message, which may be several indexes back after generated images.
+        const id = Number(messageId);
+        if (id === trackerMessageIndex(chat)) {
+            const previousId = trackerMessageIndex(chat.slice(0, id));
+            const previous = document.querySelector(`#chat .mes[mesid="${previousId}"]`);
+            if (previous) reprocessMessage(previous);
         }
     } catch (err) {
         console.error(LOG_PREFIX, 'onMessageRendered error', err);
@@ -38,7 +47,7 @@ export function onMessageForExtraction(messageId) {
         const message = context?.chat?.[Number(messageId)];
         // Only the model's own prose is worth reading; user turns and system notes
         // describe nothing that changed.
-        if (!message || message.is_user || message.is_system) return;
+        if (!message || message.is_user || message.is_system || isImageOnlyMessage(message)) return;
 
         extractStateFromMessage(message.mes, messageId)
             .then(result => {

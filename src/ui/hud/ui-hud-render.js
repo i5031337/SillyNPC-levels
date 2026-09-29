@@ -184,7 +184,9 @@ export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom
             .forEach(m => statsContainer.append(buildMeterRow(m.statDef, m.rawValue, m.bar, 'bar')));
     } else {
         portrait.querySelectorAll('.sillynpc-hud-rings').forEach(el => el.remove());
-        meters.forEach(m => statsContainer.append(buildMeterRow(m.statDef, m.rawValue, m.bar, style)));
+        meters.forEach(m => statsContainer.append(buildMeterRow(
+            m.statDef, m.rawValue, m.bar, layout.id === 'underline' ? 'underline' : style,
+        )));
     }
 
     const goals = [

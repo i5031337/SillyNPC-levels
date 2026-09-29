@@ -1,10 +1,11 @@
-import { world_names, loadWorldInfo, saveWorldInfo, deleteWorldInfoEntry, METADATA_KEY } from '../../../../../world-info.js';
+import { world_names, loadWorldInfo, saveWorldInfo, deleteWorldInfoEntry, createNewWorldInfo, METADATA_KEY } from '../../../../../world-info.js';
 import { getContext } from '../../../../../st-context.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getActiveCharacters, getChatCast, isCharacterInChat } from '../characters/characters.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { canAutoLinkLorebook } from '../characters/character-scope.js';
+import { existingFillLorebookName, newChatLorebookName } from './lorebook-target.js';
 
 /**
  * SillyTavern declares `export let world_names;` and only assigns it once its own
@@ -66,6 +67,22 @@ export async function deleteLorebookEntry(world, uid) {
 export function getChatLorebookName() {
     const name = getContext()?.chatMetadata?.[METADATA_KEY];
     return (typeof name === 'string' && knownWorlds().includes(name)) ? name : '';
+}
+
+/** Fill creates a chat-bound target only when no existing target was chosen. */
+export async function ensureChatLorebookForFill() {
+    const selected = existingFillLorebookName(getChatLorebookName(),
+        getSettings().defaultLorebook, knownWorlds());
+    if (selected) return selected;
+    const context = getContext();
+    const chatId = context?.getCurrentChatId?.();
+    if (!chatId || !context?.chatMetadata) return '';
+    const name = newChatLorebookName(chatId, knownWorlds());
+    if (!await createNewWorldInfo(name)) return '';
+    context.chatMetadata[METADATA_KEY] = name;
+    context.saveMetadataDebounced?.();
+    document.querySelector('.chat_lorebook_button')?.classList.add('world_set');
+    return name;
 }
 
 /**

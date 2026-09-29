@@ -236,10 +236,10 @@
 .sillynpc-hud-container.sillynpc-hud-underline { gap: var(--sillynpc-space-md); }
 .sillynpc-hud-underline .sillynpc-hud-stats { gap: 7px; min-width: 0; }
 .sillynpc-hud-underline .sillynpc-hud-stat-row {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 4px;
+    row-gap: 2px;
     width: var(--sillynpc-hud-meter-width, 92px);
 }
 .sillynpc-hud-underline .sillynpc-hud-stat-name {
@@ -248,9 +248,12 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .sillynpc-hud-underline .sillynpc-hud-bar-wrap {
-    position: static;
+    grid-column: 1 / -1;
     width: 100%;
     height: 2px;
     border: 0;
@@ -258,9 +261,12 @@
     background: color-mix(in srgb, var(--sillynpc-fg-primary) 20%, transparent);
 }
 .sillynpc-hud-underline .sillynpc-hud-bar-text {
-    position: absolute;
-    inset: 0 0 auto auto;
+    position: static;
     width: auto;
     height: auto;
     font-size: var(--sillynpc-text-xs);
+}
+.sillynpc-hud-underline .sillynpc-hud-stat-text {
+    min-width: 0;
+    text-align: right;
 }

@@ -16,4 +16,5 @@ This records the implementation against `REWRITE_PLAN.md` as of 2026-09-28. Node
 ## Remaining verification and limits
 
 - Run `REWRITE_HOST_SMOKE.md` in an authenticated SillyTavern session. The available host responded, but this rewrite has not had a controllable session for the full interactive check. In particular, verify Player/Goals menu behavior, Fill and lore sync, image generation, HUD redraws, review application, and swipe/regenerate/edit/delete rebase with real host events.
+- A user smoke run found an Underlines text overlap, stingy XP awards, tracker display on the home screen, and tracker loss after image messages. Source fixes now address those cases, and Fill can create a chat lorebook when no target exists. Recheck the Phase 7 cases in `REWRITE_HOST_SMOKE.md` in the host.
 - The legacy System world archive is transitional. Switching among old imported Systems can still restore their archived world payloads; new reusable System exports do not include that payload.

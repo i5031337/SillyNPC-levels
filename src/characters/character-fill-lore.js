@@ -2,7 +2,7 @@ import { loadWorldInfo } from '../../../../../world-info.js';
 import { debugLog } from '../core/constants.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from '../api/api.js';
-import { tryAutoSyncLorebook, getChatLorebookName } from '../lore/lorebook.js';
+import { tryAutoSyncLorebook, ensureChatLorebookForFill } from '../lore/lorebook.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
 import { parseLoreContent } from '../lore/lore-format.js';
 
@@ -31,6 +31,9 @@ export async function readLoreEntry(char) {
  * @returns {Promise<{ ok: boolean, action: string, reason?: string }>}
  */
 export async function fillLore(char) {
+    // A Fill request in a chat with no chosen book gets its own lorebook before
+    // auto-linking, so a stray global book is never silently made this chat's target.
+    const target = char?.lorebook?.world || await ensureChatLorebookForFill();
     let existing = await readLoreEntry(char);
 
     if (!char.lorebook && await tryAutoSyncLorebook(char, { silent: true })) {
@@ -52,12 +55,11 @@ export async function fillLore(char) {
         return { ok: true, action: 'linked entry is complete' };
     }
 
-    const world = char.lorebook?.world || getSettings().defaultLorebook || getChatLorebookName();
+    const world = char.lorebook?.world || target;
     if (!world) {
         return {
             ok: false, action: 'none',
-            reason: 'No lorebook to write into. Choose a Default Target Lorebook in Generation, '
-                + 'or open a chat that has one.',
+            reason: 'No chat is open, so Fill cannot create a chat lorebook.',
         };
     }
 
