@@ -1,8 +1,7 @@
 import { POPUP_TYPE, POPUP_RESULT, Popup } from '../../../../../../popup.js';
 import { triggerReprocess } from '../../chat/reprocess.js';
 import { getRequestHeaders } from '../../../../../../../script.js';
-import { pickAndProcessImage, makeActivatable } from '../../core/utils.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
+import { saveSettings } from '../../core/settings.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { generateCharacterImageLogic } from '../../api/api.js';
 
@@ -23,150 +22,12 @@ async function deleteGeneratedImage(path) {
     }
 }
 
-/**
- * Asks how the portrait should be generated, and against what reference.
- *
- * Referencing is Gemini-only: SillyTavern's generateGoogleImage sends a prompt and nothing
- * else, and the /sd command has no argument that carries an image. So the options are
- * hidden on that backend rather than offered and silently ignored.
- *
- * @param {object} char
- * @returns {Promise<{ references: string[] } | null>} null when cancelled.
- */
+/** Ask before spending an image generation request. */
 async function askGenerationMode(char) {
-    const isGemini = getSettings().imageBackend === 'gemini';
-    const own = Array.isArray(char.images) ? char.images.filter(Boolean) : [];
-
-    if (!isGemini) {
-        const ok = await Popup.show.confirm(
-            `Generate an image for "${char.name || 'this character'}"?`,
-            'The Image Generation extension cannot take a reference image, so this is drawn '
-            + 'from the prompt alone.',
-        );
-        return ok ? { references: [] } : null;
-    }
-
-    const wrap = document.createElement('div');
-    wrap.className = 'sillynpc-gen-popup';
-
-    const intro = document.createElement('p');
-    intro.textContent = `How should "${char.name || 'this character'}" be drawn?`;
-    wrap.append(intro);
-
-    /** @type {string[]} */
-    const chosen = [];
-    let mode = own.length ? 'current' : 'scratch';
-
-    const noteForCurrent = own.length
-        ? 'Keeps the same face and outfit; pose and scene can still change.'
-        : 'No image yet, so this falls back to from scratch.';
-
-    const options = [
-        { value: 'scratch', label: 'From scratch', note: 'The prompt only. A fresh interpretation every time.' },
-        { value: 'current', label: 'Use the current image as reference', note: noteForCurrent },
-        { value: 'pick', label: 'Choose reference images', note: "From this character's saved images, from disk, or both." },
-    ];
-
-    const pickArea = document.createElement('div');
-    pickArea.className = 'sillynpc-genref-area';
-
-    const updateTally = () => {
-        const tally = pickArea.querySelector('.sillynpc-genref-count');
-        if (!tally) return;
-        tally.textContent = chosen.length
-            ? `${chosen.length} reference image${chosen.length === 1 ? '' : 's'} selected.`
-            : 'Nothing selected yet, so this would generate from scratch.';
-    };
-
-    const refresh = () => {
-        pickArea.replaceChildren();
-        if (mode !== 'pick') return;
-
-        if (own.length) {
-            const heading = document.createElement('div');
-            heading.className = 'notes';
-            heading.textContent = "This character's images, click to select:";
-            pickArea.append(heading);
-
-            const grid = document.createElement('div');
-            grid.className = 'sillynpc-genref-grid';
-            for (const src of own) {
-                const cell = document.createElement('div');
-                cell.className = 'sillynpc-genref-cell';
-                const img = document.createElement('img');
-                img.src = src;
-                cell.append(img);
-                makeActivatable(cell, { label: 'Use this reference image' });
-                cell.addEventListener('click', () => {
-                    const at = chosen.indexOf(src);
-                    if (at >= 0) chosen.splice(at, 1);
-                    else chosen.push(src);
-                    cell.classList.toggle('selected', at < 0);
-                    updateTally();
-                });
-                grid.append(cell);
-            }
-            pickArea.append(grid);
-        }
-
-        const upload = document.createElement('button');
-        upload.type = 'button';
-        upload.className = 'menu_button';
-        upload.textContent = 'Add from disk';
-        upload.addEventListener('click', async () => {
-            const dataUrl = await pickAndProcessImage({ fullSize: true });
-            if (dataUrl) {
-                chosen.push(dataUrl);
-                updateTally();
-            }
-        });
-        pickArea.append(upload);
-
-        const tally = document.createElement('div');
-        tally.className = 'notes sillynpc-genref-count';
-        pickArea.append(tally);
-        updateTally();
-    };
-
-    const modes = document.createElement('div');
-    modes.className = 'sillynpc-genmode-list';
-    for (const option of options) {
-        const row = document.createElement('label');
-        row.className = 'sillynpc-genmode-row';
-
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'sillynpc-genmode';
-        radio.value = option.value;
-        radio.checked = option.value === mode;
-        radio.addEventListener('change', () => {
-            if (!radio.checked) return;
-            mode = option.value;
-            refresh();
-        });
-
-        const label = document.createElement('strong');
-        label.textContent = option.label;
-        const note = document.createElement('small');
-        note.className = 'notes';
-        note.textContent = option.note;
-
-        const text = document.createElement('span');
-        text.append(label, document.createElement('br'), note);
-        row.append(radio, text);
-        modes.append(row);
-    }
-
-    wrap.append(modes, pickArea);
-    refresh();
-
-    const popup = new Popup(wrap, POPUP_TYPE.CONFIRM, '', { okButton: 'Generate', cancelButton: 'Cancel' });
-    const result = await popup.show();
-    if (result !== POPUP_RESULT.AFFIRMATIVE) return null;
-
-    if (mode === 'scratch') return { references: [] };
-    if (mode === 'current') return { references: char.imageUrl ? [char.imageUrl] : [] };
-    return { references: chosen.slice() };
+    return Popup.show.confirm(
+        `Generate an image for "${char.name || 'this character'}"?`,
+        'SillyTavern Image Generation draws from the prompt. Reference images are not supported by its /imagine command.',
+    );
 }
 
 /**
@@ -209,13 +70,12 @@ async function askResultAction(url) {
 }
 
 export async function generateCharacterImage(char, { onSave } = {}) {
-    const choice = await askGenerationMode(char);
-    if (!choice) return;
+    if (!await askGenerationMode(char)) return;
 
     let imageUrl;
     try {
         toastr.info('Requesting image generation...', 'SillyNPC');
-        imageUrl = await generateCharacterImageLogic(char, { referenceImages: choice.references });
+        imageUrl = await generateCharacterImageLogic(char);
     } catch (err) {
         toastr.error(`Generation failed: ${err.message}`, 'SillyNPC');
         return;

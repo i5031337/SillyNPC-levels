@@ -11,7 +11,7 @@ import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { fillCharacter } from './ui-fill.js';
 import { playerHistory, restorePlayerFromMessage } from '../../tracker/snapshots/status-snapshots.js';
-import { renderCollectionUI, attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit, updateExtensionTheme } from '../shared/ui-shared.js';
+import { renderCollectionUI, attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
 import { buildBulkBar, spliceIndexes } from '../shared/ui-bulk-select.js';
 import { choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
 import { 
@@ -62,13 +62,18 @@ function ensureBulk(colId, dom) {
             const removed = spliceIndexes(list, ids);
             persistCollectionEdit(`Dropped ${removed} item(s)`, where, true);
         },
-        onRefresh: () => refreshModal(dom),
+        onRefresh: () => refreshPlayerSheet(dom),
     });
     playerBulks.set(colId, handle);
     return handle;
 }
 
-export function openPlayerModal() {
+export function openPlayerSheet() {
+    return import('../manage/ui-manage.js').then(({ openManagePopup }) => openManagePopup({ tab: 'player' }));
+}
+
+/** Render the selected persona in the extension menu. */
+export function renderPlayerView(view) {
     // Reads the chat's state and renders it. It used to pull master storage over the live
     // state first - "to avoid race conditions" - which meant looking at your character
     // could change them, and the next save made it permanent.
@@ -77,15 +82,15 @@ export function openPlayerModal() {
     const persona = getPersonaData();
     const settings = getSettings().statusTracker;
     
-    debugLog('Opening player modal', { persona });
+    debugLog('Rendering player sheet', { persona });
 
     // Not gated on visible: that now says whether the stat belongs on the in-chat
     // tracker, which has nothing to do with the badge on the sheet.
     const levelStat = settings.playerStats.find(s => s.name === 'Level' || s.name === 'LvL');
     const levelValue = levelStat ? (state.player.stats[levelStat.name] || levelStat.defaultValue || '1') : null;
 
-    const modalHtml = `
-        <div class="sillynpc-modal sillynpc-player-sheet">
+    const sheetHtml = `
+        <div class="sillynpc-player-sheet">
             <div class="sillynpc-sheet-header">
                 <div class="sillynpc-sheet-title">
                     <span class="persona-name">${escapeHtml(persona.name)}</span>
@@ -94,8 +99,6 @@ export function openPlayerModal() {
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button type="button" class="menu_button sillynpc-sheet-fill" title="Read the story for who you are, a lore entry, your fields and a portrait - filling only what is still empty."><i class="fa-solid fa-fill-drip"></i> <span>Fill</span></button>
                     <button type="button" class="menu_button sillynpc-restore-open" title="Put your stats and collections back to what they were after an earlier message"><i class="fa-solid fa-clock-rotate-left"></i></button>
-                    <div class="sillynpc-sheet-settings" title="Extension Settings" style="cursor: pointer;"><i class="fa-solid fa-cog"></i></div>
-                    <div class="sillynpc-sheet-close" style="cursor: pointer;"><i class="fa-solid fa-xmark"></i></div>
                 </div>
             </div>
             <div class="sillynpc-sheet-body">
@@ -113,75 +116,13 @@ export function openPlayerModal() {
         </div>
     `;
 
-    const container = document.createElement('div');
-    container.innerHTML = modalHtml;
-    // The same three the manage popup sets, and for the same reason: the dialog is given
-    // a fixed height, and everything inside it measures against this wrapper. Without a
-    // height here the sheet is as tall as its contents, so the part that is meant to
-    // scroll never overflows anything - it is simply clipped by the dialog.
-    container.style.height = '100%';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-
-    const popup = new Popup(container, POPUP_TYPE.DISPLAY, '', {
-        large: true,
-        // Before the dialog goes, while its fields are still in the document and still
-        // hold what was typed into them. Every way out of this sheet arrives here.
-        onClosing: (p) => {
-            commitOpenEdits(p.dlg);
-            return true;
-        },
-        onOpen: (p) => {
-            const dlg = p.dlg;
-            if (dlg) {
-                // Hide default ST close button completely
-                const stCloseBtns = dlg.querySelectorAll('.popup_close, #dialogue_popup_close, .close_button, .popup-close, .popup-close-button, .popup-button-close');
-                stCloseBtns.forEach(btn => btn.remove()); // Use remove() instead of display:none to be sure
-
-                // Attach click listener directly to the active close button inside the open modal
-                const closeBtn = dlg.querySelector('.sillynpc-sheet-close');
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', () => p.completeCancelled());
-                }
-
-                const settingsBtn = dlg.querySelector('.sillynpc-sheet-settings');
-                if (settingsBtn) {
-                    settingsBtn.addEventListener('click', async () => {
-                        p.completeCancelled();
-                        const { openManagePopup } = await import('../manage/ui-manage.js');
-                        openManagePopup({ tab: 'systems' });
-                    });
-                }
-
-                dlg.style.setProperty('padding', '0px', 'important');
-                dlg.style.setProperty('background', 'transparent', 'important');
-                dlg.style.setProperty('border', 'none', 'important');
-                dlg.style.setProperty('box-shadow', 'none', 'important');
-
-                const isMobile = window.innerWidth <= 768;
-                const width = isMobile ? 95 : (getSettings().popupWidth ?? 80);
-                const height = isMobile ? 90 : (getSettings().popupHeight ?? 80);
-
-                dlg.style.setProperty('width', `${width}vw`, 'important');
-                dlg.style.setProperty('max-width', '98vw', 'important');
-                dlg.style.setProperty('height', `${height}vh`, 'important');
-                dlg.style.setProperty('max-height', '98vh', 'important');
-                
-                if (isMobile) {
-                    dlg.style.setProperty('margin', '2vh auto', 'important');
-                }
-            }
-        }
-    });
-    
-    popup.show();
-    updateExtensionTheme(container, popup);
+    view.innerHTML = sheetHtml;
     // The lorebook block is shared with the character editor, and its mode is module
     // state - a picker left open there would otherwise open here against the player.
     resetLorebookState();
-    renderSidebar(container);
-    renderTabExtras(container);
-    attachModalListeners(container);
+    renderSidebar(view);
+    renderTabExtras(view);
+    attachSheetListeners(view);
 }
 
 /**
@@ -191,19 +132,19 @@ export function openPlayerModal() {
  * makes - looking at somebody and changing them are different jobs and the controls
  * belong with the second one.
  *
- * Redrawn on its own rather than through refreshModal, which only replaces the tab
+ * Redrawn on its own rather than through refreshPlayerSheet, which only replaces the tab
  * content: generating a portrait has to show here.
  *
  * @param {HTMLElement} dom
  */
-function attachModalListeners(dom) {
+function attachSheetListeners(dom) {
     // Tab switching
     dom.querySelectorAll('.sillynpc-charview-tab').forEach(tab => {
         if (tab.dataset.listenerAttached) return;
         tab.addEventListener('click', () => {
             if (currentTab === tab.dataset.view) return;
             currentTab = tab.dataset.view;
-            refreshModal(dom);
+            refreshPlayerSheet(dom);
             // The portrait differs between the two: read-only on Profile, the full block
             // with its controls on Edit.
             renderSidebar(dom);
@@ -223,7 +164,9 @@ function attachModalListeners(dom) {
     // Inline Editing
     dom.querySelectorAll('.sillynpc-inline-edit').forEach(el => {
         if (el.dataset.listenerAttached) return;
-        el.addEventListener('blur', () => commitInlineEdit(el));
+        el.addEventListener('blur', () => {
+            if (commitInlineEdit(el)) refreshPlayerHeader(dom);
+        });
         el.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
         });
@@ -238,7 +181,7 @@ function attachModalListeners(dom) {
     for (const col of playerCollections()) {
         const section = dom.querySelector(`[data-col-section="${col.id}"]`);
         if (!section) continue;
-        attachCollectionListeners(section, state.player, () => refreshModal(dom),
+        attachCollectionListeners(section, state.player, () => refreshPlayerSheet(dom),
             ensureBulk(col.id, dom));
     }
 
@@ -246,7 +189,7 @@ function attachModalListeners(dom) {
         if (btn.dataset.listenerAttached) return;
         btn.addEventListener('click', () => {
             isCollectionEditMode = !isCollectionEditMode;
-            refreshModal(dom);
+            refreshPlayerSheet(dom);
         });
         btn.dataset.listenerAttached = 'true';
     });
@@ -257,7 +200,7 @@ function attachModalListeners(dom) {
             fillCharacter(getPlayerCard(), {
                 onSave: () => {
                     renderSidebar(dom);
-                    refreshModal(dom);
+                    refreshPlayerSheet(dom);
                     // A portrait or a new set of stats both show outside this popup.
                     eventSource.emit('sillynpc-player-portrait-changed');
                 },
@@ -269,7 +212,7 @@ function attachModalListeners(dom) {
     const restoreBtn = dom.querySelector('.sillynpc-restore-open');
     if (restoreBtn && !restoreBtn.dataset.listenerAttached) {
         restoreBtn.addEventListener('click', () => {
-            openRestorePicker().then(changed => { if (changed) refreshModal(dom); })
+            openRestorePicker().then(changed => { if (changed) refreshPlayerSheet(dom); })
                 .catch(err => console.error('[SillyNPC] restore picker failed', err));
         });
         restoreBtn.dataset.listenerAttached = 'true';
@@ -344,7 +287,7 @@ async function openRestorePicker() {
     return true;
 }
 
-export function refreshModal(dom) {
+export function refreshPlayerSheet(dom) {
     /* Anything still being typed is written before the markup holding it is thrown away.
        This is the other way an edit was being lost, and the one that needs no closing at
        all: switching tabs replaces the sheet's contents, and a field replaced mid-edit
@@ -354,10 +297,10 @@ export function refreshModal(dom) {
     commitOpenEdits(dom);
 
     const state = loadStateFromMetadata();
+    refreshPlayerHeader(dom, state);
 
-    // We do NOT want to refresh the entire modal if an input is focused, as it breaks typing!
-    // We only refresh when explicitly called (like adding or dropping items).
-    // Or tab switching.
+    // Refresh only for actions such as adding items or switching tabs, so an
+    // active input keeps its focus while the user types.
     const content = dom.querySelector('.sillynpc-sheet-content');
     content.innerHTML = renderTabContent(currentTab, state);
     
@@ -369,6 +312,13 @@ export function refreshModal(dom) {
     });
     
     renderTabExtras(dom);
-    attachModalListeners(dom);
+    attachSheetListeners(dom);
 }
 
+function refreshPlayerHeader(dom, state = loadStateFromMetadata()) {
+    const name = dom.querySelector('.sillynpc-sheet-title .persona-name');
+    if (name) name.textContent = getPersonaData().name;
+    const badge = dom.querySelector('.sillynpc-sheet-title .level-badge');
+    const levelStat = getSettings().statusTracker.playerStats.find(s => s.name === 'Level' || s.name === 'LvL');
+    if (badge && levelStat) badge.textContent = `Lvl ${state.player.stats[levelStat.name] || levelStat.defaultValue || '1'}`;
+}

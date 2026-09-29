@@ -1,7 +1,7 @@
 import { getSettings } from '../../core/settings.js';
 import { offerDownload } from '../../core/utils.js';
 import { updateAllExtensionThemes } from '../shared/ui-shared.js';
-import { deleteSystemPreset, importSystemPreset, getActiveSystem, setActiveSystem, createSystem, saveCheckpoint, restoreCheckpoint, deleteCheckpoint, getCheckpoints } from '../../tracker/status-logic.js';
+import { deleteSystemPreset, importSystemPreset, getActiveSystem, getChatSystem, chatHasStarted, setActiveSystem, createSystem, saveCheckpoint, restoreCheckpoint, deleteCheckpoint, getCheckpoints } from '../../tracker/status-logic.js';
 import { Popup } from '../../../../../../popup.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { updateHUD } from '../hud/ui-hud.js';
@@ -9,6 +9,7 @@ import { escapeHtml } from '../../core/utils.js';
 import { openItemLibrary } from '../collections/ui-item-library.js';
 import { exportWorldCharacters } from '../../characters/world-character-export.js';
 import { carriesNpcStat } from '../../tracker/stat-persistence.js';
+import { normalizeSystemDefinition } from '../../core/system-schema.js';
 
 /**
  * System Manager: saving, restoring and swapping whole Systems.
@@ -21,7 +22,8 @@ function exportSystem(name) {
     const profile = settings.statusTracker.presets?.[name];
     if (!profile) return;
     
-    offerDownload(profile, `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_system.json`);
+    offerDownload(profile.definition || normalizeSystemDefinition(profile, { name }),
+        `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_system.json`);
 }
 
 /**
@@ -158,6 +160,7 @@ export function buildSystemManager(onRefresh) {
     const settings = getSettings();
     const presets = settings.statusTracker.presets || {};
     const presetNames = Object.keys(presets);
+    const chatSystem = chatHasStarted() ? (getChatSystem() || getActiveSystem()) : null;
 
     const listWrap = document.createElement('div');
     listWrap.style.marginBottom = '20px';
@@ -180,14 +183,9 @@ export function buildSystemManager(onRefresh) {
             
             const nameCell = document.createElement('td');
             nameCell.style.padding = '8px';
-            // A system's cast is the thing you would most regret switching away from
-            // without noticing, so the count is on the row rather than hidden inside it.
-            const cast = name === getActiveSystem()
-                ? (getSettings().characters || []).length
-                : (profile.world?.characters || []).length;
             const detail = [
                 profile.metadata?.description || '',
-                profile.world ? `${cast} character${cast === 1 ? '' : 's'}` : 'rules only',
+                settings.systemWorldArchive?.[name] ? 'legacy world archived' : 'reusable rules',
             ].filter(Boolean).join(' — ');
             nameCell.innerHTML = `<div style="font-weight:bold">${escapeHtml(name)}`
                 + (name === getActiveSystem() ? ' <small style="opacity:0.6">(in use)</small>' : '')
@@ -206,12 +204,17 @@ export function buildSystemManager(onRefresh) {
             radio.type = 'radio';
             radio.name = 'sillynpc-active-system';
             radio.checked = name === getActiveSystem();
-            radio.title = radio.checked ? 'In use' : `Switch to "${name}"`;
+            radio.disabled = Boolean(chatSystem && chatSystem !== name);
+            radio.title = radio.disabled ? `This chat belongs to "${chatSystem}"`
+                : radio.checked ? 'In use' : `Switch to "${name}"`;
             radio.addEventListener('change', () => {
                 if (!radio.checked) return;
                 // The system being left is captured on the way out, so there is nothing
                 // to remember to save and no way to lose a world by switching.
-                setActiveSystem(name);
+                if (!setActiveSystem(name)) {
+                    onRefresh();
+                    return;
+                }
                 updateAllExtensionThemes();
                 onRefresh();
                 triggerReprocess();
@@ -268,10 +271,9 @@ export function buildSystemManager(onRefresh) {
                     toastr.info('Switch to another system before deleting this one.', 'SillyNPC');
                     return;
                 }
-                const cast = (profile.world?.characters || []).length;
-                const warning = cast
-                    ? `Delete "${name}"? Its ${cast} character${cast === 1 ? '' : 's'}, `
-                      + 'item library and persona records go with it.'
+                const hasArchive = Boolean(settings.systemWorldArchive?.[name]);
+                const warning = hasArchive
+                    ? `Delete "${name}" and its archived legacy world? This removes its saved characters, item library and persona records.`
                     : `Delete the saved system "${name}"?`;
                 if (await Popup.show.confirm('Delete system', warning)) {
                     deleteSystemPreset(name);
@@ -299,8 +301,9 @@ export function buildSystemManager(onRefresh) {
     newBtn.className = 'menu_button';
     newBtn.style.flex = '1';
     newBtn.innerHTML = '<i class="fa-solid fa-plus"></i> New System';
-    newBtn.title = 'Start a new system from the defaults, with no characters in it. '
-        + 'The one you are in now is saved first.';
+    newBtn.disabled = Boolean(chatSystem);
+    newBtn.title = chatSystem ? 'Open a new chat before choosing a different System.'
+        : 'Start a new System from the defaults.';
     newBtn.addEventListener('click', async () => {
         const name = (await Popup.show.input('New system', 'Name for this system:'))?.trim();
         if (!name) return;

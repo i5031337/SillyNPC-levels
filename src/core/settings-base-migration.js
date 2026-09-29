@@ -1,4 +1,4 @@
-import { GEMINI_IMAGE_MODELS, PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE, SYSTEM_PROMPT, PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT } from './constants.js';
+import { PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE, SYSTEM_PROMPT, PREVIOUS_SYSTEM_PROMPT, RECENT_SYSTEM_PROMPT, DIALOGUE_FORMAT_PROMPT } from './constants.js';
 import { defaultSettings } from './settings-defaults.js';
 import { resolveImageFolder } from './utils.js';
 import { saveSettings } from './settings.js';
@@ -55,9 +55,9 @@ export function normaliseBaseSettings(settings) {
         || !String(settings.statusTracker.extractionPrompt || '').trim()) {
         settings.statusTracker.extractionPrompt = SYSTEM_PROMPT;
     }
-    if (settings.imageBackend !== 'gemini') settings.imageBackend = 'sd';
-    if (!GEMINI_IMAGE_MODELS.includes(settings.geminiImageModel)) {
-        settings.geminiImageModel = defaultSettings.geminiImageModel;
+    // Old exports may contain the removed direct Gemini backend settings.
+    for (const key of ['imageBackend', 'geminiImageModel', 'imageProfileId', 'imgGenReferencePreamble']) {
+        delete settings[key];
     }
 
     if (!Object.hasOwn(PORTRAIT_SHAPES, settings.portraitShape)) {

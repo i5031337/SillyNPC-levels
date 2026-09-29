@@ -2,14 +2,15 @@ import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '.
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { normaliseStatUpdatePolicies } from './stat-update-policy.js';
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { normalizeSystemDefinition } from '../core/system-schema.js';
 
 export function bind(deps) {
 const SYSTEM_EXCLUDED_ROOT = new Set([
     // Carried separately, as the world.
-    'characters', 'personaData', 'master_items',
+    'characters', 'personaData', 'master_items', 'systemWorldArchive',
     // The library itself, and which system is open.
     'statusTracker', 'activeSystem', 'version', 'enabled',
-    // Which provider makes images and where the files land: accounts and disk.
+    // User-level image settings, including retired backend keys from old exports.
     'imageBackend', 'geminiImageModel', 'imageSaveRoute',
     'loreProfileId', 'imageProfileId',
     // Your window, not your world.
@@ -74,12 +75,95 @@ function restoreWorld(settings, world) {
     return true;
 }
 
+/** Legacy worlds live outside reusable presets until their chat ownership is migrated. */
+function worldArchive(settings, create = false) {
+    const archive = settings.systemWorldArchive;
+    if (archive && typeof archive === 'object' && !Array.isArray(archive)) return archive;
+    if (create) return (settings.systemWorldArchive = {});
+    return {};
+}
+
+/** Existing Builder/reader controls still consume their flat tracker configuration. */
+function configFromDefinition(definition) {
+    const stat = fields => fields.map(field => ({
+        ...field,
+        name: field.name,
+        hint: field.guidance,
+    }));
+    const collections = definition.collections.map(collection => ({
+        ...collection,
+        fields: collection.fields.map(field => ({ ...field, hint: field.guidance })),
+    }));
+    return {
+        profileHints: Object.fromEntries(
+            [...definition.profiles.player, ...definition.profiles.npc]
+                .filter(field => field.guidance)
+                .map(field => [field.id, field.guidance]),
+        ),
+        statusTracker: {
+            globalStats: stat(definition.stats.world),
+            playerStats: stat(definition.stats.player),
+            npcStats: stat(definition.stats.npc),
+            collections,
+            hudLayout: definition.hud.layout,
+            showGlobalStats: definition.hud.showWorld,
+            showNpcPortraits: definition.hud.showNpcPortraits,
+        },
+    };
+}
+
+/** Convert a saved/imported profile at one boundary; never leave its cast in an export. */
+function migratePreset(name, preset, settings) {
+    if (!preset || typeof preset !== 'object') return preset;
+    const archive = worldArchive(settings);
+    const embedded = preset.world || (preset.config && [
+        'characters', 'personaData', 'master_items',
+    ].some(key => Object.hasOwn(preset.config, key)) ? preset.config : null);
+    if (embedded && !Object.hasOwn(archive, name)) {
+        worldArchive(settings, true)[name] = {
+            characters: structuredClone(embedded.characters || []),
+            personaData: structuredClone(embedded.personaData || {}),
+            master_items: structuredClone(embedded.master_items || {}),
+        };
+    }
+    const clean = { ...preset };
+    delete clean.world;
+    clean.metadata = clean.metadata || {
+        name: name || clean.name || 'System', description: '', author: 'User',
+    };
+    clean.metadata = { ...clean.metadata, name };
+    if (clean.config) {
+        clean.config = copyExcept(clean.config, new Set(['characters', 'personaData', 'master_items', 'systemWorldArchive']));
+        if (clean.config.statusTracker) clean.config.statusTracker = copyExcept(clean.config.statusTracker, SYSTEM_EXCLUDED_TRACKER);
+    }
+    clean.definition = normalizeSystemDefinition(preset.definition || preset, { name });
+    if (!clean.config) clean.config = configFromDefinition(clean.definition);
+    return clean;
+}
+
+function migrateSavedPresets(settings) {
+    const presets = settings.statusTracker?.presets || {};
+    let changed = false;
+    for (const [name, preset] of Object.entries(presets)) {
+        if (!preset || (preset.definition && !preset.world
+            && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
+                .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
+        presets[name] = migratePreset(name, preset, settings);
+        changed = true;
+    }
+    if (changed) saveSettings();
+    return changed;
+}
+
 /** Writes the active system back to its slot. Always called before switching away. */
 function captureActiveSystem() {
     const settings = getSettings();
     const active = settings.activeSystem;
     const existing = settings.statusTracker.presets?.[active];
     if (!active || !existing) return false;
+    if (Object.hasOwn(worldArchive(settings), active)) {
+        settings.systemWorldArchive[active] = captureWorld(settings);
+    }
     saveSystemPreset(active,
         existing.metadata?.description ?? '', existing.metadata?.author ?? 'User');
     return true;
@@ -123,6 +207,7 @@ function unusedSystemName(presets, base) {
  */
 function migrateToActiveSystem() {
     const settings = getSettings();
+    migrateSavedPresets(settings);
     if (settings.activeSystem) return false;
 
     const st = settings.statusTracker;
@@ -156,19 +241,22 @@ function migrateToActiveSystem() {
  */
 function setActiveSystem(name) {
     const settings = getSettings();
+    migrateSavedPresets(settings);
     const target = settings.statusTracker.presets?.[name];
     if (!target || settings.activeSystem === name) return false;
+    // A chat adopts its first System on open. Restoring that recorded System is allowed;
+    // selecting another one here would reinterpret live values without a field mapping.
+    if (deps.chatHasStarted?.() && deps.getChatSystem?.() !== name) return false;
 
     captureActiveSystem();
     applySystemPreset(target);
-    // A saved system with no recorded world has an empty one - the starter systems ship
-    // that way. Moving into it must not inherit the last system's cast, which is the
-    // whole point: a Pathfinder chat should not open holding twenty-five D&D characters.
-    // The outgoing world was captured a moment ago, so switching back returns all of it.
-    if (!target.world) {
-        restoreWorld(settings, { characters: [], personaData: {}, master_items: {} });
-    }
+    // Only legacy Systems have archived worlds. New reusable Systems leave live cast and
+    // persona records to the chat and persona ownership paths while those are migrated.
+    restoreWorld(settings, worldArchive(settings)[name]);
     settings.activeSystem = name;
+    if (deps.hasOpenChat?.() && !deps.chatHasStarted?.()
+        && deps.getChatSystem?.() !== name) deps.resetUnplayedChatState?.();
+    deps.rememberChatSystem?.();
     saveSettings();
     debugLog(`Active system: ${name}`);
     return true;
@@ -186,6 +274,7 @@ function createSystem(name) {
     const settings = getSettings();
     const st = settings.statusTracker;
     if (!name || st.presets?.[name]) return false;
+    if (deps.chatHasStarted?.()) return false;
 
     captureActiveSystem();
 
@@ -196,12 +285,11 @@ function createSystem(name) {
     assignExcept(st, defaults.statusTracker, SYSTEM_EXCLUDED_TRACKER);
     assignExcept(settings, defaults, SYSTEM_EXCLUDED_ROOT);
 
-    settings.characters.splice(0, settings.characters.length);
-    settings.personaData = {};
-    settings.master_items = {};
-
     saveSystemPreset(name);
     settings.activeSystem = name;
+    if (deps.hasOpenChat?.() && !deps.chatHasStarted?.()
+        && deps.getChatSystem?.() !== name) deps.resetUnplayedChatState?.();
+    deps.rememberChatSystem?.();
     saveSettings();
     return true;
 }
@@ -212,10 +300,15 @@ function createSystem(name) {
 function saveSystemPreset(name, description = '', author = 'User') {
     if (!name) return;
     const settings = getSettings();
+    migrateSavedPresets(settings);
     const st = settings.statusTracker;
     
+    const previous = st.presets?.[name];
+    if (settings.activeSystem === name && Object.hasOwn(worldArchive(settings), name)) {
+        settings.systemWorldArchive[name] = captureWorld(settings);
+    }
     const profile = {
-        version: '2.1.0',
+        version: '3.0.0',
         metadata: {
             name,
             description,
@@ -225,8 +318,17 @@ function saveSystemPreset(name, description = '', author = 'User') {
             ...copyExcept(settings, SYSTEM_EXCLUDED_ROOT),
             statusTracker: copyExcept(st, SYSTEM_EXCLUDED_TRACKER),
         },
-        world: captureWorld(settings),
+        checkpoints: previous?.checkpoints || [],
     };
+    const liveDefinition = normalizeSystemDefinition(profile, { name });
+    // Builder still edits the flat stat/collection config. Keep the imported profile
+    // schema until Builder has controls for those fields, instead of replacing it with
+    // the old fixed field list on the next save or chat switch.
+    profile.definition = normalizeSystemDefinition({
+        ...liveDefinition,
+        profiles: previous?.definition?.profiles || liveDefinition.profiles,
+        memories: previous?.definition?.memories || liveDefinition.memories,
+    }, { name });
 
     if (!st.presets) st.presets = {};
     st.presets[name] = profile;
@@ -281,10 +383,9 @@ function applySystemPreset(profile) {
         settings.menuStyle = legacyThemeMap[cfg.displayStyle] || cfg.displayStyle;
     }
 
-    // Absent on any profile saved before systems carried a world, and on a profile
-    // somebody exported to share a ruleset. Both must leave the current cast alone rather
-    // than emptying it.
-    restoreWorld(getSettings(), profile.world);
+    // Checkpoints are historical whole-state snapshots; unlike reusable presets, their
+    // world is restored on purpose.
+    restoreWorld(settings, profile.world);
 
     saveSettings();
 }
@@ -312,6 +413,7 @@ Object.defineProperties(deps, {
     SYSTEM_EXCLUDED_TRACKER: { enumerable: true, configurable: true, get: () => SYSTEM_EXCLUDED_TRACKER },
     copyExcept: { enumerable: true, configurable: true, get: () => copyExcept },
     captureWorld: { enumerable: true, configurable: true, get: () => captureWorld },
+    migratePreset: { enumerable: true, configurable: true, get: () => migratePreset },
     getActiveSystem: { enumerable: true, configurable: true, get: () => getActiveSystem },
     migrateToActiveSystem: { enumerable: true, configurable: true, get: () => migrateToActiveSystem },
     setActiveSystem: { enumerable: true, configurable: true, get: () => setActiveSystem },

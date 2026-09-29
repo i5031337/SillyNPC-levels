@@ -116,60 +116,6 @@
     z-index: 2;
 }
 
-/* Choosing what a generation should be drawn from. */
-.sillynpc-genmode-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sillynpc-space-md);
-    margin: var(--sillynpc-space-md) 0;
-}
-
-.sillynpc-genmode-row {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--sillynpc-space-md);
-    cursor: pointer;
-    text-align: left;
-}
-
-.sillynpc-genmode-row input[type="radio"] {
-    margin-top: 4px;
-    flex: 0 0 auto;
-}
-
-.sillynpc-genref-area {
-    margin-top: var(--sillynpc-space-md);
-}
-
-.sillynpc-genref-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sillynpc-space-md);
-    margin: var(--sillynpc-space-md) 0;
-}
-
-.sillynpc-genref-cell {
-    width: 72px;
-    height: 96px;
-    border: 2px solid transparent;
-    border-radius: var(--sillynpc-radius-sm, 4px);
-    overflow: hidden;
-    cursor: pointer;
-    opacity: 0.6;
-}
-
-.sillynpc-genref-cell img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center top;
-}
-
-.sillynpc-genref-cell.selected {
-    border-color: var(--sillynpc-accent-text, var(--sillynpc-accent));
-    opacity: 1;
-}
-
 .sillynpc-genresult-image {
     max-width: 100%;
     max-height: 55vh;

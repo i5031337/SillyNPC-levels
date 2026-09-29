@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
 import { debugLog } from '../../core/constants.js';
-import { loadStateFromMetadata, parseMessageForUpdates, saveStateToMetadata, syncPlayerToMaster } from '../status-logic.js';
+import { loadStateFromMetadata, parseMessageForUpdates, saveStateToMetadata } from '../status-logic.js';
 import { eventSource } from '../../../../../../events.js';
 import { getPreservedStatusRaw } from '../status-history.js';
 import { splitValue } from '../../core/utils.js';
@@ -305,9 +305,6 @@ export function restorePlayerFromMessage(messageId) {
     state.player.collections = structuredClone(past.state.player.collections || {});
 
     saveStateToMetadata(state, { label: `Player restored from message ${messageId}` });
-    // Authoritative: this is a decision, so the seed for future chats follows it rather
-    // than merging what was just deliberately rolled back.
-    syncPlayerToMaster(state, { authoritative: true });
     eventSource.emit('sillynpc-status-updated', state);
 
     debugLog(`Player state restored from message ${messageId}`, past);
@@ -337,4 +334,3 @@ export function stateAtMessage(messageId) {
     const found = timeline.states.get(index) ?? { state: current, exact: false, reason: 'not in this chat' };
     return withMessageEdits(found, chat[index]);
 }
-

@@ -1,6 +1,6 @@
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { EXTENSION_VERSION, DEFAULT_PORTRAIT_SHAPE } from './constants.js';
-import { DEFAULT_LORE_PROMPT, DEFAULT_IMAGE_REFERENCE_PREAMBLE } from '../prompts/default-prompt-texts.js';
+import { DEFAULT_LORE_PROMPT } from '../prompts/default-prompt-texts.js';
 
 export const defaultSettings = {
     version: EXTENSION_VERSION,
@@ -182,19 +182,6 @@ export const defaultSettings = {
      */
     loreProfileId: '',
     /**
-     * Which connection's API key draws portraits on the Gemini backend. Empty means
-     * whichever Google key SillyTavern currently has active.
-     *
-     * Only the key and the account are taken from the profile, never the model: a
-     * connection profile can only name a text model, and the gemini-*-image models are
-     * not reachable through one at all.
-     *
-     * Without this the image request carried no secret_id, so portraits were billed to
-     * the globally active key and could not be aimed anywhere else - which made "use a
-     * different API for images" impossible however the profiles were configured.
-     */
-    imageProfileId: '',
-    /**
      * Prints one line per request - lore, extraction and portrait - naming the connection,
      * the model and the API key each one resolved to.
      *
@@ -218,40 +205,15 @@ export const defaultSettings = {
     /** Folder name under user/images/ for generated portraits. */
     imageSaveRoute: 'sillynpc',
     /**
-     * Where portraits come from.
-     * 'sd'     - SillyTavern's /sd command (Stable Diffusion extension, any source).
-     * 'gemini' - a Google Gemini image model, called directly through the Chat
-     *            Completion backend. Use this when your Google account is entitled to
-     *            the Gemini image models but not to Imagen, which the SD extension's
-     *            Google source is limited to.
-     * @type {'sd' | 'gemini'}
-     */
-    imageBackend: 'sd',
-    /** Model used when imageBackend is 'gemini'. Must be one of GEMINI_IMAGE_MODELS. */
-    geminiImageModel: 'gemini-2.5-flash-image',
-    /**
      * Shape requested for generated portraits, a key of PORTRAIT_SHAPES.
      *
-     * Governs both backends. Replaces geminiImageAspectRatio, which only ever reached the
-     * Gemini path while the /sd path carried its own hardcoded pixels that disagreed with it.
+     * Overrides the host Image Generation resolution when a fixed shape is selected.
      */
     portraitShape: DEFAULT_PORTRAIT_SHAPE,
     personaData: {},
     master_items: {},
-    /** The template actually in use. Seeded from the backend default above. */
+    /** Custom template; empty uses the maintained Image Generation template. */
     imgGenPrompt: '',
-    /**
-     * Prepended when reference images are attached, and only then.
-     *
-     * The templates above are descriptions - "A portrait of X. Appearance: ..." - which
-     * read as an instruction when they arrive alone. Attach an image and they stop being
-     * one: the model sees a picture and a description of it and quite reasonably asks
-     * what you would like changed, returning text and no image at all.
-     *
-     * So the reference has to come with a job. Editable because the wording that stops a
-     * model answering conversationally is model-specific and worth tuning.
-     */
-    imgGenReferencePreamble: DEFAULT_IMAGE_REFERENCE_PREAMBLE,
     imgGenNegativePrompt: 'speech bubbles, text, logo, watermark, username, signature, frames, panels, comic, multiple characters, crowd, busy background, character sheet, grid, reference sheet',
     /**
      * @type {{

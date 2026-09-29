@@ -254,9 +254,18 @@
     text-shadow: 0 0 2px black;
 }
 
-/* ─── Player Sheet Modal ───────────────────────────────────────────────── */
+/* ─── Player sheet in the extension menu ───────────────────────────────── */
 
-.sillynpc-modal.sillynpc-player-sheet {
+.sillynpc-tab-panel[data-panel="player"] {
+    overflow: hidden;
+}
+
+#sillynpc-player-view {
+    flex: 1;
+    min-height: 0;
+}
+
+.sillynpc-player-sheet {
     display: flex;
     flex-direction: column;
     /* Fills the dialog, the way .sillynpc-manage does. It used to be a fixed
@@ -288,23 +297,6 @@
     /* Keeps its height while the body takes what is left. Without this the header is
        squeezed along with everything else once the sheet is taller than the dialog. */
     flex-shrink: 0;
-}
-
-.sillynpc-sheet-close {
-    cursor: pointer;
-    font-size: var(--sillynpc-text-lg);
-    opacity: 0.6;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-}
-
-.sillynpc-sheet-close:hover {
-    opacity: 1;
-    transform: scale(1.1);
 }
 
 .sillynpc-sheet-title {
@@ -469,4 +461,3 @@
     outline: 1px solid var(--sillynpc-accent);
     background: rgba(255, 255, 255, 0.05);
 }
-

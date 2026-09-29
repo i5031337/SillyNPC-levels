@@ -243,6 +243,7 @@ function deleteSystemPreset(name) {
     const settings = getSettings();
     if (settings.statusTracker.presets?.[name]) {
         delete settings.statusTracker.presets[name];
+        if (settings.systemWorldArchive) delete settings.systemWorldArchive[name];
         saveSettings();
     }
 }
@@ -252,14 +253,19 @@ function deleteSystemPreset(name) {
  */
 function importSystemPreset(jsonText) {
     const profile = JSON.parse(jsonText);
-    if (!profile.config || !profile.metadata || !profile.metadata.name) {
+    if (!profile || typeof profile !== 'object'
+        || (!profile.config && profile.schemaVersion !== 1 && !profile.definition)
+        || !(profile.metadata?.name || profile.name)) {
         throw new Error('Invalid System Profile format.');
     }
     const settings = getSettings();
     if (!settings.statusTracker.presets) settings.statusTracker.presets = {};
-    settings.statusTracker.presets[profile.metadata.name] = profile;
+    const requested = profile.metadata?.name || profile.name;
+    let name = requested;
+    for (let number = 2; settings.statusTracker.presets[name]; number++) name = `${requested} (${number})`;
+    settings.statusTracker.presets[name] = deps.migratePreset(name, profile, settings);
     saveSettings();
-    return profile;
+    return settings.statusTracker.presets[name];
 }
 
 Object.defineProperties(deps, {

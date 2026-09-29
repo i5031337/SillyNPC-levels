@@ -1,7 +1,7 @@
 import { choiceOptionsHtml, isChoiceField } from '../shared/ui-choice.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { isStaticField } from '../../core/constants.js';
-import { loadStateFromMetadata, saveStateToMetadata, syncPlayerToMaster, addItem, removeItem, updateMasterItem, renameMasterItem } from '../../tracker/status-logic.js';
+import { loadStateFromMetadata, saveStateToMetadata, addItem, removeItem, updateMasterItem, renameMasterItem } from '../../tracker/status-logic.js';
 import { eventSource } from '../../../../../../events.js';
 import { escapeHtml } from '../../core/utils.js';
 import { Popup } from '../../../../../../popup.js';
@@ -140,7 +140,6 @@ export function persistCollectionEdit(label, { state, offstage }, isPlayer) {
         return;
     }
     saveStateToMetadata(state, { label });
-    if (isPlayer) syncPlayerToMaster(state, { authoritative: true });
     eventSource.emit('sillynpc-status-updated', state);
 }
 

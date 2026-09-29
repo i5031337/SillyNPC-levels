@@ -12,6 +12,7 @@ function loadStateFromMetadata() {
     if (deps.committedState && deps.committedChatId !== deps.currentChatId()) deps.committedState = null;
 
     let stateToReturn = deps.committedState;
+    let stateChanged = false;
 
     if (!stateToReturn) {
         const metadata = deps.getMetadata();
@@ -31,13 +32,14 @@ function loadStateFromMetadata() {
                 // Written before there was a player object at all.
                 const name = deps.getCurrentPersonaName();
                 const key = deps.getCurrentPersonaKey();
-                stateToReturn.player = { name, personaKey: key, ...deps.seedPlayerFromMaster(key, name) };
+                stateToReturn.player = { name, personaKey: key, ...deps.migrateLegacyPlayer(key, name) };
+                stateChanged = true;
             }
         } else {
             const name = deps.getCurrentPersonaName();
             const key = deps.getCurrentPersonaKey();
             stateToReturn = deps.createInitialState();
-            stateToReturn.player = { name, personaKey: key, ...deps.seedPlayerFromMaster(key, name) };
+            stateToReturn.player = { name, personaKey: key, ...deps.createChatPlayerSeed() };
         }
         deps.committedState = stateToReturn;
         deps.committedChatId = deps.currentChatId();
@@ -54,8 +56,6 @@ function loadStateFromMetadata() {
        used to promise validation that was never written, which is how a deleted stat came to
        be drawn and sent on every message while being unable to change. */
     const settings = getSettings().statusTracker;
-
-    let stateChanged = false;
 
     // Ensure missing global stats from settings are added
     (settings.globalStats || []).forEach(stat => {
@@ -184,9 +184,8 @@ function loadStateFromMetadata() {
     }
 
     if (stateChanged) {
-        debugLog('State repaired during load, saving back to metadata and master.');
+        debugLog('State repaired during load, saving back to chat metadata.');
         saveStateToMetadata(stateToReturn, { recordHistory: false });
-        deps.syncPlayerToMaster(stateToReturn);
         eventSource.emit('sillynpc-status-updated', stateToReturn);
     }
 
@@ -299,9 +298,6 @@ function undoLastChange() {
 
     const entry = history.pop();
     saveStateToMetadata(entry.state, { recordHistory: false });
-    // Going back is a decision. Merging here would keep whatever master learned after
-    // the point being restored, so stepping past a collection change did nothing.
-    deps.syncPlayerToMaster(entry.state, { authoritative: true });
     eventSource.emit('sillynpc-status-updated', entry.state);
     return entry;
 }
@@ -318,9 +314,6 @@ function restoreHistoryEntry(index) {
     const entry = history[index];
     history.length = index;
     saveStateToMetadata(entry.state, { recordHistory: false });
-    // Going back is a decision. Merging here would keep whatever master learned after
-    // the point being restored, so stepping past a collection change did nothing.
-    deps.syncPlayerToMaster(entry.state, { authoritative: true });
     eventSource.emit('sillynpc-status-updated', entry.state);
     return entry;
 }

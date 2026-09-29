@@ -74,7 +74,8 @@ test('upgrades the shipped reader prompt while preserving an edited copy', () =>
             value => value, () => {},
         );
     const shipped = { statusTracker: { extractionPrompt: PREVIOUS_SYSTEM_PROMPT } };
-    const recent = { statusTracker: { extractionPrompt: RECENT_SYSTEM_PROMPT } };
+    const recent = { statusTracker: { extractionPrompt: RECENT_SYSTEM_PROMPT },
+        imageBackend: 'gemini', geminiImageModel: 'gemini-2.5-flash-image' };
     const edited = { statusTracker: { extractionPrompt: `${PREVIOUS_SYSTEM_PROMPT}\nMy rule` } };
 
     normalizeBase(shipped);
@@ -83,5 +84,7 @@ test('upgrades the shipped reader prompt while preserving an edited copy', () =>
 
     assert.equal(shipped.statusTracker.extractionPrompt, SYSTEM_PROMPT);
     assert.equal(recent.statusTracker.extractionPrompt, SYSTEM_PROMPT);
+    assert.equal('imageBackend' in recent, false);
+    assert.equal('geminiImageModel' in recent, false);
     assert.equal(edited.statusTracker.extractionPrompt, `${PREVIOUS_SYSTEM_PROMPT}\nMy rule`);
 });

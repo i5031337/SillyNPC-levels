@@ -154,9 +154,7 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
 
         if (chosen.image) {
             toastr.info('Drawing a portrait...', 'SillyNPC');
-            const imageUrl = await generateCharacterImageLogic(char, {
-                referenceImages: [], includeScene: false,
-            });
+            const imageUrl = await generateCharacterImageLogic(char, { includeScene: false });
             if (!Array.isArray(char.images)) char.images = [];
             if (!char.images.includes(imageUrl)) char.images.push(imageUrl);
             // The card had no portrait, which is why this stage ran - so it becomes the

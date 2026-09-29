@@ -28,7 +28,7 @@ function fixedPromptFor(kindId) {
     if (kindId === 'lore') return settings.generationPrompt || byKey('generationPrompt').recommended();
     if (kindId === 'image') {
         const template = settings.imgGenPrompt || byKey('imgGenPrompt').recommended();
-        const negative = settings.imageBackend === 'gemini' ? '' : (settings.imgGenNegativePrompt || '');
+        const negative = settings.imgGenNegativePrompt || '';
         return `${template} ${negative}`;
     }
     return '';

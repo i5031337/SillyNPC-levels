@@ -3,7 +3,7 @@ import { LOG_PREFIX } from '../core/constants.js';
 import { getAllCharacters, getChatCharacters, isChatCharacter } from '../characters/character-repository.js';
 import { fillCharacter } from '../ui/characters/ui-fill.js';
 import { openManagePopup } from '../ui/manage/ui-manage.js';
-import { openPlayerModal } from '../ui/characters/ui-player-modal.js';
+import { openPlayerSheet } from '../ui/characters/ui-player-sheet.js';
 import { createCharacter, addAlias, addCharacterToChat } from '../characters/characters.js';
 import { triggerReprocess } from '../chat/chat.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../popup.js';
@@ -42,7 +42,7 @@ export function wireAvatarClicks() {
         // Checked before the card, because the avatar is drawn that way round too: this
         // name is you, so it opens your sheet even if a card of the name exists.
         if (avatar.dataset.persona) {
-            openPlayerModal();
+            openPlayerSheet();
             return;
         }
 

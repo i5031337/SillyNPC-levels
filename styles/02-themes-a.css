@@ -6,21 +6,6 @@
     --button-border: var(--sillynpc-border);
 }
 
-/* Force hide standard close buttons when our modals are active */
-#dialogue_popup:has(.sillynpc-player-sheet) .popup_close,
-#dialogue_popup:has(.sillynpc-player-sheet) #dialogue_popup_close,
-#dialogue_popup:has(.sillynpc-player-sheet) .close_button,
-#dialogue_popup:has(.sillynpc-player-sheet) .popup-close,
-#dialogue_popup:has(.sillynpc-player-sheet) .popup-button-close,
-.popup:has(.sillynpc-player-sheet) .popup_close,
-.popup:has(.sillynpc-player-sheet) #dialogue_popup_close,
-.popup:has(.sillynpc-player-sheet) .close_button,
-.popup:has(.sillynpc-player-sheet) .popup-close,
-.popup:has(.sillynpc-player-sheet) .popup-close-button,
-.popup:has(.sillynpc-player-sheet) .popup-button-close {
-    display: none !important;
-}
-
 .popup:has(.sillynpc-manage) .popup-close,
 #dialogue_popup:has(.sillynpc-manage) .popup-close,
 .popup:has(.sillynpc-manage) .menu_button,

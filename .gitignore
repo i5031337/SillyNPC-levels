@@ -14,6 +14,14 @@ tests/*
 !tests/lore-format.mjs
 !tests/image-description.mjs
 !tests/extraction-report.mjs
+!tests/rewrite-baseline-fixtures.mjs
+!tests/system-preset-migration.mjs
+!tests/system-schema.mjs
+!tests/player-chat-ownership.mjs
+!tests/system-preset-migration.mjs
+!tests/fixtures/
+!tests/fixtures/rewrite-baseline/
+!tests/fixtures/rewrite-baseline/*.json
 
 # Scratch / editor debris
 temp_*.txt

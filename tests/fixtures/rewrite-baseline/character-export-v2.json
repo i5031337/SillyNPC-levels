@@ -1,0 +1,11 @@
+{
+  "format": "sillynpc-characters", "version": 2,
+  "exported": "2025-06-15T12:00:00.000Z",
+  "characters": [{
+    "name": "Mira", "color": "#6699aa", "category": "Harbor", "imageFit": "cover",
+    "aliases": ["Captain Mira"],
+    "profile": { "age": "Thirty-four", "appearance": "Short dark hair", "personality": "Patient", "speech": "Speaks in clipped phrases", "role": "Harbor captain", "wants": "Recover the missing manifest", "ties": "Trusts Rhea", "history": "Grew up on the docks" },
+    "innateStats": { "Resolve": "4" },
+    "lore": { "keys": ["Mira", "Captain Mira"], "content": "Mira is the harbor captain." }
+  }]
+}

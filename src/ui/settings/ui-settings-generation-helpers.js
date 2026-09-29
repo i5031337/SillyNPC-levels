@@ -4,8 +4,7 @@ import { world_names } from '../../../../../../world-info.js';
 import { extension_settings } from '../../../../../../extensions.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
 import { debugLog } from '../../core/constants.js';
-import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, resolveImageSecretId } from '../../api/api.js';
-import { getSecretLabelById } from '../../../../../../secrets.js';
+import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection } from '../../api/api.js';
 import { getRequestHeaders } from '../../../../../../../script.js';
 import { getContext } from '../../../../../../extensions.js';
 
@@ -131,42 +130,18 @@ export function updateExcerptReadout(target) {
 /**
  * Where portraits will actually be drawn, read live.
  *
- * Both questions this answers were ones the settings could not: whose API the Gemini
- * option uses, and what the /sd option is currently pointed at. Read from SillyTavern's
- * own Image Generation settings rather than described in prose, because prose goes stale
- * and the answer changes whenever that extension is reconfigured.
+ * Read the current source and model from SillyTavern Image Generation settings.
  */
 export function buildBackendDestinationNote() {
     const note = document.createElement('small');
     note.className = 'notes';
     note.style.cssText = 'display:block; margin:-6px 0 10px;';
 
-    const settings = getSettings();
-    if (settings.imageBackend === 'gemini') {
-        // Naming the key is the fact that was missing. Two connection profiles that
-        // pin the same secret look completely different by name and identical here,
-        // which is the failure that took an evening to find. The label carries a
-        // masked value from SillyTavern, never the key itself.
-        const secretId = resolveImageSecretId();
-        const keyLabel = secretId ? getSecretLabelById(secretId) : '';
-        const whichKey = keyLabel
-            ? `Billed to: ${keyLabel}.`
-            : "Billed to whichever Google key is active - the same one your chat uses.";
-        note.textContent = "Sends to SillyTavern's Google AI Studio connection, using the "
-            + `key saved there — not whichever API you are chatting with. Model: ${settings.geminiImageModel}, `
-            + `aspect ratio ${resolvePortraitShape().gemini}. ${whichKey}`;
-        return note;
-    }
-
     const sd = extension_settings.sd || {};
     const where = sd.source
         ? `${sd.source}${sd.model ? ` / ${sd.model}` : ''}`
         : 'not configured yet';
 
-    // The resolution line is the one that was missing from both UIs. The pixels we send
-    // do not survive every source - Google converts them to the nearest ratio it accepts
-    // and ignores the rest - so this says what is sent, and the shape control above says
-    // what shape that works out to.
     const { pixels } = resolvePortraitShape();
     const size = pixels
         ? `Sent at ${pixels.width}x${pixels.height}, overriding its own Resolution setting`

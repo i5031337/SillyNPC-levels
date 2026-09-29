@@ -1,5 +1,6 @@
 import { renderExtensionTemplateAsync } from '../../../../../../extensions.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
+import { eventSource, event_types } from '../../../../../../events.js';
 import { extensionName, LOG_PREFIX } from '../../core/constants.js';
 import { getSettings } from '../../core/settings.js';
 import { reprocessAllMessages, chatRenderSignature } from '../../chat/chat.js';
@@ -23,10 +24,33 @@ import { buildSettingsSearch, buildSettingsIndex } from '../settings/ui-settings
 import { manageState } from './ui-manage-state.js';
 import { renderCardGrid } from './ui-manage-grid.js';
 import { renderEditor } from './ui-manage-editor.js';
+import { renderPlayerView, commitOpenEdits } from '../characters/ui-player-sheet.js';
 import { exportData, importData } from './ui-manage-transfer.js';
+
+// The menu can stay open while SillyTavern changes the current chat or persona.
+// Redraw after the host has loaded the new state; do not write old fields into it.
+for (const type of [event_types.CHAT_CHANGED, event_types.PERSONA_CHANGED]) {
+    eventSource.on(type, () => setTimeout(() => {
+        if (manageState.manageRoot && manageState.activeTab === 'player') renderManageView();
+    }, 0));
+}
+eventSource.on('sillynpc-status-updated', () => {
+    if (!manageState.manageRoot || manageState.activeTab !== 'player') return;
+    const focused = document.activeElement;
+    if (focused && manageState.manageRoot.contains(focused)
+        && (focused.matches('input, textarea, select, [contenteditable="true"]'))) return;
+    renderManageView();
+});
 
 
 export async function openManagePopup({ tab = 'characters', charId = null } = {}) {
+    if (manageState.managePopup && manageState.manageRoot) {
+        if (manageState.activeTab === 'player') commitOpenEdits(manageState.manageRoot);
+        manageState.editingCharId = charId;
+        manageState.activeTab = tab;
+        renderManageView();
+        return;
+    }
     const html = await renderExtensionTemplateAsync(extensionName, 'manage');
     const container = document.createElement('div');
     container.innerHTML = html;
@@ -39,6 +63,10 @@ export async function openManagePopup({ tab = 'characters', charId = null } = {}
 
     manageState.managePopup = new Popup(container, POPUP_TYPE.DISPLAY, '', {
         allowVerticalScrolling: false,
+        onClosing: () => {
+            if (manageState.activeTab === 'player') commitOpenEdits(container);
+            return true;
+        },
         onOpen: (popup) => {
             applyPopupSize();
             updateManageTheme(manageState.manageRoot, popup);
@@ -158,6 +186,7 @@ function revealSetting(key) {
 
 function switchTab(name) {
     if (!manageState.manageRoot) return;
+    if (manageState.activeTab === 'player') commitOpenEdits(manageState.manageRoot);
     manageState.activeTab = name;
     manageState.editingCharId = null;
     resetLorebookState();
@@ -204,7 +233,9 @@ export function renderManageView() {
         } catch (e) { console.error(LOG_PREFIX, `${id} failed`, e); }
     };
 
-    if (manageState.activeTab === 'characters') {
+    if (manageState.activeTab === 'player') {
+        draw('sillynpc-player-view', renderPlayerView);
+    } else if (manageState.activeTab === 'characters') {
         const gridView = manageState.manageRoot.querySelector('#sillynpc-grid-view');
         const editView = manageState.manageRoot.querySelector('#sillynpc-editor-view');
         if (manageState.editingCharId) {

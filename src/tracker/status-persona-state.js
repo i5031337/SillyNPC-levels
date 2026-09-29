@@ -73,29 +73,9 @@ function resolvePersonaAvatarAndName() {
  */
 function initPersonaData(key, name = key) {
     const settings = getSettings();
-    const trackerSettings = settings.statusTracker;
-    
     if (!settings.personaData) settings.personaData = {};
-    
-    const personaData = {
-        stats: {},
-        collections: {},
-        lastUpdated: Date.now()
-    };
-    
-    (trackerSettings.playerStats || []).forEach(stat => {
-        if (stat && stat.name) {
-            personaData.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
-        }
-    });
-    
-    (trackerSettings.collections || []).forEach(col => {
-        if (col && col.id && (col.target === 'player' || col.target === 'all')) {
-            personaData.collections[col.id] = [];
-        }
-    });
-    
-    personaData.name = name;
+    // Persona storage owns identity and its reusable card. Live values belong to a chat.
+    const personaData = { name, lastUpdated: Date.now() };
     settings.personaData[key] = personaData;
     saveSettings();
     return personaData;
@@ -115,10 +95,8 @@ function personaDescription(avatarFilename) {
  * without being told who they are. isPlayer is the one thing that has to be said out
  * loud, because the player's facts live at state.player rather than in the scene cast.
  *
- * Kept in the same record as their stats, which means it follows the persona rather than
- * the chat and travels with the world when a system is switched. syncPlayerToMaster
- * rewrites that record on every message, so it carries these across explicitly - a
- * portrait that lasted until the next reply is the failure this has to avoid.
+ * Kept in persona storage so the reusable identity follows the persona. Current stats,
+ * inventory, goals, and memories are stored with the chat instead.
  *
  * @returns {object} The stored record, live: mutate it and call saveSettings().
  */
@@ -175,8 +153,7 @@ function primaryFieldNameFor(colId) {
  * update land, and the items were gone from every chat that persona had ever played.
  *
  * Merging means a copy that has merely forgotten an item cannot delete it. Only an
- * explicit removal - reviewed, or stated outright in an update - can, and that path goes
- * through syncPlayerToMaster with authoritative set.
+ * explicit removal - reviewed, or stated outright in an update - can.
  *
  * @param {Record<string, object[]>} base Kept in full.
  * @param {Record<string, object[]>} newer Merged over it; wins on individual fields.
@@ -215,48 +192,42 @@ function mergeCollectionMaps(base, newer) {
 }
 
 /**
- * Strips rows whose primary field is blank.
+ * A fresh chat/persona starts with the active System's defaults. Old global player
+ * values are used only by migrateLegacyPlayer, for a chat with old tracker metadata
+ * that lacks a player object.
  *
- * Adding an item in the library creates an empty row to type into, which is reasonable
- * while editing and meaningless as a stored record.
- */
-function dropPlaceholderItems(collections) {
-    const result = {};
-    for (const [colId, items] of Object.entries(collections || {})) {
-        const primary = primaryFieldNameFor(colId);
-        result[colId] = (items || []).filter(
-            item => String(item?.[primary] ?? item?.name ?? '').trim() !== '');
-    }
-    return result;
-}
-
-/**
- * A persona's starting point in a chat that has never seen them.
- *
- * Master storage is a seed, and only a seed. It used to be copied into the live state
- * every time the persona was reloaded, the sheet was opened, or a chat was switched -
- * replacing that chat's stats wholesale with whichever chat wrote to master last. Two
- * stories with the same character therefore could not hold different states, and the
- * mechanism enforcing that was a silent in-place overwrite: part 2 lost its HP and
- * Energy to part 1 exactly this way.
- *
- * It is read here and nowhere else, so a chat that already knows a persona can never be
- * written over by one that played them elsewhere.
- *
- * @param {string} key The avatar filename identifying the persona.
- * @param {string} [name] Display name, for a record still filed under it.
  * @returns {{ stats: object, collections: object }} A fresh copy, safe to own.
  */
-function seedPlayerFromMaster(key, name = key) {
-    const settings = getSettings();
-    if (!settings.personaData) settings.personaData = {};
-
-    const masterData = takePersonaRecord(settings.personaData, key, name)
-        || initPersonaData(key, name);
-    debugLog(`Seeding "${name}" into this chat from master storage`);
+function createChatPlayerSeed() {
+    const trackerSettings = getSettings().statusTracker;
+    const stats = {};
+    const collections = {};
+    for (const stat of trackerSettings.playerStats || []) {
+        if (stat?.name) stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+    }
+    for (const col of trackerSettings.collections || []) {
+        if (col?.id && (col.target === 'player' || col.target === 'all')) collections[col.id] = [];
+    }
     return {
-        stats: structuredClone(masterData.stats || {}),
-        collections: structuredClone(masterData.collections || {}),
+        stats,
+        collections,
+        goals: {},
+        memories: [],
+    };
+}
+
+/** Recover a pre-chat-owned player when an existing tracker chat has no player slot. */
+function migrateLegacyPlayer(key, name = key) {
+    const settings = getSettings();
+    const legacy = takePersonaRecord(settings.personaData, key, name);
+    const fresh = createChatPlayerSeed();
+    if (!legacy) return fresh;
+    return {
+        ...fresh,
+        stats: structuredClone(legacy.stats || fresh.stats),
+        collections: structuredClone(legacy.collections || fresh.collections),
+        goals: structuredClone(legacy.goals || fresh.goals),
+        memories: structuredClone(legacy.memories || fresh.memories),
     };
 }
 
@@ -292,66 +263,17 @@ function activatePersona(state, key, name = key) {
 
     // Whoever was playing keeps what they earned, in this chat, for their return.
     if (previousKey && state.player) {
-        state.players[previousKey] = {
-            name: state.player.name,
-            stats: structuredClone(state.player.stats || {}),
-            collections: structuredClone(state.player.collections || {}),
-        };
+        state.players[previousKey] = structuredClone(state.player);
     }
 
     const known = takePersonaRecord(state.players, key, name);
     const incoming = known
-        ? { stats: structuredClone(known.stats || {}), collections: structuredClone(known.collections || {}) }
-        : seedPlayerFromMaster(key, name);
+        ? structuredClone(known)
+        : createChatPlayerSeed();
 
-    state.player = { name, personaKey: key, stats: incoming.stats, collections: incoming.collections };
+    state.player = { ...incoming, name, personaKey: key };
     debugLog(`Active persona in this chat: ${name}${known ? ' (restored)' : ' (seeded)'}`);
     return true;
-}
-
-/**
- * Synchronizes the player state from the current chat state to master storage.
- */
-function syncPlayerToMaster(state, options = {}) {
-    if (!state.player) return;
-
-    // Only a state that actually stated its collections may shrink them. A stats-only
-    // update, or a plain save after a load, must not be able to empty master - that is
-    // the direction the loss travelled in: one chat with nothing in it, and the persona
-    // was stripped in every other chat too.
-    const { authoritative = false } = options;
-
-    const name = getCurrentPersonaName();
-    const key = getCurrentPersonaKey();
-    const settings = getSettings();
-
-    if (!settings.personaData) settings.personaData = {};
-
-    const existing = takePersonaRecord(settings.personaData, key, name);
-    const incoming = structuredClone(state.player.collections || {});
-    const collections = authoritative
-        ? dropPlaceholderItems(incoming)
-        : mergeCollectionMaps(existing?.collections || {}, incoming);
-
-    // There was a ten-slot rollback ring here, taking a snapshot whenever the item count
-    // dropped. It never fired for the loss it was meant to catch: stats going wrong is not
-    // an item count changing, so when a story's HP and Energy were overwritten the ring
-    // held nothing at all. Recovery came from the per-message records instead, and those
-    // now have a way in - see restorePlayerFromMessage. A blind buffer nobody can inspect
-    // earns nothing beside a list of points you can read and choose between.
-
-    debugLog(`Syncing player data UP for persona "${name}"`, { authoritative });
-    settings.personaData[key] = {
-        // Whatever else the record held comes first. This write replaces it outright, so
-        // without carrying them the player's portrait, description and lore link would
-        // last exactly until their next message.
-        ...(existing || {}),
-        name,
-        stats: structuredClone(state.player.stats),
-        collections,
-        lastUpdated: Date.now()
-    };
-    saveSettings();
 }
 
 /**
@@ -385,8 +307,8 @@ Object.defineProperties(deps, {
     getPlayerCard: { enumerable: true, configurable: true, get: () => getPlayerCard },
     getPlayerImageUrl: { enumerable: true, configurable: true, get: () => getPlayerImageUrl },
     mergeCollectionMaps: { enumerable: true, configurable: true, get: () => mergeCollectionMaps },
-    seedPlayerFromMaster: { enumerable: true, configurable: true, get: () => seedPlayerFromMaster },
+    createChatPlayerSeed: { enumerable: true, configurable: true, get: () => createChatPlayerSeed },
+    migrateLegacyPlayer: { enumerable: true, configurable: true, get: () => migrateLegacyPlayer },
     activatePersona: { enumerable: true, configurable: true, get: () => activatePersona },
-    syncPlayerToMaster: { enumerable: true, configurable: true, get: () => syncPlayerToMaster },
 });
 }

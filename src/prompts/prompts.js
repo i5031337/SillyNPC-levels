@@ -11,10 +11,8 @@ import { PROMPT_TEXTS } from './prompt-texts.js';
  * other - which is the failure a "just copy it over" mirror would have introduced on the
  * first edit.
  *
- * `available` decides whether an entry applies to the current setup at all: the negative
- * prompt is Stable Diffusion's, the reference instruction is Gemini's, and the system
- * rules only reach a model in inline mode. An entry that cannot be sent is not shown as
- * one that can.
+ * `available` decides whether an entry applies to the current setup at all. For example,
+ * system rules only reach a model in inline mode.
  *
  * @type {Array<{
  *   id: string, key: string, label: string, help: string, home: string,
@@ -130,35 +128,17 @@ export const PROMPTS = [
             + "SillyTavern's own macros work here too - {{user}}, {{char}}, {{persona}}, "
             + '{{time}}, {{roll:d20}} and the rest. '
             + 'The old [NAME] spelling still works. '
-            + 'Leave empty to use the template that suits your backend - description for '
-            + 'Gemini, tags for Stable Diffusion.',
+            + 'Leave empty to use the maintained Image Generation template.',
         recommended: () => recommendedImagePrompt(),
-        emptyNote: "Your backend's own template is sent.",
-    },
-    {
-        id: 'imageReference',
-        key: 'imgGenReferencePreamble',
-        label: 'Reference Instruction',
-        home: 'Generation',
-        help: 'Sent only when you generate with a reference image, and always placed '
-            + 'BEFORE the template above - so write it pointing forward, at "the '
-            + 'description below". Wording that sends the model looking the other way is '
-            + 'a good way to get an answer in words instead of a picture, which is the '
-            + 'very thing this exists to prevent: without it the model sees a picture '
-            + 'beside a description of that picture and asks what you would like changed. '
-            + 'Clear it to send the template alone.',
-        recommended: () => defaultSettings.imgGenReferencePreamble,
-        available: () => getSettings().imageBackend === 'gemini',
+        emptyNote: 'The maintained template is sent.',
     },
     {
         id: 'imageNegative',
         key: 'imgGenNegativePrompt',
         label: 'Negative Prompt',
         home: 'Generation',
-        help: 'What the image must not contain. Stable Diffusion only - Gemini takes '
-            + 'these as instructions in the prompt itself instead.',
+        help: 'What the image must not contain. Supported sources combine this with the host negative prompt.',
         recommended: () => defaultSettings.imgGenNegativePrompt,
-        available: () => getSettings().imageBackend !== 'gemini',
     },
 
     /* One per profile field, generated rather than written out.

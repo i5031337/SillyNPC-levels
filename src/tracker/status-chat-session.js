@@ -25,20 +25,8 @@ const SWIPE_BASE_KEY = 'sillynpc_swipe_base';
 /** @type {StatusState | null} */
 let committedState = null;
 
-/**
- * The chat committedState was read from.
- *
- * The cache is only ever valid for one chat, and CHAT_CHANGED is too late to be the thing
- * that says so: SillyTavern swaps chat_metadata inside getChat() and only fires the event
- * after printMessages() has already rendered the whole conversation. For that entire pass
- * the new chat's metadata is live while this still holds the previous chat's state - so
- * every status box, and the HUD, read the chat you just left. Worse, a state repaired
- * during that window was saved back, writing the old chat's values into the new chat.
- *
- * Keyed on the chat instead, the cache invalidates itself the moment the chat does.
- *
- * @type {string | undefined}
- */
+/** The cache's chat ID. CHAT_CHANGED fires after new metadata is already visible, so
+ * reads must invalidate the cache by ID rather than wait for that event. */
 let committedChatId;
 
 /** @returns {string|undefined} Undefined between chats, which is a value like any other. */
@@ -46,19 +34,7 @@ function currentChatId() {
     return getContext()?.getCurrentChatId?.();
 }
 
-/**
- * Which chat each live state object was read from.
- *
- * Invalidating the read cache stops a stale state being handed out, but it cannot stop
- * one already handed out from being saved after the chat has moved on - and that is the
- * write that does real damage, because it puts one chat's values into another chat's
- * file. It is how a story lost its HP and Energy to the story opened before it.
- *
- * A WeakMap rather than a field on the state: this must not be serialised into the chat
- * file, survive a structuredClone, or be something an update object could carry.
- *
- * @type {WeakMap<object, string|undefined>}
- */
+/** Origin chat for a live state object. The WeakMap keeps this guard out of saved data. */
 const stateOrigin = new WeakMap();
 
 // Common RPG stat synonyms to handle different AI output styles
@@ -361,6 +337,25 @@ function getChatSystem() {
     return (typeof name === 'string' && name) ? name : null;
 }
 
+/** A chat can choose its System until the player has sent the first story message. */
+function chatHasStarted() {
+    return Boolean(getContext()?.chat?.some(message => message?.is_user && !message?.is_system));
+}
+
+/** Discard an unplayed chat's old default state when it chooses a different System. */
+function resetUnplayedChatState() {
+    if (chatHasStarted()) return false;
+    const metadata = getMetadata();
+    if (!metadata) return false;
+    delete metadata[STATE_KEY];
+    delete metadata[HISTORY_KEY];
+    delete metadata[SWIPE_BASE_KEY];
+    committedState = null;
+    committedChatId = undefined;
+    getContext()?.saveMetadataDebounced?.();
+    return true;
+}
+
 /** Ties the open chat to the system in use. */
 function rememberChatSystem() {
     const metadata = getMetadata();
@@ -463,6 +458,8 @@ Object.defineProperties(deps, {
     restoreChatPersona: { enumerable: true, configurable: true, get: () => restoreChatPersona },
     SYSTEM_KEY: { enumerable: true, configurable: true, get: () => SYSTEM_KEY },
     getChatSystem: { enumerable: true, configurable: true, get: () => getChatSystem },
+    chatHasStarted: { enumerable: true, configurable: true, get: () => chatHasStarted },
+    resetUnplayedChatState: { enumerable: true, configurable: true, get: () => resetUnplayedChatState },
     rememberChatSystem: { enumerable: true, configurable: true, get: () => rememberChatSystem },
     restoreChatSystem: { enumerable: true, configurable: true, get: () => restoreChatSystem },
 });

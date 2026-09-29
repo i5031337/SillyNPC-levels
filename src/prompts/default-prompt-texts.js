@@ -46,10 +46,3 @@ Reply in exactly this format:
 Tags: comma separated keywords
 Content:
 ${loreReplyFields}`;
-
-export const DEFAULT_IMAGE_REFERENCE_PREAMBLE = `[Reference Image Directive]
-Use the attached image(s) strictly as a visual anchor for character identity. Maintain precise consistency with their facial anatomy, eye shape and color, hair color and style, skin tone, and permanent bodily features.
-
-Apply the attire, pose, and lighting specified in the main description above. Do not copy any background elements, text, or visual artifacts from the reference image.
-
-Generate the image now. Do not output text, descriptions, explanations, or commentary: return only the generated image.`;

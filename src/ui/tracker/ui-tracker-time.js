@@ -3,7 +3,7 @@ import { buildPromptEditor } from '../shared/ui-prompts.js';
 import { promptById } from '../../prompts/prompts.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { loadStateFromMetadata, saveStateToMetadata, syncPlayerToMaster, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from '../../tracker/status-logic.js';
+import { loadStateFromMetadata, saveStateToMetadata, applyCheckpointSchedule, getHistoryEntries, restoreHistoryEntry } from '../../tracker/status-logic.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';
@@ -232,4 +232,3 @@ function buildTimeRuleRow(rule, index, redraw, onChange) {
  * The connection settings do not all live together: the tracker's are under
  * statusTracker, lore writing's is at the root beside the prompt it belongs to.
  */
-

@@ -8,7 +8,7 @@ import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { renderCollectionUI, choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
 import { applyUpdate, getPlayerCard } from '../../tracker/status-logic.js';
-import { currentTab, isCollectionEditMode, bulkFor, refreshModal } from './ui-player-modal.js';
+import { currentTab, isCollectionEditMode, bulkFor, refreshPlayerSheet } from './ui-player-sheet.js';
 
 export function renderSidebar(dom) {
     const sidebar = dom.querySelector('.sillynpc-sheet-sidebar');
@@ -101,7 +101,7 @@ export function renderTabExtras(dom) {
 
     const loreEdit = dom.querySelector('.sillynpc-sheet-content .lorebook-section-container');
     if (loreEdit) {
-        renderLorebookSection(card, loreEdit, { onChange: () => refreshModal(dom) })
+        renderLorebookSection(card, loreEdit, { onChange: () => refreshPlayerSheet(dom) })
             .catch(err => console.error('[SillyNPC] player lorebook section failed', err));
     }
 }
@@ -171,11 +171,10 @@ export function commitInlineEdit(el, write = applyUpdate) {
 /**
  * Saves whatever is still being typed, before the sheet goes away.
  *
- * Called from the popup's onClosing, which runs on every route out - the X, the settings
- * button, Escape, the backdrop - and while the fields are still in the document. Nothing
- * is written for a field that was not touched.
+ * Called before the menu closes or switches tabs, while fields are still in the
+ * document. Nothing is written for a field that was not touched.
  *
- * @param {HTMLElement} dlg The popup's dialog.
+ * @param {HTMLElement} dlg The player view or its containing menu.
  * @param {Function} [write] See commitInlineEdit.
  * @returns {number} How many were saved.
  */
@@ -234,4 +233,3 @@ export function renderTabContent(tabId, state) {
         <div class="lorebook-section-container"></div>
     `;
 }
-

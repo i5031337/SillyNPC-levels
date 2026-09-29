@@ -59,7 +59,7 @@ function fixture({ openChat = true, castMode = 'ai' } = {}) {
         ],
         recently_deleted: { items: { lost: 1, retained: 2 } },
     };
-    const calls = { saved: [], synced: [], emitted: [], settings: 0 };
+    const calls = { saved: [], emitted: [], settings: 0 };
     const bind = loadBind(
         { emit: (...args) => calls.emitted.push(args) },
         () => settings,
@@ -96,13 +96,12 @@ function fixture({ openChat = true, castMode = 'ai' } = {}) {
         buildCharacterState: name => ({ name, stats: { HP: '' }, collections: {} }),
         updateCardOffstage: () => null,
         saveStateToMetadata: (...args) => calls.saved.push(args),
-        syncPlayerToMaster: (...args) => calls.synced.push(args),
     };
     bind(deps);
     return { deps, card, calls, initial };
 }
 
-test('committed update changes state and card, then saves and syncs once', () => {
+test('committed update changes state and card, then saves once', () => {
     const { deps, card, calls, initial } = fixture();
     const state = deps.applyUpdate({
         global: { scene: 'new' },
@@ -122,8 +121,6 @@ test('committed update changes state and card, then saves and syncs once', () =>
     assert.equal(initial.global.Scene, 'old');
     assert.equal(calls.settings, 1);
     assert.equal(calls.saved.length, 1);
-    assert.equal(calls.synced.length, 1);
-    assert.deepEqual(calls.synced[0][1], { authoritative: true });
     assert.equal(calls.emitted.length, 1);
 });
 
@@ -138,7 +135,6 @@ test('dry run previews character changes without mutating card or committing', (
     assert.deepEqual(card.statusCollections, {});
     assert.equal(calls.settings, 0);
     assert.equal(calls.saved.length, 0);
-    assert.equal(calls.synced.length, 0);
     assert.equal(calls.emitted.length, 0);
 });
 

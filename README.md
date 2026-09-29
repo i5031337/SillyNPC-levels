@@ -55,7 +55,7 @@ SillyNPC operates across two core modules:
 ### RPG Status Tracking & Character Sheets
 * **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define.
 * **Dedicated Extraction Pass:** Processes state updates in a background pass to keep tracker logic from polluting the primary prompt context.
-* **Review Before Applying:** Risky changes — items gained or lost, implausible jumps — wait in a panel under the message that proposed them instead of applying silently.
+* **Review Controls:** Valid reader changes apply automatically by default. You can switch to review modes that hold risky changes or all changes for approval.
 * **Interactive Sheets:** Detailed character sheet modal for inspecting and manually editing stats, appearance, and inventory.
 
 ### Open Threads
@@ -127,6 +127,7 @@ Reload SillyTavern.
    * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore, profile details, tracker fields, and belongings; completed stages remain in place if a later stage fails. Open the card and press **Fill** to retry.
    * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking a reusable card's portrait offers a new profile for this chat or its editor; clicking a chat NPC's portrait opens its editor.
    * Portrait generation is off in automatic Fill by default because it can incur a separate API cost. Enable **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor.
+   * Generated portraits use SillyTavern's Image Generation extension and its configured provider.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
    * The HUD appears once the tracker is running; choose a meter style under the **HUD** tab.
@@ -150,6 +151,7 @@ Advanced settings and fine-tuning parameters remain hidden until **Show Every Se
 | Tab | Contents |
 | :--- | :--- |
 | **Characters** | Character cards, profiles, portraits, and roster categories |
+| **Player** | The selected persona's profile, portrait, stats, items, and level; also opens from the HUD |
 | **Appearance** | Themes, speech dividers, spacing, avatar shapes, and fallback faces |
 | **Writing Rules** | Dialogue format, narrator rules, ban list, and how replies are parsed |
 | **Threads** | Active plotlines, promises, debts, secrets, and deadlines |

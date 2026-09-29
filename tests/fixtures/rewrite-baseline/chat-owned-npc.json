@@ -1,0 +1,17 @@
+{
+  "sillynpc_system": "Harbor RPG",
+  "sillynpc_npcs": [
+    {
+      "id": "npc-mira-chat-1", "name": "Mira", "imageUrl": "/user/images/sillynpc/mira.png",
+      "images": ["/user/images/sillynpc/mira.png"], "color": "#6699aa",
+      "category": "Harbor", "imageFit": "cover", "aliases": ["Captain Mira"],
+      "lorebook": { "world": "Harbor Lore", "uid": 42 }, "autoLinkLorebook": false,
+      "statusOverrides": { "Resolve": "4" }, "statusCollections": {},
+      "profile": {
+        "age": "Thirty-four", "appearance": "Short dark hair", "personality": "Patient",
+        "speech": "Speaks in clipped phrases", "role": "Harbor captain",
+        "wants": "Recover the missing manifest", "ties": "Trusts Rhea", "history": "Grew up on the docks"
+      }
+    }
+  ]
+}

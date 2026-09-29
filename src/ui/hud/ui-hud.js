@@ -1,7 +1,7 @@
 import { eventSource } from '../../../../../../events.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, resolveMaxValue, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
-import { openPlayerModal } from '../characters/ui-player-modal.js';
+import { openPlayerSheet } from '../characters/ui-player-sheet.js';
 import {
     allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR,
     hudLayoutFor, allHudLayoutClasses,
@@ -209,7 +209,7 @@ export function initHUD() {
     portrait.addEventListener('mousedown', startDrag);
     makeActivatable(portrait, { label: 'Open your character sheet' });
     portrait.addEventListener('click', (e) => {
-        if (!isDragging) openPlayerModal();
+        if (!isDragging) openPlayerSheet();
     });
     
     const statsContainer = document.createElement('div');

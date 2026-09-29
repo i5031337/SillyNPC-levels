@@ -1,0 +1,27 @@
+{
+  "sillynpc_system": "Harbor RPG",
+  "sillynpc_persona": "Rhea.png",
+  "sillynpc_cast": { "categories": ["Harbor"], "include": [], "exclude": [] },
+  "sillynpc_status_state": {
+    "global": { "Location": "Harbor gate", "Time": "Evening" },
+    "characters": [
+      { "name": "Mira", "stats": { "HP": "8/10" }, "collections": { "inventory": [{ "name": "Brass key" }] } }
+    ],
+    "player": {
+      "name": "Rhea", "personaKey": "Rhea.png",
+      "stats": { "Level": "2", "XP": "3/10", "HP": "9/12", "Level Bonus": "1" },
+      "collections": { "inventory": [{ "name": "Map" }] }
+    },
+    "players": {},
+    "recently_deleted": {},
+    "timestamp": 1750000000000
+  },
+  "sillynpc_status_history": [
+    { "state": { "global": { "Location": "Dock", "Time": "Evening" }, "characters": [], "player": { "name": "Rhea", "personaKey": "Rhea.png", "stats": { "Level": "1", "XP": "8/10" }, "collections": {} }, "recently_deleted": {}, "timestamp": 1749999999000 }, "timestamp": 1750000000000, "label": "Reader update" }
+  ],
+  "sillynpc_swipe_base": {
+    "messageId": "12",
+    "state": { "global": { "Location": "Dock", "Time": "Evening" }, "characters": [], "player": { "name": "Rhea", "personaKey": "Rhea.png", "stats": { "Level": "1", "XP": "8/10" }, "collections": {} }, "recently_deleted": {}, "timestamp": 1749999999000 },
+    "profiles": { "mira": { "appearance": "Short dark hair", "personality": "Patient" }, "rhea": { "appearance": "Copper hair" } }
+  }
+}

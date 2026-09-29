@@ -88,9 +88,7 @@ export function renderPromptsView(view, onApply) {
         view.append(section);
     }
 
-    // A prompt hidden because it does not apply is different from one that does not
-    // exist. Saying which, and why, stops a search for the negative prompt on a Gemini
-    // setup ending in the conclusion that it was lost.
+    // Explain why a configured prompt is absent from this view.
     const hidden = PROMPTS.filter(p => !shown.includes(p));
     if (hidden.length) {
         const note = document.createElement('small');

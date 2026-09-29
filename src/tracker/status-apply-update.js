@@ -233,8 +233,7 @@ export function bind(deps) {
         const newBindingValue = bindingStat
             ? (state.global[bindingStat] !== undefined ? state.global[bindingStat] : '') : null;
 
-        const statedPlayerCollections = update.player
-            ? applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace }) : false;
+        if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace });
         if (update.characters && Array.isArray(update.characters)) {
             applyCharacters(state, update.characters, settings, {
                 newBindingValue, admitCharacters, dryRun, allowReplace, allowAdvancementChanges,
@@ -256,7 +255,6 @@ export function bind(deps) {
         }
         if (dryRun) return state;
         deps.saveStateToMetadata(state, { label, partOfMessage });
-        deps.syncPlayerToMaster(state, { authoritative: statedPlayerCollections });
         eventSource.emit('sillynpc-status-updated', state);
         return state;
     }

@@ -8,7 +8,7 @@ import { escapeRegExp } from '../core/utils.js';
  * Lived in chat.js, where only the chat could reach it. Fill needs the same question
  * answered - is this character actually in the story, or am I about to describe somebody
  * from a page about somebody else - and character-fill.js cannot import chat.js: chat.js
- * reaches it through status-ui, the cast panel, ui-shared, the HUD, the player modal and
+ * reaches it through status-ui, the cast panel, ui-shared, the HUD, the player sheet and
  * ui-manage, and a cycle that only bites when a module is evaluated in the wrong order is
  * the worst kind to leave lying around.
  *

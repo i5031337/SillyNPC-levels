@@ -104,7 +104,7 @@ export const defaultTrackerSettings = {
          * 'all'   - nothing applies until you say so.
          * 'off'   - everything applies; undo is the safety net.
          */
-        reviewMode: 'risky',
+        reviewMode: 'off',
         /**
          * Whether the reader may move a ceiling on its own.
          * 'free'              - yes, shown but never blocking. Level-up rules vary too

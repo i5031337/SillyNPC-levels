@@ -173,56 +173,13 @@ export function setDebugLogging(enabled) {
     globalThis.SILLYNPC_DEBUG = !!enabled;
 }
 
-/**
- * Google Gemini models capable of returning an image ("Nano Banana" and friends).
- *
- * This MUST stay identical to the imageGenerationModels array in SillyTavern's
- * src/endpoints/backends/chat-completions.js (around line 482). The server only sets
- * responseModalities: ['text','image'] when the requested model appears on that exact
- * list — send anything else and you silently get a text-only reply instead of an image.
- *
- * These are reachable through the Chat Completion backend, NOT through the Stable
- * Diffusion extension: its Google source offers only imagen-* and veo-* models, which
- * is why accounts entitled to Gemini image models cannot generate images the usual way.
- *
- * @type {readonly string[]}
- */
-export const GEMINI_IMAGE_MODELS = Object.freeze([
-    'gemini-3-pro-image-preview',
-    'gemini-3.1-flash-image-preview',
-    'gemini-2.5-flash-image',
-    'gemini-2.5-flash-image-preview',
-    'gemini-2.0-flash-preview-image-generation',
-    'gemini-2.0-flash-exp-image-generation',
-    'gemini-2.0-flash-exp',
-]);
-
-/**
- * The shape a generated portrait should come back in.
- *
- * One table for both backends, because the two of them take the same wish in different
- * units and used to disagree about it. The Gemini path asks for a ratio by name. The /sd
- * path can only say pixels - but for Google, `generateGoogleImage` throws those pixels away
- * and snaps to the nearest of 1:1, 16:9, 9:16, 4:3, 3:4, so the pixels have to be chosen to
- * land on the intended ratio rather than merely look like it.
- *
- * That is what went wrong before: the command hardcoded 512x768, which is 2:3 (0.667), and
- * Google rounded it up to 3:4 - the right answer by accident, from a number that said
- * something else, silently overriding whatever Resolution the user had set. 576x768 is
- * exactly 3:4, so nothing has to round, and both dimensions stay multiples of 64 for
- * Stable Diffusion.
- *
- * `pixels: null` means "send no width/height at all", leaving SillyTavern's own Resolution
- * setting in charge. It is the only way to opt out of the override.
- *
- * @type {Readonly<Record<string, { label: string, gemini: string, pixels: { width: number, height: number } | null }>>}
- */
+/** Portrait dimensions sent to SillyTavern Image Generation; null keeps its resolution. */
 export const PORTRAIT_SHAPES = Object.freeze({
-    '3:4': { label: '3:4 - matches avatar frames', gemini: '3:4', pixels: { width: 576, height: 768 } },
-    '1:1': { label: '1:1 - square', gemini: '1:1', pixels: { width: 512, height: 512 } },
-    '2:3': { label: '2:3 - tall portrait', gemini: '3:4', pixels: { width: 512, height: 768 } },
-    '9:16': { label: '9:16 - full length', gemini: '9:16', pixels: { width: 576, height: 1024 } },
-    st: { label: "Use SillyTavern's resolution", gemini: '3:4', pixels: null },
+    '3:4': { label: '3:4 - matches avatar frames', pixels: { width: 576, height: 768 } },
+    '1:1': { label: '1:1 - square', pixels: { width: 512, height: 512 } },
+    '2:3': { label: '2:3 - tall portrait', pixels: { width: 512, height: 768 } },
+    '9:16': { label: '9:16 - full length', pixels: { width: 576, height: 1024 } },
+    st: { label: "Use SillyTavern's resolution", pixels: null },
 });
 
 /** Fallback shape: what the avatar frames and character cards are built around. */

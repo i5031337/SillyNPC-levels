@@ -62,6 +62,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/settings-migration.js` | Normalize settings across versions. |
 | `src/core/settings-base-migration.js` | Normalize common settings and their defaults. |
 | `src/core/settings-store-migration.js` | Normalize stored collections and presets. |
+| `src/core/system-schema.js` | Versioned System definitions and bounded legacy preset normalization. |
 | `src/core/utils.js` | Image preparation, JSON repair, stat display, downloads, and DOM helpers. |
 | `src/core/utils-media.js` | Image resizing, upload preparation, and media helpers. |
 | `src/core/utils-format.js` | JSON, stat display, text, and DOM formatting helpers. |
@@ -70,7 +71,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/api/api-lore-facts.js` | Assemble lore and tracked fact context. |
 | `src/api/api-lore-generate.js` | Generate and save lore content. |
 | `src/api/api-image-files.js` | Image storage, listing, adoption, and cleanup. |
-| `src/api/api-image-generate.js` | Image model requests and portrait generation. |
+| `src/api/api-image-generate.js` | Portrait prompt assembly and SillyTavern Image Generation `/imagine` call. |
 | `src/core/usage.js` | Model usage accounting. |
 | `src/core/tokens.js` | Token budget readout. |
 | `src/tracker/progression.js` | XP advancement and level bonus calculations. |
@@ -82,7 +83,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/status-logic.js` | Player and NPC state, model updates, cast, items, systems, and checkpoints. |
 | `src/tracker/status-stat-values.js` | Stat value merging and numeric constraints. |
 | `src/tracker/status-stat-schema.js` | Stat definition lookup and schema helpers. |
-| `src/tracker/status-persona-state.js` | Player persona records and activation. |
+| `src/tracker/status-persona-state.js` | Reusable persona card and chat-local player activation. |
 | `src/tracker/status-chat-session.js` | Chat persona/system session lifecycle. |
 | `src/tracker/status-state-storage.js` | Load, save, and restore status metadata. |
 | `src/tracker/status-status-summary.js` | Format status summaries. |
@@ -94,7 +95,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/status-scene-presence.js` | Reconcile scene presence and active characters. |
 | `src/tracker/status-collection-updates.js` | Add, remove, and update tracked items. |
 | `src/tracker/status-collection-schema.js` | Rename collection fields and stat schema references. |
-| `src/tracker/status-system-presets.js` | Active system and saved system presets. |
+| `src/tracker/status-system-presets.js` | Active System, saved definitions, and legacy world archive migration. |
 | `src/tracker/status-checkpoints.js` | Save, restore, and schedule checkpoints. |
 | `src/tracker/status-diff.js` | Public entry point for state difference and review helpers. |
 | `src/tracker/status-diff-compare.js` | Compare stats and collections across states. |
@@ -200,7 +201,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/collections/ui-item-library.js` | Master item library. |
 | `src/ui/collections/ui-item-library-sections.js` | Item rows, rules, and tombstone sections. |
 | `src/ui/story/ui-lorebook-section.js` | Lorebook settings and controls. |
-| `src/ui/characters/ui-player-modal.js` | Player sheet modal and inline edits. |
+| `src/ui/characters/ui-player-sheet.js` | Player sheet view, actions, and inline edits. |
 | `src/ui/characters/ui-player-sections.js` | Player sheet content sections. |
 | `src/ui/characters/ui-portrait.js` | Portrait gallery and lightbox. |
 | `src/ui/characters/ui-profile.js` | Character profile blocks and editor. |
@@ -215,7 +216,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/settings/ui-settings-defaults.js` | Default behavior settings. |
 | `src/ui/settings/ui-settings-generation.js` | Generation settings. |
 | `src/ui/settings/ui-settings-generation-helpers.js` | Shared helpers for generation settings. |
-| `src/ui/settings/ui-settings-generation-image.js` | Image backend, model, shape, and prompt controls. |
+| `src/ui/settings/ui-settings-generation-image.js` | Portrait shape and prompt controls for SillyTavern Image Generation. |
 | `src/ui/settings/ui-settings-generation-storage.js` | Portrait folder, image discovery, and orphan cleanup controls. |
 | `src/ui/shared/ui-shared.js` | Shared UI facade and choice helpers. |
 | `src/ui/shared/ui-choice.js` | Shared choice field controls. |

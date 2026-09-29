@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../st-context.js';
 import { saveSettingsDebounced } from '../../../../../../script.js';
 import { extension_settings } from '../../../../../extensions.js';
-import { IMAGE_PROMPT_BY_BACKEND } from './constants.js';
+import { IMAGE_PROMPT } from './constants.js';
 import { defaultSettings } from './settings-defaults.js';
 import { normalizeSettings } from './settings-migration.js';
 export { defaultSettings, normalizeSettings };
@@ -17,32 +17,26 @@ export function initSettings() {
 /**
  * The portrait template to send.
  *
- * An empty stored template means "whatever suits my backend", so someone who never
- * customised it gets tags for Stable Diffusion and description for Gemini, and changing
- * backend changes the prompt with it. A customised one is always used as written.
- *
- * @param {'sd'|'gemini'} [backend] Defaults to the configured one.
+ * An empty stored template uses the maintained Image Generation prompt.
  * @returns {string}
  */
-export function resolveImagePrompt(backend) {
+export function resolveImagePrompt() {
     const custom = String(getSettings().imgGenPrompt ?? '').trim();
-    return custom || recommendedImagePrompt(backend);
+    return custom || recommendedImagePrompt();
 }
 
 /**
- * The suggested portrait template for a backend, ignoring anything customised.
+ * The suggested portrait template, ignoring anything customised.
  *
  * Separate from resolveImagePrompt on purpose: that one answers "what do I send", and
  * a customised template rightly wins there. This answers "what would you suggest", which
  * is what a Restore button needs - asking the other question hands someone back the very
  * text they were trying to replace.
  *
- * @param {'sd'|'gemini'} [backend] Defaults to the configured one.
  * @returns {string}
  */
-export function recommendedImagePrompt(backend) {
-    const which = (backend ?? getSettings().imageBackend) === 'gemini' ? 'gemini' : 'sd';
-    return IMAGE_PROMPT_BY_BACKEND[which];
+export function recommendedImagePrompt() {
+    return IMAGE_PROMPT;
 }
 
 export function getSettings() {
