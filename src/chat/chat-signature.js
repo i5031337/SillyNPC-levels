@@ -4,8 +4,7 @@ import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { findCharacter, getActiveCharacters, getChatCast } from '../characters/characters.js';
 import { getAllCharacters } from '../characters/character-repository.js';
-import { characterPatternSignature } from '../characters/character-scope.js';
-import { escapeRegExp, personaFileFromAvatar } from '../core/utils.js';
+import { personaFileFromAvatar } from '../core/utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from '../tracker/ui/status-ui.js';
 import {
     registerActiveCharacter, reconcileScenePresence, resolvePersonaSpeaker,
@@ -19,65 +18,6 @@ import { updateHUD } from '../ui/hud/ui-hud.js';
 import { getTrackerView, setTrackerView, nextTrackerView } from '../tracker/tracker-view.js';
 import { eventSource } from '../../../../../events.js';
 import { messageBeats, MESSAGE_RENDERED_EVENT } from '../story/beats.js';
-
-/** @type {{ characters: any[], caseInsensitive: boolean, combinedRegex: RegExp, charMap: Map<string, any>, regexAliases: any[] } | null} */
-let cachedOptimizedPatterns = null;
-
-export function getOptimizedPatterns(characters) {
-    const caseInsensitive = getSettings().caseInsensitive;
-    
-    // Generate a quick signature of the current characters list to invalidate the cache if names/aliases are edited, added, or reordered.
-    const signature = characterPatternSignature(characters);
-
-    // Keyed on the signature alone. It used to also require the same array instance, which
-    // was free when the caller passed the settings array straight through - but the list is
-    // now filtered per chat and so is a new array every call, and that check would miss
-    // every time and rebuild every regex on every message.
-    if (cachedOptimizedPatterns &&
-        cachedOptimizedPatterns.caseInsensitive === caseInsensitive &&
-        cachedOptimizedPatterns.signature === signature) {
-        return cachedOptimizedPatterns;
-    }
-
-    const charMap = new Map();
-    const plainNames = [];
-    const regexAliases = [];
-    const flags = caseInsensitive ? 'gui' : 'gu';
-
-    for (const char of characters) {
-        const names = [
-            char.name,
-            ...char.aliases.filter(a => !a.isRegex && a.pattern).map(a => a.pattern),
-        ].filter(Boolean);
-        
-        for (const name of names) {
-            const escaped = escapeRegExp(name);
-            plainNames.push(escaped);
-            charMap.set(caseInsensitive ? name.toLowerCase() : name, char);
-        }
-
-        for (const alias of char.aliases.filter(a => a.isRegex && a.pattern)) {
-            try {
-                regexAliases.push({
-                    regex: new RegExp(`(?:${alias.pattern})\\s*:`, flags),
-                    char,
-                });
-            } catch { /* skip */ }
-        }
-    }
-
-    // Sort by length descending to match longest names first (prevents partial matches)
-    plainNames.sort((a, b) => b.length - a.length);
-    
-    let combinedRegex = null;
-    if (plainNames.length > 0) {
-        const joinedNames = plainNames.join('|');
-        combinedRegex = new RegExp(`(?<![\\p{L}\\p{N}_])(${joinedNames})(?![\\p{L}\\p{N}_])\\s*:`, flags);
-    }
-
-    cachedOptimizedPatterns = { characters, caseInsensitive, combinedRegex, charMap, regexAliases, signature };
-    return cachedOptimizedPatterns;
-}
 
 
 /**

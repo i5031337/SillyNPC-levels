@@ -4,8 +4,7 @@ import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { findCharacter, getActiveCharacters, getChatCast } from '../characters/characters.js';
 import { getAllCharacters } from '../characters/character-repository.js';
-import { characterPatternSignature } from '../characters/character-scope.js';
-import { escapeRegExp, personaFileFromAvatar } from '../core/utils.js';
+import { personaFileFromAvatar } from '../core/utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from '../tracker/ui/status-ui.js';
 import {
     registerActiveCharacter, reconcileScenePresence, resolvePersonaSpeaker,

@@ -10,4 +10,4 @@
 # Coding practices
 
 - No source file should exceed 20kB, for agentic efficiency. Keep code clear and concise. When appropriate, recommend a refactor strategy. 
-- This project is a prototype. Never make something more complicated for the sake of legacy compatibility.
+- This project is a prototype. Never make something more complicated for the sake of legacy compatibility. The new way is the only way.

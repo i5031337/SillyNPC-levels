@@ -4,8 +4,7 @@ import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { findCharacter, getActiveCharacters, getChatCast } from '../characters/characters.js';
 import { getAllCharacters, isChatCharacter } from '../characters/character-repository.js';
-import { characterPatternSignature } from '../characters/character-scope.js';
-import { escapeRegExp, personaFileFromAvatar } from '../core/utils.js';
+import { personaFileFromAvatar } from '../core/utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from '../tracker/ui/status-ui.js';
 import {
     registerActiveCharacter, reconcileScenePresence, resolvePersonaSpeaker,
@@ -19,7 +18,7 @@ import { updateHUD } from '../ui/hud/ui-hud.js';
 import { getTrackerView, setTrackerView, nextTrackerView } from '../tracker/tracker-view.js';
 import { eventSource } from '../../../../../events.js';
 import { messageBeats, MESSAGE_RENDERED_EVENT } from '../story/beats.js';
-import { injectAtBoldSpeakers, injectAtPlainTextSpeakers, replaceTextNodeWithMatches } from './chat-speech.js';
+import { injectAtDialogueLines } from './chat-speech.js';
 
 export function playerPortraitFor(record) {
     if (!getSettings().enabled) return '';
@@ -98,8 +97,7 @@ export function injectCharacterImages(mesEl) {
 
     pendingActiveCharacters = new Set();
     try {
-        injectAtBoldSpeakers(textContainer, allCharacters, pickFace, isLastMessage);
-        injectAtPlainTextSpeakers(textContainer, allCharacters, pickFace, isLastMessage);
+        injectAtDialogueLines(textContainer, allCharacters, pickFace, isLastMessage);
     } finally {
         const names = pendingActiveCharacters;
         pendingActiveCharacters = null;
@@ -126,9 +124,6 @@ export function clearDecorations(textContainer) {
         while (wrapper.firstChild) parent.insertBefore(wrapper.firstChild, wrapper);
         parent.removeChild(wrapper);
     });
-    textContainer.querySelectorAll('strong, b, em, i').forEach(el => {
-        el.style.removeProperty('display');
-    });
     textContainer.normalize();
     textContainer.querySelectorAll('.sillynpc-chat-avatar').forEach(el => el.remove());
     textContainer.querySelectorAll('.sillynpc-alias-link').forEach(el => el.remove());
@@ -147,25 +142,6 @@ export function clearDecorations(textContainer) {
         p.style.removeProperty('--sillynpc-color');
         p.removeAttribute('data-sillynpc-char');
     });
-}
-
-/**
- * Whether this speaker's name can be replaced by their portrait.
- *
- * Hiding a name is a trade: the portrait says who is speaking instead. Without a card
- * there is nothing to trade for - every uncarded speaker is given the same fallback
- * picture - so hiding the name swapped something readable for something indistinguishable,
- * with the name left only in the tooltip. The setting's own description said names go "in
- * favor of the visual avatars", and in that case there was no such avatar.
- *
- * The other decoration path never had this fault: replaceTextNodeWithMatches builds its
- * matches from the card map, so every name it hides has a card behind it.
- *
- * @param {object|null|undefined} char The speaker's card, when they have one.
- * @returns {boolean}
- */
-export function shouldHideSpeakerName(char) {
-    return !!getSettings().hideSpeakerNames && !!char;
 }
 
 /**
@@ -195,8 +171,7 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
     const effectiveFit = (char?.imageFit) || globalFit;
     img.style.objectFit = effectiveFit;
 
-    // Asked here rather than at each caller, so both the bold path and the plain-text one
-    // get it - and so a decision made about a name that also has a card still wins.
+    // A cast decision can identify the speaker as the player even when a card exists.
     const label = char?.name || name || '';
     const persona = label ? resolvePersonaSpeaker(label) : null;
 
@@ -358,4 +333,3 @@ function wrapSingleSpeakerBlock(block, avatar) {
     for (const node of others) wrapper.appendChild(node);
     block.appendChild(wrapper);
 }
-

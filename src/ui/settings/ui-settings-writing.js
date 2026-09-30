@@ -45,11 +45,8 @@ export function renderWritingRulesView(view, onReprocessMessages) {
     view.append(buildSettingToggle({
         key: 'dialogueFormatEnabled',
         label: 'Ask The Model To Format Dialogue',
-        help: 'Sends the Dialogue Format prompt with every message, asking for a speaker '
-            + 'line - a name in bold followed by a colon - which is what avatars, speech '
-            + 'blocks and colours all read. Without it, whether your chat is decorated '
-            + 'depends on your persona or preset happening to ask for the same thing, and '
-            + 'switching either one silently stops all of it.',
+        help: 'Asks for each spoken line as Speaker: "dialogue". This is the format used '
+            + 'for avatars, speech blocks and colours, including speakers without cards.',
         onChange: rerender,
     }));
     if (getSettings().dialogueFormatEnabled) {
@@ -91,12 +88,7 @@ export function renderWritingRulesView(view, onReprocessMessages) {
     view.append(buildSettingToggle({
         key: 'narratorRulesEnabled',
         label: 'Send Narrator Rules Late In The Prompt',
-        help: 'For the rules a narrator keeps breaking: speaking or acting for you, '
-            + 'recapping what just happened, wrapping the scene up, summarising instead of '
-            + 'writing it. Written into a card those sit at the top of the prompt with the '
-            + 'whole chat between them and the moment they apply, which is why rewording '
-            + 'one so often changes nothing - where it sits was the problem, not how it '
-            + 'was phrased. Switching this on sends the built-in rules.',
+        help: 'Repeats the Speaker: "dialogue" format late in the prompt.',
         onChange: rerender,
     }));
     if (getSettings().narratorRulesEnabled) {
@@ -171,8 +163,8 @@ export function renderWritingRulesView(view, onReprocessMessages) {
     view.append(buildSettingTextArea({
         key: 'speakerIgnoreList',
         label: 'Not Speakers',
-        help: 'Words the narrator writes in bold before a colon that are not people - DC, '
-            + 'Cost, Damage, Roll. One per line or separated by commas. Everything you '
+        help: 'Labels in a Name: "dialogue" line that are not people. One per line or '
+            + 'separated by commas. Everything you '
             + 'named in System Builder is already excluded, so stats and collections need '
             + 'no entry here. A character who has a card is never ignored.',
         onChange: reprocess,

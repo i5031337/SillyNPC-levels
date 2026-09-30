@@ -1,76 +1,41 @@
-/**
- * Add or remove a named field here. NPC lore, Fill, the editor, tracker, transfer and
- * prompt format all read this registry. `player: true` also puts it on the player sheet.
- */
 const CHARACTER_FIELD_DEFS = [
     {
         id: 'age',
         label: 'Age',
         player: true,
-        placeholder: '34, or "late twenties"',
-        hint: 'Their age. An approximation is fine when the story only implies one.',
+        placeholder: 'Age or age range',
+        hint: 'Age or approximate age.',
     },
     {
         id: 'appearance',
         label: 'Appearance',
         player: true,
-        placeholder: 'Build, hair, eyes, distinguishing marks, how they carry themselves',
-        hint: 'Two or three sentences somebody could picture: build, face, hair, marks, bearing. Plain description, no metaphor.',
+        placeholder: 'Build, face, hair, distinguishing features',
+        hint: 'Physical details that make them recognizable.',
         multiline: true,
     },
     {
         id: 'personality',
         label: 'Personality',
         player: true,
-        placeholder: 'What they are like day to day, and how they treat people close to them',
-        /* This asked for "the flaw that gets them into trouble" - the definite article, not
-           optional, and the trouble specified. Nine of eleven filled-in personalities ended
-           on it, in the same shape every time: "...which leads him to...". That is not
-           characterisation, it is a standing reason per character for the narrator to make
-           something go wrong, injected on every message. A flaw is welcome when the story
-           has shown one; being required to invent one, and to finish on it, is not. */
-        hint: 'Two or three traits, shown as behaviour. What they are like to be around on an ordinary day, and how they treat the people they are close to. Mention a flaw only if the story has shown one, describe it as a limitation rather than as something that causes incidents, and do not end on it.',
+        placeholder: 'Defining traits and behavior',
+        hint: 'Defining traits and how they behave with others.',
         multiline: true,
     },
-    // {
-    //     id: 'warmth',
-    //     label: 'Warmth & attachment',
-    //     player: true,
-    //     placeholder: 'How they show they care - what they do, say, bring, or put up with',
-    //     /* Relationships have a home already: the lore entry's Ties section, which asks how
-    //        they stand with the player. This is the other half of it and does not move - Ties
-    //        is where the relationship stands and grows, this is the habit that does not
-    //        change. Separated on purpose, because two fields describing the same thing is the
-    //        drift the lore prompt warns about.
-    //        Behaviour rather than feeling, so it says something the narrator can act on. */
-    //     hint: 'How they show they like the people close to them. Concrete behavior: what they do, say, bring, make time for, or put up with. Include how they behave toward {{user}}. If the material shows they are fond of somebody, say so plainly. Leave blank only if it shows no affection at all.',
-    //     multiline: true,
-    // },
     {
         id: 'speech',
         label: 'Speech & dialogue style',
         player: true,
-        placeholder: 'Cadence, accent, verbal tics, a turn of phrase that is theirs',
-        /* "What they steer away from" resolved to emotional avoidance often enough to
-           matter: eight of ten speech fields carried an avoidance clause, and where it
-           landed on feeling rather than on a subject it read as a standing instruction that
-           the character does not show warmth. Naming a subject is the useful half - a
-           character who will not discuss the war - so that half is kept and pointed at
-           subjects. Not phrased as a prohibition on writing about avoiding affection: a rule
-           that names the thing tends to summon it. */
-        hint: 'How they talk: cadence, accent, verbal tics, and a phrase or habit that is characteristically theirs. Describe how they sound when they are relaxed and among people they like. If they hold something back, name a topic they dodge - never write that they avoid warmth, affection, sincerity or vulnerability.',
+        placeholder: 'Accent, cadence, word choice, verbal habits',
+        hint: 'What makes their voice distinctive.',
         multiline: true,
     },
-    { id: 'role', label: 'Role', hint: 'One plain sentence about who this person is in ordinary terms, not an epithet.', placeholder: 'Their place in the world', multiline: true },
-    { id: 'wants', label: 'Wants', hint: 'One concrete thing they are trying to get, keep or avoid.', placeholder: 'A concrete goal or concern', multiline: true },
-    // { id: 'method', label: 'Method', hint: 'One or two sentences on how they usually solve problems.', placeholder: 'How they approach problems', multiline: true },
-    // { id: 'limits', label: 'Limits', hint: 'What they cannot do, do not know, lack authority over, or would refuse to do. Be specific.', placeholder: 'Real limits on their actions', multiline: true },
-    // { id: 'standing', label: 'Standing', hint: 'How they treat {{user}} day to day and where they stand with them.', placeholder: 'Their relationship with the player', multiline: true },
-    { id: 'ties', label: 'Ties', hint: 'One sentence on other people who matter to them.', placeholder: 'People who matter to them', multiline: true },
-    { id: 'history', label: 'History', hint: 'Where they came from and what has happened to them recently, in two or three sentences.', placeholder: 'Relevant history', multiline: true },
+    { id: 'role', label: 'Role', hint: 'Who they are and what they do.', placeholder: 'Occupation or place in the world', multiline: true },
+    { id: 'wants', label: 'Wants', hint: 'Their current goal or concern.', placeholder: 'A goal or concern', multiline: true },
+    { id: 'ties', label: 'Ties', hint: 'People who matter to them and why.', placeholder: 'Key relationships', multiline: true },
+    { id: 'history', label: 'History', hint: 'Past events that shape them now.', placeholder: 'Relevant history', multiline: true },
 ];
 
-/** Player cards use the shared subset; NPCs use every field unless npc:false is set. */
 export const PROFILE_FIELDS = CHARACTER_FIELD_DEFS.filter(field => field.player);
 export const NPC_LORE_FIELDS = CHARACTER_FIELD_DEFS.filter(field => field.npc !== false);
 
@@ -78,73 +43,23 @@ export function fieldsForCard(card) {
     return card?.isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS;
 }
 
-/** An empty profile, with every field present so nothing has to check for a missing key. */
 export function blankProfile(isPlayer = false) {
     return Object.fromEntries((isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => [field.id, '']));
 }
 
-/** Fill guidance from the active System field or the built-in fallback. */
 export function hintFor(field) {
     return String(field?.hint ?? '');
 }
 
-/**
- * Whether Fill may write one of the profile fields on this character.
- *
- * These four are yours by default. They are the part of a character somebody sits down and
- * decides - how she talks, what she looks like - and having a model quietly overwrite that
- * is worse than leaving a blank, so the answer is no unless you have said otherwise per
- * field, per character.
- *
- * Stored as the list of fields that ARE open rather than the ones that are shut, so the
- * default falls out of an absent key and no existing character needs migrating.
- *
- * Only these four. Stats and collections come from System Builder and are the tracker's
- * job to maintain from the story; locking those would stop the feature working.
- *
- * @param {object} char
- * @param {string} fieldId
- * @returns {boolean}
- */
 export function aiMayEditProfileField(char, fieldId) {
     const open = char?.aiProfileFields;
     return Array.isArray(open) && open.includes(fieldId);
 }
 
-/**
- * Whether a collection field belongs to the kind of thing rather than to one instance.
- *
- * A static field is stored once in the item library and copied onto every copy of that item:
- * every Cellphone has the same description, on whoever is carrying it. getMergedItem writes
- * these back over whatever the reader returned, so they are not merely shared - nothing the
- * per-message reader says about one has any effect.
- *
- * Numbers are the exception and default the other way, because a quantity or a charge count
- * is exactly what does differ between two people holding the same thing. A number that
- * *identifies* the item is back to being static, since that is its name.
- *
- * This rule was written out identically in four places - status-logic.js twice, the item
- * library and the shared item editor - and a fifth copy is how it would start disagreeing
- * with itself. Here because constants.js is what everything can import.
- *
- * @param {{ isStatic?: boolean, type?: string, isPrimary?: boolean }} field
- * @returns {boolean}
- */
 export function isStaticField(field) {
     return field?.isStatic !== false && (field?.type !== 'number' || !!field?.isPrimary);
 }
 
-/**
- * Whether anybody has opened any profile field.
- *
- * Asked once, to decide whether the extraction schema mentions profiles at all. A schema
- * names what may come back, so listing them tells the model to go looking for changes on
- * every message - which nobody should pay for while every field is still locked, and by
- * default they all are.
- *
- * @param {object[]} characters
- * @returns {boolean}
- */
 export function anyProfileFieldUnlocked(characters) {
     return (characters || []).some(char => Array.isArray(char?.aiProfileFields)
         && char.aiProfileFields.length > 0);

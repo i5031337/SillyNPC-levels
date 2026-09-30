@@ -173,7 +173,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/chat/chat.js` | Decorate messages with portraits, speaker colors, and tracker controls. |
 | `src/chat/chat-signature.js` | Compute chat rendering signatures. |
 | `src/chat/chat-portraits.js` | Select and inject character portraits. |
-| `src/chat/chat-speech.js` | Render speaker labels and speech colors. |
+| `src/chat/dialogue-line.js` | Recognize plain speaker dialogue lines. |
+| `src/chat/chat-speech.js` | Attach portraits to recognized dialogue lines. |
 | `src/chat/chat-reprocess.js` | Reprocess message decorations and tracker controls. |
 | `src/chat/chat-listing.js` | List chat headers. |
 | `src/chat/chat-npc-sources.js` | Identify chat-owned NPC sources and their images. |

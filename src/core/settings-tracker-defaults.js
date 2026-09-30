@@ -1,5 +1,4 @@
-/** Built-in guidance for the optional inline status block. */
-export const DEFAULT_INLINE_RULES = 'Update stats realistically based on events. HP and Energy should change according to combat or resting. Location and Time should progress logically. Avoid double-deducting spell or skill costs that were already paid in previous turns.';
+export const DEFAULT_INLINE_RULES = 'Change stats only when the story supports it. Apply a cost once, when the action resolves.';
 
 export const defaultTrackerSettings = {
         enabled: true,

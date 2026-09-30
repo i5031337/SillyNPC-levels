@@ -144,9 +144,8 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
     view.append(buildSettingToggle({
         key: 'hideSpeakerNames',
         label: 'Hide Default Speaker Names',
-        help: 'Replaces the bold name before a colon with that character\'s portrait. Only '
-            + 'where there is a card to supply one: a speaker without a card keeps their '
-            + 'name, since telling two of them apart is what the name is doing.',
+        help: 'Hides the name and colon when a character has a card and portrait. Speakers '
+            + 'without cards keep their names so they remain distinguishable.',
         onChange: reprocess,
     }));
 

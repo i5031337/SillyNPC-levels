@@ -157,61 +157,25 @@ export function describeTrackedFacts(char, except = null) {
     return lines.join('\n');
 }
 
-/**
- * Substitutes the portrait template's placeholders.
- *
- * Separate from the request so it can be checked without one. Name, lore and items each
- * get a readable stand-in rather than being dropped: an image model given "Carrying or
- * wearing:" with nothing after it will invent something to put there.
- *
- * Context is the exception, because it is the one a setting can deliberately turn off.
- * Image Context Length set to Lore Only means no recent chat was asked for, and writing
- * "Recent scene: (No recent context)" spends tokens saying nothing - Stable Diffusion in
- * particular reads those words as tags and draws them. So an empty context takes with it
- * whatever introduced it: the caption in front of it, and the comma holding it in a tag
- * list. The caption must not reach across a colon or a line break, or an empty context
- * would swallow the prompt above it.
- *
- * @param {string} template
- * @param {{ name?: string, lore?: string, items?: string, context?: string }} parts
- * @returns {string}
- */
 export function fillImagePrompt(template, { name, lore, items, context } = {}) {
     const own = { name, lore, items, context };
-    // Both spellings become one before anything is cut or substituted, so the cleanup
-    // below has a single thing to look for.
     let out = modernisePlaceholders(template, Object.keys(own));
 
-    if (!context) {
-        // The caption introducing it, if there is one on the same line.
-        out = out.replace(/(?:[^\n:]*:[^\S\n]*)?{{context}}/gi, '');
-        // The comma holding it in a list, but only the one that now leads nowhere.
-        out = out.replace(/,[^\S\n]*(?=,|[^\S\n]*(?:\r?\n|$))/g, '');
-        // And the hole a whole removed line leaves in between two others.
-        out = out.replace(/\n{3,}/g, '\n\n');
+    for (const [key, value] of Object.entries({ lore, items, context })) {
+        if (value) continue;
+        out = out.replace(new RegExp(`^[ \\t]*\\{\\{${key}\\}\\}[ \\t]*(?:\\r?\\n|$)`, 'gmi'), '');
+        out = out.replace(new RegExp(`(?:[^\\n:]*:[^\\S\\n]*)?\\{\\{${key}\\}\\}`, 'gi'), '');
     }
 
-    /* The stand-ins are the point of this function: a portrait prompt with a hole in it
-       produces a picture of nothing in particular, so an absent value is replaced by
-       something a model can draw rather than left blank. */
+    out = out.replace(/,[^\S\n]*(?=,|[^\S\n]*(?:\r?\n|$))/g, '');
     return applyMacros(out, {
         name: name || 'a character',
-        lore: lore || 'a mysterious person',
-        items: items || 'nothing notable',
+        lore: lore || '',
+        items: items || '',
         context: context || '',
-    });
+    }).trim();
 }
 
-/**
- * What this character is carrying, for a picture prompt.
- *
- * Deliberately not describeTrackedFacts: that carries stats and item descriptions, which
- * a portrait model does not want and Stable Diffusion in particular will render as
- * literal words. Names only, comma separated, in the order they are held.
- *
- * @param {object} char
- * @returns {string} Empty when nothing is recorded, so the caller can substitute.
- */
 export function describeCarriedItems(char) {
     if (!char?.name) return '';
 
