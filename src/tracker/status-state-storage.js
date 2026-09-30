@@ -257,7 +257,7 @@ function saveStateToMetadata(state, options = {}) {
     deps.committedChatId = deps.currentChatId();
 
     /* Anything saved here that is not a message being read is a correction: the sheet, the
-       item editor, a thread pinned by hand. The swipe base has to learn about it, or
+       item editor, or a goal edited by hand. The swipe base has to learn about it, or
        swiping the newest reply quietly rolls it back along with the reply.
 
        partOfMessage is the load-bearing half - a reply folded into its own base is a swipe

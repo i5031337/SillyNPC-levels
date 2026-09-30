@@ -1,7 +1,7 @@
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { isTurnStat, canAdvanceStat, earnsLevel } from './stat-update-policy.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from '../core/utils.js';
+import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
 
 export function bind(deps) {
 

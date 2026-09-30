@@ -6,7 +6,7 @@ import { trackerMessageIndex } from './status-ui-placement.js';
 const labels = {
     why: 'Reasons given by the reader',
     global: 'World', player: 'Player', characters: 'Characters',
-    stats: 'Stats', collections: 'Collections', threads: 'Threads',
+    stats: 'Stats', collections: 'Collections',
     strangers: 'New characters', profile: 'Profile',
 };
 

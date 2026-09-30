@@ -35,16 +35,6 @@ export const defaultTrackerSettings = {
             }
         ],
         summaryThreshold: 5,
-        /**
-         * How many undo steps to keep per chat. Was a hardcoded 2, then 10.
-         *
-         * Ten was already thin, and while scene presence was recording steps it was worse
-         * than thin: ten of those went by in four seconds during a chat load and took the
-         * only remaining copy of a story's stats with them. Presence no longer records, so
-         * these are all real changes now - and reaching back a couple of dozen of them is
-         * a handful of messages rather than a handful of seconds.
-         */
-        historyDepth: 25,
         /** Show each NPC's card portrait in the tracker box. */
         showNpcPortraits: true,
         /** The characters in equal columns across the box rather than one per line. */
@@ -118,14 +108,6 @@ export const defaultTrackerSettings = {
         maxChangePolicy: 'free',
         /** A value moving more than this fraction of its range in one turn asks. */
         reviewSwingThreshold: 0.6,
-        /**
-         * Record what each message changed, so the box under an older message can show
-         * the numbers of that moment instead of today's.
-         *
-         * Kept on message.extra, which is never read back into the prompt, so this costs
-         * nothing in tokens - only a few hundred bytes per message in the chat file.
-         */
-        recordMessageHistory: true,
         /** Show the history-scan button on the send bar. */
         scanButtonEnabled: true,
         /**
@@ -242,20 +224,6 @@ export const defaultTrackerSettings = {
      * two different ranges is worse than two controls.
      */
     hudRingThickness: 5,
-    /**
-     * Minutes between automatic system checkpoints. 0 turns them off.
-     *
-     * A system's snapshot is otherwise only rewritten when you switch away from it,
-     * so a system you never leave keeps whatever it held the last time you did.
-     */
-    systemAutoSaveMinutes: 0,
-    /**
-     * How many checkpoints to keep per system.
-     *
-     * Each holds a full copy of the world and the configuration, so this is a real
-     * cost in settings.json - a world with inline images can be hundreds of KB.
-     */
-    systemCheckpointsKept: 5,
     /**
      * Which side the portrait sits on: 'auto' follows the corner the HUD is docked to,
      * which is what it always did implicitly.

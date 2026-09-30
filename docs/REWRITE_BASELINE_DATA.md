@@ -17,6 +17,6 @@ The `old-chat.json` fixture covers chat state, player XP and level, history, and
 
 These fixtures load as JSON and have basic boundary assertions in `tests/rewrite-baseline-fixtures.mjs`. A running SillyTavern smoke pass remains necessary to record current host behavior; JSON fixtures cannot verify rendering or events.
 
-## Transitional System migration
+## System migration outcome
 
-Phase 2 moves an old preset's embedded `world` to `settings.systemWorldArchive[systemName]` when presets load or import. The archive keeps legacy characters, persona records, and item library recoverable while their ownership moves to chat and persona state. New System exports contain only a normalized `schemaVersion: 1` definition; a compatibility `config` remains in local saved presets for the current System Builder and tracker. The remaining legacy dependency is `setActiveSystem()`: when the target has an archived world, it restores that world into root settings. This restore path can retire after chat-owned state and values no longer depend on root `characters`, `personaData`, and `master_items` during System switches.
+The original Phase 2 migration archived an old preset's embedded `world` under `settings.systemWorldArchive`. On 2026-09-29 the user authorized dropping saved world data during cleanup. Loading settings now clears that archive; importing an old System keeps its rules but discards its embedded characters, persona records, and item library. New System exports contain only a normalized `schemaVersion: 1` definition; local saved presets still carry `config` for the System Builder and tracker.

@@ -182,13 +182,6 @@ function normalizeDefaultImagesAndPreferences(settings) {
 
 
     if (typeof settings.speakerIgnoreList !== 'string') settings.speakerIgnoreList = '';
-
-    // A new default only reaches new installs, and the reason for raising this was an
-    // existing chat that could not reach far enough back. Exactly 10 was the old shipped
-    // value rather than a number anyone chose, so it moves up; anything else is left as
-    // set.
-    if (settings.statusTracker?.historyDepth === 10) settings.statusTracker.historyDepth = 25;
-
 }
 
 function migrateLegacyTrackerLayout(settings) {
@@ -352,6 +345,7 @@ function normalizeTrackerSchema(settings) {
  */
 export function normalizeSettings(settings) {
     if (!settings || typeof settings !== 'object') return;
+    delete settings.systemWorldArchive;
     const currentVersion = defaultSettings.version;
 
     normaliseBaseSettings(settings);

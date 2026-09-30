@@ -5,10 +5,6 @@
 .sillynpc-goal-row { display: grid; gap: .2rem; }
 .sillynpc-goal-label { font-weight: 600; }
 .sillynpc-goal-input { width: 100%; min-height: 3.5rem; resize: vertical; }
-.sillynpc-goal-archive { margin-top: 1rem; }
-.sillynpc-goal-archive-list { padding-left: 1.3rem; }
-.sillynpc-goal-archive-item { margin: .5rem 0; }
-.sillynpc-goal-archive-item blockquote { margin: .25rem 0; }
 .sillynpc-hud-goals { display: grid; gap: .2rem; max-width: 18rem; max-height: 8rem; overflow: auto; padding-top: .25rem; }
 .sillynpc-hud-goal { font-size: .75em; line-height: 1.25; overflow-wrap: anywhere; }
 .sillynpc-hud-container.meter-ring.has-goals { border-radius: var(--sillynpc-radius-md); }

@@ -12,7 +12,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/characters/` | Character records, ownership, portraits, and transfer. |
 | `src/chat/` | Chat ownership, message decoration, and reprocessing. |
 | `src/lore/` | Lorebook entries and synchronization. |
-| `src/story/` | Story beats, archived thread records, mentions, and collection scans. |
+| `src/story/` | Story beats, mentions, and collection scans. |
 | `src/prompts/` | Built-in prompt templates, formatting rules, and prompt placement. |
 | `src/tracker/` | Current state, progression, goals, memories, updates, and review; `extractor/`, `snapshots/`, and `ui/` hold focused parts. |
 | `src/ui/` | Management, HUD, settings, character, collection, system, tracker, API, and story views. |
@@ -109,7 +109,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/status-scene-presence.js` | Reconcile scene presence and active characters. |
 | `src/tracker/status-collection-updates.js` | Add, remove, and update tracked items. |
 | `src/tracker/status-collection-schema.js` | Rename collection fields and stat schema references. |
-| `src/tracker/status-system-presets.js` | Active System, reusable definitions, chat locking, and legacy world archive migration. |
+| `src/tracker/status-system-presets.js` | Active System, reusable definitions, chat locking, and System import. |
 | `src/tracker/goals.js` | Configured player/NPC goal fields, changes, and offstage goal retention. |
 | `src/tracker/goal-proposals.js` | Validate and apply sourced goal proposals from the reader. |
 | `src/tracker/npc-memories.js` | Store NPC memories in chat-owned or reusable character records. |
@@ -181,7 +181,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/chat/chat-npc-sources.js` | Identify chat-owned NPC sources and their images. |
 | `src/story/history-scan.js` | Scan existing chat for collection state. |
 | `src/story/history-notes.js` | Read and remove historical world notes. |
-| `src/story/threads.js` | Read archived legacy Threads records. |
 | `src/characters/world-character-export.js` | Export world character records. |
 
 ## Interface
@@ -246,10 +245,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-collection-fields.js` | Collection field controls and row wiring for the schema editor. |
 | `src/ui/system/ui-system-stats.js` | Stat schema editor. |
 | `src/ui/system/ui-system-stat-policy.js` | Stat update policy and level-up eligibility controls. |
-| `src/ui/system/ui-system-manager.js` | Reusable System manager and archived legacy world controls. |
+| `src/ui/system/ui-system-manager.js` | Reusable System manager, import, export, and selection. |
 | `src/ui/shared/ui-template-tidy.js` | Prompt template cleanup UI. |
 | `src/ui/shared/ui-theme.js` | Apply themes and portrait/speech display options. |
-| `src/ui/story/ui-goals.js` | Current goals editor and read-only legacy Threads archive. |
+| `src/ui/story/ui-goals.js` | Current goals editor. |
 | `src/ui/tracker/ui-tracker-settings.js` | Tracker settings entry point. |
 | `src/ui/tracker/ui-tracker-display-reading.js` | Display and extraction reader controls. |
 | `src/ui/tracker/ui-tracker-scan-review.js` | History scan and change review controls. |
@@ -280,10 +279,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `styles/08-collections-readonly.css` | Read-only collection views and portraits. |
 | `styles/09-hud-meters-layouts.css` | HUD meters and layout variants. |
 | `styles/10-hud-layouts-fill.css` | HUD placement and automatic fill views. |
-| `styles/11-character-threads.css` | Character, thread, and settings search views. |
+| `styles/11-character-sheets.css` | Character sheets and related settings views. |
 | `styles/12-picture-tags.css` | Picture tag editor and gallery. |
 | `styles/13-system-profiles.css` | System profile field Builder controls. |
-| `styles/14-goals.css` | Goals editor and archived Threads presentation. |
+| `styles/14-goals.css` | Goals editor and HUD presentation. |
 | `styles/14-memories.css` | Character memory editor and archive presentation. |
 
 ## Maintenance notes

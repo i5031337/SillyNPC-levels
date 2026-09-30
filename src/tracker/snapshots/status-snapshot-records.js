@@ -1,24 +1,7 @@
 import { getContext } from '../../../../../../st-context.js';
-import { getSettings } from '../../core/settings.js';
 import { loadStateFromMetadata, recordTurnEffects } from '../status-logic.js';
 
-/**
- * What the tracker looked like when a given message was written.
- *
- * The status box has always drawn the *current* state, so turning it on under every
- * message repeated today's numbers all the way down the chat - a message from two
- * hundred turns ago claiming the HP the character has now. There was nothing else it
- * could do: no record of the past was ever kept.
- *
- * Rather than store a full state per message, this records what each message *changed* -
- * the same rows the review gate already computes - and reconstructs the past by walking
- * backwards from the present, undoing one message at a time. A delta is a few hundred
- * bytes where a state clone is tens of kilobytes.
- *
- * It lives on message.extra, which SillyTavern does not put in the prompt: only
- * extra.reasoning and extra.bias are ever read back. So this is a save, not context - it
- * costs nothing per message and the model never sees it.
- */
+/** Compact reply records used to keep the current tracker state in step with swipes. */
 
 /** Where a message's applied changes are recorded. */
 export const APPLIED_KEY = 'sillynpc_applied';
@@ -36,26 +19,9 @@ export const APPLIED_KEY = 'sillynpc_applied';
  * with the reply it belongs to is what lets a reader tell it is looking at the wrong one.
  */
 export const APPLIED_SWIPE_KEY = 'sillynpc_applied_swipe';
-/** Legacy reply thread changes remain readable for saved chats. */
-export const THREADS_KEY = 'sillynpc_threads';
 
 /**
- * The world's fields as they stood at this message.
- *
- * The change rows above say what *moved*, which is enough to walk backwards from today -
- * until the walk reaches a message older than the record, after which everything before it
- * is an approximation. That is fine for a tracker box, which says so, and not fine for
- * anything that has to act on the answer: a background chosen for message 45 from a guess
- * is wrong intermittently and only in old parts of a story, which is the hardest kind of
- * wrong to notice.
- *
- * So the globals are written down rather than only derived, and the walk uses them to
- * correct itself. They are small - a handful of short strings - and there is one per
- * message that changed anything.
- *
- * Like every other key here it lives in `extra`, which SillyTavern carries with the
- * message and never puts in a prompt. Nothing in the prompt path reads it; it exists for
- * this extension and what builds on it.
+ * World fields at this message, used by optional history notes.
  */
 export const GLOBALS_KEY = 'sillynpc_globals';
 
@@ -131,12 +97,8 @@ export function recordAppliedChanges(messageId, changes) {
     if (!message) return false;
     if (!message.extra || typeof message.extra !== 'object') message.extra = {};
 
-    // Reply consistency is required even when the optional old history display is off.
+    // The turn record supports latest-reply consistency.
     recordTurnEffects(messageId);
-    if (getSettings().statusTracker?.recordMessageHistory === false) {
-        saveChatSoon();
-        return true;
-    }
 
     const rows = (changes || []).map(trimRow);
     const existing = message.extra[APPLIED_KEY];
@@ -196,21 +158,11 @@ export function appliedChangesForCurrentSwipe(messageId) {
     return recorded === currentSwipeOf(message) ? rows : null;
 }
 
-/** What a message did to the threads, or null when it did nothing. */
-export function getThreadChanges(messageId) {
-    const record = messageAt(messageId)?.extra?.[THREADS_KEY];
-    if (!record || typeof record !== 'object') return null;
-    return {
-        opened: Array.isArray(record.opened) ? record.opened : [],
-        closed: Array.isArray(record.closed) ? record.closed : [],
-    };
-}
-
 /** Drops records for a reply whose text was edited before reading it again. */
 export function clearTurnRecord(messageId) {
     const extra = messageAt(messageId)?.extra;
     if (!extra) return false;
-    for (const key of [APPLIED_KEY, APPLIED_SWIPE_KEY, THREADS_KEY, GLOBALS_KEY,
+    for (const key of [APPLIED_KEY, APPLIED_SWIPE_KEY, GLOBALS_KEY,
         'sillynpc_chars', 'sillynpc_turn_effects']) delete extra[key];
     saveChatSoon();
     return true;

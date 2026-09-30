@@ -73,35 +73,6 @@
     min-width: max-content;
 }
 
-/* Saved states of a system. Each row is a point you can go back to, so it reads as a list
-   of moments rather than a settings block. */
-.sillynpc-checkpoint-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sillynpc-space-sm);
-    margin-top: var(--sillynpc-space-sm);
-}
-
-.sillynpc-checkpoint-row {
-    display: flex;
-    align-items: center;
-    gap: var(--sillynpc-space-md);
-    padding: var(--sillynpc-space-sm);
-    border: 1px solid var(--sillynpc-border);
-    border-radius: var(--sillynpc-radius-sm, 4px);
-    background: var(--sillynpc-bg-secondary);
-}
-
-.sillynpc-checkpoint-when {
-    flex: 1;
-    min-width: 0;
-    font-size: var(--sillynpc-text-md);
-    /* A long label must not push the buttons off the row. */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 /* ─── Prompt cost and usage ─────────────────────────────────────────────── */
 
 /* The token count under a prompt box. Aligned right, so a column of them can be compared

@@ -22,8 +22,7 @@ import { escapeRegExp } from '../core/utils.js';
  * The boundaries are the whole point, and they are letter-and-digit rather than \b: \b
  * treats an accented letter as a boundary, so "Kristof" would match inside "Kristofnak"
  * and every Hungarian name would match its own inflections. Extracted so the two other
- * callers cannot drift from it - the thread toucher asks this of a thread's `who`, and the
- * extractor asks it of the latest message.
+ * callers cannot drift from it when identifying a character in story text.
  *
  * @param {string} text
  * @param {string} name

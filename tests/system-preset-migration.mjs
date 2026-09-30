@@ -24,14 +24,14 @@ const bindPresets = loadBind('status-system-presets.js', [
     () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}]);
 bindPresets(deps);
 
-test('loaded legacy world moves to archive and stays outside new System export', () => {
+test('loaded legacy world is discarded and stays outside the System', () => {
     settings.statusTracker.presets['Harbor RPG'] = {
         version: '2.1.0', metadata: { name: 'Harbor RPG', author: 'User' },
         config: { statusTracker: { globalStats: [{ name: 'Location', type: 'bar' }], playerStats: [], npcStats: [], collections: [] } },
         world: { characters: [{ id: 'old', name: 'Mira' }], personaData: { 'Rhea.png': { stats: { XP: '3/10' } } }, master_items: { inventory: {} } },
     };
     deps.migrateToActiveSystem();
-    assert.equal(settings.systemWorldArchive['Harbor RPG'].characters[0].name, 'Mira');
+    assert.equal(settings.characters[0].name, 'Live');
     assert.equal(settings.statusTracker.presets['Harbor RPG'].world, undefined);
     assert.equal(settings.statusTracker.presets['Harbor RPG'].definition.stats.world[0].type, 'number');
     deps.saveSystemPreset('Harbor RPG');
@@ -39,20 +39,24 @@ test('loaded legacy world moves to archive and stays outside new System export',
     assert.equal(saved.world, undefined);
     assert.equal(JSON.stringify(saved).includes('Mira'), false);
     assert.equal(JSON.stringify(saved.definition).includes('Rhea.png'), false);
-    assert.equal(settings.systemWorldArchive['Harbor RPG'].characters[0].name, 'Live');
+    assert.equal(settings.characters[0].name, 'Live');
 });
 
-test('old profile import archives its world; modern definition import is usable', () => {
+test('old profile import ignores its world; modern definition import is usable', () => {
     const old = {
-        metadata: { name: 'Old Import' }, config: { globalStats: [{ name: 'Time' }] },
+        metadata: { name: 'Old Import' }, config: {
+            globalStats: [{ name: 'Time' }], characters: [{ name: 'Embedded' }],
+            systemWorldArchive: { old: {} },
+        },
         world: { characters: [{ name: 'Legacy' }], personaData: {}, master_items: {} },
     };
     deps.importSystemPreset(JSON.stringify(old));
-    assert.equal(settings.systemWorldArchive['Old Import'].characters[0].name, 'Legacy');
     assert.equal(settings.statusTracker.presets['Old Import'].world, undefined);
+    assert.equal(settings.statusTracker.presets['Old Import'].config.characters, undefined);
+    assert.equal(settings.statusTracker.presets['Old Import'].config.systemWorldArchive, undefined);
     const duplicate = deps.importSystemPreset(JSON.stringify(old));
     assert.equal(duplicate.metadata.name, 'Old Import (2)');
-    assert.equal(settings.systemWorldArchive['Old Import (2)'].characters[0].name, 'Legacy');
+    assert.equal(duplicate.world, undefined);
 
     const modern = normalizeSystemDefinition({ schemaVersion: 1, name: 'Sci-Fi',
         profiles: { player: [], npc: [{ id: 'call-sign', label: 'Call sign', policy: 'anchored' }] },
@@ -62,7 +66,6 @@ test('old profile import archives its world; modern definition import is usable'
     const imported = deps.importSystemPreset(JSON.stringify(modern));
     assert.equal(imported.definition.name, 'Sci-Fi');
     assert.equal(imported.config.statusTracker.globalStats[0].name, 'Ship');
-    assert.equal(settings.systemWorldArchive['Sci-Fi'], undefined);
     deps.saveSystemPreset('Sci-Fi');
     assert.equal(settings.statusTracker.presets['Sci-Fi'].definition.profiles.npc[0].id, 'call-sign');
     deps.chatHasStarted = () => true;
@@ -82,6 +85,6 @@ test('old profile import archives its world; modern definition import is usable'
     assert.equal(settings.activeSystem, 'Sci-Fi');
     deps.applySystemPreset({ config: { statusTracker: { globalStats: [], playerStats: [], npcStats: [], collections: [] } },
         world: { characters: [{ name: 'Legacy NPC' }], personaData: {}, master_items: {} } });
-    assert.equal(settings.characters[0].name, 'Legacy NPC');
+    assert.equal(settings.characters[0].name, 'Live');
     assert.ok(saves > 0);
 });

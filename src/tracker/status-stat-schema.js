@@ -1,6 +1,6 @@
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from '../core/utils.js';
+import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
 
 export function bind(deps) {
 const STAT_SCOPES = {

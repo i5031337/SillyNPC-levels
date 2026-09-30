@@ -1,8 +1,7 @@
 import { debugLog } from '../../core/constants.js';
 import { getContext } from '../../../../../../st-context.js';
 import { loadStateFromMetadata, saveStateToMetadata, getSwipeBase, swipeBaseRecord, getProfileBase, restoreProfiles, snapshotProfiles } from '../status-logic.js';
-import { addThread, closeThread } from '../../story/threads.js';
-import { getAppliedChanges, appliedChangesForCurrentSwipe, getThreadChanges } from './status-snapshot-records.js';
+import { getAppliedChanges, appliedChangesForCurrentSwipe } from './status-snapshot-records.js';
 import { applyRows } from './status-row-replay.js';
 import { diffTurnValues, applyTurnValues, turnEffectStatus } from './status-turn-delta.js';
 import { syncRebasedLore } from './status-rebase-lore.js';
@@ -27,13 +26,8 @@ function rebaseRecordedTurn(messageId, { removed = false } = {}) {
         replyState = applyTurnValues(replyState, effects.state);
         replyProfiles = applyTurnValues(replyProfiles, effects.profiles);
     } else if (!removed) {
-        // Saved replies written before turn effects still have stat/item and thread rows.
+        // Saved replies written before turn effects still have stat/item rows.
         applyRows(replyState, appliedChangesForCurrentSwipe(messageId) || []);
-        const threads = getThreadChanges(messageId);
-        if (threads) {
-            for (const thread of threads.opened) addThread(replyState, thread);
-            for (const id of threads.closed) closeThread(replyState, id);
-        }
     }
     const state = applyTurnValues(replyState, manualState);
     const profiles = applyTurnValues(replyProfiles, manualProfiles);
@@ -205,16 +199,6 @@ export function rebaseToSwipe(messageId) {
     const state = structuredClone(base);
     applyRows(state, rows);
 
-    // The threads this swipe opened and settled, put back the same way. Safe to replay:
-    // addThread refuses a quote it has already seen, and closeThread returns false on
-    // something already closed - so returning to a swipe twice changes nothing the second
-    // time.
-    const threadChanges = getThreadChanges(messageId);
-    if (threadChanges) {
-        for (const thread of threadChanges.opened) addThread(state, thread);
-        for (const id of threadChanges.closed) closeThread(state, id);
-    }
-
     saveStateToMetadata(state, { recordHistory: false });
     syncRebasedLore(previous, state, changedProfiles);
     debugLog(`Rebased onto swipe of message ${messageId}: ${rows.length} change(s)`);
@@ -226,11 +210,11 @@ export function rebaseToSwipe(messageId) {
  *
  * rebaseToSwipe's sibling, and the difference is that nothing is replayed. A swipe is a
  * message being *replaced*, so the incoming swipe's own record goes back on top; this is a
- * message being *removed*, and the rows and thread changes it recorded die with it.
+ * message being *removed*, so its rows die with it.
  *
  * Written for Regenerate, which is not a swipe: SillyTavern truncates the chat and emits
  * MESSAGE_DELETED, never MESSAGE_SWIPED, so nothing here used to run at all. The discarded
- * reply's stat changes and threads stayed applied, the replacement was refused by the
+ * reply's stat changes stayed applied, the replacement was refused by the
  * extraction guard as already read, and the tracker held the wrong numbers from then on.
  *
  * The base is deliberately left in place. The replacement occupies the same index, so the

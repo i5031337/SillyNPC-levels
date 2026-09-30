@@ -2,6 +2,8 @@
 
 This plan implements [the product spec](PRODUCT_SPEC_DRAFT.md). It is a sequence of reviewable changes, not a requirement to retain every existing feature. Dialogue styling, portrait generation, lorebook integration, chat ownership, and player XP are useful starting points.
 
+**2026-09-29 scope update:** The user authorized dropping saved-data compatibility during cleanup. Requirements below to preserve old System world payloads and archived Threads are superseded; importing an old System keeps its rules and discards its embedded world. The only remaining host check is level-up mechanics, including XP rollover and level-bonus retry. See [rewrite progress](REWRITE_PROGRESS.md) and [host smoke checks](REWRITE_HOST_SMOKE.md).
+
 ## Ground rules
 
 - Keep existing chats, settings exports, and character exports readable. Convert old shapes at load/import boundaries; do not carry compatibility branches through every new feature.

@@ -53,10 +53,7 @@ export function buildSystemManager(onRefresh) {
             
             const nameCell = document.createElement('td');
             nameCell.style.padding = '8px';
-            const detail = [
-                profile.metadata?.description || '',
-                settings.systemWorldArchive?.[name] ? 'legacy world archived' : 'reusable rules',
-            ].filter(Boolean).join(' — ');
+            const detail = profile.metadata?.description || 'reusable rules';
             nameCell.innerHTML = `<div style="font-weight:bold">${escapeHtml(name)}`
                 + (name === getActiveSystem() ? ' <small style="opacity:0.6">(in use)</small>' : '')
                 + `</div><small style="opacity:0.6">${escapeHtml(detail)}</small>`;
@@ -79,8 +76,7 @@ export function buildSystemManager(onRefresh) {
                 : radio.checked ? 'In use' : `Switch to "${name}"`;
             radio.addEventListener('change', () => {
                 if (!radio.checked) return;
-                // The system being left is captured on the way out, so there is nothing
-                // to remember to save and no way to lose a world by switching.
+                // Save the active rules before selecting another System.
                 if (!setActiveSystem(name)) {
                     onRefresh();
                     return;
@@ -135,17 +131,12 @@ export function buildSystemManager(onRefresh) {
             delBtn.style.color = 'var(--red)';
             delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
             delBtn.addEventListener('click', async () => {
-                // Deleting the system in use would take the cast and item library with it
-                // and leave the configuration belonging to nothing.
+                // The active configuration still needs its System.
                 if (name === getActiveSystem()) {
                     toastr.info('Switch to another system before deleting this one.', 'SillyNPC');
                     return;
                 }
-                const hasArchive = Boolean(settings.systemWorldArchive?.[name]);
-                const warning = hasArchive
-                    ? `Delete "${name}" and its archived legacy world? This removes its saved characters, item library and persona records.`
-                    : `Delete the saved system "${name}"?`;
-                if (await Popup.show.confirm('Delete system', warning)) {
+                if (await Popup.show.confirm('Delete system', `Delete the saved system "${name}"?`)) {
                     deleteSystemPreset(name);
                     onRefresh();
                 }

@@ -38,6 +38,7 @@ test('imports repair character data and retain a single default portrait on repe
         version: '0.4.0',
         characters: [{ name: 'Mira', imageUrl: 'portrait.png', category: 'Crew' }],
         defaultImage: 'fallback.png',
+        systemWorldArchive: { 'Old System': { characters: [{ name: 'Archived' }] } },
         statusTracker: { playerStats: [], collections: [] },
     };
     normalize(settings);
@@ -48,6 +49,7 @@ test('imports repair character data and retain a single default portrait on repe
     assert.equal(settings.characters[0].profile.history, '');
     assert.deepEqual(settings.categories, ['Crew']);
     assert.deepEqual(settings.defaultImages, [{ src: 'fallback.png', tags: [] }]);
+    assert.equal('systemWorldArchive' in settings, false);
 });
 
 test('old HUD visibility migration runs once, preserving later choices', () => {

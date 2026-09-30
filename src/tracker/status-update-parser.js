@@ -1,5 +1,5 @@
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, currentMessageIndex, ceilingFromValue } from '../core/utils.js';
+import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
 
 export function bind(deps) {
 function parseMessageForUpdates(text) {

@@ -6,8 +6,8 @@ import { normalizeSystemDefinition } from '../core/system-schema.js';
 
 export function bind(deps) {
 const SYSTEM_EXCLUDED_ROOT = new Set([
-    // Carried separately, as the world.
-    'characters', 'personaData', 'master_items', 'systemWorldArchive',
+    // Characters, persona records, and items are not System rules.
+    'characters', 'personaData', 'master_items',
     // The library itself, and which system is open.
     'statusTracker', 'activeSystem', 'version', 'enabled',
     // User-level image settings, including retired backend keys from old exports.
@@ -22,7 +22,7 @@ const SYSTEM_EXCLUDED_TRACKER = new Set([
     'presets',
     // Which connection reads, what it is capable of, and what it is allowed to spend.
     'extractionProfileId', 'scanProfileId',
-    // Retired user checkpoint settings from old exported profiles.
+    // Ignore retired checkpoint settings in old exported profiles.
     'systemAutoSaveMinutes', 'systemCheckpointsKept',
     'extractionMaxTokens', 'scanMaxTokens', 'extractionUseSchema',
     // Whether the tracker runs at all is not a property of a ruleset.
@@ -45,42 +45,6 @@ function assignExcept(target, source, excluded) {
         if (excluded.has(key)) continue;
         target[key] = structuredClone(value);
     }
-}
-
-/**
- * The part of a system that is not configuration: who exists in it, what they carry, and
- * the player's records.
- *
- * A ruleset without its cast is only half a system. Changing from one to another used to
- * keep every character, the whole item library and the player's stats from the last one,
- * none of which fit - so the choice was to lose the work or live with the mismatch.
- */
-function captureWorld(settings) {
-    return {
-        characters: structuredClone(settings.characters || []),
-        personaData: structuredClone(settings.personaData || {}),
-        master_items: structuredClone(settings.master_items || {}),
-    };
-}
-
-/** @param {object|undefined} world Absent on any profile saved before systems carried one. */
-function restoreWorld(settings, world) {
-    if (!world) return false;
-    // Emptied and refilled rather than reassigned: chat.js caches the character list by
-    // identity, and replacing the reference would leave it holding the old system's cast.
-    const characters = settings.characters;
-    characters.splice(0, characters.length, ...structuredClone(world.characters || []));
-    settings.personaData = structuredClone(world.personaData || {});
-    settings.master_items = structuredClone(world.master_items || {});
-    return true;
-}
-
-/** Legacy worlds live outside reusable presets until their chat ownership is migrated. */
-function worldArchive(settings, create = false) {
-    const archive = settings.systemWorldArchive;
-    if (archive && typeof archive === 'object' && !Array.isArray(archive)) return archive;
-    if (create) return (settings.systemWorldArchive = {});
-    return {};
 }
 
 /** Existing Builder/reader controls still consume their flat tracker configuration. */
@@ -107,20 +71,9 @@ function configFromDefinition(definition) {
     };
 }
 
-/** Convert a saved/imported profile at one boundary; never leave its cast in an export. */
-function migratePreset(name, preset, settings) {
+/** Convert a saved/imported profile at one boundary; discard embedded world data. */
+function migratePreset(name, preset) {
     if (!preset || typeof preset !== 'object') return preset;
-    const archive = worldArchive(settings);
-    const embedded = preset.world || (preset.config && [
-        'characters', 'personaData', 'master_items',
-    ].some(key => Object.hasOwn(preset.config, key)) ? preset.config : null);
-    if (embedded && !Object.hasOwn(archive, name)) {
-        worldArchive(settings, true)[name] = {
-            characters: structuredClone(embedded.characters || []),
-            personaData: structuredClone(embedded.personaData || {}),
-            master_items: structuredClone(embedded.master_items || {}),
-        };
-    }
     const clean = { ...preset };
     delete clean.world;
     clean.metadata = clean.metadata || {
@@ -143,7 +96,7 @@ function migrateSavedPresets(settings) {
         if (!preset || (preset.definition && !preset.world
             && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
                 .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
-        presets[name] = migratePreset(name, preset, settings);
+        presets[name] = migratePreset(name, preset);
         changed = true;
     }
     if (changed) saveSettings();
@@ -156,9 +109,6 @@ function captureActiveSystem() {
     const active = settings.activeSystem;
     const existing = settings.statusTracker.presets?.[active];
     if (!active || !existing) return false;
-    if (Object.hasOwn(worldArchive(settings), active)) {
-        settings.systemWorldArchive[active] = captureWorld(settings);
-    }
     saveSystemPreset(active,
         existing.metadata?.description ?? '', existing.metadata?.author ?? 'User');
     return true;
@@ -192,11 +142,8 @@ function unusedSystemName(presets, base) {
  *
  * Runs once, when nothing is marked active. The configuration you are working in is
  * matched against the saved systems by which stats and collections it defines - a
- * configuration built from "Energy RPG" is still recognisably that system - so it adopts
- * the current characters and item library rather than a duplicate appearing beside it.
+ * configuration built from "Energy RPG" is still recognisably that system.
  * With no match, the live configuration becomes a system of its own.
- *
- * Either way the current world goes with it. Nothing is stranded, and nothing is deleted.
  *
  * @returns {boolean} Whether a migration happened.
  */
@@ -227,10 +174,7 @@ function migrateToActiveSystem() {
 }
 
 /**
- * Makes a system the one in use, carrying its world in with it.
- *
- * The outgoing system is captured first, always. Switching away must never be the thing
- * that loses a world, which is why nothing here depends on having saved by hand.
+ * Makes a system the one in use.
  *
  * @returns {boolean} False when there is no such system, or it is already active.
  */
@@ -245,9 +189,6 @@ function setActiveSystem(name) {
 
     captureActiveSystem();
     applySystemPreset(target);
-    // Only legacy Systems have archived worlds. New reusable Systems leave live cast and
-    // persona records to the chat and persona ownership paths while those are migrated.
-    restoreWorld(settings, worldArchive(settings)[name]);
     settings.activeSystem = name;
     if (deps.hasOpenChat?.() && !deps.chatHasStarted?.()
         && deps.getChatSystem?.() !== name) deps.resetUnplayedChatState?.();
@@ -299,9 +240,6 @@ function saveSystemPreset(name, description = '', author = 'User') {
     const st = settings.statusTracker;
     
     const previous = st.presets?.[name];
-    if (settings.activeSystem === name && Object.hasOwn(worldArchive(settings), name)) {
-        settings.systemWorldArchive[name] = captureWorld(settings);
-    }
     const profile = {
         version: '3.0.0',
         metadata: {
@@ -378,9 +316,6 @@ function applySystemPreset(profile) {
         settings.menuStyle = legacyThemeMap[cfg.displayStyle] || cfg.displayStyle;
     }
 
-    // Old profiles may still carry a world snapshot.
-    restoreWorld(settings, profile.world);
-
     saveSettings();
 }
 
@@ -389,7 +324,6 @@ function deleteSystemPreset(name) {
     const settings = getSettings();
     if (!settings.statusTracker.presets?.[name]) return;
     delete settings.statusTracker.presets[name];
-    if (settings.systemWorldArchive) delete settings.systemWorldArchive[name];
     saveSettings();
 }
 
@@ -405,7 +339,7 @@ function importSystemPreset(jsonText) {
     const requested = profile.metadata?.name || profile.name;
     let name = requested;
     for (let number = 2; settings.statusTracker.presets[name]; number++) name = `${requested} (${number})`;
-    settings.statusTracker.presets[name] = deps.migratePreset(name, profile, settings);
+    settings.statusTracker.presets[name] = deps.migratePreset(name, profile);
     saveSettings();
     return settings.statusTracker.presets[name];
 }
@@ -414,7 +348,6 @@ Object.defineProperties(deps, {
     SYSTEM_EXCLUDED_ROOT: { enumerable: true, configurable: true, get: () => SYSTEM_EXCLUDED_ROOT },
     SYSTEM_EXCLUDED_TRACKER: { enumerable: true, configurable: true, get: () => SYSTEM_EXCLUDED_TRACKER },
     copyExcept: { enumerable: true, configurable: true, get: () => copyExcept },
-    captureWorld: { enumerable: true, configurable: true, get: () => captureWorld },
     migratePreset: { enumerable: true, configurable: true, get: () => migratePreset },
     getActiveSystem: { enumerable: true, configurable: true, get: () => getActiveSystem },
     migrateToActiveSystem: { enumerable: true, configurable: true, get: () => migrateToActiveSystem },

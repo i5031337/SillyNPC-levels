@@ -1,6 +1,5 @@
 import { hasOpenChat, loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
 import { goalLines, setGoal } from '../../tracker/goals.js';
-import { getThreads } from '../../story/threads.js';
 
 function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -34,26 +33,7 @@ export function renderGoalEditor(actor, scope, state, redraw) {
     return section;
 }
 
-function archivedThreads(state) {
-    const section = element('details', 'sillynpc-goal-archive');
-    const threads = getThreads(state);
-    section.append(element('summary', '', `Archived Threads (${threads.length})`));
-    section.append(element('p', 'notes', 'These records are preserved from the old Threads feature. They no longer change or enter prompts.'));
-    if (!threads.length) return section;
-    const list = element('ul', 'sillynpc-goal-archive-list');
-    for (const thread of threads) {
-        const item = element('li', 'sillynpc-goal-archive-item');
-        item.append(element('strong', '', thread.who ? `${thread.who}: ` : ''));
-        item.append(document.createTextNode(String(thread.text || thread.quote || 'Untitled thread')));
-        item.append(element('small', 'notes', ` · ${thread.status === 'closed' ? 'settled' : 'open at archive'}`));
-        if (thread.quote && thread.quote !== thread.text) item.append(element('blockquote', '', thread.quote));
-        list.append(item);
-    }
-    section.append(list);
-    return section;
-}
-
-/** Goals are current chat fields; old Threads remain a read-only archive. */
+/** Goals are current chat fields. */
 export function renderGoalsView(container) {
     container.replaceChildren();
     container.className = 'sillynpc-goals-view';
@@ -78,5 +58,4 @@ export function renderGoalsView(container) {
         const editor = renderGoalEditor(actor, 'npc', state, redraw);
         if (editor) container.append(editor);
     }
-    container.append(archivedThreads(state));
 }
