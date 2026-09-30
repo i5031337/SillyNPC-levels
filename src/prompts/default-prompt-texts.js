@@ -22,6 +22,8 @@ Format:
 - Put each included field on its own labelled line in the order above, using the exact labels. Use third person.
 - Tags are lorebook activation keys: use only the character's names and nicknames used in the story, never ordinary words or titles.
 
-Reply with only these two sections:
-Tags: comma-separated names
-Content:`;
+Under content: |, indent each supported field line by two spaces and write its exact label followed by a colon and a brief value. Keep the field order above. The tags value may include other established names separated by commas.
+
+Reply with exactly this YAML shape, without a Markdown code fence or extra text:
+tags: {{name}}
+content: |`;

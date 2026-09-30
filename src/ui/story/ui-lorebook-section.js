@@ -182,9 +182,9 @@ async function buildLorebookView(char) {
                 if (restored) saveSettings();
                 await syncProfileToLore(char);
             }
-            contentEl.textContent = char.isPlayer ? (entry.content || '(empty)')
-                : values ? 'All lore fields are editable in Character details above.'
-                    : 'This entry does not use the required field format. Regenerate it to replace its content.';
+            contentEl.textContent = !char.isPlayer && !values && entry.content
+                ? `This entry does not use the required field format.\n\n${entry.content}`
+                : entry.content || '(empty)';
             editBtn.style.display = char.isPlayer ? '' : 'none';
             editBtn.disabled = !char.isPlayer;
             if (char.isPlayer) editBtn.addEventListener('click', () => {

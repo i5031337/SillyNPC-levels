@@ -238,7 +238,7 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
             // presented as though it worked.
             resultWarning.style.display = followedFormat ? 'none' : '';
             if (!followedFormat) {
-                resultWarning.textContent = `This reply did not use the required ${template ? 'Tags/Content' : 'Tags/Content and named-field'} `
+                resultWarning.textContent = `This reply did not use the required ${template ? 'Tags/Content' : 'YAML tags/content and named-field'} `
                     + 'format. Check it before saving. The instruction may not have reached the model - '
                     + 'most often because the request was too large. Try a smaller Chat To Read '
                     + 'or Excerpt Size Limit. Check it before saving.';
@@ -266,9 +266,11 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
             saveCloseBtn.disabled = true;
             saveCloseBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
-            await saveLoreContent(char, createdWorld, createdUid, tagsInput.value, descText.value);
+            const saved = await saveLoreContent(char, createdWorld, createdUid, tagsInput.value, descText.value);
             
-            toastr.success('Lorebook entry updated and linked!');
+            toastr.success(saved?.profileFieldsSaved
+                ? `Lorebook entry updated; ${saved.profileFieldsSaved} named field(s) saved to the profile.`
+                : 'Lorebook entry updated; no named profile fields were found.');
             popup.completeCancelled();
             onSave?.();
         } catch (err) {

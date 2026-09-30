@@ -30,7 +30,8 @@ export const defaultTrackerSettings = {
                     { name: 'quantity', label: 'Quantity', type: 'number', isPrimary: false, defaultValue: '1' },
                     { name: 'description', label: 'Description', type: 'text', isMultiline: true, isPrimary: false, defaultValue: '' }
                 ], 
-                target: 'all' // 'player', 'npc', or 'all'
+                target: 'all', // 'player', 'npc', or 'all'
+                includeInImagePrompt: true,
             }
         ],
         summaryThreshold: 5,

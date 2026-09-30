@@ -12,7 +12,8 @@ import { escapeRegExp, describeConnection } from '../core/utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
 import { hintFor } from '../core/constants-profile.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
-import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../lore/lore-format.js';
+import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../lore/lore-format.js';
+import { parseLoreReply } from '../lore/lore-reply.js';
 
 /**
  * The slice of story the lore writer is shown.
@@ -201,27 +202,8 @@ export async function generateLoreContent(char, world, uid, options = {}) {
 
     const text = await requestLore(prompt);
 
-    let tags = '';
-    let content = text;
-
-    const tagsMatch = text.match(/Tags:\s*([^\n\r]+)/i);
-    const contentMatch = text.match(/Content:\s*([\s\S]+)/i);
-
-    if (tagsMatch) {
-        tags = tagsMatch[1].trim();
-    }
-    
-    if (contentMatch) {
-        content = contentMatch[1].trim();
-    } else if (tagsMatch) {
-        content = text.slice(tagsMatch.index + tagsMatch[0].length).trim();
-    }
-    
-    if (tags) {
-        const escapedTags = escapeRegExp(tags);
-        const tagsPattern = new RegExp(`^\\s*Tags:\\s*${escapedTags}\\s*\\n?`, 'i');
-        content = content.replace(tagsPattern, '').trim();
-    }
+    let { tags, content, followedSections } = parseLoreReply(text,
+        !options.template ? resolveProfileFields(char.isPlayer ? 'player' : 'npc') : []);
 
     const namePattern = new RegExp(`^#*\\s*${escapeRegExp(char.name)}\\s*[:\\-]?\\s*\\n?`, 'i');
     content = content.replace(namePattern, '').trim();
@@ -237,12 +219,12 @@ export async function generateLoreContent(char, world, uid, options = {}) {
         }
     }
 
-    // The prompt asks for "Tags:" and "Content:". A reply with neither did not follow the
+    // The prompt asks for tags and content in a small YAML envelope. A reply without it did not follow the
     // instruction, and the usual reason is that the instruction never arrived - the reply
     // is then the story model answering in character. Reported rather than hidden, so a
     // usable answer can still be salvaged.
-    const followedFormat = Boolean(tagsMatch && contentMatch
-        && (options.template || char.isPlayer || parseLoreContent(content)));
+    const followedFormat = Boolean(followedSections
+        && (options.template || parseGeneratedProfileFields(content, char.isPlayer ? 'player' : 'npc')));
 
     return { tags, content, followedFormat, excerpt };
 }
@@ -255,7 +237,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
  * @param {number} uid Entry UID
  * @param {string} tags Tags string
  * @param {string} content Lore content
- * @returns {Promise<void>}
+ * @returns {Promise<{ profileFieldsSaved: number }>}
  */
 export async function saveLoreContent(char, world, uid, tags, content) {
     const worldData = await loadWorldInfo(world);
@@ -271,12 +253,24 @@ export async function saveLoreContent(char, world, uid, tags, content) {
 
     if (!entry) throw new Error(`Entry UID ${uid} not found in Lorebook`);
 
-    entry.content = content.trim();
-    if (!char.isPlayer) {
-        const parsed = parseLoreContent(entry.content);
-        if (!parsed) throw new Error('NPC lore must contain every named field in the required order.');
-        entry.content = formatLoreContent(parsed, entry.content);
-        char.profile = { ...char.profile, ...parsed };
+    const submitted = String(content ?? '').trim();
+    let profile = char.profile;
+    let profileFieldsSaved = 0;
+    if (char.isPlayer) {
+        const parsed = parseGeneratedProfileFields(submitted, 'player');
+        if (parsed) {
+            profile = { ...profile, ...parsed };
+            profileFieldsSaved = Object.values(parsed).filter(Boolean).length;
+        }
+        entry.content = submitted;
+    } else {
+        const parsed = parseGeneratedProfileFields(submitted, 'npc');
+        if (!parsed) throw new Error('NPC lore must use named fields in the required order.');
+        const complete = Object.keys(parsed).length === resolveProfileFields('npc').length;
+        const values = complete ? parsed : { ...(mergeLoreValues(entry.content, profile) || profile || {}), ...parsed };
+        entry.content = formatLoreContent(values, entry.content);
+        profile = { ...profile, ...values };
+        profileFieldsSaved = Object.values(parsed).filter(Boolean).length;
     }
     // The writer returns Abilities/History/Ties and never a name, so the heading is put
     // on here rather than asked for. Before the tags merge, which must not be lost.
@@ -284,6 +278,8 @@ export async function saveLoreContent(char, world, uid, tags, content) {
     entry.key = mergeKeywords(entry.key, tags);
     
     await saveWorldInfo(world, worldData);
+    char.profile = profile;
     char.lorebook = { world, uid: Number(uid) };
     saveSettings();
+    return { profileFieldsSaved };
 }

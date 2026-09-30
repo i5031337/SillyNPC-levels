@@ -29,10 +29,19 @@ test('legacy preset migration keeps only reusable schema and stable generated ID
     assert.equal(result.progression.npc.enabled, false);
     assert.equal(result.profiles.npc.find(field => field.id === 'appearance').guidance, 'Describe visible details.');
     assert.equal(result.collections[0].fields[1].isStatic, false);
+    assert.equal(result.collections[0].includeInImagePrompt, true);
     assert.equal(result.memories.maxEntriesPerCharacter, 50);
     assert.equal(JSON.stringify(result).includes('Mira'), false);
     assert.equal(JSON.stringify(result).includes('rare'), false);
     assert.deepEqual(normalizeSystemDefinition(result), result);
+});
+
+test('System definitions retain collection image prompt choices', () => {
+    const system = normalizeSystemDefinition({ schemaVersion: SYSTEM_SCHEMA_VERSION,
+        collections: [{ id: 'secrets', includeInImagePrompt: false, fields: [] }],
+    });
+    assert.equal(system.collections[0].includeInImagePrompt, false);
+    assert.deepEqual(normalizeSystemDefinition(system), system);
 });
 
 test('player and NPC profiles differ and label edits preserve field IDs', () => {

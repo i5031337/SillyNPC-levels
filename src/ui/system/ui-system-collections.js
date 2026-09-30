@@ -43,7 +43,8 @@ export function buildCollectionsEditor(onRefresh) {
                 { name: 'quantity', label: 'Quantity', type: 'number', isPrimary: false, isStatic: false, defaultValue: '1' },
                 { name: 'description', label: 'Description', type: 'text', isMultiline: true, isPrimary: false, isStatic: true, defaultValue: '' }
             ],
-            target: 'all'
+            target: 'all',
+            includeInImagePrompt: false,
         });
         saveSettings();
         onRefresh();
@@ -63,7 +64,7 @@ function createCollectionRow(col, index, collections, bulk, onRefresh) {
     colWrap.style.border = '1px solid var(--sillynpc-border)';
 
     colWrap.innerHTML = `
-        <div style="display:flex; gap:8px; width:100%; margin-bottom:12px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; margin-bottom:12px;">
             <input type="text" class="text_pole col-name" value="${escapeHtml(col.name)}" placeholder="Collection Name" style="flex:2">
             <input type="text" class="text_pole col-id" value="${escapeHtml(col.id)}" placeholder="id (slug)" style="flex:1">
             <select class="text_pole col-target" style="flex:1">
@@ -74,6 +75,10 @@ function createCollectionRow(col, index, collections, bulk, onRefresh) {
             <label class="sillynpc-check-group" style="margin-right:10px; cursor:pointer;" title="Visible in Tracker">
                 <input type="checkbox" class="col-visible" ${col.visible !== false ? 'checked' : ''}>
                 <small>Visible</small>
+            </label>
+            <label class="sillynpc-check-group" style="margin-right:10px; cursor:pointer;" title="Include this collection's item names in portrait prompts">
+                <input type="checkbox" class="col-image-prompt" ${col.includeInImagePrompt !== false ? 'checked' : ''}>
+                <small>Image prompt</small>
             </label>
             <button type="button" class="menu_button move-up-btn" title="Move Up" ${index === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
             <button type="button" class="menu_button move-down-btn" title="Move Down" ${index === collections.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
@@ -113,6 +118,10 @@ function wireCollectionControls(colWrap, col, index, collections, bulk, onRefres
     colWrap.querySelector('.col-hint')?.addEventListener('input', (e) => { col.hint = e.target.value; saveSettings(); });
     wireCollectionIdRename(colWrap, col, collections, onRefresh);
     colWrap.querySelector('.col-target').addEventListener('change', (e) => { col.target = e.target.value; saveSettings(); });
+    colWrap.querySelector('.col-image-prompt').addEventListener('change', (e) => {
+        col.includeInImagePrompt = e.target.checked;
+        saveSettings();
+    });
     const visibleCheck = colWrap.querySelector('.col-visible');
     if (visibleCheck) {
         visibleCheck.addEventListener('change', (e) => { col.visible = e.target.checked; saveSettings(); onRefresh(); });

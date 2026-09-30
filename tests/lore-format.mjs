@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { numericDeltaNames, configuredXpName } from '../src/tracker/extractor/status-extractor-deltas.js';
 import { isTurnStat } from '../src/tracker/stat-update-policy.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
-import { formatLoreContent, parseLoreContent, mergeLoreValues } from '../src/lore/lore-format.js';
+import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../src/lore/lore-format.js';
 import { DEFAULT_LORE_PROMPT } from '../src/prompts/default-prompt-texts.js';
+import { parseLoreReply } from '../src/lore/lore-reply.js';
 import { resolveProfileFields, resolveProfileFieldsFromSystem, setProfileSettingsProvider, profileStrings } from '../src/core/profile-fields.js';
 
 test('active System fields replace defaults while retired fields stay on cards', () => {
@@ -75,16 +76,73 @@ test('a lore generation may provide only supported fields before storage normali
     const partial = 'Role: Watchmaker\nHistory: Moved here.';
     assert.deepEqual(parseLoreContent(partial, { allowPartial: true }),
         { role: 'Watchmaker', history: 'Moved here.' });
+    assert.deepEqual(parseLoreContent(`### Mira\n${partial}`, { allowPartial: true }),
+        { role: 'Watchmaker', history: 'Moved here.' });
+    assert.deepEqual(parseGeneratedProfileFields('### Hero\nAppearance: Red cloak', 'player'),
+        { appearance: 'Red cloak' });
     assert.equal(parseLoreContent(formatLoreContent(parseLoreContent(partial, { allowPartial: true }))).role,
         'Watchmaker');
     assert.equal(parseLoreContent('History: Moved here.\nRole: Watchmaker', { allowPartial: true }), null);
     assert.equal(parseLoreContent('Role: Watchmaker\nUnknown: text', { allowPartial: true }), null);
 });
 
+test('saving partial lore records supported NPC and player fields', async () => {
+    const source = readFileSync(new URL('../src/api/api-lore-generate.js', import.meta.url), 'utf8');
+    const saveSource = source.slice(source.indexOf('export async function saveLoreContent'))
+        .replace('export async function', 'async function');
+    const entries = { 0: { uid: 0, content: '', key: [] } };
+    let saved = 0;
+    const saveLoreContent = new Function('loadWorldInfo', 'saveWorldInfo', 'parseLoreContent',
+        'parseGeneratedProfileFields', 'mergeLoreValues', 'formatLoreContent', 'syncEntryIdentity',
+        'mergeKeywords', 'saveSettings', 'resolveProfileFields', `${saveSource}\nreturn saveLoreContent;`)(
+        async () => ({ entries }), async () => { saved++; }, parseLoreContent,
+        parseGeneratedProfileFields, mergeLoreValues, formatLoreContent, () => {},
+        (old, tags) => [...old, tags], () => {}, resolveProfileFields,
+    );
+    const npc = { name: 'Mira', profile: { role: '' } };
+    const npcSaved = await saveLoreContent(npc, 'World', 0, 'Mira', 'Role: Watchmaker\nHistory: Moved here.');
+    assert.equal(npcSaved.profileFieldsSaved, 2);
+    assert.equal(npc.profile.role, 'Watchmaker');
+    assert.equal(parseLoreContent(entries[0].content).history, 'Moved here.');
+    const player = { name: 'Hero', isPlayer: true, profile: { appearance: '' } };
+    const playerSaved = await saveLoreContent(player, 'World', 0, 'Hero', 'Appearance: Red cloak');
+    assert.equal(playerSaved.profileFieldsSaved, 1);
+    assert.equal(player.profile.appearance, 'Red cloak');
+    assert.equal(entries[0].content, 'Appearance: Red cloak');
+    assert.equal(saved, 2);
+    await assert.rejects(saveLoreContent(npc, 'World', 0, '', 'Unknown: Lost detail'),
+        /named fields/);
+    assert.equal(saved, 2);
+});
+
 test('the default lore prompt allows unsupported fields to be omitted', () => {
     assert.match(DEFAULT_LORE_PROMPT, /Omit fields with no supported value/);
     assert.match(DEFAULT_LORE_PROMPT, /{{profileFields}}/);
+    assert.match(DEFAULT_LORE_PROMPT, /YAML shape/);
+    assert.match(DEFAULT_LORE_PROMPT, /tags: {{name}}\ncontent: \|$/);
     assert.doesNotMatch(DEFAULT_LORE_PROMPT, /every named field|fill if known/i);
+});
+
+test('lore reply accepts plain labels and a fenced YAML wrapper', () => {
+    assert.deepEqual(parseLoreReply('Tags: Mira, Captain Mira\nContent:\nRole: Watchmaker'), {
+        tags: 'Mira, Captain Mira', content: 'Role: Watchmaker', followedSections: true,
+    });
+    assert.deepEqual(parseLoreReply('tags: Mira\ncontent: |\n  Role: Watchmaker'), {
+        tags: 'Mira', content: 'Role: Watchmaker', followedSections: true,
+    });
+    const yaml = '```yaml\ntags:\n  - Mira\n  - Captain Mira\ncontent: |\n  Role: Watchmaker\n  History: Moved here.\n```';
+    const parsed = parseLoreReply(yaml);
+    assert.equal(parsed.tags, 'Mira, Captain Mira');
+    assert.equal(parsed.content, 'Role: Watchmaker\nHistory: Moved here.');
+    assert.deepEqual(parseLoreContent(parsed.content, { allowPartial: true }), {
+        role: 'Watchmaker', history: 'Moved here.',
+    });
+    assert.equal(parseLoreReply('tags: [Mira]\ncontent:\n  Role: Watchmaker\n  History: Moved here.').content,
+        'Role: Watchmaker\nHistory: Moved here.');
+    const lowerCase = parseLoreReply('tags: [Mira]\ncontent:\n  history: Moved here.\n  role: Watchmaker',
+        resolveProfileFields('npc'));
+    assert.equal(lowerCase.content, 'Role: Watchmaker\nHistory: Moved here.');
+    assert.equal(parseLoreReply('Unrelated prose').followedSections, false);
 });
 
 test('tracker schema follows System policies rather than old per-card unlocks', () => {
@@ -137,12 +195,14 @@ test('Fill requests missing named fields in one generation call', async () => {
     const fillLore = new Function('loadWorldInfo', 'debugLog', 'getSettings', 'saveSettings',
         'createLoreEntry', 'generateLoreContent', 'saveLoreContent',
         'tryAutoSyncLorebook', 'getChatLorebookName', 'resolveProfileFields', 'parseLoreContent',
+        'parseGeneratedProfileFields',
         `${source}\nreturn fillLore;`)(
         async () => ({ entries: { 0: { content: entry } } }),
         () => {}, () => ({ defaultLorebook: 'World' }), () => {},
         () => { throw new Error('should reuse linked entry'); },
         async () => { calls++; return { content: formatLoreContent({ age: '34', role: 'Watchmaker' }), tags: '' }; },
         async () => {}, () => false, () => 'World', resolveProfileFields, parseLoreContent,
+        parseGeneratedProfileFields,
     );
     const char = { name: 'Mira', profile: {}, lorebook: { world: 'World', uid: 0 } };
     assert.equal((await fillLore(char)).ok, true);

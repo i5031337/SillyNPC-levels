@@ -83,6 +83,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/api/api.js` | Lore generation and image upload, generation, adoption, and cleanup. |
 | `src/api/api-lore-facts.js` | Assemble lore and tracked fact context. |
 | `src/api/api-lore-generate.js` | Generate and save lore content. |
+| `src/api/api-image-items.js` | Select collection items for portrait prompts. |
 | `src/api/api-image-files.js` | Image storage, listing, adoption, and cleanup. |
 | `src/api/api-image-generate.js` | Portrait prompt assembly and SillyTavern Image Generation `/imagine` call. |
 | `src/core/usage.js` | Model usage accounting. |

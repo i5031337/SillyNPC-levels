@@ -4,7 +4,7 @@ import { getSettings, saveSettings } from '../core/settings.js';
 import { createLoreEntry, generateLoreContent, saveLoreContent } from '../api/api.js';
 import { tryAutoSyncLorebook, ensureChatLorebookForFill } from '../lore/lorebook.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
-import { parseLoreContent } from '../lore/lore-format.js';
+import { parseLoreContent, parseGeneratedProfileFields } from '../lore/lore-format.js';
 
 /** The linked entry's text, or an empty string. Read fresh: it may have just been written. */
 export async function readLoreEntry(char) {
@@ -40,17 +40,18 @@ export async function fillLore(char) {
         existing = await readLoreEntry(char);
     }
 
-    const parsed = parseLoreContent(existing);
+    const scope = char.isPlayer ? 'player' : 'npc';
+    const parsed = char.isPlayer ? parseGeneratedProfileFields(existing, scope) : parseLoreContent(existing);
     char.profile ||= {};
     let restored = false;
-    for (const field of resolveProfileFields('npc')) {
+    for (const field of resolveProfileFields(scope)) {
         if (!String(char.profile[field.id] ?? '').trim() && parsed?.[field.id]) {
             char.profile[field.id] = parsed[field.id];
             restored = true;
         }
     }
     if (restored) saveSettings();
-    const missing = resolveProfileFields('npc').some(field => !String(char.profile[field.id] ?? '').trim());
+    const missing = resolveProfileFields(scope).some(field => !String(char.profile[field.id] ?? '').trim());
     if (parsed && !missing) {
         return { ok: true, action: 'linked entry is complete' };
     }
@@ -80,6 +81,9 @@ export async function fillLore(char) {
         { preserveLore: Boolean(parsed) });
     if (!String(content || '').trim()) {
         return { ok: false, action: 'none', reason: 'The lore writer returned nothing usable.' };
+    }
+    if (char.isPlayer && !parseGeneratedProfileFields(content, 'player')) {
+        return { ok: false, action: 'none', reason: 'The lore writer did not return named player fields.' };
     }
 
     await saveLoreContent(char, world, uid, tags, content);

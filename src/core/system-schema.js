@@ -84,6 +84,7 @@ function collections(source) {
             id,
             name: string(collection.name, id),
             target: COLLECTION_TARGETS.has(collection.target) ? collection.target : 'all',
+            includeInImagePrompt: collection.includeInImagePrompt !== false,
             guidance: string(collection.guidance),
             retired: collection.retired === true,
             fields: list(collection.fields).filter(value => value && typeof value === 'object').map(value => {

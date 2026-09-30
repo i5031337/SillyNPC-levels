@@ -32,19 +32,7 @@ export function parseLoreContent(content, { allowPartial = false } = {}) {
     const lines = beforeMemories(content).trim().split(/\r?\n/);
     if (lines[0]?.startsWith('### ')) lines.shift();
     const active = resolveProfileFields('npc');
-    if (allowPartial) {
-        const values = {};
-        let previousIndex = -1;
-        for (const line of lines) {
-            const index = active.findIndex(field => line.startsWith(`${field.label}:`));
-            if (index <= previousIndex) return null;
-            const field = active[index];
-            if (!field) return null;
-            values[field.id] = line.slice(field.label.length + 1).trim();
-            previousIndex = index;
-        }
-        return previousIndex < 0 ? null : values;
-    }
+    if (allowPartial) return parseGeneratedProfileFields(lines.join('\n'), 'npc');
     // Entries written before a System changed its fields keep their original labels.
     for (const fields of [active, NPC_LORE_FIELDS]) {
         if (lines.length < fields.length) continue;
@@ -66,6 +54,24 @@ export function parseLoreContent(content, { allowPartial = false } = {}) {
     // from prose, but its old lines are still structured and can be kept verbatim.
     if (lines.length === active.length && lines.every(line => /^[^:\n]+:\s*.*$/.test(line))) return {};
     return null;
+}
+
+/** A generated reply may contain only fields supported by the story. */
+export function parseGeneratedProfileFields(content, scope) {
+    const lines = String(content ?? '').trim().split(/\r?\n/);
+    if (lines[0]?.startsWith('### ')) lines.shift();
+    const fields = resolveProfileFields(scope);
+    const values = {};
+    let previousIndex = -1;
+    for (const line of lines) {
+        const index = fields.findIndex(field => line.startsWith(`${field.label}:`));
+        if (index <= previousIndex) return null;
+        const field = fields[index];
+        if (!field) return null;
+        values[field.id] = line.slice(field.label.length + 1).trim();
+        previousIndex = index;
+    }
+    return previousIndex < 0 ? null : values;
 }
 
 export function mergeLoreValues(content, cardValues) {

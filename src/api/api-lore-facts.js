@@ -8,6 +8,7 @@ import { applyMacros, modernisePlaceholders } from '../prompts/macros.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { syncEntryIdentity } from '../lore/lorebook.js';
 import { loadStateFromMetadata } from '../tracker/status-logic.js';
+import { imageItemsFromCollections } from './api-image-items.js';
 
 /**
  * Creates a new entry in a lorebook.
@@ -178,23 +179,8 @@ export function fillImagePrompt(template, { name, lore, items, context } = {}) {
 
 export function describeCarriedItems(char) {
     if (!char?.name) return '';
-
     const { collections } = liveFactsFor(char);
-    const names = [];
-    const seen = new Set();
-
-    for (const items of Object.values(collections)) {
-        for (const item of items || []) {
-            const name = String(item?.name ?? '').trim();
-            if (!name) continue;
-            const key = name.toLowerCase();
-            if (seen.has(key)) continue;
-            seen.add(key);
-            names.push(name);
-        }
-    }
-
-    return names.join(', ');
+    return imageItemsFromCollections(collections, getSettings().statusTracker.collections, char.isPlayer);
 }
 
 /** How much retrieved reference text the prompt will take. */
