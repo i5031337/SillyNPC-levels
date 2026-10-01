@@ -175,9 +175,15 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     const givenFacts = typeof options.facts === 'function' ? options.facts() : options.facts;
     const established = char.isPlayer ? (char.profile || {})
         : (mergeLoreValues(existingLore, char.profile) || char.profile || {});
-    const profileFields = resolveProfileFields(char.isPlayer ? 'player' : 'npc').map(field =>
+    const fields = resolveProfileFields(char.isPlayer ? 'player' : 'npc');
+    const profileFields = fields.map(field =>
         `- ${field.label}: ${hintFor(field)}${established[field.id]
             ? ` (established: ${String(established[field.id]).trim()})` : ''}`).join('\n');
+    const profileTemplate = fields.map(field => {
+        const guidance = hintFor(field).trim() || 'Brief supported value.';
+        const known = String(established[field.id] ?? '').replace(/\s+/g, ' ').trim();
+        return `  ${field.label}: <${guidance}${known ? ` Established: ${known}` : ''}>`;
+    }).join('\n');
     /* Both spellings and SillyTavern's own macros, in one pass. The old [TAG] form is
        rewritten to {{tag}} first rather than replaced separately, so a [NAME] that happens
        to be inside the chat excerpt or the existing entry is left alone - it is somebody's
@@ -191,6 +197,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
             || '(Nothing tracked yet)',
         aliases: namesFor(char).slice(1).join(', ') || '(none)',
         profileFields,
+        profileTemplate,
     });
 
     // A template written before [WORLD] existed - which is most of them, including any you

@@ -184,9 +184,8 @@ test('lore truncation uses provider finish reason when available', () => {
 
 test('the default lore prompt allows unsupported fields to be omitted', () => {
     assert.match(DEFAULT_LORE_PROMPT, /Omit fields with no supported value/);
-    assert.match(DEFAULT_LORE_PROMPT, /{{profileFields}}/);
-    assert.match(DEFAULT_LORE_PROMPT, /YAML shape/);
-    assert.match(DEFAULT_LORE_PROMPT, /tags: {{name}}\ncontent: \|$/);
+    assert.match(DEFAULT_LORE_PROMPT, /tags: {{name}}\ncontent: \|\n{{profileTemplate}}$/);
+    assert.equal((DEFAULT_LORE_PROMPT.match(/content: \|/g) || []).length, 1);
     assert.doesNotMatch(DEFAULT_LORE_PROMPT, /every named field|fill if known/i);
 });
 
