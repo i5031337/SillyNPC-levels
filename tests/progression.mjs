@@ -26,8 +26,10 @@ test('invalid or uncapped values do not trigger progression', () => {
     assert.equal(progressXp('20/100', '', '1'), null);
 });
 
-test('bonus raises live maximum while preserving a proposed current value', () => {
-    assert.equal(boostStat('15/20', '10', 2), '12/22');
-    assert.equal(boostStat('15/20', undefined, 2), '17/22');
+test('bonus raises current value while preserving the live maximum', () => {
+    assert.equal(boostStat('2/5', undefined, 1), '3/5');
+    assert.equal(boostStat('15/20', '10', 2), '12/20');
+    assert.equal(boostStat('15/20', undefined, 2), '17/20');
+    assert.equal(boostStat('5/5', undefined, 1), '5/5');
     assert.equal(boostStat('10', undefined, 2), '12');
 });

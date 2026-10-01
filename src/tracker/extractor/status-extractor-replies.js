@@ -55,11 +55,13 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
     const sheetStats = parsed.player.stats || parsed.player;
     if (target && Number.isInteger(amount) && amount >= 1 && amount <= 5) {
         const boosted = boostStat(current[target], sheetStats[target], amount);
-        if (boosted !== null) sheetStats[target] = boosted;
+        if (boosted !== null) {
+            sheetStats[target] = boosted;
+            return { stat: target, description };
+        }
     }
     sheetStats[bonusName] = `Level ${transition.level}: ${description}`;
-    return { stat: target && Number.isInteger(amount) && amount >= 1 && amount <= 5 ? target : null,
-        bonusName };
+    return { stat: null, bonusName };
 }
 
 /** Apply only configured, evidenced goal changes in this turn. */

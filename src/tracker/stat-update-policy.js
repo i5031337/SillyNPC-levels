@@ -19,12 +19,20 @@ export function canAdvanceStat(def) {
 /** Keep the optional bonus under review without delaying earned XP or Level. */
 export function holdLevelBonusChanges(auto, pending, bonus) {
     if (!bonus) return;
-    for (let i = auto.length - 1; i >= 0; i--) {
-        const change = auto[i];
-        if (change.scope !== 'player' || ![bonus.stat, bonus.bonusName]
-            .some(name => name && name.toLowerCase() === change.label?.toLowerCase())) continue;
+    const isBonus = change => change.scope === 'player' && [bonus.stat, bonus.bonusName]
+        .some(name => name && name.toLowerCase() === change.label?.toLowerCase());
+    const mark = change => {
         change.risk = 'risky';
         change.reason = 'Level-up bonus';
+        if (bonus.stat && change.label?.toLowerCase() === bonus.stat.toLowerCase()) {
+            change.note = bonus.description;
+        }
+    };
+    for (const change of pending) if (isBonus(change)) mark(change);
+    for (let i = auto.length - 1; i >= 0; i--) {
+        const change = auto[i];
+        if (!isBonus(change)) continue;
+        mark(change);
         pending.push(change);
         auto.splice(i, 1);
     }

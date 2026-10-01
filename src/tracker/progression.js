@@ -19,14 +19,13 @@ export function progressXp(previousXp, incomingXp, previousLevel) {
     };
 }
 
-/** Raise a numeric stat and its live maximum, using a proposed current value if present. */
+/** Raise a numeric stat's current value, keeping its live maximum. */
 export function boostStat(previousValue, proposedValue, amount) {
-    const [currentText, proposedCap] = String(proposedValue ?? previousValue ?? '').split('/');
+    const [currentText] = String(proposedValue ?? previousValue ?? '').split('/');
     const [, previousCap] = String(previousValue ?? '').split('/');
     const current = Number(currentText);
-    const capText = proposedCap || previousCap;
     if (!Number.isFinite(current) || !Number.isInteger(amount) || amount < 1) return null;
-    const cap = capText ? Number(capText) : null;
+    const cap = previousCap ? Number(previousCap) : null;
     if (cap !== null && (!Number.isFinite(cap) || cap <= 0)) return null;
-    return cap === null ? String(current + amount) : `${current + amount}/${cap + amount}`;
+    return cap === null ? String(current + amount) : `${Math.min(current + amount, cap)}/${cap}`;
 }
