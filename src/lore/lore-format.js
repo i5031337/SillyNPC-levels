@@ -58,17 +58,39 @@ export function parseLoreContent(content, { allowPartial = false } = {}) {
 
 /** A generated reply may contain only fields supported by the story. */
 export function parseGeneratedProfileFields(content, scope) {
-    const lines = String(content ?? '').trim().split(/\r?\n/);
-    if (lines[0]?.startsWith('### ')) lines.shift();
+    let text = String(content ?? '').trim();
+    if (text.startsWith('### ')) text = text.replace(/^### [^\r\n]*\r?\n/, '');
     const fields = resolveProfileFields(scope);
+    if (!fields.length) return null;
+    // Models sometimes put every labelled field on one line. Recognize title-like
+    // labels as boundaries, including inactive ones, so their values cannot leak
+    // into an active field. Only active labels are returned below.
+    const escape = label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const active = new RegExp(`(^|\\s)(${fields.map(field => escape(field.label))
+        .sort((a, b) => b.length - a.length).join('|')}):[ \\t]*`, 'g');
+    const known = [...text.matchAll(active)];
+    const possible = /(^|\s)([^:\r\n.!?]{1,60}):[ \t]*/g;
+    const unknown = [...text.matchAll(possible)].filter(match => {
+        const label = match[2].trim();
+        if (fields.some(field => field.label === label)) return false;
+        const before = text.slice(0, match.index).trimEnd();
+        return (!before || match[1] === '\n' || /[.!?]$/.test(before))
+            && /^[A-Z]/.test(label);
+    });
+    const matches = [...known, ...unknown].sort((a, b) => a.index - b.index);
+    if (!matches.length || text.slice(0, matches[0].index).trim()) return null;
     const values = {};
     let previousIndex = -1;
-    for (const line of lines) {
-        const index = fields.findIndex(field => line.startsWith(`${field.label}:`));
+    for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        const index = fields.findIndex(field => field.label === match[2].trim());
+        if (index < 0) continue;
         if (index <= previousIndex) return null;
         const field = fields[index];
-        if (!field) return null;
-        values[field.id] = line.slice(field.label.length + 1).trim();
+        const value = text.slice(match.index + match[0].length, matches[i + 1]?.index).trim();
+        // A continuation line is not part of the compact named-field format.
+        if (/\r?\n/.test(value)) return null;
+        values[field.id] = value;
         previousIndex = index;
     }
     return previousIndex < 0 ? null : values;

@@ -86,6 +86,6 @@ export async function fillLore(char) {
         return { ok: false, action: 'none', reason: 'The lore writer did not return named player fields.' };
     }
 
-    await saveLoreContent(char, world, uid, tags, content);
+    await saveLoreContent(char, world, uid, tags, content, { preserveEmpty: true });
     return { ok: true, action: `wrote a new entry in "${world}"` };
 }

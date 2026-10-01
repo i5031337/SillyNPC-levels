@@ -1,4 +1,12 @@
 /** Read the lore writer's small YAML envelope and older Tags/Content replies. */
+export function loreReplyWasTruncated(reply) {
+    const reason = reply?.choices?.[0]?.finish_reason
+        ?? reply?.choices?.[0]?.native_finish_reason
+        ?? reply?.results?.[0]?.finish_reason
+        ?? reply?.finish_reason;
+    return ['length', 'max_tokens', 'max_output_tokens', 'token_limit'].includes(reason);
+}
+
 export function parseLoreReply(reply, fields = []) {
     const raw = String(reply ?? '').trim();
     const text = raw.replace(/^```(?:ya?ml|text)?\s*\n/i, '').replace(/\n```\s*$/, '').trim();

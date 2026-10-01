@@ -13,7 +13,7 @@ import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
 import { hintFor } from '../core/constants-profile.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../lore/lore-format.js';
-import { parseLoreReply } from '../lore/lore-reply.js';
+import { loreReplyWasTruncated, parseLoreReply } from '../lore/lore-reply.js';
 
 /**
  * The slice of story the lore writer is shown.
@@ -104,7 +104,7 @@ export async function requestLore(prompt) {
                     { role: 'user', content: prompt },
                 ],
                 maxTokens,
-                { extractData: true, includePreset: false },
+                { extractData: false, includePreset: false },
             );
             const profile = context.extensionSettings?.connectionManager?.profiles
                 ?.find(p => p.id === profileId);
@@ -114,9 +114,10 @@ export async function requestLore(prompt) {
                     : profileId,
                 when: Date.now(),
             };
-            const text = (typeof result === 'string' ? result : (result?.content ?? '')) || '';
+            const api = context.ConnectionManagerRequestService.validateProfile(profile).selected;
+            const text = extractMessageFromData(result, api) || '';
             recordUsage('lore', { prompt: promptText('loreSystem') + prompt, reply: text });
-            return text;
+            return { text, truncated: loreReplyWasTruncated(result) };
         } catch (err) {
             console.warn(LOG_PREFIX, 'Lore connection unavailable, using the main API:', err);
         }
@@ -139,7 +140,7 @@ export async function requestLore(prompt) {
     // Not awaited on purpose: counting asks the tokenizer, and a counter is not worth
     // making anyone wait for, nor worth failing a generation over.
     recordUsage('lore', { prompt: promptText('loreSystem') + prompt, reply: text });
-    return text;
+    return { text, truncated: loreReplyWasTruncated(raw) };
 }
 
 /**
@@ -153,7 +154,7 @@ export async function requestLore(prompt) {
  *   location's lore is not a person's. Same placeholders, plus {{aliases}}.
  * @param {string|(() => string)} [options.facts] What is established, instead of the
  *   tracked stats a character has.
- * @returns {Promise<{ tags: string, content: string, followedFormat: boolean, excerpt: object }>}
+ * @returns {Promise<{ tags: string, content: string, followedFormat: boolean, truncated: boolean, excerpt: object }>}
  */
 export async function generateLoreContent(char, world, uid, options = {}) {
     let existingLore = '';
@@ -200,7 +201,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
         prompt += `\n\nFrom the setting's reference material:\n${worldFacts}`;
     }
 
-    const text = await requestLore(prompt);
+    const { text, truncated } = await requestLore(prompt);
 
     let { tags, content, followedSections } = parseLoreReply(text,
         !options.template ? resolveProfileFields(char.isPlayer ? 'player' : 'npc') : []);
@@ -211,11 +212,12 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     if (!options.template && !char.isPlayer) {
         const generated = parseLoreContent(content, { allowPartial: true });
         if (generated) {
-            const values = Object.fromEntries(resolveProfileFields('npc').map(field => [field.id,
-                String(options.preserveLore
+            content = resolveProfileFields('npc')
+                .filter(field => Object.hasOwn(generated, field.id))
+                .map(field => `${field.label}: ${String(options.preserveLore
                     ? (established[field.id] || generated[field.id] || '')
-                    : (generated[field.id] || established[field.id] || '')).trim()]));
-            content = formatLoreContent(values, existingLore);
+                    : (generated[field.id] || established[field.id] || '')).trim()}`)
+                .join('\n');
         }
     }
 
@@ -226,7 +228,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     const followedFormat = Boolean(followedSections
         && (options.template || parseGeneratedProfileFields(content, char.isPlayer ? 'player' : 'npc')));
 
-    return { tags, content, followedFormat, excerpt };
+    return { tags, content, followedFormat, truncated, excerpt };
 }
 
 
@@ -237,9 +239,10 @@ export async function generateLoreContent(char, world, uid, options = {}) {
  * @param {number} uid Entry UID
  * @param {string} tags Tags string
  * @param {string} content Lore content
+ * @param {{ preserveEmpty?: boolean }} [options]
  * @returns {Promise<{ profileFieldsSaved: number }>}
  */
-export async function saveLoreContent(char, world, uid, tags, content) {
+export async function saveLoreContent(char, world, uid, tags, content, { preserveEmpty = false } = {}) {
     const worldData = await loadWorldInfo(world);
     if (!worldData || !worldData.entries) throw new Error('Lorebook not found or entries missing');
     
@@ -259,18 +262,30 @@ export async function saveLoreContent(char, world, uid, tags, content) {
     if (char.isPlayer) {
         const parsed = parseGeneratedProfileFields(submitted, 'player');
         if (parsed) {
-            profile = { ...profile, ...parsed };
-            profileFieldsSaved = Object.values(parsed).filter(Boolean).length;
+            const values = preserveEmpty ? Object.fromEntries(Object.entries(parsed).filter(([, value]) => value)) : parsed;
+            profile = { ...profile, ...values };
+            profileFieldsSaved = Object.values(values).filter(Boolean).length;
+            if (preserveEmpty) {
+                const existing = parseGeneratedProfileFields(entry.content, 'player') || {};
+                const combined = { ...existing, ...values };
+                entry.content = resolveProfileFields('player')
+                    .filter(field => Object.hasOwn(combined, field.id))
+                    .map(field => `${field.label}: ${combined[field.id]}`).join('\n');
+            } else {
+                entry.content = submitted;
+            }
+        } else {
+            entry.content = submitted;
         }
-        entry.content = submitted;
     } else {
         const parsed = parseGeneratedProfileFields(submitted, 'npc');
         if (!parsed) throw new Error('NPC lore must use named fields in the required order.');
-        const complete = Object.keys(parsed).length === resolveProfileFields('npc').length;
-        const values = complete ? parsed : { ...(mergeLoreValues(entry.content, profile) || profile || {}), ...parsed };
+        const accepted = preserveEmpty ? Object.fromEntries(Object.entries(parsed).filter(([, value]) => value)) : parsed;
+        const complete = Object.keys(accepted).length === resolveProfileFields('npc').length;
+        const values = complete ? accepted : { ...(mergeLoreValues(entry.content, profile) || profile || {}), ...accepted };
         entry.content = formatLoreContent(values, entry.content);
-        profile = { ...profile, ...values };
-        profileFieldsSaved = Object.values(parsed).filter(Boolean).length;
+        profile = { ...profile, ...accepted };
+        profileFieldsSaved = Object.values(accepted).filter(Boolean).length;
     }
     // The writer returns Abilities/History/Ties and never a name, so the heading is put
     // on here rather than asked for. Before the tags merge, which must not be lost.

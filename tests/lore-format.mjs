@@ -6,7 +6,7 @@ import { isTurnStat } from '../src/tracker/stat-update-policy.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../src/lore/lore-format.js';
 import { DEFAULT_LORE_PROMPT } from '../src/prompts/default-prompt-texts.js';
-import { parseLoreReply } from '../src/lore/lore-reply.js';
+import { loreReplyWasTruncated, parseLoreReply } from '../src/lore/lore-reply.js';
 import { resolveProfileFields, resolveProfileFieldsFromSystem, setProfileSettingsProvider, profileStrings } from '../src/core/profile-fields.js';
 
 test('active System fields replace defaults while retired fields stay on cards', () => {
@@ -83,7 +83,34 @@ test('a lore generation may provide only supported fields before storage normali
     assert.equal(parseLoreContent(formatLoreContent(parseLoreContent(partial, { allowPartial: true }))).role,
         'Watchmaker');
     assert.equal(parseLoreContent('History: Moved here.\nRole: Watchmaker', { allowPartial: true }), null);
-    assert.equal(parseLoreContent('Role: Watchmaker\nUnknown: text', { allowPartial: true }), null);
+    assert.deepEqual(parseLoreContent('Role: Watchmaker\nUnknown: text', { allowPartial: true }),
+        { role: 'Watchmaker' });
+});
+
+test('compact lore keeps only supplied active fields, including previously empty ones', () => {
+    const reply = 'Tags: Professor Sycamore, Sycamore\n'
+        + 'Content: Role: Kalos professor. Wants: New trainers prepared. '
+        + 'Method: Gives equipment. Limits: Cannot accompany trainers. '
+        + 'Ties: Knows Serena’s mother. History: Runs the Lumiose lab.';
+    const { content, followedSections } = parseLoreReply(reply);
+    assert.equal(followedSections, true);
+    assert.deepEqual(parseGeneratedProfileFields(content, 'npc'), {
+        role: 'Kalos professor.', wants: 'New trainers prepared.',
+        ties: 'Knows Serena’s mother.', history: 'Runs the Lumiose lab.',
+    });
+    assert.deepEqual(parseGeneratedProfileFields('Role: Professor Wants: Help trainers', 'npc'),
+        { role: 'Professor', wants: 'Help trainers' });
+    const system = { profiles: { npc: [
+        { id: 'role', label: 'Role' }, { id: 'method', label: 'Method' },
+        { id: 'limits', label: 'Limits' },
+    ] } };
+    setProfileSettingsProvider(() => ({ activeSystem: 'Custom', statusTracker: { presets: { Custom: { definition: system } } } }));
+    try {
+        assert.deepEqual(parseGeneratedProfileFields('Role: Professor. Method: Advises. Limits: Cannot travel.', 'npc'),
+            { role: 'Professor.', method: 'Advises.', limits: 'Cannot travel.' });
+    } finally {
+        setProfileSettingsProvider(() => null);
+    }
 });
 
 test('saving partial lore records supported NPC and player fields', async () => {
@@ -104,15 +131,55 @@ test('saving partial lore records supported NPC and player fields', async () => 
     assert.equal(npcSaved.profileFieldsSaved, 2);
     assert.equal(npc.profile.role, 'Watchmaker');
     assert.equal(parseLoreContent(entries[0].content).history, 'Moved here.');
+    assert.equal(Object.hasOwn(npc.profile, 'age'), false);
+    await saveLoreContent(npc, 'World', 0, 'Mira',
+        'Role: Watchmaker. Wants: Repair clocks. Method: Uses tiny tools. History: Moved here.');
+    assert.equal(npc.profile.wants, 'Repair clocks.');
+    assert.equal(Object.hasOwn(npc.profile, 'method'), false);
+    assert.equal(Object.hasOwn(npc.profile, 'age'), false);
     const player = { name: 'Hero', isPlayer: true, profile: { appearance: '' } };
     const playerSaved = await saveLoreContent(player, 'World', 0, 'Hero', 'Appearance: Red cloak');
     assert.equal(playerSaved.profileFieldsSaved, 1);
     assert.equal(player.profile.appearance, 'Red cloak');
     assert.equal(entries[0].content, 'Appearance: Red cloak');
-    assert.equal(saved, 2);
+    assert.equal(saved, 3);
     await assert.rejects(saveLoreContent(npc, 'World', 0, '', 'Unknown: Lost detail'),
         /named fields/);
-    assert.equal(saved, 2);
+    assert.equal(saved, 3);
+});
+
+test('empty generated fields preserve existing lore and profile values', async () => {
+    const source = readFileSync(new URL('../src/api/api-lore-generate.js', import.meta.url), 'utf8');
+    const saveSource = source.slice(source.indexOf('export async function saveLoreContent'))
+        .replace('export async function', 'async function');
+    const entries = { 0: { uid: 0, content: formatLoreContent({ role: 'Professor', wants: 'Help trainers' }), key: [] } };
+    const saveLoreContent = new Function('loadWorldInfo', 'saveWorldInfo', 'parseLoreContent',
+        'parseGeneratedProfileFields', 'mergeLoreValues', 'formatLoreContent', 'syncEntryIdentity',
+        'mergeKeywords', 'saveSettings', 'resolveProfileFields', `${saveSource}\nreturn saveLoreContent;`)(
+        async () => ({ entries }), async () => {}, parseLoreContent,
+        parseGeneratedProfileFields, mergeLoreValues, formatLoreContent, () => {},
+        (old, tags) => [...old, tags], () => {}, resolveProfileFields,
+    );
+    const npc = { name: 'Sycamore', profile: { role: 'Professor', wants: 'Help trainers' } };
+    const saved = await saveLoreContent(npc, 'World', 0, '', 'Role: \nWants: Prepare trainers',
+        { preserveEmpty: true });
+    assert.equal(saved.profileFieldsSaved, 1);
+    assert.equal(npc.profile.role, 'Professor');
+    assert.equal(npc.profile.wants, 'Prepare trainers');
+    assert.equal(parseLoreContent(entries[0].content).role, 'Professor');
+    const player = { name: 'Hero', isPlayer: true, profile: { appearance: 'Red cloak' } };
+    entries[0].content = 'Appearance: Red cloak\nPersonality: Bold';
+    await saveLoreContent(player, 'World', 0, '', 'Appearance: \nPersonality: Patient',
+        { preserveEmpty: true });
+    assert.equal(player.profile.appearance, 'Red cloak');
+    assert.equal(entries[0].content, 'Appearance: Red cloak\nPersonality: Patient');
+});
+
+test('lore truncation uses provider finish reason when available', () => {
+    assert.equal(loreReplyWasTruncated({ choices: [{ finish_reason: 'length' }] }), true);
+    assert.equal(loreReplyWasTruncated({ choices: [{ native_finish_reason: 'max_tokens' }] }), true);
+    assert.equal(loreReplyWasTruncated({ choices: [{ finish_reason: 'stop' }] }), false);
+    assert.equal(loreReplyWasTruncated({ choices: [{ text: 'Role: Professor' }] }), false);
 });
 
 test('the default lore prompt allows unsupported fields to be omitted', () => {

@@ -56,6 +56,7 @@ test('linked lore entry with UID zero can generate and save', async () => {
         completeCancelled() { this.closed = true; }
     }
     const saves = [];
+    const warnings = [];
     const generateLoreEntry = load('api/ui-api-lore.js', [
         'document', 'Popup', 'POPUP_TYPE', 'world_names', 'getChatLorebookName',
         'getSettings', 'LOG_PREFIX', 'createLoreEntry', 'generateLoreContent',
@@ -63,9 +64,9 @@ test('linked lore entry with UID zero can generate and save', async () => {
     ], [
         document, Popup, { DISPLAY: 1 }, ['World'], () => 'World',
         () => ({ defaultLorebook: 'World' }), '[test]', () => {},
-        async () => ({ tags: 'friend', content: 'A useful entry', followedFormat: true }),
+        async () => ({ tags: 'friend', content: 'A useful entry', followedFormat: true, truncated: true }),
         async (...args) => saves.push(args),
-        { warning() {}, info() {}, success() {}, error() {} },
+        { warning(message) { warnings.push(message); }, info() {}, success() {}, error() {} },
     ], 'generateLoreEntry');
     const char = { name: 'Mira', lorebook: { world: 'World', uid: 0 } };
     let onSave = 0;
@@ -73,8 +74,10 @@ test('linked lore entry with UID zero can generate and save', async () => {
     const generate = elements.find(el => el.innerHTML?.includes('Start Generation'));
     const save = elements.find(el => el.innerHTML?.includes('Save & Close'));
     await generate.click();
+    assert.match(elements.find(el => el.className === 'sillynpc-lore-warning').textContent, /token limit/);
+    assert.equal(warnings.length, 1);
     await save.click();
-    assert.deepEqual(saves, [[char, 'World', 0, 'friend', 'A useful entry']]);
+    assert.deepEqual(saves, [[char, 'World', 0, 'friend', 'A useful entry', { preserveEmpty: true }]]);
     assert.equal(onSave, 1);
     assert.equal(popup.closed, true);
 });

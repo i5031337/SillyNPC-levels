@@ -228,7 +228,7 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
         try {
             toastr.info('Generating tags and description...');
             
-            const { tags, content, followedFormat, excerpt } =
+            const { tags, content, followedFormat, truncated, excerpt } =
                 await generateLoreContent(char, createdWorld, createdUid, { template, facts });
 
             tagsInput.value = tags;
@@ -236,13 +236,19 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
 
             // Shown either way, so a usable answer can still be salvaged - but never
             // presented as though it worked.
-            resultWarning.style.display = followedFormat ? 'none' : '';
+            resultWarning.style.display = followedFormat && !truncated ? 'none' : '';
+            const warnings = [];
             if (!followedFormat) {
-                resultWarning.textContent = `This reply did not use the required ${template ? 'Tags/Content' : 'YAML tags/content and named-field'} `
+                warnings.push(`This reply did not use the required ${template ? 'Tags/Content' : 'YAML tags/content and named-field'} `
                     + 'format. Check it before saving. The instruction may not have reached the model - '
                     + 'most often because the request was too large. Try a smaller Chat To Read '
-                    + 'or Excerpt Size Limit. Check it before saving.';
+                    + 'or Excerpt Size Limit.');
             }
+            if (truncated) {
+                warnings.push('The model stopped at its reply token limit. This lore may be incomplete; check it before saving.');
+                toastr.warning('Lore reply may be incomplete (reply token limit).', 'SillyNPC');
+            }
+            resultWarning.textContent = warnings.join(' ');
 
             saveCloseBtn.style.display = '';
             if (excerpt?.trimmed) {
@@ -266,7 +272,8 @@ export async function generateLoreEntry(char, { onSave, template, facts, default
             saveCloseBtn.disabled = true;
             saveCloseBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
-            const saved = await saveLoreContent(char, createdWorld, createdUid, tagsInput.value, descText.value);
+            const saved = await saveLoreContent(char, createdWorld, createdUid, tagsInput.value, descText.value,
+                { preserveEmpty: true });
             
             toastr.success(saved?.profileFieldsSaved
                 ? `Lorebook entry updated; ${saved.profileFieldsSaved} named field(s) saved to the profile.`
