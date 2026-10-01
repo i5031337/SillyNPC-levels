@@ -4,7 +4,7 @@ import { Popup, POPUP_TYPE } from '../../../../../../popup.js';
 import { triggerReprocess } from '../../chat/reprocess.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../../core/constants.js';
-import { auditCharacter, fillLore, fillData } from '../../characters/character-fill.js';
+import { auditCharacter, fillLore } from '../../characters/character-fill.js';
 import { generateCharacterImageLogic } from '../../api/api.js';
 import { automaticFillStages } from '../../prompts/fill-preset.js';
 
@@ -42,10 +42,9 @@ function stageRow(id, label, stage) {
  * Shows what filling this card would do, and asks.
  *
  * One decision rather than four: the whole point is doing it in one go, and the stages
- * worth declining - the portrait, which costs real money, and belongings, which can add
- * an item to a list somebody curated - have to be declinable before they run, not after.
+ * worth declining, including the portrait, can be declined before they run.
  *
- * @returns {Promise<{ lore: boolean, data: boolean, belongings: boolean, image: boolean } | null>}
+ * @returns {Promise<{ lore: boolean, image: boolean } | null>}
  *   Null on cancel.
  */
 async function askPlan(char, audit) {
@@ -66,9 +65,7 @@ async function askPlan(char, audit) {
     // Numbered in the order they run; later stages can use the completed description.
     wrap.append(
         stageRow('lore', '1. Description & Lore', audit.lore),
-        stageRow('data', '2. Tracker fields', audit.data),
-        stageRow('belongings', '3. Belongings (optional)', audit.belongings),
-        stageRow('image', '4. Portrait', audit.image),
+        stageRow('image', '2. Portrait', audit.image),
     );
 
     const popup = new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
@@ -85,7 +82,7 @@ async function askPlan(char, audit) {
 }
 
 /**
- * Fills in a character card: lore, then fields and belongings, then a portrait.
+ * Fills in a character card: lore, then a portrait.
  *
  * Stops at the first stage that fails and says which one. The stages are ordered because
  * each reads what the one before it wrote, so carrying on past a failure produces exactly
@@ -149,20 +146,6 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
     try {
         // One request writes the named profile fields and the rest of the lore together.
         if (chosen.lore && !(await runLore())) return;
-
-        if (chosen.data || chosen.belongings) {
-            toastr.info('Reading the story for their details...', 'SillyNPC');
-            const result = await retryStage('Fields', () => fillData(char, {
-                fields: chosen.data,
-                collections: chosen.belongings,
-            }));
-            if (!result) return;
-            done.push(result.filled.length || result.items
-                ? `Fields: filled ${result.filled.join(', ') || 'none'}`
-                    + (result.items ? ` and ${result.items} item(s)` : '')
-                : `Fields: ${result.reason || 'nothing to fill'}`);
-            onSave?.();
-        }
 
         if (chosen.image) {
             toastr.info('Drawing a portrait...', 'SillyNPC');

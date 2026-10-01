@@ -64,7 +64,7 @@ SillyNPC operates across two core modules:
 
 ### Goals & Memories
 * **Current Goals:** The reader may propose sourced changes to the player's short and long-term goals and NPC short-term goals. Edit them in **Goals** or on the character sheet; System Builder chooses which goal fields exist.
-* **Character Memories:** The reader appends sourced memories to profile fields marked **Memory**. Each character retains a configurable number of active entries, with older entries in a readable archive.
+* **Character Memories:** Edit memory fields and entries on character sheets. Existing sourced memories remain readable, with older entries in an archive.
 * **Archived Threads:** The **Goals** tab keeps old Threads records readable. They no longer change or enter prompts.
 
 ### Floating HUD
@@ -129,7 +129,7 @@ Reload SillyTavern.
    * **Ask The Model To Format Dialogue** is on out of the box — it asks for the `**Name**:` speaker line that everything else reads.
    * If your chat is not being decorated, check it is still enabled under **Extensions -> SillyNPC -> Manage SillyNPC -> Writing Rules**. A persona or preset asking for a different layout is the usual cause.
 2. **Assigning Avatars:**
-   * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore, profile details, tracker fields, and belongings; completed stages remain in place if a later stage fails. Open the card and press **Fill** to retry.
+   * Click an unknown speaker's placeholder portrait to create its chat-owned card and start Fill immediately. Fill writes missing lore and profile details, then offers a portrait; completed stages remain in place if a later stage fails. The tracker maintains stats and collections. Open the card and press **Fill** to retry.
    * Use the adjacent **Link as alias** button if the speaker is another name for an existing NPC. Clicking a reusable card's portrait offers a new profile for this chat or its editor; clicking a chat NPC's portrait opens its editor.
    * Automatic Fill draws a portrait by default when the NPC has none. Change **Draw Portrait Automatically** under **Generation → Unknown Speaker Fill**, or add a portrait in the editor. Your selected image provider may charge separately.
    * Generated portraits use SillyTavern's Image Generation extension and its configured provider.
@@ -143,7 +143,7 @@ In **Systems → Builder → NPC**, choose **Turn** or **Advancement**. Turn fie
 
 In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. **Level bonus** independently chooses which numeric fields may be raised after a level-up. A Turn field such as HP may also be eligible for a level bonus, so current resource changes and maximum growth can share one field.
 
-Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. A field's ID stays stable when its label changes. **Anchored** fields can be seeded by Fill when empty; **Replaceable** fields can change on a sourced turn; **Memory** fields collect sourced entries. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
+Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. A field's ID stays stable when its label changes. Fill and manual lore generation can seed empty fields; manual edits and field regeneration can revise them. The tracker leaves profile and memory fields alone. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
 
 A chat chooses its System before play starts and keeps it after the first player message. Systems define reusable rules and fields; the current cast and player state belong to the chat. The selected persona's identity, profile, and portrait carry across chats, while stats, items, goals, and memories are kept per chat and persona.
 

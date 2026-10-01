@@ -5,7 +5,7 @@ import { progressXp, boostStat } from '../src/tracker/progression.js';
 
 const source = readFileSync(new URL('../src/tracker/extractor/status-extractor-replies.js', import.meta.url), 'utf8');
 const bonusFunction = source.slice(source.indexOf('export async function addLevelBonus'),
-    source.indexOf('\nexport function applyProfileFromReply'))
+    source.indexOf('\n/** Apply only configured'))
     .replace('export async function', 'async function');
 
 test('an invalid level bonus can be retried without consuming the XP update', async () => {

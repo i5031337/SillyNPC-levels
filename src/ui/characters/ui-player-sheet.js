@@ -93,7 +93,7 @@ export function renderPlayerView(view) {
                     <span class="persona-name">${escapeHtml(persona.name)}</span>
                     ${levelValue !== null ? `<div class="level-badge">Lvl ${escapeHtml(levelValue)}</div>` : ''}
                 </div>
-                <button type="button" class="menu_button sillynpc-sheet-fill" title="Read the story for who you are, a lore entry, your fields and a portrait - filling only what is still empty."><i class="fa-solid fa-fill-drip"></i> <span>Fill</span></button>
+                <button type="button" class="menu_button sillynpc-sheet-fill" title="Write missing profile details and lore, then offer a portrait."><i class="fa-solid fa-fill-drip"></i> <span>Fill</span></button>
             </div>
             <div class="sillynpc-sheet-body">
                 <div class="sillynpc-sheet-sidebar"></div>

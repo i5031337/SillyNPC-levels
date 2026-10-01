@@ -15,14 +15,7 @@ function fixedPromptFor(kindId) {
     const tracker = settings.statusTracker;
     if (kindId === 'extraction') return SYSTEM_PROMPT;
     if (kindId === 'scan') return promptText('scanSystem');
-    // Two prompts share this counter - the profile fill and the stat fill are separate
-    // requests recorded under one kind. The card states a ceiling, so it is the longer of
-    // the two: naming one of them would under-report every run of the other.
-    if (kindId === 'fill') {
-        const profile = promptText('profileSystem');
-        const sheet = promptText('fillSystem');
-        return profile.length > sheet.length ? profile : sheet;
-    }
+    if (kindId === 'fill') return promptText('profileSystem');
     if (kindId === 'banscan') return promptText('banScanSystem');
     if (kindId === 'lore') return DEFAULT_LORE_PROMPT;
     if (kindId === 'image') {

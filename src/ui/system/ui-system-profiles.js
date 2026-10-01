@@ -2,9 +2,9 @@ import { getSettings, saveSettings } from '../../core/settings.js';
 import { addProfileField, renameProfileField, moveProfileField, retireProfileField } from './ui-system-profile-operations.js';
 
 const POLICIES = [
-    ['anchored', 'Anchored: Fill can seed an empty value; turns cannot change it'],
-    ['replaceable', 'Replaceable: turns may update it with evidence'],
-    ['memory', 'Memory: turns may append sourced events'],
+    ['anchored', 'Anchored: a stable profile detail'],
+    ['replaceable', 'Replaceable: a profile detail you can edit or regenerate'],
+    ['memory', 'Memory: a memory field you can edit manually'],
 ];
 
 function control(tag, className, value) {
@@ -62,7 +62,7 @@ function rowFor(field, fields, onRefresh) {
 
     const guidance = control('textarea', 'profile-guidance', field.guidance || '');
     guidance.rows = 2;
-    guidance.placeholder = 'What belongs in this field? This guides Fill and the turn reader.';
+    guidance.placeholder = 'What belongs in this field? This guides lore generation and Fill.';
     guidance.setAttribute('aria-label', `Guidance for ${field.label}`);
     guidance.addEventListener('input', () => { field.guidance = guidance.value; saveSettings(); });
 

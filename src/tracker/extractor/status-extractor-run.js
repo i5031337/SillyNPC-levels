@@ -13,7 +13,7 @@ import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { expandNumericDeltas } from './status-extractor-deltas.js';
 import { holdLevelBonusChanges } from '../stat-update-policy.js';
-import { addLevelBonus, applyGoalsFromReply, applyProfileFromReply } from './status-extractor-replies.js';
+import { addLevelBonus, applyGoalsFromReply } from './status-extractor-replies.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
 
@@ -179,10 +179,6 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             debugLog('Strangers\' kinds', parsed.strangers);
             triggerReprocess();
         }
-
-        // Profiles, for whichever fields have been unlocked. Outside applyUpdate on
-        // purpose: these live on the card rather than in the state.
-        applyProfileFromReply(parsed, messageId, String(messageText));
 
         // Propose, then decide. A dry run says what the update would do, so additions,
         // removals and implausible jumps can be held back for a look rather than

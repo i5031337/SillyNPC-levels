@@ -1,9 +1,8 @@
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
 import { debugLog } from '../../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { goalFields, goalValue } from '../goals.js';
-import { getPlayerCard, findCardForName, describeNpcStatFields } from '../status-logic.js';
+import { describeNpcStatFields } from '../status-logic.js';
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
 import { describeAbsentButNamed, describeLocked } from './status-extractor-prompt-offstage.js';
@@ -86,7 +85,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
      * - KNOWN, BUT NOT IN THE SCENE sits beside the state because it is state.
      * - The collections' fields come before the example, so they read as part of what is
      *   known. Without them a new item arrived with only the field the example showed.
-     * - Goal and profile requests are grounded in the latest message by quoted evidence.
+     * - Goal requests are grounded in the latest message by quoted evidence.
      */
     return {
         state: describeCurrentState(state, trackerSettings) || '(empty)',
@@ -101,7 +100,6 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         ...strangerValues(strangers),
         collections: describeCollections(trackerSettings),
         collectionExample: buildDeltaExample(trackerSettings),
-        profileFields: describeOpenProfileFields(state),
         minimalReply: buildMinimalExample(state, trackerSettings),
         changedReply: buildChangedExample(state, trackerSettings),
         earlier: leadUp.join('\n---\n'),
@@ -164,41 +162,6 @@ export function collectLeadUp(messageId, count) {
     return out;
 }
 /**
- * Profile fields the active System permits the reader to change.
- *
- * The schema grew a `profile` key and nothing told the model it existed, which left a slot
- * with no instruction and no current value to compare against - it would have been writing
- * blind. Here rather than in the system prompt for the same reason that the reasons
- * object are here: a user's own extraction prompt replaces the shipped one outright, and an
- * ask that lives only in the shipped text never reaches them.
- *
- * Only the unlocked ones. A locked field is dropped on apply whatever comes back, so
- * listing it would spend tokens inviting a change that is thrown away.
- *
- * @returns {string} Empty when nothing is unlocked, so the caller leaves the section out.
- */
-function describeOpenProfileFields(state) {
-    const lines = [];
-
-    // Names only. The values are in the state block above, where every other fact about a
-    // character lives - repeating them here sent an appearance twice in the same message.
-    const describe = (card, label) => {
-        const open = fieldsForCard(card).filter(f => f.policy === 'replaceable' || f.policy === 'memory');
-        for (const field of open) lines.push(`- ${label}.${field.id} (${field.policy})`);
-    };
-
-    if (state?.player?.name) {
-        try { describe(getPlayerCard(), state.player.name); } catch { /* no persona */ }
-    }
-    for (const actor of state?.characters || []) {
-        const card = findCardForName(actor?.name);
-        if (card) describe(card, actor.name);
-    }
-
-    return lines.join('\n');
-}
-
-/**
  * A quiet reply, in the cast this setup actually has.
  *
  * Small models copy the shape of an example far more reliably than they follow a
@@ -234,21 +197,3 @@ function buildChangedExample(state, trackerSettings) {
         characters: cast.map(name => ({ name })),
     });
 }
-
-/**
- * Writes back any profile field the reader changed and is allowed to change.
- *
- * Deliberately outside applyUpdate. That writes the state - chat metadata, which the diff,
- * the review gate and the timeline all read - while a profile lives on the card, in
- * settings, shared by every chat. Routing one through the other would put global data on a
- * per-message path, which is how the player's stats once reached master storage.
- *
- * The lock is enforced here as well as in the schema. The schema only knows whether anybody
- * has unlocked anything; this knows which character and which field, and drops the rest even
- * when the model returns them anyway.
- *
- * Undoing is the swipe base's job: it snapshots every profile before the message runs, and
- * rebaseToSwipe puts them back. See snapshotProfiles.
- *
- * @returns {string[]} What changed, as "Name.Field", for the log.
- */

@@ -49,7 +49,6 @@ Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, c
             strangerExample: 'One stranger paired with one tag.',
             collections: 'Each collection and the fields its items have.',
             collectionExample: 'A worked change in your own collection and field names.',
-            profileFields: 'System profile fields the reader may update, with their policies.',
             minimalReply: 'A no-change reply listing the cast present.',
             changedReply: 'A numeric delta, using one of your configured player stat names.',
             numericDeltas: 'Existing numeric stats eligible for delta updates, by owner.',
@@ -58,7 +57,7 @@ Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, c
             reasons: 'Switch: on when "Ask for reasons" is on.',
             goals: 'Configured player and NPC goals, with current values and guidance.',
         },
-        text: `Read the latest message and report its changes and the full scene cast. Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not invent profile details.
+        text: `Read the latest message and report its changes and the full scene cast. Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
 
 ### CONFIGURED STATS AND COLLECTIONS
 Use the configured names below.
@@ -120,12 +119,6 @@ Report each collection change shown in the latest message:
 - "add" for acquired items, with stated fields
 - "update" for changed items, with their name and changed fields
 {{/collections}}
-{{#profileFields}}
-
-### PROFILE FIELDS YOU MAY UPDATE
-Report a replaceable field under "profile" only when the latest message supports a change, with an exact quote under "profileEvidence". For a memory field, append a supported event under "memories" as {"fieldId":"...","text":"...","quote":"exact words from latest message"}. Omit anchored fields and do not rewrite existing memories.
-{{profileFields}}
-{{/profileFields}}
 {{#earlier}}
 
 ### EARLIER MESSAGES (reflected in state)

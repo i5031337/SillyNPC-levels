@@ -84,7 +84,7 @@ function renderUnknownSpeakerSettings(view) {
     view.append(autoFillTitle);
     const autoFillNote = document.createElement('p');
     autoFillNote.className = 'notes';
-    autoFillNote.textContent = 'Creating an NPC from an unknown speaker writes missing description and lore fields together, then fills tracker fields and belongings if empty. Completed fields are kept if you retry.';
+    autoFillNote.textContent = 'Creating an NPC from an unknown speaker writes missing description and lore fields together, then draws a portrait if enabled. Completed parts are kept if you retry.';
     view.append(autoFillNote);
     view.append(buildSettingToggle({
         key: 'autoPortraitOnFill',

@@ -145,7 +145,7 @@ test('lore reply accepts plain labels and a fenced YAML wrapper', () => {
     assert.equal(parseLoreReply('Unrelated prose').followedSections, false);
 });
 
-test('tracker schema follows System policies rather than old per-card unlocks', () => {
+test('tracker schema excludes lore fields and retains goals and stats', () => {
     const source = readFileSync(new URL('../src/tracker/extractor/status-extractor-schema.js', import.meta.url), 'utf8')
         .replace(/^import .*;\n/gm, '')
         .replaceAll('export function ', 'function ');
@@ -160,10 +160,10 @@ test('tracker schema follows System policies rather than old per-card unlocks', 
             : [{ id: 'shortTerm', label: 'Short-term goal' }],
     );
     const schema = build({ globalStats: [], playerStats: [], npcStats: [], collections: [] });
-    assert.ok(schema.properties.characters.items.properties.profile.properties.role);
-    assert.equal(schema.properties.player.properties.profile.properties.role, undefined);
-    assert.equal(schema.properties.characters.items.properties.profile.properties.appearance, undefined);
-    assert.ok(schema.properties.characters.items.properties.profileEvidence.properties.role);
+    assert.equal(schema.properties.characters.items.properties.profile, undefined);
+    assert.equal(schema.properties.characters.items.properties.memories, undefined);
+    assert.equal(schema.properties.player.properties.profile, undefined);
+    assert.equal(schema.properties.player.properties.memories, undefined);
     assert.ok(schema.properties.player.properties.goals.properties.longTerm);
     assert.ok(schema.properties.characters.items.properties.goals.properties.shortTerm);
     assert.equal(schema.properties.characters.items.properties.goals.properties.longTerm, undefined);

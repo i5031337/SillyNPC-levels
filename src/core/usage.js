@@ -16,12 +16,7 @@ export const USAGE_KINDS = [
     { id: 'scan', label: 'History Scan', sends: 'text',
       note: 'Several per scan - a long story is read in passes.' },
     { id: 'fill', label: 'Character Fill', sends: 'text',
-      // One per stage, not one per character: Fill offers the profile, the lore, the
-      // stats and a portrait, and the ones you pick run as separate requests. The profile
-      // and the stats both land here, so a character filled completely is two runs on
-      // this card, one on Lore Generation and one on Portrait Generation.
-      note: 'One per stage of a fill - the profile and the stats are separate requests, '
-          + 'so filling a character completely counts twice here.' },
+      note: 'One per manually regenerated profile field. Lore and portraits have separate counters.' },
     { id: 'banscan', label: 'Ban List Scan', sends: 'text',
       note: 'One per scan, from the Ban List tab. It reads recent narration, so it costs '
           + 'about what a short scan does.' },

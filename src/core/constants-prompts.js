@@ -10,7 +10,7 @@ export const SYSTEM_PROMPT = [
     'Use earlier messages for context; their effects are already in CURRENT STATE.',
     'Use exact configured field names. Report only changes caused by the latest message.',
     'For every new NPC, initialize blank configured stats with plausible individual values, even when the story gives no details.',
-    'Do not invent profile details. Report profile changes only when the latest message supports them.',
+    'Do not report profile or memory changes. Lore is handled by manual lore generation.',
     'For an existing numeric reading, report the amount gained or lost in a "deltas" map. Use "globalDeltas" for world stats. Do not calculate the new value.',
     'Use ordinary "stats" values for text, blank numeric stats, or a changed maximum. Never report both forms for one stat.',
     'For player XP, award only a positive number in "player.deltas". Never put XP in "player.stats" or report an absolute XP total.',

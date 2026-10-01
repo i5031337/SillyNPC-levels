@@ -107,8 +107,8 @@ export function renderProfileFields(char, container) {
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
             <label>Character details</label>
-            <small class="notes">The active System defines these fields and how the
-                story reader updates them.</small>
+            <small class="notes">The active System defines these fields. Use Fill or the
+                lore writer to add details.</small>
         </div>
     `;
 
@@ -130,10 +130,10 @@ export function renderProfileFields(char, container) {
         policy.textContent = field.policy === 'anchored' ? 'Anchored'
             : field.policy === 'memory' ? 'Memory' : 'Replaceable';
         policy.title = field.policy === 'anchored'
-            ? 'The story reader cannot change this field.'
+            ? 'This field stays as written until you edit or regenerate it.'
             : field.policy === 'memory'
-                ? 'The story reader adds new memories.'
-                : 'The story reader can propose changes.';
+                ? 'Memories can be edited manually.'
+                : 'This field stays as written until you edit or regenerate it.';
 
         /* Write this one field again, whatever it already says.
          *
@@ -219,7 +219,7 @@ export function renderProfileFields(char, container) {
     container.appendChild(grid);
 
     // Saved fields from an older System remain editable even after that System retires
-    // them. Fill and the turn reader use only active fields.
+    // them. Fill uses only active fields.
     const active = new Set(profileFieldsForCard(char).map(field => field.id));
     const legacy = Object.entries(char.profile).filter(([id, value]) =>
         !active.has(id) && String(value ?? '').trim());

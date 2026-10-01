@@ -1,21 +1,14 @@
 import { promptText } from '../../prompts/prompt-texts.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { getContext } from '../../../../../../st-context.js';
-import { isChatCharacter } from '../../characters/character-repository.js';
-import { LOG_PREFIX, debugLog } from '../../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
-import { appendMemory } from '../../core/profile-memories.js';
-import { replaceableProfileValue, sourcedMemory } from '../../core/profile-update-policy.js';
-import { getPlayerCard, findCardForName, loadStateFromMetadata, saveStateToMetadata } from '../status-logic.js';
+import { getSettings } from '../../core/settings.js';
+import { debugLog } from '../../core/constants.js';
+import { loadStateFromMetadata, saveStateToMetadata } from '../status-logic.js';
 import { splitValue } from '../../core/utils.js';
 import { progressXp, boostStat } from '../progression.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
-import { syncProfileToLore } from '../../lore/lore-sync.js';
 import { buildLevelBonusPrompt } from './status-extractor-prompt.js';
 import { canAdvanceStat } from '../stat-update-policy.js';
 import { goalFields, goalValue, setGoal } from '../goals.js';
 import { validGoalProposal } from '../goal-proposals.js';
-import { readNpcMemories, writeNpcMemories } from '../npc-memories.js';
 
 /** Choose a story-appropriate sheet bonus once an XP award crosses its cap. */
 export async function addLevelBonus(parsed, state, trackerSettings, messageText, leadUp = []) {
@@ -67,69 +60,6 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
     sheetStats[bonusName] = `Level ${transition.level}: ${description}`;
     return { stat: target && Number.isInteger(amount) && amount >= 1 && amount <= 5 ? target : null,
         bonusName };
-}
-
-export function applyProfileFromReply(parsed, messageId = null, messageText = '') {
-    const changed = [];
-    const touched = new Set();
-    const settings = getSettings();
-    const limit = settings.statusTracker?.presets?.[settings.activeSystem]?.definition?.memories?.maxEntriesPerCharacter;
-    const state = loadStateFromMetadata();
-    let memoriesChanged = false;
-    const memoryLore = new Map();
-
-    const write = (card, incoming, isPlayer = false) => {
-        if (!card || !incoming || typeof incoming !== 'object') return;
-        if (!card.profile || typeof card.profile !== 'object') card.profile = {};
-
-        for (const field of fieldsForCard(card)) {
-            if (field.policy !== 'replaceable') continue;
-            const quote = incoming.profileEvidence?.[field.id]
-                ?? parsed?.why?.[`${card.name}.${field.id}`];
-            const value = replaceableProfileValue(field, incoming.profile?.[field.id], quote, messageText);
-            // An omitted field means "unchanged", and a blank one is the model failing to
-            // answer rather than deciding somebody has no personality.
-            if (!value || value === String(card.profile[field.id] ?? '').trim()) continue;
-            card.profile[field.id] = value;
-            changed.push(`${card.name}.${field.label}`);
-            touched.add(card);
-        }
-        const memoryFields = new Map(fieldsForCard(card).map(f => [f.id, f]));
-        for (const proposed of Array.isArray(incoming.memories) ? incoming.memories : []) {
-            const candidate = sourcedMemory(memoryFields.get(proposed?.fieldId), proposed, messageId, messageText);
-            if (!candidate) continue;
-            const actor = isPlayer ? state.player : null;
-            if (isPlayer && !actor) continue;
-            const source = isPlayer ? actor.memories : readNpcMemories(state, card);
-            const { store, added } = appendMemory(source, candidate, limit);
-            if (!added) continue;
-            if (isPlayer) actor.memories = store;
-            else writeNpcMemories(state, card, store);
-            memoriesChanged = true;
-            memoryLore.set(card, store);
-            changed.push(`${card.name}.${proposed.fieldId}`);
-        }
-    };
-
-    if (parsed?.player?.profile || parsed?.player?.memories) {
-        try { write(getPlayerCard(), parsed.player, true); } catch { /* no persona */ }
-    }
-
-    for (const incoming of Array.isArray(parsed?.characters) ? parsed.characters : []) {
-        if (incoming?.profile || incoming?.memories) write(findCardForName(incoming.name), incoming);
-    }
-
-    if (memoriesChanged) saveStateToMetadata(state, { label: 'Memories', recordHistory: false });
-    if (changed.length) {
-        if (touched.size) saveSettings();
-        if ([...touched].some(card => card?.id && isChatCharacter(card.id))) {
-            getContext()?.saveMetadataDebounced?.();
-        }
-        for (const card of new Set([...touched, ...memoryLore.keys()])) syncProfileToLore(card, memoryLore.get(card)).catch(err =>
-            console.error(LOG_PREFIX, 'Could not update profile in lorebook', err));
-        debugLog('Profile fields the story changed:', changed);
-    }
-    return changed;
 }
 
 /** Apply only configured, evidenced goal changes in this turn. */

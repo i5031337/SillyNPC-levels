@@ -1,4 +1,3 @@
-import { resolveProfileFields } from '../../core/profile-fields.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
@@ -79,24 +78,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
 
-    /* The active System names each eligible profile, memory and goal field. The apply
-     * side validates policy and source again, including responses from older prompts. */
-    const profileShape = (fields) => ({
-        type: 'object',
-        properties: Object.fromEntries(fields.map(field => [
-            field.id, { type: 'string', description: field.hint },
-        ])),
-    });
-    const editable = scope => resolveProfileFields(scope).filter(field => field.policy === 'replaceable');
-    const memory = scope => resolveProfileFields(scope).filter(field => field.policy === 'memory');
-    const profileProps = scope => editable(scope).length ? profileShape(editable(scope)) : null;
-    const memoryProps = scope => memory(scope).length ? {
-        type: 'array', items: { type: 'object', required: ['fieldId', 'text', 'quote'], properties: {
-            fieldId: { type: 'string' }, text: { type: 'string' }, quote: { type: 'string' },
-        } },
-    } : null;
-    const playerProfileProps = profileProps('player');
-    const npcProfileProps = profileProps('npc');
     const goalProps = scope => {
         const fields = goalFields(scope);
         return fields.length ? { type: 'object', properties: Object.fromEntries(fields.map(field => [
@@ -123,9 +104,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                     stats: stringMap(playerStatDefs.filter(stat => stat.name?.toLowerCase() !== xpName?.toLowerCase())),
                     ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
-                    ...(playerProfileProps ? { profile: playerProfileProps } : {}),
-                    ...(playerProfileProps ? { profileEvidence: playerProfileProps } : {}),
-                    ...(memoryProps('player') ? { memories: memoryProps('player') } : {}),
                     ...(goalProps('player') ? { goals: goalProps('player') } : {}),
                 },
             },
@@ -139,9 +117,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                         stats: stringMap(npcStatDefs),
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),
-                        ...(npcProfileProps ? { profile: npcProfileProps } : {}),
-                        ...(npcProfileProps ? { profileEvidence: npcProfileProps } : {}),
-                        ...(memoryProps('npc') ? { memories: memoryProps('npc') } : {}),
                         ...(goalProps('npc') ? { goals: goalProps('npc') } : {}),
                     },
                 },
