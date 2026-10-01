@@ -32,7 +32,7 @@ import { noteActivatedLore } from './src/lore/activated-lore.js';
 import { setDebugLogging } from './src/core/constants.js';
 import { describeChatConnection } from './src/core/utils.js';
 import { applyDialogueFormatPrompt } from './src/prompts/dialogue-format.js';
-import { applyNarratorRulesPrompt } from './src/prompts/narrator-rules.js';
+import { placeWritingPrompt } from './src/prompts/prompt-slot.js';
 import { applyBanList } from './src/prompts/banlist.js';
 
 async function addSettingsPanel() {
@@ -94,8 +94,8 @@ jQuery(async () => {
         setSwipeBaseAligner(alignSwipeBaseToNow);
         await addSettingsPanel();
         wireAvatarClicks();
-        /* A preset carries its own prompt list, so loading one throws away the entries
-           the two writing prompts are placed by - not the settings that ask for them.
+        /* A preset carries its own prompt list, so loading one throws away the entry
+           the dialogue prompt is placed by - not the setting that asks for it.
            Written again here, which puts them back at the foot of the new list.
            Nothing happens for a block that is not managed there. */
         eventSource.on(event_types.OAI_PRESET_CHANGED_AFTER, () => {
@@ -107,7 +107,7 @@ jQuery(async () => {
              * control, fires when a preset is swapped - so whatever leaves the picture
              * unusable, the recovery inside updateHUD never gets a turn.
              *
-             * It was added below the two calls that follow, which was the mistake: the
+             * It was added below the prompt call that follows, which was the mistake: the
              * catch around them exists because they are expected to fail sometimes, and
              * putting the redraw behind them let a failure in the prompt work silently
              * take the HUD with it. Two unrelated jobs, two failure paths. */
@@ -122,7 +122,6 @@ jQuery(async () => {
 
             try {
                 applyDialogueFormatPrompt();
-                applyNarratorRulesPrompt();
             } catch (err) {
                 debugLog('Could not put the writing prompts back after the preset change', err);
             }
@@ -138,8 +137,9 @@ jQuery(async () => {
             // Here rather than in the tracker's own handler: that one returns early when
             // the tracker is off, and the chat is still decorated then.
             try {
+                // Clear an old prompt-list copy of the retired duplicate rule.
+                placeWritingPrompt('sillynpc-narrator-rules', '');
                 applyDialogueFormatPrompt();
-                applyNarratorRulesPrompt();
                 applyBanList();
             } catch (err) {
                 debugLog('Could not set what is injected into the story prompt', err);

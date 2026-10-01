@@ -149,26 +149,72 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     display: none;
 }
 
-/* ─── Tabs Sidebar ─────────────────────────────────────────────────────── */
+/* ─── Settings navigation ──────────────────────────────────────────────── */
 
 .sillynpc-tabs {
     display: flex;
     flex-direction: column;
-    gap: var(--sillynpc-space-xs);
+    gap: var(--sillynpc-space-md);
     border-right: 1px solid var(--sillynpc-border);
     border-bottom: none;
-    padding: var(--sillynpc-space-lg) var(--sillynpc-space-sm);
+    padding: var(--sillynpc-space-md) var(--sillynpc-space-sm);
     margin-bottom: 0;
     flex-wrap: nowrap;
     /* FIX: Was z-index:2000 !important — use token, no !important needed */
     z-index: var(--sillynpc-z-tabs);
     flex-shrink: 0;
-    width: 200px;
+    width: 176px;
     overflow-y: auto;
     position: sticky;
     top: 0;
     height: 100%;
 }
+
+.sillynpc-sections,
+.sillynpc-subtabs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sillynpc-subtabs {
+    padding-top: var(--sillynpc-space-sm);
+    border-top: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-section {
+    display: flex;
+    align-items: center;
+    gap: var(--sillynpc-space-sm);
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--sillynpc-radius-sm);
+    background: transparent;
+    color: var(--sillynpc-fg-primary);
+    text-align: left;
+    cursor: pointer;
+    opacity: .8;
+}
+
+.sillynpc-section:hover,
+.sillynpc-section.active {
+    background: var(--sillynpc-bg-secondary);
+    opacity: 1;
+}
+
+.sillynpc-section.active {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    font-weight: 700;
+}
+
+.sillynpc-tabs .sillynpc-section:focus-visible,
+.sillynpc-tabs .sillynpc-tab:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: -2px;
+}
+
+.sillynpc-tabs [hidden] { display: none; }
 
 .sillynpc-tab {
     appearance: none;
@@ -177,7 +223,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     border: none;
     border-left: 3px solid transparent;
     border-bottom: none;
-    padding: 10px var(--sillynpc-space-md);
+    padding: 7px var(--sillynpc-space-md);
     cursor: pointer;
     font-size: var(--sillynpc-text-base);
     opacity: 0.7;
@@ -186,7 +232,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     width: 100%;
     box-sizing: border-box;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     white-space: nowrap;
     border-radius: 0 var(--sillynpc-radius-md) var(--sillynpc-radius-md) 0;
 }
@@ -215,7 +261,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     width: 100%;
     box-sizing: border-box;
     overflow-y: auto;
-    padding: var(--sillynpc-space-lg);
+    padding: var(--sillynpc-space-md) var(--sillynpc-space-lg);
     display: flex;
     flex-direction: column;
     background: transparent;
@@ -230,10 +276,10 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 /* ─── Shared UI Components ─────────────────────────────────────────────── */
 
 .sillynpc-section-title {
-    padding-bottom: var(--sillynpc-space-sm);
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--sillynpc-accent);
-    margin-bottom: var(--sillynpc-space-lg);
-    margin-top: var(--sillynpc-space-lg);
+    margin-bottom: var(--sillynpc-space-md);
+    margin-top: var(--sillynpc-space-md);
     font-size: var(--sillynpc-text-lg);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -247,11 +293,11 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     display: flex;
     flex-direction: column;
     gap: var(--sillynpc-space-xs);
-    padding: 14px var(--sillynpc-space-lg);
-    margin-bottom: var(--sillynpc-space-md);
+    padding: 8px var(--sillynpc-space-md);
+    margin-bottom: 4px;
     background: var(--sillynpc-bg-secondary);
     border: 1px solid var(--sillynpc-border);
-    border-radius: var(--sillynpc-radius-md);
+    border-radius: var(--sillynpc-radius-sm);
     transition: background 0.2s ease, border-color 0.2s ease;
     width: 100%;
     box-sizing: border-box;
@@ -265,7 +311,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 /* FIX: Removed !important from every property; the specificity of this
    compound selector is already sufficient to win over generic .notes rules. */
 .sillynpc-setting .notes {
-    margin-top: 2px;
+    margin-top: 0;
     /* Was opacity: 0.6 with no colour, so every description was the body text faded
        towards whatever it sat on - grey-on-cream on the light themes, a whisper on the
        dark ones. Four themes were reported unreadable before it was clear this was one
@@ -273,16 +319,38 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     color: var(--sillynpc-fg-secondary);
     text-align: left;
     display: block;
+    line-height: 1.35;
+    font-size: var(--sillynpc-text-sm);
     width: 100%;
     margin-left: 0;
     margin-right: 0;
+}
+
+.sillynpc-setting-help {
+    color: var(--sillynpc-fg-secondary);
+    font-size: var(--sillynpc-text-sm);
+}
+
+.sillynpc-setting-help > summary {
+    width: fit-content;
+    cursor: pointer;
+    padding: 2px 0;
+}
+
+.sillynpc-setting-help > summary:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
+}
+
+.sillynpc-setting-help[open] > .notes {
+    margin: 4px 0 2px;
 }
 
 .sillynpc-setting-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--sillynpc-space-lg);
+    gap: var(--sillynpc-space-md);
     min-height: 28px;
     width: 100%;
 }
@@ -298,7 +366,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 
 .sillynpc-setting .text_pole,
 .sillynpc-setting select {
-    flex: 0 0 200px;
+    flex: 0 1 180px;
     max-width: 60%;
 }
 
@@ -375,7 +443,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 
 
 .sillynpc-setting .slider-container {
-    flex: 0 0 200px;
+    flex: 0 1 180px;
     max-width: 60%;
     display: flex;
     align-items: center;
@@ -389,7 +457,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 /* Free-entry numbers, for limits that should have no ceiling. Sized to match the
    sliders beside them so a settings column does not go ragged where the control changes. */
 .sillynpc-setting .sillynpc-number-container {
-    flex: 0 0 200px;
+    flex: 0 1 180px;
     max-width: 60%;
     display: flex;
     align-items: center;
@@ -415,6 +483,31 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     width: 50px;
     text-align: right;
     color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+}
+
+.sillynpc-customize {
+    margin: var(--sillynpc-space-sm) 0 var(--sillynpc-space-md);
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-md);
+    padding: 0 var(--sillynpc-space-sm);
+}
+
+.sillynpc-customize > summary {
+    cursor: pointer;
+    padding: 9px 5px;
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    font-weight: 600;
+}
+
+.sillynpc-customize > summary:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
+    border-radius: var(--sillynpc-radius-sm);
+}
+
+.sillynpc-customize[open] > summary {
+    margin-bottom: var(--sillynpc-space-sm);
+    border-bottom: 1px solid var(--sillynpc-border);
 }
 
 /* ─── Animations ───────────────────────────────────────────────────────── */
@@ -452,4 +545,3 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     90%  { clip-path: inset(10% 0 80% 0); }
     100% { clip-path: inset(0 0 95% 0); }
 }
-

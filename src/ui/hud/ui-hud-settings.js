@@ -3,6 +3,7 @@ import { buildSettingToggle, buildSettingSlider, buildSettingSelect } from '../s
 import { triggerReprocess } from '../../chat/chat.js';
 import { updateHUD, resetHudPosition } from './ui-hud.js';
 import { HUD_LAYOUTS, hudLayoutFor } from '../../core/constants.js';
+import { foldSettings } from '../settings/ui-settings-details.js';
 
 /**
  * The floating HUD's settings tab.
@@ -152,6 +153,7 @@ export function renderHudView(container) {
 
         const borderWrap = document.createElement('div');
         borderWrap.className = 'sillynpc-setting';
+        borderWrap.dataset.setting = 'statusTracker.hudPortraitBorder';
         const borderRow = document.createElement('div');
         borderRow.className = 'sillynpc-setting-row';
         const borderLabel = document.createElement('label');
@@ -201,5 +203,11 @@ export function renderHudView(container) {
         });
         resetHudWrap.appendChild(resetHudBtn);
         container.append(resetHudWrap);
+
+        foldSettings(container, 'Customize HUD details', [
+            'statusTracker.hudRingThickness', 'statusTracker.hudMeterWidth',
+            'statusTracker.hudMeterHeight', 'statusTracker.hudPortraitSide',
+            'statusTracker.hudPortraitShape', 'statusTracker.hudPortraitBorder',
+        ]);
     }
 }

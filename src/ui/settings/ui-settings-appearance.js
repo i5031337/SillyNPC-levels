@@ -1,21 +1,6 @@
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { pickAndProcessImages, resolveImageFolder, describeSaveDestination } from '../../core/utils.js';
-import { promptListAvailable } from '../../prompts/prompt-slot.js';
-import { applyDialogueFormatPrompt } from '../../prompts/dialogue-format.js';
-import { applyNarratorRulesPrompt } from '../../prompts/narrator-rules.js';
-import { buildSettingSelect, buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingNumber, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
-import { renderBanList } from '../shared/ui-banlist.js';
-import { world_names } from '../../../../../../world-info.js';
-import { extension_settings } from '../../../../../../extensions.js';
-import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
-import { LOG_PREFIX, NARRATOR_RULES_PROMPT, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
-import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, scanFolderForCharacterImages, persistGeneratedImage, findOrphanedImages, deleteImageFiles } from '../../api/api.js';
-import { getSecretLabelById } from '../../../../../../secrets.js';
-import { getRequestHeaders } from '../../../../../../../script.js';
-import { getContext } from '../../../../../../extensions.js';
-import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
-import { clearRuns } from '../../characters/default-portraits.js';
-import { triggerReprocess } from '../../chat/chat.js';
+import { getSettings } from '../../core/settings.js';
+import { buildSettingSelect, buildSettingToggle, buildSettingSlider, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
+import { SILLYNPC_THEMES } from '../../core/constants.js';
 import { renderDefaultView } from './ui-settings-defaults.js';
 
 /**
@@ -35,6 +20,16 @@ const THEME_LABELS = {
 
 const THEME_OPTIONS = SILLYNPC_THEMES.map(id => ({ value: id, label: THEME_LABELS[id] || id }));
 
+function customize(label, opened) {
+    const details = document.createElement('details');
+    details.className = 'sillynpc-customize';
+    details.open = opened.has(label);
+    const summary = document.createElement('summary');
+    summary.textContent = label;
+    details.append(summary);
+    return details;
+}
+
 /**
  * How the chat and the menu look.
  *
@@ -46,6 +41,8 @@ const THEME_OPTIONS = SILLYNPC_THEMES.map(id => ({ value: id, label: THEME_LABEL
 export function renderAppearanceView(view, onReprocessMessages, updateExtensionTheme) {
     if (!view) return;
 
+    const opened = new Set([...view.querySelectorAll('details[open] > summary')]
+        .map(summary => summary.textContent));
     view.replaceChildren();
     const reprocess = () => onReprocessMessages();
     const rerender = () => renderAppearanceView(view, onReprocessMessages, updateExtensionTheme);
@@ -79,8 +76,9 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
             + 'wanting it smaller there is not wanting the settings smaller too.',
         onChange: reprocess,
     }));
-    view.append(buildSettingSelect({ key: 'dividerStyle', label: 'Speech Block Dividers', options: [{value:'subtle',label:'Subtle Fade'},{value:'bold',label:'Solid Accent'},{value:'dashed',label:'Dashed Line'},{value:'none',label:'No Dividers'}], onChange: reprocess }));
-    view.append(buildSettingSlider({
+    const chatDetails = customize('Customize chat blocks', opened);
+    chatDetails.append(buildSettingSelect({ key: 'dividerStyle', label: 'Speech Block Dividers', options: [{value:'subtle',label:'Subtle Fade'},{value:'bold',label:'Solid Accent'},{value:'dashed',label:'Dashed Line'},{value:'none',label:'No Dividers'}], onChange: reprocess }));
+    chatDetails.append(buildSettingSlider({
         key: 'speechPadY',
         label: 'Speech Block Spacing',
         min: 0, max: 30, step: 1, suffix: 'px',
@@ -88,6 +86,7 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
             + 'is fixed; only its height changes here.',
         onChange: () => { applySpeechPadding(); reprocess(); },
     }));
+    view.append(chatDetails);
 
     const colourHeading = document.createElement('h3');
     colourHeading.className = 'sillynpc-section-title';
@@ -125,10 +124,11 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
     portraitHeading.textContent = 'Portraits In The Chat';
     view.append(portraitHeading);
 
-    view.append(buildSettingSelect({ key: 'avatarShape', label: 'Chat Avatar Shape', options: [{value:'square',label:'Sharp Square'},{value:'rounded',label:'Rounded Corners'},{value:'circle',label:'Perfect Circle'}], onChange: reprocess }));
     view.append(buildSettingSelect({ key: 'avatarSize', label: 'Chat Avatar Size', options: [{value:'small',label:'Small (44px)'},{value:'medium',label:'Medium (64px)'},{value:'large',label:'Large (96px)'},{value:'extra',label:'Extra Large (132px)'}], onChange: reprocess }));
-    view.append(buildSettingSelect({ key: 'defaultImageFit', label: 'Avatar Image Scaling', options: [{value:'contain',label:'Fit within frame (Contain)'},{value:'cover',label:'Fill frame completely (Cover)'}], onChange: reprocess }));
-    view.append(buildSettingSelect({
+    const portraitDetails = customize('Customize portraits', opened);
+    portraitDetails.append(buildSettingSelect({ key: 'avatarShape', label: 'Chat Avatar Shape', options: [{value:'square',label:'Sharp Square'},{value:'rounded',label:'Rounded Corners'},{value:'circle',label:'Perfect Circle'}], onChange: reprocess }));
+    portraitDetails.append(buildSettingSelect({ key: 'defaultImageFit', label: 'Avatar Image Scaling', options: [{value:'contain',label:'Fit within frame (Contain)'},{value:'cover',label:'Fill frame completely (Cover)'}], onChange: reprocess }));
+    portraitDetails.append(buildSettingSelect({
         key: 'portraitFraming',
         label: 'Portrait Framing',
         options: [
@@ -141,22 +141,24 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
             + 'portrait; change it if your pictures are framed differently.',
         onChange: () => { applyPortraitFraming(); reprocess(); },
     }));
-    view.append(buildSettingToggle({
+    portraitDetails.append(buildSettingToggle({
         key: 'hideSpeakerNames',
         label: 'Hide Default Speaker Names',
         help: 'Hides the name and colon when a character has a card and portrait. Speakers '
             + 'without cards keep their names so they remain distinguishable.',
         onChange: reprocess,
     }));
+    view.append(portraitDetails);
 
-    renderDefaultView(view, rerender);
+    const fallbackDetails = customize('Fallback portraits', opened);
+    renderDefaultView(fallbackDetails, rerender);
+    view.append(fallbackDetails);
 }
 
 /**
  * What the model is asked to write, and how what it writes is read back.
  *
- * A tab of its own because these three - the dialogue format, the narrator rules and the
- * ban list - are one job done three ways, and they were scattered across two tabs, one of
+ * A tab of its own because the dialogue format and ban list were scattered across two tabs, one of
  * which was called Settings and held the popup size as well.
  *
  * The reading half belongs with them rather than with the styling: "Not Speakers" and

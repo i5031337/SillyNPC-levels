@@ -1,21 +1,7 @@
-import { clearRuns } from '../../characters/default-portraits.js';
 import { triggerReprocess } from '../../chat/chat.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { pickAndProcessImages, resolveImageFolder, describeSaveDestination } from '../../core/utils.js';
-import { promptListAvailable } from '../../prompts/prompt-slot.js';
-import { applyDialogueFormatPrompt } from '../../prompts/dialogue-format.js';
-import { applyNarratorRulesPrompt } from '../../prompts/narrator-rules.js';
-import { buildSettingSelect, buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingNumber, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
-import { renderBanList } from '../shared/ui-banlist.js';
-import { world_names } from '../../../../../../world-info.js';
-import { extension_settings } from '../../../../../../extensions.js';
-import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
-import { LOG_PREFIX, NARRATOR_RULES_PROMPT, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
-import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, scanFolderForCharacterImages, persistGeneratedImage, findOrphanedImages, deleteImageFiles } from '../../api/api.js';
-import { getSecretLabelById } from '../../../../../../secrets.js';
-import { getRequestHeaders } from '../../../../../../../script.js';
-import { getContext } from '../../../../../../extensions.js';
-import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
+import { getSettings } from '../../core/settings.js';
+import { buildSettingToggle, buildSettingSlider } from '../shared/ui-shared.js';
+import { setDebugLogging } from '../../core/constants.js';
 
 export function renderAdvancedView(view, handlers = {}) {
     if (!view) return;
@@ -41,23 +27,19 @@ export function renderAdvancedView(view, handlers = {}) {
 
     view.append(buildSettingToggle({
         key: 'devMode',
-        label: 'Show Every Setting',
-        help: 'Eighteen settings are hidden to begin with: reply budgets, transcript sizes, '
-            + 'prompt depths, and the two that can lose an update if set wrong. Their '
-            + 'defaults are right until something specific goes wrong, and meeting all '
-            + 'eighty-one at once is how the useful ones get lost among them. Nothing is '
-            + 'removed - this shows them again, on every tab.',
+        label: 'Detailed Settings',
+        help: 'Show request budgets, prompt depths, scan limits and other specialized controls.',
         onChange: () => rerender(),
     }));
 
-    const sizeHeading = document.createElement('h3');
-    sizeHeading.className = 'sillynpc-section-title';
-    sizeHeading.style.marginTop = '20px';
-    sizeHeading.textContent = 'Menu Size';
-    view.append(sizeHeading);
-
-    view.append(buildSettingSlider({ key: 'popupWidth', label: 'Menu Width', min: 20, max: 100, suffix: 'vw', help: 'Width relative to screen size.', onChange: () => applyPopupSize?.() }));
-    view.append(buildSettingSlider({ key: 'popupHeight', label: 'Menu Height', min: 20, max: 100, suffix: 'vh', help: 'Height relative to screen size.', onChange: () => applyPopupSize?.() }));
+    const sizeDetails = document.createElement('details');
+    sizeDetails.className = 'sillynpc-customize';
+    const sizeSummary = document.createElement('summary');
+    sizeSummary.textContent = 'Customize menu size';
+    sizeDetails.append(sizeSummary);
+    sizeDetails.append(buildSettingSlider({ key: 'popupWidth', label: 'Menu Width', min: 20, max: 100, suffix: 'vw', help: 'Width relative to screen size.', onChange: () => applyPopupSize?.() }));
+    sizeDetails.append(buildSettingSlider({ key: 'popupHeight', label: 'Menu Height', min: 20, max: 100, suffix: 'vh', help: 'Height relative to screen size.', onChange: () => applyPopupSize?.() }));
+    view.append(sizeDetails);
 
     const backupHeading = document.createElement('h3');
     backupHeading.className = 'sillynpc-section-title';

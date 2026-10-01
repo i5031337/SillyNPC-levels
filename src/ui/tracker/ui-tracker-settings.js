@@ -4,6 +4,7 @@ import { updateHUD } from '../hud/ui-hud.js';
 import { renderTrackerDisplayAndReading } from './ui-tracker-display-reading.js';
 import { renderTrackerScanAndReview } from './ui-tracker-scan-review.js';
 import { renderTrackerCastAndRecovery } from './ui-tracker-cast-recovery.js';
+import { foldSettings } from '../settings/ui-settings-details.js';
 
 /**
  * The Tracker settings tab, and the two popups it opens.
@@ -64,5 +65,18 @@ export function renderStatusView(container) {
     renderTrackerDisplayAndReading(view);
     renderTrackerScanAndReview(view);
     renderTrackerCastAndRecovery(view);
+
+    foldSettings(container, 'Customize display', [
+        'statusTracker.showWorldStats', 'statusTracker.showPortraits',
+        'statusTracker.charactersSideBySide', 'statusTracker.summaryThreshold',
+    ]);
+    foldSettings(container, 'Customize the reader', [
+        'statusTracker.extractionContextMessages', 'statusTracker.extractionMaxTokens',
+        'statusTracker.extractionTemperature', 'statusTracker.extractionReasons',
+        'statusTracker.extractionUseSchema',
+    ]);
+    foldSettings(container, 'Review details', [
+        'statusTracker.maxChangePolicy', 'statusTracker.reviewSwingThreshold',
+    ]);
 
 }

@@ -148,7 +148,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/prompts/fill-preset.js` | Automatic character fill stage selection. |
 | `src/prompts/prompt-slot.js` | Place writing prompts in SillyTavern's prompt manager. |
 | `src/prompts/macros.js` | Expand extension template macros. |
-| `src/prompts/narrator-rules.js` | Narrator writing rules. |
 | `src/prompts/dialogue-format.js` | Dialogue formatting instructions. |
 | `src/prompts/banlist.js` | Banned phrase rules and scan prompts. |
 
@@ -228,6 +227,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/characters/ui-profile.js` | Active System profile fields and saved legacy field display/editing. |
 | `src/ui/tracker/ui-scan-button.js` | History scan trigger. |
 | `src/ui/settings/ui-setting-controls.js` | Shared settings form controls. |
+| `src/ui/settings/ui-settings-details.js` | Group less-used settings in disclosures. |
 | `src/ui/settings/ui-settings-search.js` | Search settings and jump to results. |
 | `src/ui/settings/ui-settings-tabs.js` | Public entry point for settings views. |
 | `src/ui/settings/ui-settings-appearance.js` | Appearance settings. |

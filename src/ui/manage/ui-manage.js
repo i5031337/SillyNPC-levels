@@ -127,23 +127,38 @@ function applyPopupSize() {
 }
 
 function setupTabBar() {
-    if (!manageState.manageRoot) return;
-    const tabs = manageState.manageRoot.querySelectorAll('.sillynpc-tab');
-    
-    tabs.forEach(tab => {
-        const name = tab.getAttribute('data-tab');
-        if (!name) return;
-        tab.replaceWith(tab.cloneNode(true));
-    });
-    
-    const freshTabs = manageState.manageRoot.querySelectorAll('.sillynpc-tab');
-    freshTabs.forEach(tab => {
-        const name = tab.getAttribute('data-tab');
-        tab.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchTab(name);
+    const root = manageState.manageRoot;
+    if (!root) return;
+    for (const tab of root.querySelectorAll('.sillynpc-subtabs .sillynpc-tab')) {
+        tab.id = `sillynpc-tab-${tab.dataset.tab}`;
+        tab.setAttribute('aria-controls', `sillynpc-panel-${tab.dataset.tab}`);
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    }
+    for (const section of root.querySelectorAll('.sillynpc-section')) {
+        section.id = `sillynpc-section-${section.dataset.section}`;
+        section.addEventListener('click', () => {
+            const first = root.querySelector(`.sillynpc-tab[data-section="${section.dataset.section}"]`);
+            if (first) switchTab(first.dataset.tab);
         });
-    });
+    }
+    for (const panel of root.querySelectorAll('.sillynpc-tab-panel')) {
+        panel.id = `sillynpc-panel-${panel.dataset.panel}`;
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', `sillynpc-tab-${panel.dataset.panel}`);
+    }
+    for (const list of root.querySelectorAll('.sillynpc-sections, .sillynpc-subtabs')) {
+        list.addEventListener('keydown', e => {
+            if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+            const buttons = [...list.querySelectorAll('button:not([hidden])')];
+            const index = buttons.indexOf(document.activeElement);
+            if (index < 0) return;
+            e.preventDefault();
+            const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1
+                : (index + (['ArrowDown', 'ArrowRight'].includes(e.key) ? 1 : -1) + buttons.length) % buttons.length;
+            buttons[next].focus();
+            buttons[next].click();
+        });
+    }
 }
 
 /**
@@ -176,6 +191,7 @@ function setupSettingsSearch() {
 function revealSetting(key) {
     const wrap = manageState.manageRoot?.querySelector(`[data-setting="${key}"]`);
     if (!wrap) return;
+    for (let details = wrap.closest('details'); details; details = details.parentElement?.closest('details')) details.open = true;
     wrap.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
     wrap.classList.add('sillynpc-setting-found');
     // Long enough to find by eye, short enough that it is gone before it becomes part of
@@ -204,10 +220,30 @@ export function renderManageView() {
     if (!manageState.manageRoot) return;
 
     // Update tab button states
-    const tabs = manageState.manageRoot.querySelectorAll('.sillynpc-tab');
+    const activeTab = manageState.manageRoot.querySelector(`.sillynpc-subtabs .sillynpc-tab[data-tab="${manageState.activeTab}"]`);
+    const section = activeTab?.dataset.section || 'cast';
+    for (const button of manageState.manageRoot.querySelectorAll('.sillynpc-section')) {
+        const active = button.dataset.section === section;
+        const first = manageState.manageRoot.querySelector(`.sillynpc-tab[data-section="${button.dataset.section}"]`);
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+        button.setAttribute('aria-controls', `sillynpc-panel-${active ? manageState.activeTab : first.dataset.tab}`);
+        button.tabIndex = active ? 0 : -1;
+    }
+    const singlePage = section === 'appearance' || section === 'more';
+    const subtabs = manageState.manageRoot.querySelector('.sillynpc-subtabs');
+    subtabs.hidden = singlePage;
+    subtabs.style.display = singlePage ? 'none' : '';
+    const tabs = manageState.manageRoot.querySelectorAll('.sillynpc-subtabs .sillynpc-tab');
     tabs.forEach(t => {
         const tName = t.getAttribute('data-tab');
-        t.classList.toggle('active', tName === manageState.activeTab);
+        const active = tName === manageState.activeTab;
+        const visible = t.dataset.section === section;
+        t.hidden = !visible;
+        t.style.display = visible ? '' : 'none';
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+        t.tabIndex = active ? 0 : -1;
     });
 
     // Toggle panel visibility
@@ -216,6 +252,9 @@ export function renderManageView() {
         const pName = p.getAttribute('data-panel');
         const isCurrent = pName === manageState.activeTab;
         p.style.setProperty('display', isCurrent ? 'flex' : 'none', 'important');
+        p.setAttribute('aria-hidden', String(!isCurrent));
+        if (isCurrent) p.setAttribute('aria-labelledby', singlePage
+            ? `sillynpc-section-${section}` : `sillynpc-tab-${pName}`);
     });
 
     updateManageTheme(manageState.manageRoot, manageState.managePopup);
@@ -268,23 +307,23 @@ export function renderManageView() {
  */
 function settingsTabs() {
     return [
-        { id: 'appearance', label: 'Appearance', container: 'sillynpc-appearance-view',
+        { id: 'appearance', label: 'Appearance / Appearance', container: 'sillynpc-appearance-view',
           render: v => renderAppearanceView(v, reprocessAllMessages, updateManageTheme) },
-        { id: 'writing', label: 'Writing Rules', container: 'sillynpc-writing-view',
+        { id: 'writing', label: 'Story / Writing Rules', container: 'sillynpc-writing-view',
           render: v => renderWritingRulesView(v, reprocessAllMessages) },
-        { id: 'goals', label: 'Goals', container: 'sillynpc-goals-view',
+        { id: 'goals', label: 'Story / Goals', container: 'sillynpc-goals-view',
           render: v => renderGoalsView(v) },
-        { id: 'status', label: 'Tracker', container: 'sillynpc-status-view',
+        { id: 'status', label: 'Status / Tracker', container: 'sillynpc-status-view',
           render: v => renderStatusView(v) },
-        { id: 'hud', label: 'HUD', container: 'sillynpc-hud-view',
+        { id: 'hud', label: 'Status / HUD', container: 'sillynpc-hud-view',
           render: v => renderHudView(v) },
-        { id: 'systems', label: 'Systems', container: 'sillynpc-systems-view',
+        { id: 'systems', label: 'Status / Systems', container: 'sillynpc-systems-view',
           render: v => renderSystemsView(v) },
-        { id: 'generation', label: 'Generation', container: 'sillynpc-generation-settings-view',
+        { id: 'generation', label: 'Story / Generation', container: 'sillynpc-generation-settings-view',
           render: v => renderGenerationSettingsView(v) },
-        { id: 'stats', label: 'Stats', container: 'sillynpc-stats-view',
+        { id: 'stats', label: 'Status / Stats', container: 'sillynpc-stats-view',
           render: v => renderStatsView(v) },
-        { id: 'advanced', label: 'Advanced', container: 'sillynpc-advanced-view',
+        { id: 'advanced', label: 'More / Advanced', container: 'sillynpc-advanced-view',
           render: v => renderAdvancedView(v, {
               applyPopupSize,
               onExport: () => exportData(),

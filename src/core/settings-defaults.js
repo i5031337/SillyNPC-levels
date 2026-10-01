@@ -55,15 +55,6 @@ export const defaultSettings = {
      */
     dialogueFormatInPromptList: false,
     /**
-     * How the narrator should behave, injected late so a long chat cannot bury it.
-     *
-     * Off by default. When enabled, the built-in rules are sent.
-     */
-    narratorRulesEnabled: false,
-    narratorRulesDepth: 0,
-    /** As above. The rules exist because a card's instructions sit too far from the reply. */
-    narratorRulesInPromptList: false,
-    /**
      * Phrases the model leans on, stopped at the sampler where the backend allows it.
      *
      * Travels with the system rather than staying global: what counts as slop is a

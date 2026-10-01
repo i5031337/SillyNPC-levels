@@ -43,6 +43,7 @@ try:
                                        {'script': script, 'args': []})
     execute("document.querySelector('#sillynpc-open-manage').click()")
     time.sleep(0.5)
+    execute("document.querySelector('.sillynpc-section[data-section=status]').click()")
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
@@ -59,6 +60,27 @@ try:
           }).length};""")
     assert result['rows'] > 0 and result['purpose'] == result['rows'], result
     assert result['numericOptions'] == 0 and result['wrongMaxLabels'] == 0, result
+    execute("""const input = document.querySelector('#sillynpc-settings-search input');
+        input.value = 'Speech Block Dividers'; input.dispatchEvent(new Event('input', {bubbles: true}));""")
+    execute("document.querySelector('.sillynpc-settings-search-hit').click()")
+    search_result = execute("""return {
+        section: document.querySelector('.sillynpc-section.active')?.dataset.section,
+        detailsOpen: document.querySelector('[data-setting=dividerStyle]')?.closest('details')?.open,
+        activePage: document.querySelector('.sillynpc-tab.active')?.dataset.tab};""")
+    assert search_result == {'section': 'appearance', 'detailsOpen': True,
+                             'activePage': 'appearance'}, search_result
+    execute("document.querySelector('.sillynpc-section[data-section=more]').click()")
+    more = execute("""return {
+        page: document.querySelector('.sillynpc-tab.active')?.dataset.tab,
+        subtabsHidden: document.querySelector('.sillynpc-subtabs')?.hidden};""")
+    assert more == {'page': 'advanced', 'subtabsHidden': True}, more
+    webdriver('POST', f'/session/{session}/window/rect', {'width': 600, 'height': 900})
+    execute("document.querySelector('.sillynpc-section[data-section=status]').click()")
+    narrow = execute("""const tabs = document.querySelector('.sillynpc-tabs');
+        return {overflow: tabs.scrollWidth > tabs.clientWidth + 2,
+          visiblePages: [...document.querySelectorAll('.sillynpc-subtabs .sillynpc-tab')]
+            .filter(tab => !tab.hidden).length};""")
+    assert narrow == {'overflow': False, 'visiblePages': 4}, narrow
     print('SillyNPC live UI passed:', json.dumps(result))
 finally:
     if session:

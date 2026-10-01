@@ -18,5 +18,11 @@ export function renderImageGenerationSettings(view, rerender) {
     }));
     view.append(buildSettingSelect({ key: 'imgGenContextMessages', advanced: true, label: 'Image Context Length',
         options: [{ value: 0, label: 'Lore Only' }, { value: 5, label: '5' }, { value: 10, label: '10' }, { value: 20, label: '20' }] }));
-    renderImageStorageSettings(view);
+    const storage = document.createElement('details');
+    storage.className = 'sillynpc-customize';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Portrait storage and cleanup';
+    storage.append(summary);
+    renderImageStorageSettings(storage);
+    view.append(storage);
 }

@@ -12,7 +12,7 @@ let restoreUserNameDisplay = false;
 export function allowStoryPlayerDialogue(type, _options, dryRun) {
     if (dryRun || type === 'quiet' || type === 'impersonate') return;
     const settings = getSettings();
-    if (!settings.enabled || (!settings.dialogueFormatEnabled && !settings.narratorRulesEnabled)) return;
+    if (!settings.enabled || !settings.dialogueFormatEnabled) return;
     if (power_user.allow_name1_display) return;
 
     power_user.allow_name1_display = true;

@@ -27,6 +27,5 @@ export function paletteColorFor(name) {
 }
 
 export const DIALOGUE_FORMAT_PROMPT = 'Start each spoken line with the speaker\'s actual name and a colon: Name: "dialogue".';
-export const NARRATOR_RULES_PROMPT = DIALOGUE_FORMAT_PROMPT;
 
 export const IMAGE_PROMPT = '{{lore}}\n{{items}}';

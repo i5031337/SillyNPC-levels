@@ -1,21 +1,11 @@
 import { clearRuns } from '../../characters/default-portraits.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
-import { pickAndProcessImages, resolveImageFolder, describeSaveDestination } from '../../core/utils.js';
-import { promptListAvailable } from '../../prompts/prompt-slot.js';
-import { applyDialogueFormatPrompt } from '../../prompts/dialogue-format.js';
-import { applyNarratorRulesPrompt } from '../../prompts/narrator-rules.js';
-import { buildSettingSelect, buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingNumber, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
-import { renderBanList } from '../shared/ui-banlist.js';
-import { world_names } from '../../../../../../world-info.js';
-import { extension_settings } from '../../../../../../extensions.js';
-import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
-import { LOG_PREFIX, NARRATOR_RULES_PROMPT, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
-import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, scanFolderForCharacterImages, persistGeneratedImage, findOrphanedImages, deleteImageFiles } from '../../api/api.js';
-import { getSecretLabelById } from '../../../../../../secrets.js';
-import { getRequestHeaders } from '../../../../../../../script.js';
-import { getContext } from '../../../../../../extensions.js';
-import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
+import { pickAndProcessImages } from '../../core/utils.js';
+import { buildSettingNumber } from '../shared/ui-shared.js';
+import { Popup } from '../../../../../../popup.js';
+import { LOG_PREFIX } from '../../core/constants.js';
+import { persistGeneratedImage } from '../../api/api.js';
 
 export function renderDefaultView(view, rerender) {
     if (!view) return;
@@ -161,4 +151,3 @@ export function renderDefaultView(view, rerender) {
         view.appendChild(forget);
     }
 }
-

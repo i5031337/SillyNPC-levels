@@ -73,7 +73,7 @@ function renderLoreSettings(view) {
             + 'main API. Enable the Connection Manager extension to choose another model.',
     }));
     view.append(buildLastLoreConnectionNote());
-    view.append(buildSettingNumber({ key: 'loreMaxTokens', label: 'Lore Reply Budget',
+    view.append(buildSettingNumber({ key: 'loreMaxTokens', advanced: true, label: 'Lore Reply Budget',
         suffix: 'tokens', help: 'Maximum tokens the lore writer may reply with.' }));
 }
 

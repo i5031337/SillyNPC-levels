@@ -1,21 +1,8 @@
-import { clearRuns } from '../../characters/default-portraits.js';
-import { triggerReprocess } from '../../chat/chat.js';
 import { getSettings } from '../../core/settings.js';
-import { pickAndProcessImages, resolveImageFolder, describeSaveDestination } from '../../core/utils.js';
 import { promptListAvailable } from '../../prompts/prompt-slot.js';
 import { applyDialogueFormatPrompt } from '../../prompts/dialogue-format.js';
-import { applyNarratorRulesPrompt } from '../../prompts/narrator-rules.js';
-import { buildSettingSelect, buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingNumber, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
+import { buildSettingToggle, buildSettingTextArea, buildSettingNumber } from '../shared/ui-shared.js';
 import { renderBanList } from '../shared/ui-banlist.js';
-import { world_names } from '../../../../../../world-info.js';
-import { extension_settings } from '../../../../../../extensions.js';
-import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../../popup.js';
-import { LOG_PREFIX, SILLYNPC_THEMES, PORTRAIT_SHAPES, debugLog, setDebugLogging } from '../../core/constants.js';
-import { buildLoreExcerpt, resolvePortraitShape, getLastLoreConnection, scanFolderForCharacterImages, persistGeneratedImage, findOrphanedImages, deleteImageFiles } from '../../api/api.js';
-import { getSecretLabelById } from '../../../../../../secrets.js';
-import { getRequestHeaders } from '../../../../../../../script.js';
-import { getContext } from '../../../../../../extensions.js';
-import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
 
 export function renderWritingRulesView(view, onReprocessMessages) {
     if (!view) return;
@@ -31,10 +18,7 @@ export function renderWritingRulesView(view, onReprocessMessages) {
 
     const intro = document.createElement('p');
     intro.className = 'notes sillynpc-tab-intro';
-    intro.textContent = 'Everything here is sent with your messages, and each is placed '
-        + 'rather than merely worded: where an instruction sits in the prompt decides '
-        + 'whether it holds. Only the dialogue format is on to begin with, because the '
-        + 'rest of the extension reads what it asks for.';
+    intro.textContent = 'Ask for consistent dialogue, avoid repeated phrases, and choose how speakers are recognized.';
     view.appendChild(intro);
 
     const formatHeading = document.createElement('h4');
@@ -77,44 +61,6 @@ export function renderWritingRulesView(view, onReprocessMessages) {
                 + 'before answering - which is where a layout rule holds best, and why it '
                 + 'is the default. Raise it only if it crowds something you would rather '
                 + 'have last.',
-        }));
-    }
-
-    const narratorHeading = document.createElement('h4');
-    narratorHeading.className = 'sillynpc-subsection-title';
-    narratorHeading.textContent = 'Narrator Rules';
-    view.append(narratorHeading);
-
-    view.append(buildSettingToggle({
-        key: 'narratorRulesEnabled',
-        label: 'Send Narrator Rules Late In The Prompt',
-        help: 'Repeats the Speaker: "dialogue" format late in the prompt.',
-        onChange: rerender,
-    }));
-    if (getSettings().narratorRulesEnabled) {
-        if (promptListAvailable()) {
-            view.append(buildSettingToggle({
-                key: 'narratorRulesInPromptList',
-                label: "Manage In SillyTavern's Prompt List",
-                help: "Puts the narrator rules into SillyTavern's own prompt list, under AI Response Configuration, where it can be dragged among the system prompts, given another depth, or switched off beside everything else. It goes in as In-Chat at depth 0, which is where it already sits, so switching this on moves nothing until you move it. The entry is kept in your chat completion preset: it is exported with that preset, and loading a different one drops it until SillyNPC puts it back. The extension supplies the built-in wording; the list controls where it goes and whether it is sent. Chat Completion only: there is no such list on Text Completion.",
-                onChange: () => {
-                    // At once rather than at the next message: the list entry is
-                    // what makes the block appear there at all, and a setting whose
-                    // effect waits for a send reads as a setting that did nothing.
-                    applyNarratorRulesPrompt();
-                    rerender();
-                },
-            }));
-        }
-        if (!getSettings().narratorRulesInPromptList) view.append(buildSettingNumber({
-            key: 'narratorRulesDepth',
-            advanced: true,
-            label: 'Narrator Rules Depth',
-            suffix: 'messages back',
-            help: 'How far back from the newest message the rules are inserted. 0 puts '
-                + 'them after the newest one, last before the model answers, which is '
-                + 'where an instruction holds best. Raise it if it crowds the dialogue '
-                + 'format, which wants the same place.',
         }));
     }
 

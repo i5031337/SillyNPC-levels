@@ -1,40 +1,49 @@
 <div class="sillynpc sillynpc-manage">
     <div class="sillynpc-manage-layout">
-        <div class="sillynpc-tabs" role="tablist">
+        <div class="sillynpc-tabs">
         <div id="sillynpc-settings-search"></div>
-        <button type="button" class="sillynpc-tab active" data-tab="characters" role="tab">
+        <div class="sillynpc-sections" role="tablist" aria-label="Settings sections">
+            <button type="button" class="sillynpc-section active" data-section="cast" role="tab" aria-selected="true">Cast</button>
+            <button type="button" class="sillynpc-section" data-section="story" role="tab" aria-selected="false">Story</button>
+            <button type="button" class="sillynpc-section" data-section="status" role="tab" aria-selected="false">Status</button>
+            <button type="button" class="sillynpc-section" data-section="appearance" role="tab" aria-selected="false">Appearance</button>
+            <button type="button" class="sillynpc-section" data-section="more" role="tab" aria-selected="false">More</button>
+        </div>
+        <div class="sillynpc-subtabs" role="tablist" aria-label="Pages">
+        <button type="button" class="sillynpc-tab active" data-tab="characters" data-section="cast" role="tab" aria-selected="true">
             <i class="fa-solid fa-users"></i> <span>Characters</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="player" role="tab">
+        <button type="button" class="sillynpc-tab" data-tab="player" data-section="cast" role="tab" aria-selected="false">
             <i class="fa-solid fa-user"></i> <span>Player</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="appearance" role="tab">
-            <i class="fa-solid fa-palette"></i> <span>Appearance</span>
-        </button>
-        <button type="button" class="sillynpc-tab" data-tab="writing" role="tab">
-            <i class="fa-solid fa-pen-nib"></i> <span>Writing Rules</span>
-        </button>
-        <button type="button" class="sillynpc-tab" data-tab="goals" role="tab">
+        <button type="button" class="sillynpc-tab" data-tab="goals" data-section="story" role="tab" aria-selected="false" hidden>
             <i class="fa-solid fa-bullseye"></i> <span>Goals</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="status" role="tab">
-            <i class="fa-solid fa-heart-pulse"></i> <span>Tracker</span>
+        <button type="button" class="sillynpc-tab" data-tab="writing" data-section="story" role="tab" aria-selected="false" hidden>
+            <i class="fa-solid fa-pen-nib"></i> <span>Writing Rules</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="hud" role="tab">
-            <i class="fa-solid fa-gauge-high"></i> <span>HUD</span>
-        </button>
-        <button type="button" class="sillynpc-tab" data-tab="systems" role="tab">
-            <i class="fa-solid fa-screwdriver-wrench"></i> <span>Systems</span>
-        </button>
-        <button type="button" class="sillynpc-tab" data-tab="generation" role="tab">
+        <button type="button" class="sillynpc-tab" data-tab="generation" data-section="story" role="tab" aria-selected="false" hidden>
             <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Generation</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="stats" role="tab">
+        <button type="button" class="sillynpc-tab" data-tab="status" data-section="status" role="tab" aria-selected="false" hidden>
+            <i class="fa-solid fa-heart-pulse"></i> <span>Tracker</span>
+        </button>
+        <button type="button" class="sillynpc-tab" data-tab="hud" data-section="status" role="tab" aria-selected="false" hidden>
+            <i class="fa-solid fa-gauge-high"></i> <span>HUD</span>
+        </button>
+        <button type="button" class="sillynpc-tab" data-tab="stats" data-section="status" role="tab" aria-selected="false" hidden>
             <i class="fa-solid fa-chart-simple"></i> <span>Stats</span>
         </button>
-        <button type="button" class="sillynpc-tab" data-tab="advanced" role="tab">
+        <button type="button" class="sillynpc-tab" data-tab="systems" data-section="status" role="tab" aria-selected="false" hidden>
+            <i class="fa-solid fa-screwdriver-wrench"></i> <span>Systems</span>
+        </button>
+        <button type="button" class="sillynpc-tab" data-tab="appearance" data-section="appearance" role="tab" aria-selected="false" hidden>
+            <i class="fa-solid fa-palette"></i> <span>Appearance</span>
+        </button>
+        <button type="button" class="sillynpc-tab" data-tab="advanced" data-section="more" role="tab" aria-selected="false" hidden>
             <i class="fa-solid fa-gear"></i> <span>Advanced</span>
         </button>
+        </div>
     </div>
 
     <div class="sillynpc-tab-panel" data-panel="characters">

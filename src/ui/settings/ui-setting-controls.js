@@ -29,6 +29,19 @@ function markAdvanced(wrap, spec) {
     if (!getSettings().devMode) wrap.style.display = 'none';
 }
 
+function appendHelp(wrap, help) {
+    if (!help) return;
+    const details = document.createElement('details');
+    details.className = 'sillynpc-setting-help';
+    const summary = document.createElement('summary');
+    summary.textContent = 'How it works';
+    const note = document.createElement('small');
+    note.className = 'notes';
+    note.textContent = help;
+    details.append(summary, note);
+    wrap.append(details);
+}
+
 /**
  * Which settings object a control reads and writes.
  *
@@ -119,12 +132,7 @@ export function buildSettingTextArea(options) {
     wrap.append(textarea);
     if (tokens) wrap.append(tokens.element);
 
-    if (help) {
-        const helpEl = document.createElement('small');
-        helpEl.className = 'notes';
-        helpEl.textContent = help;
-        wrap.append(helpEl);
-    }
+    appendHelp(wrap, help);
 
     if (recommended) {
         const restore = document.createElement('button');
@@ -186,14 +194,7 @@ export function buildSettingSelect(spec) {
     row.append(text, select);
     wrap.append(row);
 
-    if (help) {
-        const helpEl = document.createElement('small');
-        helpEl.className = 'notes';
-        helpEl.style.marginTop = '4px';
-        helpEl.style.display = 'block';
-        helpEl.textContent = help;
-        wrap.append(helpEl);
-    }
+    appendHelp(wrap, help);
     return wrap;
 }
 
@@ -228,14 +229,7 @@ export function buildSettingToggle(options) {
     row.append(labelSpan, input);
     wrap.append(row);
 
-    if (help) {
-        const helpEl = document.createElement('small');
-        helpEl.className = 'notes';
-        helpEl.style.marginTop = '4px';
-        helpEl.style.display = 'block';
-        helpEl.textContent = help;
-        wrap.append(helpEl);
-    }
+    appendHelp(wrap, help);
 
     return wrap;
 }
@@ -298,14 +292,7 @@ export function buildSettingSlider(options) {
     row.append(text, sliderContainer);
     wrap.append(row);
 
-    if (help) {
-        const helpEl = document.createElement('small');
-        helpEl.className = 'notes';
-        helpEl.style.marginTop = '4px';
-        helpEl.style.display = 'block';
-        helpEl.textContent = help;
-        wrap.append(helpEl);
-    }
+    appendHelp(wrap, help);
     return wrap;
 }
 
@@ -402,14 +389,7 @@ export function buildSettingNumber(options) {
     }
     wrap.append(row);
 
-    if (help) {
-        const helpEl = document.createElement('small');
-        helpEl.className = 'notes';
-        helpEl.style.marginTop = '4px';
-        helpEl.style.display = 'block';
-        helpEl.textContent = help;
-        wrap.append(helpEl);
-    }
+    appendHelp(wrap, help);
     return wrap;
 }
 
