@@ -57,7 +57,7 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
             reasons: 'Switch: on when "Ask for reasons" is on.',
             goals: 'Configured player and NPC goals, with current values and guidance.',
         },
-        text: `Read the latest message and report its changes and the full scene cast. Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
+        text: `Read the latest message and report its changes and the full scene cast. "characters" contains NPCs present in the scene, never the player; put all player changes under "player". Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
 
 ### CONFIGURED STATS AND COLLECTIONS
 Use the configured names below.
@@ -135,7 +135,7 @@ Configured fields and current goals:
 Only report an explicit, meaningful change in the latest message. Under the relevant actor's "goals", use a configured field key and an object with "action" ("set" for an empty field, "replace" for a changed goal, or "complete" for one finished or abandoned), "text" (new goal for set/replace; empty for complete), and "quote" (exact supporting words from the latest message). A goal is an actual objective the character pursues, not every promise, secret, invitation, or plot detail. Do not repeat unchanged goals.
 {{/goals}}
 ### REPLY FORMAT
-Return raw JSON with changed fields, initial values for blank NPC stats, and everyone present in "characters". Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
+Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
 {{#reasons}}
 Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<name>.Health". Quote the latest message or name the event. For an initialized NPC stat, use "initial estimate" or "invented".
 {{/reasons}}

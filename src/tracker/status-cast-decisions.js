@@ -147,6 +147,10 @@ function resolvePersonaSpeaker(name) {
 function mayJoinScene(name, { speaker = true } = {}) {
     const canonical = resolveCanonicalName(name);
     if (!canonical) return false;
+    const playerNames = [deps.resolvePersonaAvatarAndName()?.name,
+        deps.loadStateFromMetadata()?.player?.name];
+    if (playerNames.some(player => player && [name, canonical]
+        .some(candidate => String(candidate).trim().toLowerCase() === String(player).trim().toLowerCase()))) return false;
     if (getCastDecisions()[canonical.toLowerCase()]) return false;
 
     // The ignore list describes labels mistaken for speech, not NPCs named by the

@@ -170,6 +170,23 @@ test('dry run previews character changes without mutating card or committing', (
     assert.equal(calls.emitted.length, 0);
 });
 
+test('player named in NPC updates never creates or changes a cast row', () => {
+    const { deps, calls } = fixture();
+    deps.committedState.player.name = 'Alex';
+    const update = { characters: [
+        { name: 'Alex', stats: { HP: '9' } },
+        { name: 'alex', stats: { HP: '8' } },
+    ] };
+    const fresh = deps.applyUpdate(update, { dryRun: true });
+    assert.deepEqual(fresh.characters.map(char => char.name), ['Mira', 'Jon']);
+
+    deps.committedState.characters.push({ name: 'Alex', stats: { HP: '3' }, collections: {} });
+    const state = deps.applyUpdate(update);
+    assert.equal(state.characters.find(char => char.name === 'Alex').stats.HP, '3');
+    assert.equal(state.characters.length, 3);
+    assert.equal(calls.settings, 0);
+});
+
 test('missing chat rejects before card writes', () => {
     const { deps, card, calls } = fixture({ openChat: false });
     const priorWarn = console.warn;

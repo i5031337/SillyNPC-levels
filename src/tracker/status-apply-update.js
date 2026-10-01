@@ -157,6 +157,11 @@ export function bind(deps) {
             admitCharacters, dryRun, allowReplace, allowAdvancementChanges, verbatim, offstageSkipped } = context;
         if (!updChar.name) return false;
         const canonicalName = deps.resolveCanonicalName(updChar.name);
+        if (!deps.mayJoinScene(canonicalName)
+            || (state.player?.name && [updChar.name, canonicalName]
+                .some(name => String(name).trim().toLowerCase() === String(state.player.name).trim().toLowerCase()))) {
+            return false;
+        }
         const lowerName = canonicalName.toLowerCase();
         debugLog(`Applying update for character: ${updChar.name}`, updChar);
         let charData = lookup.stateMap.get(lowerName);
@@ -179,7 +184,6 @@ export function bind(deps) {
             return false;
         }
         if (!charData) {
-            if (!deps.mayJoinScene(canonicalName)) return false;
             charData = deps.buildCharacterState(canonicalName, state, settings);
             state.characters.push(charData);
             lookup.stateMap.set(lowerName, charData);
