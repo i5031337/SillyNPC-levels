@@ -68,6 +68,21 @@ test('modern definitions bound memory limits and retain configured fields and po
     assert.deepEqual(system.stats.player, []);
 });
 
+test('stat purpose and numeric bounds survive system normalization', () => {
+    const system = normalizeSystemDefinition({ config: { statusTracker: {
+        globalStats: [], npcStats: [], collections: [],
+        playerStats: [{ name: 'Focus', type: 'number', purpose: 'Spent on spells', min: '0',
+            maxStatValue: '12', options: ['1', '2'], locked: true }],
+    } } });
+    const stat = system.stats.player[0];
+    assert.equal(stat.purpose, 'Spent on spells');
+    assert.equal(stat.min, '0');
+    assert.equal(stat.maxStatValue, '12');
+    assert.deepEqual(stat.options, []);
+    assert.equal(stat.locked, true);
+    assert.deepEqual(normalizeSystemDefinition(system), system);
+});
+
 test('duplicate legacy names receive distinct IDs without mutating input', () => {
     const source = { config: { playerStats: [
         { name: 'Willpower / Focus', defaultValue: '1' },

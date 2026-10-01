@@ -26,10 +26,15 @@ test('invalid or uncapped values do not trigger progression', () => {
     assert.equal(progressXp('20/100', '', '1'), null);
 });
 
-test('bonus raises current value while preserving the live maximum', () => {
-    assert.equal(boostStat('2/5', undefined, 1), '3/5');
-    assert.equal(boostStat('15/20', '10', 2), '12/20');
-    assert.equal(boostStat('15/20', undefined, 2), '17/20');
-    assert.equal(boostStat('5/5', undefined, 1), '5/5');
+test('bonus raises a pool current value and maximum together', () => {
+    assert.equal(boostStat('2/5', undefined, 1, { growMaximum: true }), '3/6');
+    assert.equal(boostStat('15/20', '10', 2, { growMaximum: true }), '12/22');
+    assert.equal(boostStat('15/20', undefined, 2, { growMaximum: true }), '17/22');
+    assert.equal(boostStat('5/5', undefined, 1, { growMaximum: true }), '6/6');
     assert.equal(boostStat('10', undefined, 2), '12');
+});
+
+test('advancement bonuses stop at the configured maximum without raising it', () => {
+    assert.equal(boostStat('4', undefined, 3, { fixedMaximum: 5 }), '5');
+    assert.equal(boostStat('4/5', undefined, 3, { fixedMaximum: 5 }), '5/5');
 });

@@ -60,6 +60,8 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
     wrap.appendChild(bulk.bar);
 
     stats.forEach((stat, index) => {
+        const advancement = stat.updatePolicy === 'advancement'
+            || (!stat.updatePolicy && stat.persistence === 'innate');
         const row = document.createElement('div');
         row.className = 'sillynpc-alias-row';
         row.style.marginBottom = '12px';
@@ -73,13 +75,22 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                 <button type="button" class="menu_button delete-btn"><i class="fa-solid fa-trash"></i></button>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; align-items:center;">
+                <small class="sillynpc-field-note">Purpose:</small>
+                <input type="text" class="text_pole stat-purpose" value="${escapeHtml(stat.purpose || '')}"
+                       placeholder="What this stat measures and when it changes"
+                       title="Sent to the reader for every stat type. Explain what this stat means and which story events change it."
+                       style="flex:1; min-width:180px; font-size:var(--sillynpc-text-md); height:24px;">
                 <small class="sillynpc-field-note">Format:</small>
                 <input type="text" class="text_pole stat-format" value="${escapeHtml(stat.format || '{{value}}')}" placeholder="e.g. HP: {{value}}" style="flex:1; font-size:var(--sillynpc-text-md); height:24px;">
                 ${isNumericStat(stat) ? `
                 <small class="sillynpc-field-note">Min:</small>
-                <input type="text" class="text_pole stat-min" value="${escapeHtml(stat.min ?? '')}" placeholder="0" title="Lower bound. Use a negative number for ranges like -100..100." style="width:45px; font-size:var(--sillynpc-text-md); height:24px;">
-                <small class="sillynpc-field-note" title="The maximum this stat starts at, used only when an actor is first given it. After that the value itself carries the ceiling: write it as 53/53 for a meter, or as 53 for a plain number with no maximum.">Starts max:</small>
-                <input type="text" class="text_pole stat-max" value="${escapeHtml(stat.maxStatValue || '')}" placeholder="Max" title="Starting maximum only. The ceiling in play is read from the stat's own value - write 53/53 to set one, or 53 to have none - so a character who has grown past this is not clamped back, and one whose ceiling you cleared does not get it handed back." style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
+                <input type="text" class="text_pole stat-min" value="${escapeHtml(stat.min ?? '')}" placeholder="0" title="Lowest current value. The tracker enforces this bound; use a negative number for ranges like -100..100." style="width:45px; font-size:var(--sillynpc-text-md); height:24px;">
+                <small class="sillynpc-field-note" title="${advancement
+                    ? 'Fixed upper bound for this Advancement rating. Level bonuses cannot raise it.'
+                    : 'Initial maximum for a Turn pool. Each actor then carries its own maximum, which only a level-up bonus can raise.'}">${advancement ? 'Max:' : 'Starts max:'}</small>
+                <input type="text" class="text_pole stat-max" value="${escapeHtml(stat.maxStatValue || '')}" placeholder="Max" title="${advancement
+                    ? 'Fixed upper bound. A rating such as 1 to 5 stays within this range.'
+                    : 'Starting maximum for a new Turn pool. Ordinary story updates keep each actor’s maximum fixed.'}" style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
                 ` : `
                 <small class="sillynpc-field-note">Write it:</small>
                 <input type="text" class="text_pole stat-hint" value="${escapeHtml(stat.hint || '')}"
@@ -124,15 +135,15 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                     <small>Name</small>
                 </label>
                 <label class="sillynpc-check-group" style="margin-left:6px;"
-                       title="Only you change a value once set. For an NPC field with no value, the tracker may assign its first value; later changes it reports are thrown away. Edit it by hand on the sheet or in the tracker box.">
+                       title="Immutable during play. The tracker may initialize a blank NPC field once, then ignores later story changes. Direct edits remain available to correct mistakes.">
                     <input type="checkbox" class="stat-locked" ${stat.locked ? 'checked' : ''}>
                     <small>Locked</small>
                 </label>
-                <input type="text" class="text_pole stat-options"
+                ${!isNumericStat(stat) ? `<input type="text" class="text_pole stat-options"
                        value="${escapeHtml((stat.options || []).join(', '))}"
                        placeholder="Any value"
                        title="Allowed values, separated by commas. Leave empty to allow anything."
-                       style="flex:1.2; min-width:120px; font-size:var(--sillynpc-text-md); height:24px; margin-left:10px;">
+                       style="flex:1.2; min-width:120px; font-size:var(--sillynpc-text-md); height:24px; margin-left:10px;">` : ''}
                 ${settingsKey === 'playerStats' ? `
                 <label class="sillynpc-check-group" style="margin-left:6px;" title="Colour of this stat's meter on the floating HUD">
                     <input type="color" class="stat-color" value="${stat.color || '#7aa2f7'}" style="width:26px; height:20px; padding:0; border:0; background:none; cursor:pointer;">
@@ -188,6 +199,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         });
         row.querySelector('.stat-default').addEventListener('input', (e) => { stat.defaultValue = e.target.value; saveSettings(); });
         row.querySelector('.stat-format').addEventListener('input', (e) => { stat.format = e.target.value; saveSettings(); });
+        row.querySelector('.stat-purpose').addEventListener('input', (e) => { stat.purpose = e.target.value; saveSettings(); });
         // Optional chaining because the row only carries the controls its type uses:
         // Min and Starts max belong to a Meter, the hint and the cap to a Text field.
         // They were all shown on every row, which is why a Text field offered a lower
@@ -223,6 +235,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
            and below already say the same thing. */
         row.querySelector('.stat-type').addEventListener('change', (e) => {
             stat.type = e.target.value;
+            if (stat.type === 'number') stat.options = [];
             saveSettings();
             updateHUD();
             onRefresh();
@@ -239,7 +252,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         });
         // Committed on change rather than per keystroke: a half-typed list would refuse
         // values the user is in the middle of allowing.
-        row.querySelector('.stat-options').addEventListener('change', (e) => {
+        row.querySelector('.stat-options')?.addEventListener('change', (e) => {
             stat.options = parseOptions(e.target.value);
             saveSettings();
             onRefresh();

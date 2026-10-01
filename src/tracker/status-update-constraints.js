@@ -1,9 +1,11 @@
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { constrainNumericStat } from './numeric-stat-bounds.js';
 
 export function bind(deps) {
 /** The values a field is allowed to hold, or an empty list when it allows anything. */
 function allowedValues(def) {
+    if (def?.type === 'number' || def?.type === 'bar') return [];
     return (def?.options || [])
         .map(value => String(value ?? '').trim())
         .filter(Boolean);
@@ -122,7 +124,8 @@ function constrainToDefinition(def, incoming, existing) {
         debugLog(`Refused "${String(incoming).trim()}" for ${def?.name || 'a field'}: that is the prompt's wording, not a value`);
         return existing;
     }
-    const kept = constrainToOptions(def, incoming, existing);
+    const bounded = constrainNumericStat(def, incoming, existing);
+    const kept = constrainToOptions(def, bounded, existing);
     // Only ever cut what was actually written. When the options guard refuses a value it
     // hands back the one already stored, and trimming that would rewrite something nobody
     // submitted - the same rule that stops narrowing a list rewriting characters nobody

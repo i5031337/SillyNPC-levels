@@ -19,13 +19,17 @@ export function progressXp(previousXp, incomingXp, previousLevel) {
     };
 }
 
-/** Raise a numeric stat's current value, keeping its live maximum. */
-export function boostStat(previousValue, proposedValue, amount) {
+/** Turn pools grow capacity; Advancement ratings remain within their fixed upper bound. */
+export function boostStat(previousValue, proposedValue, amount,
+    { growMaximum = false, fixedMaximum = null } = {}) {
     const [currentText] = String(proposedValue ?? previousValue ?? '').split('/');
     const [, previousCap] = String(previousValue ?? '').split('/');
     const current = Number(currentText);
     if (!Number.isFinite(current) || !Number.isInteger(amount) || amount < 1) return null;
     const cap = previousCap ? Number(previousCap) : null;
     if (cap !== null && (!Number.isFinite(cap) || cap <= 0)) return null;
-    return cap === null ? String(current + amount) : `${Math.min(current + amount, cap)}/${cap}`;
+    const nextCap = cap === null ? null : growMaximum ? cap + amount : cap;
+    const limit = fixedMaximum === null ? nextCap : fixedMaximum;
+    const next = limit === null ? current + amount : Math.min(current + amount, limit);
+    return nextCap === null ? String(next) : `${next}/${fixedMaximum ?? nextCap}`;
 }

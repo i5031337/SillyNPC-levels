@@ -26,11 +26,11 @@ export const readerPromptTexts = [
         text: `The player reached level {{level}}.
 Current player stats: {{sheet}}
 Latest story message: {{message}}
-Eligible numeric stats: {{eligible}}
+Eligible numeric stats (choose the exact name before the colon): {{eligible}}
 Choose exactly one bonus.
 For a narrative perk, reply in this shape: {"description":"A short, specific perk tied to the story"}
 For a numeric increase, choose a name from Eligible numeric stats and reply in this shape: {"description":"A short description of the improvement","stat":"Exact eligible stat name","amount":1}
-Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, choose a narrative perk.`,
+Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value and maximum together. An Advancement bonus raises the rating only, within its fixed range. If there are no eligible numeric stats, choose a narrative perk.`,
     },
     {
         id: 'reader', group: 'Tracker reader', label: 'Reader request',
@@ -39,9 +39,9 @@ Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, c
         placeholders: {
             state: 'The scene as it stands, as JSON.',
             offstage: 'Tracked characters the message names who are not on stage, with what is on file for them.',
-            limits: 'Ranges, allowed values and how each field is written, from System Builder.',
-            locked: 'Locked stats in System Builder.',
-            npcFields: 'All configured NPC fields, including allowed values and locked fields.',
+            limits: 'Purpose, type, bounds and writing rules for configured stats.',
+            locked: 'Stats fixed after initialization.',
+            npcFields: 'All configured NPC fields, including their purpose and initialization rules.',
             xpProgression: 'Switch: on when the player has XP and Level stats.',
             notes: 'Notes other extensions add, each with its own heading.',
             strangers: 'Speakers without a card, when you have tagged fallback portraits.',
@@ -50,7 +50,7 @@ Use an integer from 1 to 5 for amount. If there are no eligible numeric stats, c
             collections: 'Each collection and the fields its items have.',
             collectionExample: 'A worked change in your own collection and field names.',
             minimalReply: 'A no-change reply listing the cast present.',
-            changedReply: 'A numeric delta, using one of your configured player stat names.',
+            changedReply: 'A configured example with player and NPC stats and collections.',
             numericDeltas: 'Existing numeric stats eligible for delta updates, by owner.',
             earlier: 'The messages before this one, when you send any.',
             message: 'The message being read.',
@@ -68,7 +68,7 @@ Use the configured names below.
 
 ### NPC FIELDS TO INITIALIZE
 {{npcFields}}
-For each present NPC, initialize blank configured stats with plausible individual values, even without context. Respect allowed values and numeric limits. Update filled stats only when the latest message changes them. Initialize blank locked NPC stats once.
+For each present NPC, initialize blank configured stats with plausible individual values, even without context. Follow each stat's purpose and rules. Update filled stats only when the latest message changes them. Initialize blank locked NPC stats once.
 {{/npcFields}}
 {{#xpProgression}}
 
@@ -83,13 +83,13 @@ These tracked characters are named in the message. Include one in "characters" i
 {{/offstage}}
 {{#limits}}
 
-### LIMITS
+### STAT DEFINITIONS
 {{limits}}
 {{/limits}}
 {{#locked}}
 
-### PLAYER-CONTROLLED FIELDS
-Report updates for other fields. Initialize a blank Locked NPC field once; the player sets its later values.
+### IMMUTABLE FIELDS
+These describe fixed aspects of their owner. Initialize a blank locked NPC field once. Never change a locked field after it has a value.
 {{locked}}
 {{/locked}}
 {{#numericDeltas}}
@@ -97,7 +97,7 @@ Report updates for other fields. Initialize a blank Locked NPC field once; the p
 ### NUMERIC CHANGES
 For an existing numeric value, report the amount gained or lost as a JSON number. Use "globalDeltas" for world stats, "player.deltas" for player stats, and "characters[].deltas" for NPC stats. Eligible fields:
 {{numericDeltas}}
-Use one delta per changed field. For a blank numeric field or changed maximum, use a replacement "stats" value, except for player XP: award XP only through a positive "player.deltas" number.
+Use one delta per changed Turn field. For a blank numeric Turn field, use a replacement "stats" value. Keep existing maxima unchanged. Advancement ratings change only through level-up bonuses or direct edits, and their maxima never increase. Player XP uses only a positive "player.deltas" number.
 {{/numericDeltas}}
 {{notes}}
 {{#strangers}}
@@ -153,7 +153,7 @@ No-change example:
 {{/minimalReply}}
 {{#changedReply}}
 
-Numeric-change example:
+Changed-reply shape (include only changes supported by the latest message):
 {{changedReply}}
 {{/changedReply}}`,
     },
@@ -165,9 +165,7 @@ Numeric-change example:
         placeholders: {
             status: 'The scene block (see Scene block).',
             rules: 'Your System Rules & Logic.',
-            limits: 'Switch: on when any stat has a maximum.',
-            playerLimits: 'The player\'s maximums.',
-            npcLimits: 'The characters\' maximums.',
+            statDefinitions: 'Configured stat purposes, types and bounds.',
             schemas: 'Each collection in play and its fields.',
             npcFields: 'All configured NPC fields, including allowed values and locked fields.',
             sceneChange: 'Switch: on when a scene stat is set.',
@@ -179,10 +177,14 @@ Numeric-change example:
 {{status}}
 
 Rules: {{rules}}
+{{#statDefinitions}}
+### STAT DEFINITIONS
+{{statDefinitions}}
+{{/statDefinitions}}
 {{#npcFields}}
 NPC fields:
 {{npcFields}}
-For each present NPC, fill blank configured stats with plausible individual values. Respect allowed values and numeric limits. Update filled stats only when the story changes them. Initialize blank locked NPC stats once.
+For each present NPC, fill blank configured stats with plausible individual values. Follow each stat's purpose and rules. Update filled stats only when the story changes them. Initialize blank locked NPC stats once.
 {{/npcFields}}
 {{#xpProgression}}
 Player XP: award once for each concrete accomplishment in the latest message, including small progress. Scale the award to the achievement. Report the new absolute XP total with the same cap (90/100 plus 20 becomes 110/100). The extension handles level-ups and excess XP. When the award crosses the cap, add a story-appropriate Level Bonus to the player sheet.
@@ -190,13 +192,7 @@ Player XP: award once for each concrete accomplishment in the latest message, in
 
 ### COSTS
 Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
-{{#limits}}
-
-### STAT LIMITS
-Player maximums: {{playerLimits}}
-NPC maximums: {{npcLimits}}
-Keep pool values such as "8/10" in that form. Change the maximum when the story changes it. Keep plain numbers as numbers.
-{{/limits}}
+Keep pool values such as "8/10" in that form. Keep maxima fixed during ordinary updates. Only a Turn stat may gain maximum capacity from a level-up bonus. Advancement ratings keep their configured range. Keep plain numbers as numbers.
 
 {{#schemas}}
 ### COLLECTIONS

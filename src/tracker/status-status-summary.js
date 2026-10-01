@@ -20,13 +20,13 @@ function createInitialState() {
     
     (settings.globalStats || []).forEach(stat => {
         if (stat && stat.name) {
-            state.global[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+            state.global[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
         }
     });
 
     (settings.playerStats || []).forEach(stat => {
         if (stat && stat.name) {
-            state.player.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+            state.player.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
         }
     });
     

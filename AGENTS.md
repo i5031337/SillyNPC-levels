@@ -7,6 +7,14 @@
 - Tracker and XP logic is mainly in `src/tracker/`; character ownership is in `src/chat/` and `src/characters/`; views are in `src/ui/`. The background reader reports earned XP only as a positive delta; the extractor converts it to an absolute reading before progression stores the remainder and level. Manual edits and old saved review rows may still use absolute values.
 - Run focused tests with `node --experimental-default-type=module --test tests/*.mjs`. For UI or SillyTavern event changes, also verify behavior in a running SillyTavern instance, since the Node tests do not cover the full host UI.
 
+# Checking the running SillyTavern UI
+
+- The local SillyTavern server was reachable at `http://127.0.0.1:8000/` on 2026-10-01. Check it with `curl --max-time 2 -I http://127.0.0.1:8000/`; do not assume it is always running.
+- Sandbox networking may reject even localhost with `Operation not permitted`. If that happens, rerun the check with `exec_command` using `sandbox_permissions: "require_escalated"` and a short justification. The same applies to headless browser checks.
+- Working browser path: `/usr/bin/firefox` in headless mode through `/snap/bin/geckodriver` (the `geckodriver` command is on PATH). A small Python standard-library script can start geckodriver, create a WebDriver session with `moz:firefoxOptions.args: ["-headless"]`, navigate to port 8000, and run JavaScript through `/session/{id}/execute/sync`. End the session and driver process afterward.
+- To inspect the stat editor, click `#sillynpc-open-manage`, then the `.sillynpc-tab` whose text is `Systems`, then the `.sillynpc-system-builder [role="tab"]` whose text is `Player` or `NPC`. Inspect `.sillynpc-alias-row`, `.stat-purpose`, `.stat-type`, and `.stat-options` in the resulting DOM. The page may need a few seconds after navigation before the extension UI is ready.
+- Run the read-only check with `python3 tests/ui-smoke.py` from this directory. It starts and stops its own headless browser session. If sandbox networking blocks it, rerun that exact command with `exec_command` using `sandbox_permissions: "require_escalated"` and a brief justification.
+
 # Coding practices
 
 - No source file should exceed 20kB, for agentic efficiency. Keep code clear and concise. When appropriate, recommend a refactor strategy. 

@@ -1,4 +1,5 @@
 import { progressXp } from './progression.js';
+import { configuredNumericMaximum } from './numeric-stat-bounds.js';
 
 const NUMERIC_VALUE = /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/;
 const PROGRESSION_FIELDS = new Set(['xp', 'level', 'level bonus']);
@@ -13,7 +14,9 @@ export function isTurnStat(def) {
 /** A level-up may raise a player stat only when the System Builder opts it in. */
 export function canAdvanceStat(def) {
     return Boolean(def?.name && def.advanceOnLevel === true && !def.locked
-        && !PROGRESSION_FIELDS.has(def.name.toLowerCase()));
+        && !PROGRESSION_FIELDS.has(def.name.toLowerCase())
+        && (isTurnStat(def) || !['number', 'bar'].includes(def.type)
+            || configuredNumericMaximum(def) !== null));
 }
 
 /** Keep the optional bonus under review without delaying earned XP or Level. */

@@ -72,8 +72,10 @@ export function normaliseStatDefs(list) {
     for (const stat of list) {
         if (!stat) continue;
         stat.type = (stat.type === 'number' || stat.type === 'bar') ? 'number' : 'text';
+        if (stat.type === 'number') stat.options = [];
         if (stat.min === undefined) stat.min = '';
         if (typeof stat.hint !== 'string') stat.hint = '';
+        if (typeof stat.purpose !== 'string') stat.purpose = '';
         if (stat.maxLength === undefined) stat.maxLength = '';
     }
 }

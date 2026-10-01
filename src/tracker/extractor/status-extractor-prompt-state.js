@@ -1,7 +1,8 @@
 import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { isTurnStat } from '../stat-update-policy.js';
-import { statsInSystem, getPlayerCard, findCardForName, promptCeiling, highestCeiling } from '../status-logic.js';
+import { statsInSystem, getPlayerCard, findCardForName } from '../status-logic.js';
+import { describeStatDefinitions } from '../stat-prompt-definitions.js';
 
 /**
  * Renders the current state in the envelope the reply must use.
@@ -234,84 +235,7 @@ function safePlayerCard() {
     try { return getPlayerCard(); } catch { return null; }
 }
 
-/**
- * Ceilings the model must respect.
- *
- * These used to come only from the configured maxStatValue, which contradicts the
- * state whenever a stat has grown in play: a character whose Energy reached 120/120
- * was shown "Energy: 120/120" alongside "Energy: 0..80", and the model resolved the
- * contradiction by trusting the limit - silently dragging the character back to 78/80
- * and destroying the progression.
- *
- * The live value wins. Once play has raised a ceiling, that is the real ceiling; the
- * configured maximum is only a starting point for stats that have never moved.
- *
- * @param {object} trackerSettings
- * @param {object} state Current tracker state, used for live ceilings.
- */
-export function describeLimits(trackerSettings, state) {
-    const describe = (list, label, valueFor) => {
-        const entries = (list || [])
-            .filter(stat => label !== 'Player limits' || stat.name.toLowerCase() !== 'xp')
-            .map(stat => ({
-                name: stat.name,
-                /* The value's own ceiling whenever the actor holds a value, and the
-                   configured one only when nobody does. It used to fall back whenever the
-                   live reading came back blank, which cannot tell "this stat has no
-                   ceiling" from "nobody has this stat" - so a ceiling cleared on the sheet
-                   was replaced here by the configured one and announced to the model. */
-                max: promptCeiling(stat, valueFor(stat.name)),
-                min: stat.min,
-            }))
-            .filter(e => e.max || (e.min !== undefined && e.min !== ''))
-            .map(e => `${e.name}: ${e.min !== undefined && e.min !== '' ? e.min : 0}..${e.max || '?'}`);
-        return entries.length ? `${label}: ${entries.join(', ')}` : '';
-    };
-
-    /**
-     * The stats that may only hold certain values.
-     *
-     * A refused value costs a whole message of tracking for that field, so naming the
-     * vocabulary is worth the tokens: the guard is what makes the list true, and this
-     * is what stops it having to.
-     */
-    const describeChoices = (list, label) => {
-        const entries = (list || [])
-            .filter(stat => (stat?.options || []).length)
-            .map(stat => `${stat.name}: one of ${stat.options.join(', ')}`);
-        return entries.length ? `${label}: ${entries.join('; ')}` : '';
-    };
-
-    /**
-     * How a free-text field should be written, in the user's own words.
-     *
-     * Sent here as well as in the schema because the schema is optional - Use Schema is a
-     * setting, and several backends ignore or reject one - while this block is always
-     * part of the prompt. A field with nothing to say adds nothing.
-     */
-    const describeShapes = (list, label) => {
-        const entries = (list || [])
-            .filter(stat => stat?.name && String(stat.hint ?? '').trim())
-            .map(stat => {
-                const limit = Number(stat.maxLength);
-                const cap = Number.isFinite(limit) && limit > 0
-                    ? ` (at most ${limit} characters)`
-                    : '';
-                return `${stat.name}: ${String(stat.hint).trim()}${cap}`;
-            });
-        return entries.length ? `${label}: ${entries.join('; ')}` : '';
-    };
-
-    return [
-        describe((trackerSettings.playerStats || []).filter(isTurnStat), 'Player limits',
-            (name) => state?.player?.stats?.[name]),
-        describe((trackerSettings.npcStats || []).filter(isTurnStat), 'Character limits',
-            (name) => highestCeiling(state?.characters, name)),
-        describeChoices((trackerSettings.globalStats || []).filter(isTurnStat), 'World values'),
-        describeChoices((trackerSettings.playerStats || []).filter(isTurnStat), 'Player values'),
-        describeChoices((trackerSettings.npcStats || []).filter(isTurnStat), 'Character values'),
-        describeShapes((trackerSettings.globalStats || []).filter(isTurnStat), 'How to write world values'),
-        describeShapes((trackerSettings.playerStats || []).filter(isTurnStat), 'How to write player values'),
-        describeShapes((trackerSettings.npcStats || []).filter(isTurnStat), 'How to write character values'),
-    ].filter(Boolean).join('\n');
+/** Stat meanings and rules. The current state carries each actor's live pool ceiling. */
+export function describeLimits(trackerSettings) {
+    return describeStatDefinitions(trackerSettings);
 }

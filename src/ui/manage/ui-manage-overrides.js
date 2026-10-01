@@ -2,6 +2,7 @@ import { getSettings, saveSettings } from '../../core/settings.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { escapeHtml } from '../../core/utils.js';
 import { syncOverrideToActiveState } from '../../tracker/status-logic.js';
+import { constrainNumericStat } from '../../tracker/numeric-stat-bounds.js';
 import { buildChoiceSelect, isChoiceField } from '../shared/ui-shared.js';
 
 export function renderOverridesSection(char, container) {
@@ -44,6 +45,9 @@ export function renderOverridesSection(char, container) {
 
         // Parse currentValue (e.g. "50/100" or "50")
         const currentValue = char.statusOverrides?.[stat.name] || '';
+        const fixedNumeric = (stat.type === 'number' || stat.type === 'bar')
+            && (stat.updatePolicy === 'advancement'
+                || (!stat.updatePolicy && stat.persistence === 'innate'));
         let valPart = currentValue;
         let maxPart = '';
         if (typeof currentValue === 'string' && currentValue.includes('/')) {
@@ -72,21 +76,21 @@ export function renderOverridesSection(char, container) {
 
         const updateOverride = () => {
             const v = valInput.value.trim();
-            const m = maxInput.value.trim();
+            const m = fixedNumeric ? '' : maxInput.value.trim();
             
             if (!char.statusOverrides) char.statusOverrides = {};
             
             if (v === '' && m === '') {
                 delete char.statusOverrides[stat.name];
-            } else if (m !== '') {
-                char.statusOverrides[stat.name] = `${v}/${m}`;
             } else {
-                char.statusOverrides[stat.name] = v;
+                const raw = m ? `${v}/${m}` : v;
+                char.statusOverrides[stat.name] = constrainNumericStat(stat, raw, currentValue);
             }
             
             saveSettings();
             
             const finalValue = char.statusOverrides[stat.name] || '';
+            if (fixedNumeric) valInput.value = String(finalValue).split('/')[0];
             syncOverrideToActiveState(char.name, stat.name, finalValue);
             triggerReprocess();
         };
@@ -109,10 +113,11 @@ export function renderOverridesSection(char, container) {
             return;
         }
 
-        valInput.addEventListener('input', updateOverride);
-        maxInput.addEventListener('input', updateOverride);
+        valInput.addEventListener(fixedNumeric ? 'change' : 'input', updateOverride);
+        if (!fixedNumeric) maxInput.addEventListener('input', updateOverride);
 
-        row.append(label, valInput, slashLabel, maxInput);
+        row.append(label, valInput);
+        if (!fixedNumeric) row.append(slashLabel, maxInput);
         grid.appendChild(row);
     });
 

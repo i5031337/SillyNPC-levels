@@ -7,6 +7,7 @@ import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
 import { describeAbsentButNamed, describeLocked } from './status-extractor-prompt-offstage.js';
 import { describeNumericDeltas, numericDeltaNames, progressionXpName } from './status-extractor-deltas.js';
+import { isTurnStat } from '../stat-update-policy.js';
 
 /**
  * Extra notes for the reader, from whoever registered one.
@@ -184,16 +185,43 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 
 /** Show a changed value only when this system has a stat to name in the example. */
 function buildChangedExample(state, trackerSettings) {
-    const stat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats)[0];
-    if (!stat) return '';
+    const playerStat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats)[0];
     const xpName = progressionXpName(trackerSettings, state);
-    const cast = (state?.characters || []).map(c => c?.name).filter(Boolean);
+    const cast = (state?.characters || []).filter(c => c?.name);
+    const npc = cast[0];
+    const npcStat = npc && numericDeltaNames(trackerSettings.npcStats, npc.stats)[0];
+    const firstTurnStat = list => (list || []).find(stat => stat?.name && isTurnStat(stat) && !stat.locked
+        && !['xp', 'level', 'level bonus'].includes(stat.name.toLowerCase()))?.name;
+    const collectionFor = target => (trackerSettings.collections || [])
+        .find(c => c?.id && (c.target === 'all' || c.target === target));
+    const collectionChange = (col, verb) => {
+        if (!col) return undefined;
+        const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
+        return { [col.id]: verb === 'add'
+            ? { add: [{ [primary]: '<item gained>' }] }
+            : { remove: ['<item lost>'] } };
+    };
+    const player = {};
+    if (playerStat) player.deltas = { [playerStat]: playerStat.toLowerCase() === xpName?.toLowerCase() ? 1 : -1 };
+    else if (firstTurnStat(trackerSettings.playerStats)) {
+        player.stats = { [firstTurnStat(trackerSettings.playerStats)]: '<new value>' };
+    }
+    const playerCollection = collectionChange(collectionFor('player'), 'add');
+    if (playerCollection) player.collections = playerCollection;
+    const characters = cast.map(actor => ({ name: actor.name }));
+    if (npcStat) characters[0].deltas = { [npcStat]: -1 };
+    else if (characters.length && firstTurnStat(trackerSettings.npcStats)) {
+        characters[0].stats = { [firstTurnStat(trackerSettings.npcStats)]: '<new value>' };
+    }
+    const npcCollection = collectionChange(collectionFor('npc'), 'remove');
+    if (npcCollection && characters.length) characters[0].collections = npcCollection;
+    if (!Object.keys(player).length && !characters.some(c => c.deltas || c.collections)) return '';
     return JSON.stringify({
         ...(trackerSettings.extractionReasons === false ? {} : {
-            why: { [`Player.${stat}`]: '<short quote from the latest message>' },
+            why: playerStat ? { [`Player.${playerStat}`]: '<short quote from the latest message>' } : {},
         }),
         global: {},
-        player: { deltas: { [stat]: stat.toLowerCase() === xpName?.toLowerCase() ? 1 : -1 } },
-        characters: cast.map(name => ({ name })),
+        player,
+        characters,
     });
 }

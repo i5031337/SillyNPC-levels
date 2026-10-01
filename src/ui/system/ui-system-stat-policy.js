@@ -8,8 +8,8 @@ export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
         && (numeric || stat.advanceOnLevel
             || /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(stat.defaultValue ?? '')));
     const policyHelp = scope === 'npcStats'
-        ? 'Turn fields can change after a story message and reset in a new adventure. Advancement fields travel with the character and can be edited by hand. Locked fields also travel.'
-        : 'Turn fields can change after a story message. Advancement fields change through a level-up bonus or manual editing.';
+        ? 'Turn fields can change after a story message and reset in a new adventure. Only Turn maxima can grow on level-up. Advancement fields travel with the character and keep a fixed range.'
+        : 'Turn fields can change after a story message, and a level bonus can raise a Turn maximum. Advancement ratings change through a level-up bonus or manual edit but keep their fixed range.';
     return `
         <select class="text_pole stat-update-policy"
                 title="${policyHelp}"
@@ -19,7 +19,7 @@ export function statPolicyMarkup(stat, scope, numeric, escapeHtml) {
             <option value="advancement" ${policy === 'advancement' ? 'selected' : ''}>Advancement</option>
         </select>
         ${scope === 'playerStats' && canShowBonus ? `
-        <label class="sillynpc-check-group" title="Allow a level-up bonus to raise this stat. A Turn stat can also receive an advancement bonus to its maximum.">
+        <label class="sillynpc-check-group" title="Allow a level-up bonus to raise this stat. Turn pools can also gain maximum capacity; numeric Advancement ratings need a configured Max and keep that range fixed.">
             <input type="checkbox" class="stat-advance-on-level" ${stat.advanceOnLevel ? 'checked' : ''}>
             <small>Level bonus</small>
         </label>` : ''}

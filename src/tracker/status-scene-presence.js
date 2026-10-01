@@ -190,7 +190,7 @@ function buildCharacterState(charName, state, trackerSettings) {
         let value = stat.defaultValue || '';
         const override = matchedChar?.statusOverrides?.[stat.name];
         if (override !== undefined && String(override).trim() !== '') value = override;
-        charData.stats[stat.name] = deps.getInitialStatValue(value, deps.resolveMaxValue(stat));
+        charData.stats[stat.name] = deps.getInitialStatValue(value, deps.resolveMaxValue(stat), stat);
     });
 
     // What they were carrying and knew last time they were on stage.
@@ -238,7 +238,7 @@ function registerActiveCharacter(charName) {
         if (matchedChar && matchedChar.statusOverrides && matchedChar.statusOverrides[s.name] !== undefined && String(matchedChar.statusOverrides[s.name]).trim() !== '') {
             value = matchedChar.statusOverrides[s.name];
         }
-        charData.stats[s.name] = deps.getInitialStatValue(value, s.maxStatValue);
+        charData.stats[s.name] = deps.getInitialStatValue(value, s.maxStatValue, s);
     });
 
     state.characters.push(charData);

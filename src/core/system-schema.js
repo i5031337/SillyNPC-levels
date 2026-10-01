@@ -61,8 +61,14 @@ function statFields(source, scope) {
             defaultValue: copy(stat.defaultValue ?? ''),
             format: string(stat.format, '{{name}}: {{value}}'),
             maxStatValue: string(stat.maxStatValue),
+            min: String(stat.min ?? ''),
+            options: stat.type === 'number' || stat.type === 'bar' ? []
+                : list(stat.options).map(value => String(value).trim()).filter(Boolean),
+            maxLength: String(stat.maxLength ?? ''),
+            locked: stat.locked === true,
             visible: stat.visible !== false,
             guidance: string(stat.guidance, string(stat.hint)),
+            purpose: string(stat.purpose),
             updatePolicy: STAT_POLICIES.has(stat.updatePolicy) ? stat.updatePolicy
                 : isProgression || (scope === 'npc' && stat.persistence === 'innate') ? 'advancement' : 'turn',
             advanceOnLevel: scope === 'player' && stat.advanceOnLevel === true,

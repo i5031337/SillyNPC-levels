@@ -1,5 +1,6 @@
 import { promptText } from '../prompts/prompt-texts.js';
 import { isTurnStat } from './stat-update-policy.js';
+import { describeStatDefinitions } from './stat-prompt-definitions.js';
 import { 
     setExtensionPrompt,
     extension_prompt_types,
@@ -50,28 +51,7 @@ function getStatusInstructions() {
     const settings = getSettings().statusTracker;
     const currentState = deps.committedState || deps.loadStateFromMetadata();
 
-    /* The ceilings actually in play, not the configured ones.
-     *
-     * These were read straight off the settings, which contradicts the state this same
-     * prompt has just shown: a player whose Health had grown to 160/180 was told "Health:
-     * 160/180" and then "Player Max Stats: Health: 120", and a model resolves that by
-     * trusting the limit. It reads the other way too, and that is the report this came
-     * from - clear the ceiling on the sheet and the block went on announcing one.
-     *
-     * describeLimits in status-extractor.js makes the same reading for the reader model. */
-    const describeMaxes = (list, valueFor) => (list || [])
-        .map(stat => ({ stat, max: deps.promptCeiling(stat, valueFor(stat.name)) }))
-        .filter(entry => entry.max)
-        .map(entry => `${entry.stat.name}: ${entry.max}`)
-        .join(', ');
-
-    const playerStats = currentState.player?.stats || {};
-    const playerMaxes = describeMaxes(settings.playerStats.filter(stat => stat.name.toLowerCase() !== 'xp'),
-        name => playerStats[deps.findMatchingStatKey(playerStats, name) || name]);
-    // One line for the whole cast, so the highest ceiling anyone present shows is the one
-    // named: a party where one character has been raised to 350 must not be told 40.
-    const npcMaxes = describeMaxes(settings.npcStats,
-        name => deps.highestCeiling(currentState.characters, name));
+    const statDefinitions = describeStatDefinitions(settings);
 
     // Add field definitions for collections to guide the AI
     let schemas = '';
@@ -97,10 +77,8 @@ function getStatusInstructions() {
     return '\n' + promptText('storyBlock', {
         status: deps.formatCompactStatus(currentState, true),
         rules: applyMacros(DEFAULT_INLINE_RULES),
+        statDefinitions,
         npcFields: deps.describeNpcStatFields(settings),
-        limits: playerMaxes || npcMaxes ? 'on' : '',
-        playerLimits: playerMaxes,
-        npcLimits: npcMaxes,
         schemas,
         sceneChange: settings.sceneBindingStat ? 'on' : '',
         xpProgression: settings.playerStats.some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
@@ -124,19 +102,25 @@ function getStatusExample() {
     const player = {};
     const playerStat = first(settings.playerStats.filter(isTurnStat));
     if (playerStat) player.stats = { [playerStat]: '<new value>' };
-    const col = (settings.collections || []).find(c => c?.target !== 'npc');
-    if (col) {
+    const sampleCollection = (target, verb) => {
+        const col = (settings.collections || []).find(c => c?.id
+            && (c.target === 'all' || c.target === target));
+        if (!col) return undefined;
         const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
         const item = { [primary]: '<item name>' };
         for (const field of col.fields || []) {
             if (field.name !== primary && field.type === 'number') item[field.name] = 1;
         }
-        player.collections = { [col.id]: { add: [item], remove: ['<something used up>'] } };
-    }
+        return { [col.id]: verb === 'add' ? { add: [item] } : { remove: ['<item lost>'] } };
+    };
+    const playerCollection = sampleCollection('player', 'add');
+    if (playerCollection) player.collections = playerCollection;
 
     const character = { name: first(state?.characters) || '<someone present>' };
     const npcStat = first(settings.npcStats.filter(isTurnStat));
     if (npcStat) character.stats = { [npcStat]: '<new value>' };
+    const npcCollection = sampleCollection('npc', 'remove');
+    if (npcCollection) character.collections = npcCollection;
 
     return promptText('storyExample', { update: JSON.stringify({ player, characters: [character] }) });
 }

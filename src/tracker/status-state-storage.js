@@ -62,7 +62,7 @@ function loadStateFromMetadata() {
         if (stat && stat.name) {
             const existingKey = Object.keys(stateToReturn.global).find(k => k.toLowerCase() === stat.name.toLowerCase());
             if (!existingKey) {
-                stateToReturn.global[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+                stateToReturn.global[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
                 stateChanged = true;
             } else {
                 if (existingKey !== stat.name) {
@@ -87,7 +87,7 @@ function loadStateFromMetadata() {
             if (stat && stat.name) {
                 const existingKey = Object.keys(stateToReturn.player.stats).find(k => k.toLowerCase() === stat.name.toLowerCase());
                 if (!existingKey) {
-                    stateToReturn.player.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+                    stateToReturn.player.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
                     stateChanged = true;
                 } else {
                     if (existingKey !== stat.name) {
@@ -139,7 +139,7 @@ function loadStateFromMetadata() {
                 const lowerName = stat.name.toLowerCase();
                 const existingKey = charStatsLower.get(lowerName);
                 if (!existingKey) {
-                    char.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue);
+                    char.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
                     charStatsLower.set(lowerName, stat.name);
                     stateChanged = true;
                 } else {

@@ -4,9 +4,10 @@ import { debugLog } from '../../core/constants.js';
 import { loadStateFromMetadata, saveStateToMetadata } from '../status-logic.js';
 import { splitValue } from '../../core/utils.js';
 import { progressXp, boostStat } from '../progression.js';
+import { configuredNumericMaximum } from '../numeric-stat-bounds.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { buildLevelBonusPrompt } from './status-extractor-prompt.js';
-import { canAdvanceStat } from '../stat-update-policy.js';
+import { canAdvanceStat, isTurnStat } from '../stat-update-policy.js';
 import { goalFields, goalValue, setGoal } from '../goals.js';
 import { validGoalProposal } from '../goal-proposals.js';
 
@@ -23,14 +24,19 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
     const transition = progressXp(current[xpName], stats[xpKey], current[levelName]);
     if (!transition || transition.levelsGained < 1) return;
 
-    const eligible = (trackerSettings.playerStats || []).filter(def => {
+    const eligibleDefs = (trackerSettings.playerStats || []).filter(def => {
         if (!canAdvanceStat(def)) return false;
         const parts = splitValue(current[def.name]);
-        return Number.isFinite(Number(parts.current)) && parts.current !== '';
-    }).map(def => def.name);
+        const max = configuredNumericMaximum(def);
+        return Number.isFinite(Number(parts.current)) && parts.current !== ''
+            && (isTurnStat(def) || max === null || Number(parts.current) < max);
+    });
+    const eligible = eligibleDefs.map(def => def.name);
     const prompt = buildLevelBonusPrompt(state, messageText, trackerSettings, leadUp, {
         level: transition.level,
-        eligible: eligible.join(', ') || '(none)',
+        eligible: eligibleDefs.map(def => `${def.name}: ${isTurnStat(def)
+            ? 'Turn; a pool bonus also raises its maximum'
+            : `Advancement; fixed maximum ${configuredNumericMaximum(def) ?? 'not set'}`}`).join('; ') || '(none)',
         pendingChanges: parsed,
     });
     const schema = {
@@ -54,7 +60,11 @@ export async function addLevelBonus(parsed, state, trackerSettings, messageText,
     const target = eligible.find(name => name.toLowerCase() === String(bonus?.stat ?? '').toLowerCase());
     const sheetStats = parsed.player.stats || parsed.player;
     if (target && Number.isInteger(amount) && amount >= 1 && amount <= 5) {
-        const boosted = boostStat(current[target], sheetStats[target], amount);
+        const def = trackerSettings.playerStats.find(stat => stat.name === target);
+        const boosted = boostStat(current[target], sheetStats[target], amount, {
+            growMaximum: isTurnStat(def),
+            fixedMaximum: isTurnStat(def) ? null : configuredNumericMaximum(def),
+        });
         if (boosted !== null) {
             sheetStats[target] = boosted;
             return { stat: target, description };

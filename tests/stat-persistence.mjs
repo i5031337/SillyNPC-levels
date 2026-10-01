@@ -5,6 +5,14 @@ import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats,
 import { normaliseStatUpdatePolicies, canAdvanceStat, holdLevelBonusChanges,
     earnsLevel } from '../src/tracker/stat-update-policy.js';
 
+test('numeric Advancement bonuses require a fixed maximum', () => {
+    const rating = { name: 'Swordplay', type: 'number', updatePolicy: 'advancement',
+        advanceOnLevel: true };
+    assert.equal(canAdvanceStat(rating), false);
+    assert.equal(canAdvanceStat({ ...rating, maxStatValue: '5' }), true);
+    assert.equal(canAdvanceStat({ ...rating, updatePolicy: 'turn' }), true);
+});
+
 test('legacy transfer settings are retired without changing stored values', () => {
     const definitions = [{ name: 'HP', persistence: 'variable' },
         { name: 'Wisdom', persistence: 'innate', persistenceReview: true }];

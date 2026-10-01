@@ -99,15 +99,15 @@ export function renderTrackerScanAndReview({ container, settings, onApply, onCha
 
     container.append(buildSettingSelect({
         key: 'statusTracker.maxChangePolicy',
-        label: 'When A Maximum Moves',
+        label: 'When A Level-Up Moves A Maximum',
         options: [
             { value: 'free', label: 'Apply it - level-ups vary by system' },
             { value: 'review-decreases', label: 'Ask before a maximum drops' },
             { value: 'review-all', label: 'Ask every time' },
         ],
-        help: 'A ceiling rising is usually a level-up. A ceiling falling is almost never '
-            + 'intended. Either way it is listed in the review panel, so it stays visible '
-            + 'and undoable.',
+        help: 'Ordinary story updates keep each maximum fixed. An inline level-up may '
+            + 'raise a Turn maximum; Advancement ranges stay fixed. Choose whether that change needs review. Separate reader bonuses '
+            + 'always wait for review.',
         onChange: onApply
     }));
 

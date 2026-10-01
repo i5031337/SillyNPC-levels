@@ -2,6 +2,7 @@ import { getSettings, saveSettings, defaultSettings } from '../../core/settings.
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
 import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
+import { constrainNumericStat } from '../../tracker/numeric-stat-bounds.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';
@@ -155,7 +156,8 @@ function buildStatusDashboard() {
         row.style.margin = '5px 0';
         row.innerHTML = `<span style="width:100px; display:inline-block">${escapeHtml(key)}:</span> <input type="text" class="text_pole" style="width:200px" value="${escapeHtml(value)}">`;
         row.querySelector('input').addEventListener('blur', (e) => {
-            state.global[key] = e.target.value;
+            state.global[key] = constrainNumericStat(stat, e.target.value, state.global[key]);
+            e.target.value = String(state.global[key] ?? '');
             saveStateToMetadata(state, { label: 'Manual edit' });
             eventSource.emit('sillynpc-status-updated', state);
         });
@@ -173,7 +175,8 @@ function buildStatusDashboard() {
         row.style.margin = '5px 0';
         row.innerHTML = `<span style="width:100px; display:inline-block">${escapeHtml(key)}:</span> <input type="text" class="text_pole" style="width:200px" value="${escapeHtml(value)}">`;
         row.querySelector('input').addEventListener('blur', (e) => {
-            state.player.stats[key] = e.target.value;
+            state.player.stats[key] = constrainNumericStat(stat, e.target.value, state.player.stats[key]);
+            e.target.value = String(state.player.stats[key] ?? '');
             saveStateToMetadata(state, { label: 'Manual edit' });
             eventSource.emit('sillynpc-status-updated', state);
         });
@@ -198,7 +201,8 @@ function buildStatusDashboard() {
             row.style.margin = '2px 0';
             row.innerHTML = `<span style="width:100px; display:inline-block">${escapeHtml(key)}:</span> <input type="text" class="text_pole" style="width:150px" value="${escapeHtml(value)}">`;
             row.querySelector('input').addEventListener('blur', (e) => {
-                char.stats[key] = e.target.value;
+                char.stats[key] = constrainNumericStat(stat, e.target.value, char.stats[key]);
+                e.target.value = String(char.stats[key] ?? '');
                 saveStateToMetadata(state, { label: 'Manual edit' });
                 eventSource.emit('sillynpc-status-updated', state);
             });

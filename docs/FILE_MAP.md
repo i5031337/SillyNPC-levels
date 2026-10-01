@@ -39,6 +39,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/fill-preset.mjs` | Automatic fill stage tests. |
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
+| `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
 | `tests/system-schema.mjs` | System definition normalization and legacy import tests. |
@@ -89,13 +90,15 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/usage.js` | Model usage accounting. |
 | `src/core/tokens.js` | Token budget readout. |
 | `src/tracker/progression.js` | XP advancement and level bonus calculations. |
+| `src/tracker/numeric-stat-bounds.js` | Enforce numeric minimums and pool ceilings. |
+| `src/tracker/stat-prompt-definitions.js` | Format stat purposes and rules for reader and inline prompts. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
 | `src/tracker/stat-update-policy.js` | Turn and advancement update policy for stats. |
 | `src/tracker/status-clock.js` | Story clock parsing and elapsed time. |
 | `src/tracker/status-rules.js` | Time-based stat rules. |
 | `src/tracker/status-history.js` | Raw status block preservation and chat overhead measurement. |
 | `src/tracker/status-logic.js` | Player and NPC state, model updates, cast, items, and Systems. |
-| `src/tracker/status-stat-values.js` | Stat value merging and numeric constraints. |
+| `src/tracker/status-stat-values.js` | Stat value merging and model update sanitization. |
 | `src/tracker/status-stat-schema.js` | Stat definition lookup and schema helpers. |
 | `src/tracker/status-persona-state.js` | Reusable persona identity/profile and chat-local player stats, collections, goals, and memories. |
 | `src/tracker/status-chat-session.js` | Chat persona/system session lifecycle. |

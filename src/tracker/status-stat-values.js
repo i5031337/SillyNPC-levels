@@ -2,6 +2,7 @@ import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '.
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { isTurnStat, canAdvanceStat, earnsLevel } from './stat-update-policy.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { configuredNumericMaximum, keepNumericMaximum } from './numeric-stat-bounds.js';
 
 export function bind(deps) {
 
@@ -90,9 +91,6 @@ function resolveMaxValue(statDef) {
     return '';
 }
 
-const PLAIN_NUMBER = /^\s*-?\d+(?:\.\d+)?\s*$/;
-const NUMBER_OVER_NUMBER = /^\s*(-?\d+(?:\.\d+)?)\s*\/\s*-?\d+(?:\.\d+)?\s*$/;
-
 /**
  * Fields held out of ordinary turn updates, by scope.
  *
@@ -120,8 +118,8 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
  *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
  *   changed and then came back as "4/20" were this - a model copying the "current/maximum"
- *   form it saw elsewhere onto a score. A stat with a Starts max, or already holding a
- *   ceiling, is left alone, and so is anything that is not a number over a number.
+ *   form it saw elsewhere onto a score. For a pool, the existing maximum is retained;
+ *   a configured starting maximum is used only for a blank value.
  *
  * @param {object} update Changed in place, and returned.
  * @param {object} state The state the reply is applied to.
@@ -135,6 +133,12 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
+            const maxFragment = key.match(/^(.*)_(?:maximum|max|total|cap)$/i);
+            if (!def && maxFragment && (defs || []).some(d => d?.name?.toLowerCase() === maxFragment[1].toLowerCase()
+                && isNumericStat(d))) {
+                delete stats[key];
+                continue;
+            }
             if (!def) continue;
             const inlineBonus = player && levelUp
                 && (def.name.toLowerCase() === 'level bonus' || canAdvanceStat(def));
@@ -154,9 +158,13 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 }
             }
             const incoming = String(stats[key] ?? '');
-            const ceiling = incoming.match(NUMBER_OVER_NUMBER);
-            if (ceiling && PLAIN_NUMBER.test(String(held ?? '')) && !resolveMaxValue(def)) {
-                stats[key] = ceiling[1];
+            if (isNumericStat(def) && (!inlineBonus || !isTurnStat(def))) {
+                const storedValue = String(held ?? '').trim() ? held : cardHeld;
+                const fixedCap = !isTurnStat(def) ? configuredNumericMaximum(def) : null;
+                const liveCap = String(storedValue ?? '').includes('/')
+                    ? fixedCap ?? promptCeiling(def, storedValue)
+                    : promptCeiling(def, storedValue);
+                stats[key] = keepNumericMaximum(incoming, liveCap);
             }
         }
     };
@@ -171,7 +179,8 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
             .find(c => String(c?.name).toLowerCase() === String(actor?.name).toLowerCase());
-        clean(actor?.stats, trackerSettings.npcStats, current?.stats,
+        clean(actor?.stats && typeof actor.stats === 'object' ? actor.stats : actor,
+            trackerSettings.npcStats, current?.stats,
             { npc: true, cardStats: deps.findCardForName(actor?.name)?.statusOverrides });
     }
     return update;
@@ -246,6 +255,7 @@ function describeNpcStatFields(trackerSettings) {
         .filter(stat => stat?.name && isTurnStat(stat))
         .map(stat => {
             const details = [isNumericStat(stat) ? 'number' : 'text'];
+            if (String(stat.purpose ?? '').trim()) details.push(`purpose: ${stat.purpose.trim()}`);
             const choices = deps.allowedValues(stat);
             if (choices.length) details.push(`choose one of ${choices.join(', ')}`);
             else if (isNumericStat(stat)) {
@@ -255,7 +265,7 @@ function describeNpcStatFields(trackerSettings) {
             }
             if (String(stat.defaultValue ?? '').trim()) details.push(`default ${stat.defaultValue}`);
             if (stat.locked) {
-                details.push('fill only while blank, then keep fixed');
+                details.push('immutable after its first value; never change it during play');
             }
             return `- ${stat.name}: ${details.join('; ')}`;
         })
@@ -323,9 +333,9 @@ function clampToCeiling(value) {
     return `${max}/${max}`;
 }
 
-function getInitialStatValue(defaultValue, maxStatValue) {
+function getInitialStatValue(defaultValue, maxStatValue, statDef = null) {
     let value = defaultValue || '';
-    if (maxStatValue && value && !String(value).includes('/')) {
+    if (maxStatValue && value && !String(value).includes('/') && isTurnStat(statDef)) {
         value = `${value}/${maxStatValue}`;
     }
     return value;
