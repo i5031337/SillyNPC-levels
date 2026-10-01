@@ -44,7 +44,7 @@ export function stripStatusBlockFromMessage(message) {
 
     const original = message.mes;
     const { cleanedText, matchLength } = parseMessageForUpdates(original);
-    if (!matchLength || matchLength <= 0 || cleanedText === original) {
+    if (!matchLength || matchLength <= 0 || cleanedText === original || !cleanedText?.trim()) {
         return { changed: false, removedChars: 0 };
     }
 

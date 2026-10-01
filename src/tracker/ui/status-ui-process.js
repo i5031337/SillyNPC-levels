@@ -164,9 +164,11 @@ export function processStatusUpdate(mesEl) {
 
         // ── STRATEGY 1: Regex match on raw textContent (covers plain-text <status_update> tags) ──
         const text = textContainer.textContent;
-        const { update: textUpdate, matchLength: textMatchLength } = parseMessageForUpdates(text);
+        const { cleanedText, update: textUpdate, matchLength: textMatchLength } = parseMessageForUpdates(text);
 
-        if (textMatchLength > 0) {
+        // Keep a status-only reply visible. The same guard in status-history.js
+        // protects the saved text; this protects its already rendered DOM.
+        if (textMatchLength > 0 && cleanedText?.trim()) {
             const isWriting = mesEl.classList.contains('writing');
             if (!textUpdate && isWriting) {
                 return;
@@ -209,6 +211,8 @@ export function processStatusUpdate(mesEl) {
                     mesEl.setAttribute('data-sillynpc-last-update-text', statusTagEl.textContent);
                 }
             }
+
+            if (!textContainer.textContent.replace(statusTagEl.textContent, '').trim()) return;
 
             // Always hide the element directly — no offset math needed
             statusTagEl.style.display = 'none';
@@ -268,6 +272,7 @@ export function processStatusUpdate(mesEl) {
                             startHideIndex = lastRmIdx;
                         }
                     }
+                    if (!text.substring(0, startHideIndex).trim()) return;
                     hideStatusDataSurgically(textContainer, text.length - startHideIndex);
                     mesEl.setAttribute('data-sillynpc-status-hidden', 'true');
                     stripAndPersist(mesId);
@@ -289,4 +294,3 @@ export function processStatusUpdate(mesEl) {
         processingMessages.delete(mesId);
     }
 }
-

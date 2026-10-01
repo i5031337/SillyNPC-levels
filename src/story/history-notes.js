@@ -109,7 +109,10 @@ export function withoutWorldNote(text, names) {
     if (!named) return null;
     if (!/^[[(].*[\])]$/.test(first) && !first.includes('|')) return null;
 
-    return lines.slice(1).join('\n').replace(/^\s*\n/, '');
+    const remainder = lines.slice(1).join('\n').replace(/^\s*\n/, '');
+    // A copied note can be the model's entire reply. Keep it in that case so the
+    // message remains readable and the background reader still has a turn to read.
+    return remainder.trim() ? remainder : null;
 }
 
 /**

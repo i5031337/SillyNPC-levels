@@ -3,6 +3,7 @@ import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted
 import { wireAvatarClicks } from './src/entry/entry-avatar-actions.js';
 import { offerChatScope } from './src/entry/entry-chat-scope.js';
 import { dropCopiedWorldNote } from './src/entry/entry-history-notes.js';
+import { allowStoryPlayerDialogue, restorePlayerDialogueSetting } from './src/entry/entry-generation-names.js';
 import { renderExtensionTemplateAsync } from '../../../extensions.js';
 import { LOG_PREFIX, extensionName, debugLog } from './src/core/constants.js';
 import { initSettings, getSettings } from './src/core/settings.js';
@@ -144,6 +145,10 @@ jQuery(async () => {
                 debugLog('Could not set what is injected into the story prompt', err);
             }
         });
+
+        eventSource.on(event_types.GENERATION_STARTED, allowStoryPlayerDialogue);
+        eventSource.on(event_types.GENERATION_ENDED, restorePlayerDialogueSetting);
+        eventSource.on(event_types.GENERATION_STOPPED, restorePlayerDialogueSetting);
 
         /* Fires while SillyTavern assembles the story prompt, and - contrary to what this
            comment used to say - in time to change it. getWorldInfoPrompt, which emits
