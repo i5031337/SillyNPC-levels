@@ -71,9 +71,12 @@ export function onMessageForExtraction(messageId) {
  */
 export function onSwipe(messageId) {
     try {
-        // SillyTavern can carry the outgoing extra into an empty over-swipe slot.
+        // Over-swiping keeps the outgoing text and extra until generation starts.
+        // The new slot is beyond the saved replies even when mes is still nonempty.
         const incoming = getContext()?.chat?.[Number(messageId)];
-        if (incoming && !String(incoming.mes ?? '').trim()) clearTurnRecord(messageId);
+        const newSlot = Array.isArray(incoming?.swipes)
+            && Number(incoming.swipe_id) >= incoming.swipes.length;
+        if (incoming && (newSlot || !String(incoming.mes ?? '').trim())) clearTurnRecord(messageId);
         const result = rebaseToSwipe(messageId);
         if (!result.rebased) {
             // Never a silent disagreement between the tracker and the reply on screen.
