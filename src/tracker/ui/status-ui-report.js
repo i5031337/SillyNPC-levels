@@ -98,7 +98,9 @@ export function renderExtractionReport(mesEl, messageId) {
                 retry.disabled = true;
                 const { extractStateFromMessage } = await import('../extractor/status-extractor-run.js');
                 try {
-                    await extractStateFromMessage(message.mes, messageId, { regenerate: Boolean(getSwipeBase(messageId)) });
+                    await extractStateFromMessage(message.mes, messageId, {
+                        manual: true, regenerate: Boolean(getSwipeBase(messageId)),
+                    });
                 } finally {
                     retry.disabled = false;
                 }

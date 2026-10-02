@@ -63,15 +63,17 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
         label: 'Method',
         options: [
             { value: 'extract', label: 'A separate pass after each message' },
+            { value: 'manual', label: 'Manual — run from the send bar' },
             { value: 'inline', label: 'Ask for a status block in the reply' },
         ],
         help: 'A separate pass keeps bookkeeping out of the story, so a character card '
             + 'that forbids numbers no longer fights the tracker. It costs one extra '
-            + 'request per message.',
+            + 'request per message. Manual runs only when you click Read latest reply '
+            + 'on the send bar, using the latest reply and the configured lead-up.',
         onChange
     }));
 
-    if (settings.extractionMode === 'extract') {
+    if (settings.extractionMode === 'extract' || settings.extractionMode === 'manual') {
         container.appendChild(buildConnectionProfilePicker(onApply));
     }
 

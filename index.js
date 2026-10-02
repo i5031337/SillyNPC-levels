@@ -26,6 +26,7 @@ import { alignSwipeBaseToNow } from './src/tracker/snapshots/status-snapshots.js
 import { resetExtractionState } from './src/tracker/extractor/status-extractor.js';
 import { initHUD, updateHUD, forgetPortrait } from './src/ui/hud/ui-hud.js';
 import { refreshScanButton } from './src/ui/tracker/ui-scan-button.js';
+import { refreshReadButton } from './src/ui/tracker/ui-read-button.js';
 import { applyPortraitFraming, applySpeechPadding } from './src/ui/shared/ui-shared.js';
 import { applyScenePrompt } from './src/tracker/status-logic.js';
 import { noteActivatedLore } from './src/lore/activated-lore.js';
@@ -40,6 +41,7 @@ async function addSettingsPanel() {
         const html = await renderExtensionTemplateAsync(extensionName, 'index');
         $('#extensions_settings2').append(html);
         refreshScanButton();
+        refreshReadButton();
 
         document.getElementById('sillynpc-open-manage')?.addEventListener('click', () => {
             openManagePopup().catch(err => console.error(LOG_PREFIX, 'openManagePopup failed', err));

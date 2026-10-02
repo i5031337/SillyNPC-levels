@@ -34,7 +34,7 @@ function loadModule(path, deps) {
     return new Function(...Object.keys(deps), `${source}\nreturn typeof extractStateFromMessage === 'function'
         ? { extractStateFromMessage } : { replacementReadingState, revertToBase };`)(...Object.values(deps));
 }
-function harness() {
+function harness(mode = 'extract') {
     const baseState = { player: { stats: { XP: '10', HP: '100' } } };
     let live = { player: { stats: { XP: '30', HP: '95' } } };
     const base = { messageId: '0', state: baseState, profiles: {},
@@ -56,7 +56,8 @@ function harness() {
     const extraction = loadModule('../src/tracker/extractor/status-extractor-run.js', {
         ...deps, ...snapshots, normalizeCollectionUpdates,
         trackerMessageIndex: chat => chat.length - 1,
-        getSettings: () => ({ statusTracker: { ...settings, playerStats: [{ name: 'XP', purpose: 'xp' }] } }),
+        getSettings: () => ({ statusTracker: { ...settings, extractionMode: mode,
+            playerStats: [{ name: 'XP', purpose: 'xp' }] } }),
         rememberSwipeBase: () => {},
         refreshTurnBase: () => { base.beforeApply = { state: structuredClone(live), profiles: {} }; },
         sanitizeModelUpdate: () => {}, reconcileScenePresence: () => {},
@@ -85,7 +86,7 @@ function harness() {
         extractionSwipe: () => 0, renderExtractionReport: () => {},
         document: { querySelector: () => null }, LOG_PREFIX: 'test',
     });
-    return { run: () => extraction.extractStateFromMessage(message.mes, 0, { regenerate: true }),
+    return { run: (options = { regenerate: true }) => extraction.extractStateFromMessage(message.mes, 0, options),
         live: () => live, pending: () => pending, prompted: () => prompted, message, context, base,
         setResponse: value => { response = value; }, onRequest: fn => { onRequest = fn; } };
 }
@@ -118,4 +119,30 @@ test('manual changes during the request survive replacement', async () => {
     await h.run();
     assert.equal(h.live().player.stats.HP, '80');
     assert.equal(h.live().player.stats.XP, '30');
+});
+
+test('manual mode skips automatic requests and replaces an explicitly requested reading', async () => {
+    const h = harness('manual');
+    let requests = 0;
+    h.onRequest(() => { requests += 1; });
+    assert.equal((await h.run({})).reason, 'extraction disabled');
+    assert.equal(requests, 0);
+    for (let i = 0; i < 2; i++) {
+        assert.equal((await h.run({ manual: true, regenerate: true })).applied, true);
+        assert.equal(h.live().player.stats.XP, '30');
+        assert.equal(h.message.extra.sillynpc_applied.length, 1);
+    }
+    assert.equal(requests, 2);
+});
+
+test('manual reading is discarded if a new turn arrives during the request', async () => {
+    const h = harness('manual');
+    h.onRequest(() => h.context.chat.push({ mes: 'Next turn' }));
+    assert.equal((await h.run({ manual: true })).reason, 'reply changed while reading');
+    assert.equal(h.live().player.stats.XP, '30');
+});
+
+test('manual mode does not enable the reader in inline mode', async () => {
+    const h = harness('inline');
+    assert.equal((await h.run({ manual: true })).reason, 'extraction disabled');
 });

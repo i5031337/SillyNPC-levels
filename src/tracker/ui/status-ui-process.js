@@ -175,7 +175,8 @@ export function processStatusUpdate(mesEl) {
             }
 
             const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== text;
-            if (textUpdate && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
+            if (settings.extractionMode !== 'manual' && textUpdate
+                && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
                 applyUpdate(sanitizeInlineUpdate(textUpdate));
                 mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                 mesEl.setAttribute('data-sillynpc-last-update-text', text);
@@ -205,7 +206,8 @@ export function processStatusUpdate(mesEl) {
 
             if (parsedUpdate && (parsedUpdate.global !== undefined || parsedUpdate.player !== undefined || parsedUpdate.characters !== undefined)) {
                 const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== statusTagEl.textContent;
-                if (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent) {
+                if (settings.extractionMode !== 'manual'
+                    && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
                     applyUpdate(sanitizeInlineUpdate(parsedUpdate));
                     mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                     mesEl.setAttribute('data-sillynpc-last-update-text', statusTagEl.textContent);
@@ -255,7 +257,8 @@ export function processStatusUpdate(mesEl) {
                     // Found a valid root-level update
                     foundUpdate = true;
                     const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== extractedJson;
-                    if (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent) {
+                    if (settings.extractionMode !== 'manual'
+                        && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
                         applyUpdate(sanitizeInlineUpdate(parsedCandidate));
                         mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                         mesEl.setAttribute('data-sillynpc-last-update-text', extractedJson);

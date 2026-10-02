@@ -5,6 +5,8 @@ import { renderTrackerDisplayAndReading } from './ui-tracker-display-reading.js'
 import { renderTrackerScanAndReview } from './ui-tracker-scan-review.js';
 import { renderTrackerCastAndRecovery } from './ui-tracker-cast-recovery.js';
 import { foldSettings } from '../settings/ui-settings-details.js';
+import { refreshReadButton } from './ui-read-button.js';
+import { refreshScanButton } from './ui-scan-button.js';
 
 /**
  * The Tracker settings tab, and the two popups it opens.
@@ -36,6 +38,8 @@ export function renderStatusView(container) {
 
     /** Rebuilds the panel. Only for controls that add or remove other controls. */
     const onChange = () => {
+        refreshReadButton();
+        refreshScanButton();
         const scrollParent = container.closest('.sillynpc-tab-panel') || container.closest('.popup-body') || container;
         const top = scrollParent.scrollTop;
         renderStatusView(container);

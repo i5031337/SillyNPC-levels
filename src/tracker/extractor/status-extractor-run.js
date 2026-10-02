@@ -64,7 +64,7 @@ export function forgetExtractionsFrom(index) {
  *
  * @param {string} messageText
  * @param {string|number} messageId
- * @param {{ force?: boolean, regenerate?: boolean }} [options]
+ * @param {{ force?: boolean, regenerate?: boolean, manual?: boolean }} [options]
  * @returns {Promise<{ applied: boolean, reason?: string }>}
  */
 /**
@@ -90,7 +90,8 @@ function reportExtractionProblem(message) {
 export async function extractStateFromMessage(messageText, messageId, options = {}) {
     const trackerSettings = getSettings().statusTracker;
     if (!trackerSettings.enabled) return { applied: false, reason: 'tracker disabled' };
-    if (!options.force && trackerSettings.extractionMode !== 'extract') {
+    if (!options.force && trackerSettings.extractionMode !== 'extract'
+        && !(options.manual && trackerSettings.extractionMode === 'manual')) {
         return { applied: false, reason: 'extraction disabled' };
     }
     if (!messageText || !String(messageText).trim()) return { applied: false, reason: 'empty message' };
@@ -133,7 +134,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         debugLog('Extraction request for message', key);
         const raw = await requestExtraction(userPrompt, schema, trackerSettings);
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
-            || extractionSwipe(reportMessage) !== swipe) {
+            || extractionSwipe(reportMessage) !== swipe
+            || (options.manual && Number(messageId) !== trackerMessageIndex(getContext()?.chat || []))) {
             return { applied: false, reason: 'reply changed while reading' };
         }
 
@@ -165,7 +167,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         const levelBonus = await addLevelBonus(parsed, liveState, trackerSettings,
             String(messageText), leadUp);
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
-            || extractionSwipe(reportMessage) !== swipe) {
+            || extractionSwipe(reportMessage) !== swipe
+            || (options.manual && Number(messageId) !== trackerMessageIndex(getContext()?.chat || []))) {
             return { applied: false, reason: 'reply changed while reading' };
         }
 

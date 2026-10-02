@@ -135,6 +135,7 @@ Reload SillyTavern.
    * Generated portraits use SillyTavern's Image Generation extension and its configured provider.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
+   * To run the reader on demand, select **Tracker → How Stats Are Read → Method → Manual — run from the send bar**. Click the book icon (**Read latest reply**) beside the send controls after an assistant reply. It reads that reply with the configured lead-up, using the usual reader connection and review settings. Reading the same reply again replaces its previous reading without awarding XP twice.
    * The HUD appears once the tracker is running; choose Plate, Underlines, Pip Rows, or Split Ring under the **HUD** tab.
 
 ### NPC stats and character transfers

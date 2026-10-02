@@ -44,6 +44,7 @@ export const defaultTrackerSettings = {
          * 'extract' - a separate request reads the finished message and returns JSON.
          *             The narrative prompt then carries no tracker instructions, so a
          *             character card that forbids status output stops conflicting.
+         * 'manual'  - the same separate request, started from the send bar only.
          * 'inline'  - the original behaviour: ask for a <status_update> block in the
          *             same response as the narrative.
          */

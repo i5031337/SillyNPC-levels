@@ -51,6 +51,46 @@ try:
           mode: !!panel.querySelector('[data-setting="statusTracker.castMode"]'),
           binding: !!panel.querySelector('[data-setting="statusTracker.sceneBindingStat"]')};""")
     assert cast_controls == {'section': False, 'mode': False, 'binding': False}, cast_controls
+    execute("""const entry = [...document.scripts].find(script =>
+        script.src.includes('/SillyNPC-XP/index.js'));
+        const script = document.createElement('script');
+        script.type = 'module'; script.id = 'sillynpc-manual-smoke';
+        script.textContent = `
+          const root = ${JSON.stringify(new URL('.', entry.src).href)};
+          const { getSettings } = await import(root + 'src/core/settings.js');
+          const { renderStatusView } = await import(root + 'src/ui/tracker/ui-tracker-settings.js');
+          const { refreshReadButton } = await import(root + 'src/ui/tracker/ui-read-button.js');
+          const settings = getSettings().statusTracker;
+          const saved = { enabled: settings.enabled, extractionMode: settings.extractionMode };
+          const panel = document.querySelector('#sillynpc-status-view');
+          const result = {};
+          try {
+            settings.enabled = true; settings.extractionMode = 'manual';
+            renderStatusView(panel); refreshReadButton(); refreshReadButton();
+            result.manualOption = !!panel.querySelector('option[value="manual"]');
+            result.buttons = document.querySelectorAll('#sillynpc-read-button').length;
+            result.accessible = document.querySelector('#sillynpc-read-button')?.getAttribute('aria-label');
+            settings.enabled = false; refreshReadButton();
+            result.hiddenWhenDisabled = !document.querySelector('#sillynpc-read-button');
+            settings.enabled = true; settings.extractionMode = 'extract'; refreshReadButton();
+            result.hiddenWhenAutomatic = !document.querySelector('#sillynpc-read-button');
+          } catch (error) { result.error = String(error); }
+          finally { Object.assign(settings, saved); renderStatusView(panel); refreshReadButton(); }
+          document.documentElement.setAttribute('data-manual-smoke', JSON.stringify(result));
+        `;
+        document.head.appendChild(script);""")
+    manual_result = None
+    for _ in range(40):
+        raw = execute("return document.documentElement.getAttribute('data-manual-smoke')")
+        if raw:
+            manual_result = json.loads(raw)
+            break
+        time.sleep(0.25)
+    execute("""document.querySelector('#sillynpc-manual-smoke')?.remove();
+        document.documentElement.removeAttribute('data-manual-smoke');""")
+    assert manual_result and manual_result.get('manualOption'), manual_result
+    assert manual_result.get('buttons') == 1 and manual_result.get('accessible'), manual_result
+    assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];

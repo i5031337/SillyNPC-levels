@@ -153,7 +153,7 @@ function applyScenePrompt() {
         return;
     }
 
-    if (settings.extractionMode === 'extract') {
+    if (settings.extractionMode === 'extract' || settings.extractionMode === 'manual') {
         // A separate pass does the bookkeeping, so the narrative prompt must not demand
         // a status block - that demand is what conflicts with character cards forbidding
         // numbers or status output in their prose.
