@@ -1,6 +1,7 @@
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
 import { Popup } from '../../../../../../popup.js';
 import { buildTokenReadout } from '../../core/tokens.js';
+import { appendSettingHelp } from './ui-setting-help.js';
 
 function getNestedValue(obj, path) {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
@@ -27,19 +28,6 @@ function markAdvanced(wrap, spec) {
     if (!spec?.advanced) return;
     wrap.dataset.advanced = 'true';
     if (!getSettings().devMode) wrap.style.display = 'none';
-}
-
-function appendHelp(wrap, help) {
-    if (!help) return;
-    const details = document.createElement('details');
-    details.className = 'sillynpc-setting-help';
-    const summary = document.createElement('summary');
-    summary.textContent = 'How it works';
-    const note = document.createElement('small');
-    note.className = 'notes';
-    note.textContent = help;
-    details.append(summary, note);
-    wrap.append(details);
 }
 
 /**
@@ -132,7 +120,7 @@ export function buildSettingTextArea(options) {
     wrap.append(textarea);
     if (tokens) wrap.append(tokens.element);
 
-    appendHelp(wrap, help);
+    appendSettingHelp(wrap, help);
 
     if (recommended) {
         const restore = document.createElement('button');
@@ -194,7 +182,7 @@ export function buildSettingSelect(spec) {
     row.append(text, select);
     wrap.append(row);
 
-    appendHelp(wrap, help);
+    appendSettingHelp(wrap, help);
     return wrap;
 }
 
@@ -229,7 +217,7 @@ export function buildSettingToggle(options) {
     row.append(labelSpan, input);
     wrap.append(row);
 
-    appendHelp(wrap, help);
+    appendSettingHelp(wrap, help);
 
     return wrap;
 }
@@ -292,7 +280,7 @@ export function buildSettingSlider(options) {
     row.append(text, sliderContainer);
     wrap.append(row);
 
-    appendHelp(wrap, help);
+    appendSettingHelp(wrap, help);
     return wrap;
 }
 
@@ -389,7 +377,7 @@ export function buildSettingNumber(options) {
     }
     wrap.append(row);
 
-    appendHelp(wrap, help);
+    appendSettingHelp(wrap, help);
     return wrap;
 }
 

@@ -1,0 +1,62 @@
+.sillynpc-setting-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sillynpc-setting-heading > .sillynpc-setting-row {
+    flex: 1;
+    min-width: 0;
+}
+
+.sillynpc-setting-help {
+    flex: 0 0 auto;
+}
+
+.sillynpc-setting-help-button {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--sillynpc-radius-sm);
+    background: transparent;
+    color: var(--sillynpc-fg-secondary);
+    font-size: var(--sillynpc-text-sm);
+    cursor: help;
+}
+
+.sillynpc-setting-help-button:hover,
+.sillynpc-setting-help-button:focus-visible {
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    background: var(--sillynpc-bg-secondary);
+}
+
+.sillynpc-setting-help-button:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
+}
+
+.sillynpc-setting-help-note {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(360px, calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+    overflow: auto;
+    padding: 10px 12px;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: var(--sillynpc-radius-sm);
+    background: var(--sillynpc-bg-primary);
+    color: var(--sillynpc-fg-primary);
+    box-shadow: var(--sillynpc-shadow);
+    font-size: var(--sillynpc-text-sm);
+    font-weight: normal;
+    line-height: 1.5;
+    text-align: left;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}

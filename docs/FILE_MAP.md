@@ -227,6 +227,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/characters/ui-profile.js` | Active System profile fields and saved legacy field display/editing. |
 | `src/ui/tracker/ui-scan-button.js` | History scan trigger. |
 | `src/ui/settings/ui-setting-controls.js` | Shared settings form controls. |
+| `src/ui/settings/ui-setting-help.js` | Hover, focus, and tap help hints for settings controls. |
 | `src/ui/settings/ui-settings-details.js` | Group less-used settings in disclosures. |
 | `src/ui/settings/ui-settings-search.js` | Search settings and jump to results. |
 | `src/ui/settings/ui-settings-tabs.js` | Public entry point for settings views. |
@@ -287,6 +288,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `styles/13-system-profiles.css` | System profile field Builder controls. |
 | `styles/14-goals.css` | Goals editor and HUD presentation. |
 | `styles/14-memories.css` | Character memory editor and archive presentation. |
+| `styles/15-setting-help.css` | Settings help icons and popover styling. |
 
 ## Maintenance notes
 

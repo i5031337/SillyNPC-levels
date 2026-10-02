@@ -326,26 +326,6 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     margin-right: 0;
 }
 
-.sillynpc-setting-help {
-    color: var(--sillynpc-fg-secondary);
-    font-size: var(--sillynpc-text-sm);
-}
-
-.sillynpc-setting-help > summary {
-    width: fit-content;
-    cursor: pointer;
-    padding: 2px 0;
-}
-
-.sillynpc-setting-help > summary:focus-visible {
-    outline: 2px solid var(--sillynpc-accent);
-    outline-offset: 2px;
-}
-
-.sillynpc-setting-help[open] > .notes {
-    margin: 4px 0 2px;
-}
-
 .sillynpc-setting-row {
     display: flex;
     align-items: center;
