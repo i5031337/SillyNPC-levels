@@ -6,6 +6,15 @@ import { applyRows } from './status-row-replay.js';
 import { diffTurnValues, applyTurnValues, turnEffectStatus } from './status-turn-delta.js';
 import { syncRebasedLore } from './status-rebase-lore.js';
 
+/** Preview a replacement reading without changing live state while its request runs. */
+export function replacementReadingState(messageId) {
+    const record = swipeBaseRecord();
+    if (!record || record.messageId !== String(messageId)) return null;
+    if (!record.applied) return getSwipeBase(messageId);
+    return applyTurnValues(structuredClone(record.state),
+        diffTurnValues(record.applied.state, loadStateFromMetadata()));
+}
+
 /** Rebuilds the chosen reply and carries corrections made after the outgoing one. */
 function rebaseRecordedTurn(messageId, { removed = false } = {}) {
     const record = swipeBaseRecord();

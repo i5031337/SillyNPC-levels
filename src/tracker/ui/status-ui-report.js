@@ -2,6 +2,7 @@ import { getExtractionReport } from '../extractor/status-extraction-report.js';
 import { getSettings } from '../../core/settings.js';
 import { getContext } from '../../../../../../st-context.js';
 import { trackerMessageIndex } from './status-ui-placement.js';
+import { getSwipeBase } from '../status-logic.js';
 
 const labels = {
     why: 'Reasons given by the reader',
@@ -85,17 +86,22 @@ export function renderExtractionReport(mesEl, messageId) {
             content.textContent = 'The reader returned no output.';
         }
         details.appendChild(content);
-        if (report.status === 'failed' && Number(messageId) === trackerMessageIndex(getContext()?.chat || [])) {
+        if (Number(messageId) === trackerMessageIndex(getContext()?.chat || [])
+            && (report.status === 'failed' || getSwipeBase(messageId))) {
             const retry = document.createElement('button');
             retry.type = 'button';
             retry.className = 'menu_button sillynpc-reader-retry';
-            retry.textContent = 'Retry tracker reading';
+            retry.textContent = report.status === 'failed' ? 'Retry tracker reading' : 'Regenerate tracker reading';
             retry.addEventListener('click', async () => {
                 const message = getContext()?.chat?.[Number(messageId)];
                 if (!message || Number(messageId) !== trackerMessageIndex(getContext()?.chat || [])) return;
                 retry.disabled = true;
                 const { extractStateFromMessage } = await import('../extractor/status-extractor-run.js');
-                await extractStateFromMessage(message.mes, messageId);
+                try {
+                    await extractStateFromMessage(message.mes, messageId, { regenerate: Boolean(getSwipeBase(messageId)) });
+                } finally {
+                    retry.disabled = false;
+                }
             });
             details.appendChild(retry);
         }

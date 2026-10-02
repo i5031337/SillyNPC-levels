@@ -16,6 +16,9 @@ import { holdLevelBonusChanges } from '../stat-update-policy.js';
 import { addLevelBonus, applyGoalsFromReply } from './status-extractor-replies.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
+import { normalizeCollectionUpdates } from './status-collection-normalize.js';
+import { replacementReadingState, revertToBase } from '../snapshots/status-snapshot-swipe.js';
+import { trackerMessageIndex } from '../ui/status-ui-placement.js';
 
 /** Guards against an extraction triggering the events that would start another. */
 let activeExtraction = null;
@@ -61,7 +64,7 @@ export function forgetExtractionsFrom(index) {
  *
  * @param {string} messageText
  * @param {string|number} messageId
- * @param {{ force?: boolean }} [options]
+ * @param {{ force?: boolean, regenerate?: boolean }} [options]
  * @returns {Promise<{ applied: boolean, reason?: string }>}
  */
 /**
@@ -97,9 +100,12 @@ export async function extractStateFromMessage(messageText, messageId, options = 
     // - so whichever reply you kept, the tracker held the numbers from swipe 1.
     const swipeId = getContext()?.chat?.[Number(messageId)]?.swipe_id ?? 0;
     const key = `${messageId}:${swipeId}`;
-    if (!options.force && extractedMessages.has(key)) return { applied: false, reason: 'already extracted' };
+    if (!options.force && !options.regenerate && extractedMessages.has(key)) return { applied: false, reason: 'already extracted' };
     if (activeExtraction) return { applied: false, reason: 'already running' };
 
+    const canReplace = () => Number(messageId) === trackerMessageIndex(getContext()?.chat || [])
+        && replacementReadingState(messageId) !== null;
+    if (options.regenerate && !canReplace()) return { applied: false, reason: 'no latest-turn base' };
     const run = {};
     activeExtraction = run;
     const reportMessage = startExtractionReport(messageId);
@@ -115,7 +121,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
     };
     refreshReport();
     try {
-        const state = loadStateFromMetadata();
+        const state = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
         // Before anything is applied. A later swipe of this message rebuilds from here
         // rather than from what this one leaves behind.
         rememberSwipeBase(messageId, state);
@@ -149,7 +155,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // Those steps change the object in place, and the original is what explains the
         // reader's decisions, including values the tracker later refuses.
         const readerOutput = structuredClone(parsed);
-        const liveState = loadStateFromMetadata();
+        const warnings = normalizeCollectionUpdates(parsed, trackerSettings);
+        const liveState = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
+        if (!liveState || (options.regenerate && !canReplace())) return { applied: false, reason: 'reply changed while reading' };
         expandNumericDeltas(parsed, liveState, trackerSettings);
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
@@ -161,6 +169,12 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             return { applied: false, reason: 'reply changed while reading' };
         }
 
+        if (options.regenerate) {
+            if (!canReplace()) return { applied: false, reason: 'reply changed while reading' };
+            if (!revertToBase(messageId).reverted) throw new Error('The previous tracker state is unavailable');
+            // Applied rows append during review; a replacement starts a fresh record.
+            delete reportMessage.extra.sillynpc_applied;
+        }
         refreshTurnBase(messageId);
         // Presence first: applyUpdate refuses to introduce characters in speakers mode,
         // so anyone the extraction reports must be admitted to the scene before their
@@ -234,8 +248,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         const applied = (pending.length === 0 ? changes : auto).concat(timed.rows);
         recordAppliedChanges(messageId, applied);
 
+        setPendingChanges(messageId, pending, unmatched, refused);
         if (pending.length > 0) {
-            setPendingChanges(messageId, pending, unmatched, refused);
             debugLog(`${pending.length} change(s) awaiting review on message ${key}`);
         }
 
@@ -245,6 +259,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             `${appliedCount} applied`,
             `${pending.length} awaiting review`,
         ];
+        parts.push(...warnings);
         if (blocked) parts.push(`${blocked} blocked by standing decisions`);
         report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput };
         // Cleared on success so a later failure is announced rather than swallowed as a
