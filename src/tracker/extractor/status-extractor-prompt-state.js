@@ -2,7 +2,7 @@ import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { isTurnStat } from '../stat-update-policy.js';
 import { statsInSystem, getPlayerCard, findCardForName } from '../status-logic.js';
-import { describeStatDefinitions } from '../stat-prompt-definitions.js';
+import { describeReaderStats } from '../stat-prompt-definitions.js';
 
 /**
  * Renders the current state in the envelope the reply must use.
@@ -237,5 +237,5 @@ function safePlayerCard() {
 
 /** Stat meanings and rules. The current state carries each actor's live pool ceiling. */
 export function describeLimits(trackerSettings) {
-    return describeStatDefinitions(trackerSettings);
+    return describeReaderStats(trackerSettings);
 }

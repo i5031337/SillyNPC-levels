@@ -2,10 +2,10 @@ import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
 import { debugLog } from '../../core/constants.js';
 import { goalFields, goalValue } from '../goals.js';
-import { describeNpcStatFields } from '../status-logic.js';
+import { describeReaderStats } from '../stat-prompt-definitions.js';
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
-import { describeAbsentButNamed, describeLocked } from './status-extractor-prompt-offstage.js';
+import { describeAbsentButNamed } from './status-extractor-prompt-offstage.js';
 import { describeNumericDeltas, numericDeltaNames, progressionXpName } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
 
@@ -92,8 +92,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         state: describeCurrentState(state, trackerSettings) || '(empty)',
         offstage: describeAbsentButNamed(state, messageText, trackerSettings),
         limits: describeLimits(trackerSettings, state),
-        locked: describeLocked(trackerSettings),
-        npcFields: describeNpcStatFields(trackerSettings),
+        npcFields: describeReaderStats(trackerSettings, { initializeNpc: true }),
         numericDeltas: describeNumericDeltas(state, trackerSettings),
         xpProgression: progressionXpName(trackerSettings, state) ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.

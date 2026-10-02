@@ -41,3 +41,34 @@ export function describeStatDefinitions(settings) {
     }
     return lines.join('\n');
 }
+
+/** Reader instructions describe writable fields; enforcement belongs to the tracker. */
+export function describeReaderStats(settings, { initializeNpc = false } = {}) {
+    const scopes = initializeNpc ? [['NPC', settings.npcStats]] : [
+        ['World', settings.globalStats], ['Player', settings.playerStats], ['NPC', settings.npcStats],
+    ];
+    const lines = [];
+    for (const [scope, stats] of scopes) {
+        for (const stat of stats || []) {
+            if (!stat?.name || !isTurnStat(stat) || (!initializeNpc && stat.locked)) continue;
+            if (scope === 'Player' && ['level', 'level bonus'].includes(stat.name.toLowerCase())) continue;
+            const numeric = stat.type === 'number' || stat.type === 'bar';
+            const parts = [numeric ? 'number' : 'text'];
+            if (String(stat.purpose ?? '').trim()) parts.push(stat.purpose.trim());
+            if (!numeric) {
+                if (stat.options?.length) parts.push(`choose: ${stat.options.join(', ')}`);
+                if (String(stat.hint ?? '').trim()) parts.push(stat.hint.trim());
+                if (Number(stat.maxLength) > 0) parts.push(`up to ${stat.maxLength} characters`);
+            }
+            if (initializeNpc) {
+                if (String(stat.defaultValue ?? '').trim()) parts.push(`default: ${stat.defaultValue}`);
+                if (numeric) {
+                    if (String(stat.min ?? '').trim()) parts.push(`min: ${stat.min}`);
+                    if (String(stat.maxStatValue ?? '').trim()) parts.push(`max: ${stat.maxStatValue}`);
+                }
+            }
+            lines.push(`- ${scope}.${stat.name}: ${parts.join('; ')}`);
+        }
+    }
+    return lines.join('\n');
+}

@@ -39,8 +39,7 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
         placeholders: {
             state: 'The scene as it stands, as JSON.',
             offstage: 'Tracked characters the message names who are not on stage, with what is on file for them.',
-            limits: 'Purpose, type, bounds and writing rules for configured stats.',
-            locked: 'Stats fixed after initialization.',
+            limits: 'Editable stats, their meanings and text formats.',
             npcFields: 'All configured NPC fields, including their purpose and initialization rules.',
             xpProgression: 'Switch: on when the player has XP and Level stats.',
             notes: 'Notes other extensions add, each with its own heading.',
@@ -59,16 +58,13 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
         },
         text: `Read the latest message and report its changes and the full scene cast. "characters" contains NPCs present in the scene, never the player; put all player changes under "player". Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
 
-### CONFIGURED STATS AND COLLECTIONS
-Use the configured names below.
-
 ### CURRENT STATE
 {{state}}
 {{#npcFields}}
 
 ### NPC FIELDS TO INITIALIZE
 {{npcFields}}
-For each present NPC, initialize blank configured stats with plausible individual values, even without context. Follow each stat's purpose and rules. Update filled stats only when the latest message changes them. Initialize blank locked NPC stats once.
+Use these fields only to fill blanks. For existing values, use the editable fields below.
 {{/npcFields}}
 {{#xpProgression}}
 
@@ -83,21 +79,16 @@ These tracked characters are named in the message. Include one in "characters" i
 {{/offstage}}
 {{#limits}}
 
-### STAT DEFINITIONS
+### EDITABLE STATS
+Only change these stats:
 {{limits}}
 {{/limits}}
-{{#locked}}
-
-### IMMUTABLE FIELDS
-These describe fixed aspects of their owner. Initialize a blank locked NPC field once. Never change a locked field after it has a value.
-{{locked}}
-{{/locked}}
 {{#numericDeltas}}
 
 ### NUMERIC CHANGES
 For an existing numeric value, report the amount gained or lost as a JSON number. Use "globalDeltas" for world stats, "player.deltas" for player stats, and "characters[].deltas" for NPC stats. Eligible fields:
 {{numericDeltas}}
-Use one delta per changed Turn field. For a blank numeric Turn field, use a replacement "stats" value. Keep existing maxima unchanged. Advancement ratings change only through level-up bonuses or direct edits, and their maxima never increase. Player XP uses only a positive "player.deltas" number.
+Use one delta per changed field. For blank stats, supply initial values under "stats" (world values under "global").
 {{/numericDeltas}}
 {{notes}}
 {{#strangers}}
