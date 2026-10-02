@@ -55,6 +55,20 @@ test('actor edits follow names when another reply changes scene order', () => {
     assert.equal(result[1].stats.HP, '18');
 });
 
+test('manual scene removal survives a regenerated reply with the same message ID', () => {
+    const base = { characters: [], presence: { messageId: '7', seen: [] } };
+    const first = { characters: [{ name: 'Ada' }],
+        presence: { messageId: '7', seen: ['Ada'], authoritative: true } };
+    const corrected = { characters: [],
+        presence: { messageId: '7', seen: [], suppressed: ['Ada'], authoritative: true } };
+    const next = { characters: [{ name: 'Ada' }],
+        presence: { messageId: '7', seen: ['Ada'], authoritative: true } };
+    const manual = diffTurnValues(first, corrected);
+    const rebased = applyTurnValues(applyTurnValues(base, diffTurnValues(base, next)), manual);
+    assert.deepEqual(rebased.characters, []);
+    assert.deepEqual(rebased.presence.suppressed, ['Ada']);
+});
+
 test('new scene actor does not fold an earlier manual correction into reply effects', () => {
     const base = { characters: [{ name: 'Ada', stats: { HP: '20' } }] };
     const beforeApply = { characters: [{ name: 'Ada', stats: { HP: '18' } }] };

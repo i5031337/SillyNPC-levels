@@ -11,14 +11,25 @@ import { archiveNpcGoals } from './goals.js';
 export function bind(deps) {
 function reconcileScenePresence(names, messageId, options = {}) {
     const settings = getSettings().statusTracker;
-    if (settings.castMode !== 'speakers') return false;
-
     const state = structuredClone(deps.committedState || deps.loadStateFromMetadata());
     if (!state.presence || typeof state.presence !== 'object') {
         state.presence = { tick: 0, messageId: null, seen: [] };
     }
     const presence = state.presence;
     const key = String(messageId);
+    let changed = deps.mergeDuplicateCharacters(state);
+
+    if (presence.messageId !== key) {
+        // A new message gets a fresh cast decision and advances the grace clock.
+        presence.tick = (Number(presence.tick) || 0) + 1;
+        presence.messageId = key;
+        presence.seen = [];
+        presence.suppressed = [];
+        presence.authoritative = false;
+        changed = true;
+    }
+    const suppressed = new Set((presence.suppressed || [])
+        .map(name => deps.resolveCanonicalName(name).toLowerCase()));
 
     // Collapse aliases before anything is matched or created, or the same character
     // arrives twice under two spellings and gets two rows with two sets of stats.
@@ -26,16 +37,15 @@ function reconcileScenePresence(names, messageId, options = {}) {
     // admitted and removed again - both the decorator and the extractor arrive through
     // this function, which is what makes one decision cover both.
     const incoming = (names || []).map(n => deps.resolveCanonicalName(n))
-        .filter(n => n && deps.mayJoinScene(n, { speaker: !options.authoritative }));
-
-    // Repairs a chat that already has both spellings, as well as preventing new ones.
-    let changed = deps.mergeDuplicateCharacters(state);
+        .filter(n => n && !suppressed.has(n.toLowerCase())
+            && deps.mayJoinScene(n, { speaker: !options.authoritative }));
 
     // Signals recorded before aliases were resolved are still in alias form, and would
     // read as absent against the canonical cast.
     const normalisedSeen = [];
     for (const name of presence.seen || []) {
         const canonical = deps.resolveCanonicalName(name);
+        if (suppressed.has(canonical.toLowerCase())) continue;
         if (!normalisedSeen.some(n => n.toLowerCase() === canonical.toLowerCase())) {
             normalisedSeen.push(canonical);
         }
@@ -43,13 +53,6 @@ function reconcileScenePresence(names, messageId, options = {}) {
     if (normalisedSeen.join('|') !== (presence.seen || []).join('|')) changed = true;
     presence.seen = normalisedSeen;
 
-    if (presence.messageId !== key) {
-        // A new message: the clock advances and this message's signals start fresh.
-        presence.tick = (Number(presence.tick) || 0) + 1;
-        presence.messageId = key;
-        presence.seen = [];
-        presence.authoritative = false;
-    }
     if (options.authoritative) {
         // The reader's cast is complete for this message. A later portrait redraw
         // must not add a guessed speaker back to it.
@@ -64,7 +67,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
     }
 
     const seenLower = new Set(presence.seen.map(n => n.toLowerCase()));
-    const grace = Math.max(0, Number(settings.castGraceMessages ?? 3));
+    const grace = 3;
 
     // Everyone observed is present now.
     for (const name of presence.seen) {
@@ -174,9 +177,6 @@ function updateCardOffstage(card, updChar, state, settings,
 
 function buildCharacterState(charName, state, trackerSettings) {
     const charData = { name: charName, stats: {}, collections: {} };
-    if (trackerSettings.sceneBindingStat) {
-        charData.boundTo = state.global[trackerSettings.sceneBindingStat] ?? '';
-    }
     const matchedChar = getAllCharacters()
         .find(c => (c.name || '').toLowerCase() === charName.toLowerCase());
     if (matchedChar?.id) charData.id = matchedChar.id;
@@ -220,9 +220,6 @@ function registerActiveCharacter(charName) {
     if (existingChar) return false; // Already registered
 
     const charData = { name: charName, stats: {}, collections: {} };
-    if (trackerSettings.sceneBindingStat) {
-        charData.boundTo = state.global[trackerSettings.sceneBindingStat] !== undefined ? state.global[trackerSettings.sceneBindingStat] : '';
-    }
     
     const settingsChars = getAllCharacters();
     const matchedChar = settingsChars.find(c => c.name.toLowerCase() === charName.toLowerCase());
@@ -242,6 +239,18 @@ function registerActiveCharacter(charName) {
     });
 
     state.characters.push(charData);
+    if (state.presence?.suppressed) {
+        state.presence.suppressed = state.presence.suppressed
+            .filter(name => name.toLowerCase() !== charName.toLowerCase());
+    }
+    // A manual addition must survive redraws of the reader's complete cast for this
+    // message. On the next message it follows the same presence rules as everyone else.
+    if (state.presence?.authoritative && state.presence.messageId !== null) {
+        if (!state.presence.seen.some(name => name.toLowerCase() === charName.toLowerCase())) {
+            state.presence.seen.push(charName);
+        }
+        charData.lastSeenTick = state.presence.tick;
+    }
     state.timestamp = Date.now();
     deps.saveStateToMetadata(state);
     return true; // Indicates state changed
@@ -261,6 +270,15 @@ function removeActiveCharacter(charName) {
     state.characters = state.characters.filter(c => c.name.toLowerCase() !== charName.toLowerCase());
     
     if (state.characters.length !== initialLen) {
+        if (state.presence?.messageId !== undefined && state.presence.messageId !== null) {
+            const lower = deps.resolveCanonicalName(charName).toLowerCase();
+            state.presence.seen = (state.presence.seen || [])
+                .filter(name => deps.resolveCanonicalName(name).toLowerCase() !== lower);
+            if (!Array.isArray(state.presence.suppressed)) state.presence.suppressed = [];
+            if (!state.presence.suppressed.some(name => name.toLowerCase() === lower)) {
+                state.presence.suppressed.push(charName);
+            }
+        }
         state.timestamp = Date.now();
         deps.saveStateToMetadata(state);
         return true;

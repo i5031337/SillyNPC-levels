@@ -40,14 +40,6 @@ export const defaultTrackerSettings = {
         /** The characters in equal columns across the box rather than one per line. */
         characterColumns: false,
         /**
-         * Who decides which characters are in the scene.
-         * 'speakers' - derived from who actually appears in the message (deterministic)
-         * 'ai'       - the model's characters array, the original behaviour
-         */
-        castMode: 'speakers',
-        /** Messages a character may go unseen before leaving the scene. */
-        castGraceMessages: 3,
-        /**
          * How the tracker learns what changed.
          * 'extract' - a separate request reads the finished message and returns JSON.
          *             The narrative prompt then carries no tracker instructions, so a
@@ -258,6 +250,5 @@ export const defaultTrackerSettings = {
     </div>
 </div>`,
         customCSS: '',
-        sceneBindingStat: '',
         renderPosition: 'bottom', // 'top' or 'bottom' of message
 };

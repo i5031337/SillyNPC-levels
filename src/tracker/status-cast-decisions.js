@@ -195,7 +195,6 @@ function mergeDuplicateCharacters(state) {
         existing.stats = { ...stale.stats, ...fresh.stats };
         existing.collections = deps.mergeCollectionMaps(stale.collections || {}, fresh.collections || {});
         existing.lastSeenTick = Math.max(existingTick, incomingTick);
-        if (fresh.boundTo !== undefined) existing.boundTo = fresh.boundTo;
         existing.name = canonical;
         changed = true;
     }
@@ -214,7 +213,7 @@ function mergeDuplicateCharacters(state) {
  *
  * Presence signals for one message are the union of everyone detected speaking in it
  * and (when the extraction pass runs) everyone it reports present - a character can be
- * in a scene without having a line. Anyone in neither, for castGraceMessages messages
+ * in a scene without having a line. Anyone in neither, for three messages
  * running, leaves.
  *
  * Idempotent per message: re-rendering the same message does not advance the clock, and

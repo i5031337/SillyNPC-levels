@@ -153,7 +153,7 @@ export function bind(deps) {
     }
 
     function applyCharacterUpdate(state, updChar, context) {
-        const { settings, lookup, validKeys, collectionIds, newBindingValue,
+        const { settings, lookup, validKeys, collectionIds,
             admitCharacters, dryRun, allowReplace, allowAdvancementChanges, verbatim, offstageSkipped } = context;
         if (!updChar.name) return false;
         const canonicalName = deps.resolveCanonicalName(updChar.name);
@@ -168,7 +168,7 @@ export function bind(deps) {
         const matchedChar = lookup.settingsMap.get(lowerName)
             || lookup.regexes.find(r => r.regex.test(updChar.name))?.char;
 
-        if (!charData && settings.castMode === 'speakers' && !admitCharacters) {
+        if (!charData && !admitCharacters) {
             debugLog('Ignoring character not present in the message:', updChar.name);
             return false;
         }
@@ -188,10 +188,6 @@ export function bind(deps) {
             state.characters.push(charData);
             lookup.stateMap.set(lowerName, charData);
         }
-        if (settings.sceneBindingStat) {
-            charData.boundTo = newBindingValue !== null ? newBindingValue : '';
-        }
-
         let cardChanged = applyCharacterStats(charData, updChar, matchedChar, settings, validKeys,
             collectionIds, { verbatim, allowAdvancementChanges, dryRun });
         const collections = collectCollections(updChar, collectionIds, `character update for ${updChar.name}`);
@@ -230,27 +226,16 @@ export function bind(deps) {
         const state = structuredClone(deps.committedState || deps.loadStateFromMetadata());
         ageTombstones(state);
         const settings = getSettings().statusTracker;
-        const bindingStat = settings.sceneBindingStat;
-        const oldBindingValue = bindingStat
-            ? (state.global[bindingStat] !== undefined ? state.global[bindingStat] : '') : null;
         applyGlobalUpdate(state, update, settings, verbatim);
-        const newBindingValue = bindingStat
-            ? (state.global[bindingStat] !== undefined ? state.global[bindingStat] : '') : null;
 
         if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace });
         if (update.characters && Array.isArray(update.characters)) {
             applyCharacters(state, update.characters, settings, {
-                newBindingValue, admitCharacters, dryRun, allowReplace, allowAdvancementChanges,
+                admitCharacters, dryRun, allowReplace, allowAdvancementChanges,
                 verbatim, offstageSkipped,
             });
         }
 
-        // In AI cast mode a binding change decides who leaves the scene.
-        if (settings.castMode !== 'speakers'
-            && bindingStat && oldBindingValue !== null && newBindingValue !== null
-            && oldBindingValue !== newBindingValue) {
-            state.characters = state.characters.filter(char => char.boundTo === newBindingValue);
-        }
         state.timestamp = Date.now();
         if (offstageSkipped.length) {
             Object.defineProperty(state, 'offstageSkipped', {

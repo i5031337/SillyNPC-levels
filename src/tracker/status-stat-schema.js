@@ -123,10 +123,6 @@ function renameStat(listKey, oldName, newName) {
         for (const card of getLibraryCharacters()) {
             if (moveKey(card?.statusOverrides, oldName, newName)) values += 1;
         }
-        if (tracker.sceneBindingStat === oldName) {
-            tracker.sceneBindingStat = newName;
-            references += 1;
-        }
     }
 
     // A rule names both the stat it changes and the stat it reads to decide whether to.

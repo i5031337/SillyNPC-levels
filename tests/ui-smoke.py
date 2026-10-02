@@ -44,6 +44,13 @@ try:
     execute("document.querySelector('#sillynpc-open-manage').click()")
     time.sleep(0.5)
     execute("document.querySelector('.sillynpc-section[data-section=status]').click()")
+    execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Tracker').click()")
+    cast_controls = execute("""const panel = document.querySelector('#sillynpc-status-view');
+        return {section: [...panel.querySelectorAll('h3')].some(el =>
+            el.textContent.trim() === 'Who Is In The Scene'),
+          mode: !!panel.querySelector('[data-setting="statusTracker.castMode"]'),
+          binding: !!panel.querySelector('[data-setting="statusTracker.sceneBindingStat"]')};""")
+    assert cast_controls == {'section': False, 'mode': False, 'binding': False}, cast_controls
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
@@ -88,4 +95,9 @@ finally:
             webdriver('DELETE', f'/session/{session}')
         except Exception:
             pass
-    driver.terminate()
+    try:
+        driver.terminate()
+    except PermissionError:
+        # The WebDriver session was already closed above; some sandbox runners own
+        # the driver process under another user and refuse an extra signal here.
+        pass

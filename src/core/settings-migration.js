@@ -233,6 +233,9 @@ function normalizeTrackerSchema(settings) {
     if (!settings.statusTracker) {
         settings.statusTracker = structuredClone(defaultSettings.statusTracker);
     } else {
+        delete settings.statusTracker.castMode;
+        delete settings.statusTracker.castGraceMessages;
+        delete settings.statusTracker.sceneBindingStat;
         // Ensure all default status tracker settings exist
         for (const [key, value] of Object.entries(defaultSettings.statusTracker)) {
             if (settings.statusTracker[key] === undefined) {

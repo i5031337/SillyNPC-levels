@@ -7,7 +7,7 @@ import { getAllCharacters, isChatCharacter } from '../characters/character-repos
 import { personaFileFromAvatar } from '../core/utils.js';
 import { processStatusUpdate, renderStatusTrackerBox, redrawStatusBoxes } from '../tracker/ui/status-ui.js';
 import {
-    registerActiveCharacter, reconcileScenePresence, resolvePersonaSpeaker,
+    reconcileScenePresence, resolvePersonaSpeaker,
     getPlayerImageUrl, getCurrentPersonaKey, getCastDecisions,
 } from '../tracker/status-logic.js';
 import { faceFor, faceAssignmentVersion } from '../characters/default-portraits.js';
@@ -102,13 +102,8 @@ export function injectCharacterImages(mesEl) {
         const names = pendingActiveCharacters;
         pendingActiveCharacters = null;
 
-        if (getSettings().statusTracker?.castMode === 'speakers') {
-            // Who appeared in this message is the authority for who is in the scene.
-            // Idempotent per message id, so re-rendering does not advance the clock.
-            if (isLastMessage) reconcileScenePresence([...names], messageId);
-        } else {
-            for (const name of names) registerActiveCharacter(name);
-        }
+        // Idempotent per message id, so re-rendering does not advance the clock.
+        if (isLastMessage) reconcileScenePresence([...names], messageId);
     }
 
     // After all avatars are placed, decorate each speaker's containing paragraph.

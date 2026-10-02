@@ -71,11 +71,10 @@ const loadBind = new Function('eventSource', 'getSettings', 'saveSettings',
     'canTrackerSetNpcStat', 'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp',
     `${source}\nreturn bind;`);
 
-function fixture({ openChat = true, castMode = 'ai' } = {}) {
+function fixture({ openChat = true } = {}) {
     const card = { name: 'Mira', aliases: [], statusOverrides: {}, statusCollections: {} };
     const settings = {
         statusTracker: {
-            castMode, sceneBindingStat: 'Scene',
             globalStats: [{ name: 'Scene' }],
             playerStats: [{ name: 'HP' }],
             npcStats: [{ name: 'HP', persistence: 'variable' }],
@@ -86,8 +85,8 @@ function fixture({ openChat = true, castMode = 'ai' } = {}) {
         global: { Scene: 'old' },
         player: { stats: { HP: '5' }, collections: { items: ['sword'] } },
         characters: [
-            { name: 'Mira', boundTo: 'old', stats: { HP: '4' }, collections: { items: ['ring'] } },
-            { name: 'Jon', boundTo: 'old', stats: { HP: '3' }, collections: {} },
+            { name: 'Mira', stats: { HP: '4' }, collections: { items: ['ring'] } },
+            { name: 'Jon', stats: { HP: '3' }, collections: {} },
         ],
         recently_deleted: { items: { lost: 1, retained: 2 } },
     };
@@ -143,8 +142,7 @@ test('committed update changes state and card, then saves once', () => {
     assert.equal(state.global.Scene, 'new');
     assert.equal(state.player.stats.HP, '7');
     assert.deepEqual(state.player.collections.items, ['book']);
-    assert.deepEqual(state.characters.map(char => char.name), ['Mira']);
-    assert.equal(state.characters[0].boundTo, 'new');
+    assert.deepEqual(state.characters.map(char => char.name), ['Mira', 'Jon']);
     assert.equal(state.characters[0].stats.HP, '8');
     assert.deepEqual(state.characters[0].collections.items, ['key']);
     assert.equal(card.statusOverrides.HP, '8');
@@ -208,7 +206,6 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     const bindPresence = new Function('eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'archiveNpcGoals',
         `${source}\nreturn bind;`);
     const settings = { statusTracker: {
-        castMode: 'speakers', castGraceMessages: 3, sceneBindingStat: '',
         npcStats: [{ name: 'HP', defaultValue: '' }],
     } };
     const saved = [];
@@ -230,4 +227,27 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     deps.reconcileScenePresence(['Other'], '4');
     assert.deepEqual(deps.committedState.characters.map(char => char.name), ['Mira']);
     assert.deepEqual(deps.committedState.presence.seen, ['Mira']);
+
+    deps.registerActiveCharacter('Other');
+    deps.reconcileScenePresence([], '4');
+    assert.deepEqual(deps.committedState.characters.map(char => char.name), ['Mira', 'Other']);
+    assert.deepEqual(deps.committedState.presence.seen, ['Mira', 'Other']);
+
+    deps.removeActiveCharacter('Other');
+    deps.resolveCanonicalName = name => name === 'Alias' ? 'Other' : name;
+    deps.committedState.presence.seen.push('Alias');
+    deps.reconcileScenePresence(['Other'], '4');
+    assert.deepEqual(deps.committedState.characters.map(char => char.name), ['Mira']);
+    assert.deepEqual(deps.committedState.presence.suppressed, ['Other']);
+
+    // A fresh state object and another complete reader list model reload and regeneration.
+    deps.committedState = structuredClone(deps.committedState);
+    deps.reconcileScenePresence(['Mira', 'Other'], '4', { authoritative: true });
+    assert.deepEqual(deps.committedState.characters.map(char => char.name), ['Mira']);
+
+    deps.registerActiveCharacter('Other');
+    assert.deepEqual(deps.committedState.presence.suppressed, []);
+    deps.removeActiveCharacter('Other');
+    deps.reconcileScenePresence(['Other'], '5');
+    assert.ok(deps.committedState.characters.some(char => char.name === 'Other'));
 });

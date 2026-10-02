@@ -288,7 +288,6 @@ function activatePersona(state, key, name = key) {
  * @property {string} name
  * @property {Record<string, string>} stats
  * @property {Record<string, CollectionItem[]>} collections
- * @property {string} [boundTo] - For scene binding
  */
 
 /**

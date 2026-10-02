@@ -80,7 +80,6 @@ function getStatusInstructions() {
         statDefinitions,
         npcFields: deps.describeNpcStatFields(settings),
         schemas,
-        sceneChange: settings.sceneBindingStat ? 'on' : '',
         xpProgression: settings.playerStats.some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
             && settings.playerStats.some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
     }) + '\n';

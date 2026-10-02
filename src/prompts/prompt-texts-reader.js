@@ -168,7 +168,6 @@ Changed-reply shape (include only changes supported by the latest message):
             statDefinitions: 'Configured stat purposes, types and bounds.',
             schemas: 'Each collection in play and its fields.',
             npcFields: 'All configured NPC fields, including allowed values and locked fields.',
-            sceneChange: 'Switch: on when a scene stat is set.',
             xpProgression: 'Switch: on when the player has XP and Level stats.',
         },
         text: `Update the status from the latest story events. Initialize every new NPC's blank configured stats with plausible individual values, even without context. List everyone present after the latest message.
@@ -206,9 +205,6 @@ For a transfer, remove the item from one owner's collection and add it to the ot
 {{schemas}}
 {{/schemas}}
 
-{{#sceneChange}}
-After a scene change, list the characters who moved to the new scene.
-{{/sceneChange}}
 End your response with changes and initial values for blank NPC fields inside <status_update> tags.`,
     },
 ];

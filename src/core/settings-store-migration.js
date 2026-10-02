@@ -30,7 +30,6 @@ export function migratePresetsAndStores(settings, currentVersion) {
                         displayStyle: settings.statusTracker.displayStyle,
                         template: settings.statusTracker.template,
                         customCSS: settings.statusTracker.customCSS,
-                        sceneBindingStat: settings.statusTracker.sceneBindingStat,
                         hudEnabled: settings.statusTracker.hudEnabled,
                         hudPosition: settings.statusTracker.hudPosition,
                         hudScale: settings.statusTracker.hudScale
