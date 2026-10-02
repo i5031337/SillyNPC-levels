@@ -12,7 +12,7 @@ test('stat prompt names purpose, numeric bounds, text choices and immutable NPC 
         npcStats: [{ name: 'Species', type: 'text', purpose: 'Biological kind', locked: true }],
     });
     assert.match(prompt, /World\.Weather: text; Turn; allowed values: Sunny, Rainy/);
-    assert.match(prompt, /Player\.Energy: number; Turn; purpose: Spent on spells; minimum current value 0; initialization maximum 10 \(blank stats only\)/);
+    assert.match(prompt, /Player\.Energy: number; Turn; purpose: Spent on spells; minimum current value 0; starting maximum 10 \(also bounds plain numeric readings\)/);
     assert.doesNotMatch(prompt, /Energy:.*allowed values/);
     assert.match(prompt, /Player\.Swordplay: number; Advancement; purpose: Trained skill rating; minimum current value 1; fixed maximum 5; maximum never increases/);
     assert.match(prompt, /NPC\.Species: text; Turn; purpose: Biological kind; immutable after initialization/);

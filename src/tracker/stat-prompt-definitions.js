@@ -23,7 +23,7 @@ export function describeStatDefinitions(settings) {
                     if (startMax) parts.push(`XP threshold ${startMax}`);
                     parts.push('threshold stays fixed; report earned XP as a positive delta');
                 } else if (turn) {
-                    if (startMax) parts.push(`initialization maximum ${startMax} (blank stats only)`);
+                    if (startMax) parts.push(`starting maximum ${startMax} (also bounds plain numeric readings)`);
                     parts.push("maximum stays fixed during ordinary updates; only a level bonus may raise it");
                 } else {
                     if (startMax) parts.push(`fixed maximum ${startMax}`);

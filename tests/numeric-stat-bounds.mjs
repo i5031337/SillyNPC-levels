@@ -25,3 +25,21 @@ test('ordinary model readings retain the actor’s maximum', () => {
     assert.equal(keepNumericMaximum('4', '20'), '4/20');
     assert.equal(keepNumericMaximum('4/100', ''), '4');
 });
+
+test('plain Turn ratings honor Starts max without becoming pools', () => {
+    const standing = { name: 'Standing', type: 'number', updatePolicy: 'turn', min: '-5', maxStatValue: '5' };
+    assert.equal(constrainNumericStat(standing, '6', '5'), '5');
+    assert.equal(constrainNumericStat(standing, '-6', '-5'), '-5');
+    assert.equal(constrainNumericStat(standing, '3', '2'), '3');
+    assert.equal(constrainNumericStat(standing, '12', '9'), '5');
+    assert.equal(constrainNumericStat({ ...standing, type: 'bar' }, '6', '5'), '5');
+    assert.equal(constrainNumericStat({ ...standing, maxStatValue: '' }, '6', '5'), '6');
+    assert.equal(constrainNumericStat({ ...standing, maxStatValue: '', defaultValue: '0/5' }, '6', '5'), '5');
+});
+
+test('a live Turn pool maximum takes precedence over Starts max', () => {
+    const energy = { type: 'number', updatePolicy: 'turn', maxStatValue: '100' };
+    assert.equal(constrainNumericStat(energy, '115/120', '110/120'), '115/120');
+    assert.equal(constrainNumericStat(energy, '125', '110/120'), '120');
+    assert.equal(constrainNumericStat(energy, '125/120', '110/120'), '120/120');
+});

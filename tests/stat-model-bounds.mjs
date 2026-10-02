@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { configuredNumericMaximum, constrainNumericStat, keepNumericMaximum } from '../src/tracker/numeric-stat-bounds.js';
 import { isTurnStat, canAdvanceStat, earnsLevel } from '../src/tracker/stat-update-policy.js';
+import { expandNumericDeltas } from '../src/tracker/extractor/status-extractor-deltas.js';
 import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 
 // The browser-facing module is loaded with only the dependencies this path uses.
@@ -62,4 +63,25 @@ test('an inline level-up cannot expand an Advancement maximum', () => {
     deps.sanitizeModelUpdate(update, state, settings, { allowInlineLevelBonus: true });
     assert.equal(update.player.stats.Swordplay, '8');
     assert.equal(constrainNumericStat(skill, update.player.stats.Swordplay, '4'), '5');
+});
+
+test('Standing deltas on plain ratings stay within configured bounds across scopes', () => {
+    const deps = { findMatchingStatKey: (stats, name) => Object.keys(stats || {})
+        .find(key => key.toLowerCase() === name.toLowerCase()), findCardForName: () => null };
+    bind(deps);
+    const standing = { name: 'Standing', type: 'number', updatePolicy: 'turn', min: '-5', maxStatValue: '5' };
+    const settings = { globalStats: [standing], playerStats: [standing], npcStats: [standing] };
+    const state = { global: { Standing: '4' }, player: { stats: { Standing: '-4' } },
+        characters: [{ name: 'Mira', stats: { Standing: '5' } }] };
+    const update = { globalDeltas: { Standing: 3 }, player: { deltas: { Standing: -3 } },
+        characters: [{ name: 'Mira', deltas: { standing: 1 } }] };
+    expandNumericDeltas(update, state, settings);
+    deps.sanitizeModelUpdate(update, state, settings);
+    const apply = (incoming, existing) => constrainNumericStat(standing,
+        deps.mergeStatValue(existing, incoming), existing);
+    assert.equal(apply(update.global.Standing, state.global.Standing), '5');
+    assert.equal(apply(update.player.Standing, state.player.stats.Standing), '-5');
+    assert.equal(apply(update.characters[0].Standing, state.characters[0].stats.Standing), '5');
+    assert.equal(deps.promptCeiling(standing, '5'), '5');
+    assert.equal(deps.promptCeiling(standing, '7/10'), '10');
 });

@@ -59,26 +59,12 @@ function mergeStatValue(oldVal, newVal, options = {}) {
 
     /* And deliberately no third. The configured maximum is a *starting* maximum: it seeds a
        stat the first time an actor is given one, and from then on the value is the only
-       thing that says whether there is a ceiling at all. Appending it here put a ceiling
-       back on any bare number, so a stat with a configured max could never lose one either. */
+       thing that carries a pool ceiling. Plain numeric ratings are bounded separately by
+       constrainNumericStat without adding a denominator. */
     return clampToCeiling(strNew.trim());
 }
 
-/**
- * A stat's *starting* maximum - the one a new actor is seeded with.
- *
- * Not the ceiling in play. That is read from the value itself, which is the only place it
- * can honestly live: one character's Energy caps at 350 while another's caps at 40, and
- * play raises a ceiling far more often than a setting does. This supplies the first one
- * and is not consulted again, which is what the System Builder box has said all along -
- * "Starting maximum only. The ceiling actually in play is read from the stat's own value."
- *
- * A default written as "10/10" supplies the max when none is set explicitly, so a system
- * configured that way seeds correctly without anyone having to fill in a second box.
- *
- * @param {{maxStatValue?: string, defaultValue?: string}} statDef
- * @returns {string} The starting max, or '' when the stat has none.
- */
+/** The configured starting maximum, falling back to the default pool denominator. */
 function resolveMaxValue(statDef) {
     if (!statDef) return '';
     const explicit = statDef.maxStatValue;
@@ -115,11 +101,8 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  *
  * - An advancement-only stat is never changed by a turn reply. A locked NPC stat may be
  *   initialized while blank, then only you can change it.
- * - A ceiling the stat does not have is dropped. A stat holding a plain number keeps a plain
- *   number: "5/20" is stored as "5". Attributes that stayed plain until the first time they
- *   changed and then came back as "4/20" were this - a model copying the "current/maximum"
- *   form it saw elsewhere onto a score. For a pool, the existing maximum is retained;
- *   a configured starting maximum is used only for a blank value.
+ * - A reader cannot invent a ceiling. For a pool, the existing maximum is retained;
+ *   a configured starting maximum also bounds values saved as plain numbers.
  *
  * @param {object} update Changed in place, and returned.
  * @param {object} state The state the reply is applied to.
@@ -161,9 +144,8 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
             if (isNumericStat(def) && (!inlineBonus || !isTurnStat(def))) {
                 const storedValue = String(held ?? '').trim() ? held : cardHeld;
                 const fixedCap = !isTurnStat(def) ? configuredNumericMaximum(def) : null;
-                const liveCap = String(storedValue ?? '').includes('/')
-                    ? fixedCap ?? promptCeiling(def, storedValue)
-                    : promptCeiling(def, storedValue);
+                const plainReading = String(storedValue ?? '').trim() && ceilingFromValue(storedValue) === null;
+                const liveCap = plainReading ? '' : fixedCap ?? promptCeiling(def, storedValue);
                 stats[key] = keepNumericMaximum(incoming, liveCap);
             }
         }
@@ -186,31 +168,19 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
     return update;
 }
 
-/**
- * The ceiling to tell a model about.
- *
- * The value's own, whenever there is a value: once an actor holds "160/180" that is their
- * ceiling, and once they hold a bare "160" they have none and saying otherwise invents one.
- * The configured maximum stands in only for a stat nobody has a value for yet, which is the
- * one case where there is nothing else to read.
- *
- * @param {object} statDef
- * @param {string|number} [storedValue] The actor's value, if they have one.
- * @returns {string} The ceiling, or '' for none.
- */
+/** The actor's live maximum, or the configured starting maximum without a pool. */
 function promptCeiling(statDef, storedValue) {
     const held = storedValue !== undefined && storedValue !== null && String(storedValue).trim() !== '';
     if (!held) return resolveMaxValue(statDef);
-    if (ceilingFromValue(storedValue) === null) return '';
+    if (ceilingFromValue(storedValue) === null) return resolveMaxValue(statDef);
     return String(splitValue(storedValue).max).trim();
 }
 
 /**
  * The cast's highest ceiling for a stat, returned as the value that carries it.
  *
- * undefined when nobody holds the stat at all, so promptCeiling can fall back to the
- * configured maximum; a value with no ceiling when somebody holds it and none of them has
- * one, so that "they have no ceiling" survives rather than being read as "no data".
+ * undefined when nobody holds the stat at all. A plain value also lets promptCeiling
+ * fall back to the configured maximum.
  *
  * @param {object[]} characters
  * @param {string} name

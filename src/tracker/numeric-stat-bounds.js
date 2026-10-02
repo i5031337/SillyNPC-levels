@@ -1,6 +1,6 @@
 const READING = /^\s*(-?\d+(?:\.\d+)?)(?:\s*\/\s*(-?\d+(?:\.\d+)?))?\s*$/;
 
-/** An Advancement stat's configured upper bound, including an old default pool. */
+/** The configured maximum, falling back to a default pool denominator. */
 export function configuredNumericMaximum(def) {
     const raw = String(def?.maxStatValue ?? '').trim()
         || String(def?.defaultValue ?? '').match(READING)?.[2];
@@ -23,7 +23,9 @@ export function constrainNumericStat(def, incoming, existing) {
     const held = String(existing ?? '').match(READING);
     const fixed = isAdvancement(def) ? configuredNumericMaximum(def)
         ?? (held?.[2] === undefined ? null : Number(held[2])) : null;
-    const maximum = fixed ?? (match[2] === undefined ? null : Number(match[2]));
+    const maximum = fixed ?? (match[2] === undefined
+        ? (held?.[2] === undefined ? configuredNumericMaximum(def) : Number(held[2]))
+        : Number(match[2]));
     if (maximum !== null && (!Number.isFinite(maximum) || (min !== null && maximum < min))) return existing;
     let current = Number(match[1]);
     if (!Number.isFinite(current)) return existing;
