@@ -187,12 +187,20 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 export function buildNewNpcExample(trackerSettings = {}) {
     const stats = Object.fromEntries((trackerSettings.npcStats || [])
         .filter(stat => stat?.name && isTurnStat(stat))
-        .map(stat => [stat.name, '<initial value following this field\'s rules>']));
+        .map(stat => [stat.name, describeReaderStats({ npcStats: [stat] }, { initializeNpc: true })
+            .replace(`- NPC.${stat.name}: `, '')]));
     const collections = Object.fromEntries((trackerSettings.collections || [])
         .filter(col => col?.id && ['all', 'npc'].includes(col.target))
         .map(col => {
             const primary = (col.fields || []).find(field => field.isPrimary)?.name || 'name';
-            return [col.id, { add: [{ [primary]: '<starting item identifier>' }] }];
+            const item = Object.fromEntries((col.fields || [{ name: primary }]).map(field => [
+                field.name, [String(field.hint || '').trim(),
+                    field.name === primary ? 'identifies the item' : '',
+                    field.type && field.type !== 'text' ? field.type : '',
+                    field.options?.length ? `choose: ${field.options.join(', ')}` : '',
+                ].filter(Boolean).join('; '),
+            ]));
+            return [col.id, { add: [item] }];
         }));
     return JSON.stringify({
         global: {},

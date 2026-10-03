@@ -50,7 +50,7 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
             collectionExample: 'A worked change in your own collection and field names.',
             minimalReply: 'A no-change reply listing the cast present.',
             changedReply: 'A configured example with player and NPC stats and collections.',
-            newNpcReply: 'A new NPC initialization example using configured stats and collection primary fields, even with an empty scene.',
+            newNpcReply: 'An NPC initialization template with configured stat and item field guidance, even with an empty scene.',
             numericDeltas: 'Existing numeric stats eligible for delta updates, by owner.',
             earlier: 'The messages before this one, when you send any.',
             message: 'The message being read.',
@@ -61,12 +61,18 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
 
 ### CURRENT STATE
 {{state}}
-{{#npcFields}}
+{{#collections}}
 
-### NPC FIELDS TO INITIALIZE
-{{npcFields}}
-Use these fields only to fill blanks. For existing values, use the editable fields below.
-{{/npcFields}}
+### COLLECTIONS AND THEIR FIELDS
+{{collections}}
+{{/collections}}
+{{#newNpcReply}}
+
+### NPC INITIALIZATION TEMPLATE
+When an NPC enters the scene, include an object in the "characters" array with their exact "name", even when CURRENT STATE has no NPCs. Initialize blank configured fields under "stats", not "deltas"; preserve values already on file. Infer plausible individual values when the story gives no details.
+The template's field values describe how to fill them, using the configured field guidance and constraints. Replace them with actual values. Include starting possessions under each collection's "add" array; omit collections with no starting items. Use exact field spelling and capitalization. The configured primary field identifies an item; no separate item "name" field is required.
+{{newNpcReply}}
+{{/newNpcReply}}
 {{#xpProgression}}
 
 ### PLAYER EXPERIENCE
@@ -97,11 +103,7 @@ Use one delta per changed field. For blank stats, supply initial values under "s
 ### STRANGERS
 Speakers without cards: {{strangers}}. In "strangers", assign each the best matching kind from {{strangerKinds}}, or "".
 {{/strangers}}
-{{#collections}}
 
-### COLLECTIONS AND THEIR FIELDS
-{{collections}}
-{{/collections}}
 {{#collections}}
 
 ### WHEN A COLLECTION CHANGES
@@ -129,14 +131,6 @@ Only report an explicit, meaningful change in the latest message. Under the rele
 ### REPLY FORMAT
 Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
 "characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present after the latest message, use "characters": [].
-{{#newNpcReply}}
-
-### INITIALIZING A NEW NPC
-When an NPC first enters the scene, include a new object in the "characters" array, even if CURRENT STATE has no NPCs. Put their exact name in "name" and initial values for blank configured NPC fields in "stats", not "deltas". Follow NPC FIELDS TO INITIALIZE for allowed values, defaults, bounds, and text formats; infer plausible individual values where needed. Preserve any values already on file for a returning NPC.
-Put starting possessions under "collections", using each exact collection ID and an "add" array of item objects. Identify each item with that collection's configured primary field, preserving its spelling and capitalization. A short item identifier is sufficient when the field's guidance permits it; an item does not need a separate "name" field. Include other configured item fields when supported by the story. Omit collections with no starting items.
-Initialization shape (replace angle-bracket placeholders with actual values; include only applicable collections):
-{{newNpcReply}}
-{{/newNpcReply}}
 {{#reasons}}
 Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<name>.Health". Quote the latest message or name the event. For an initialized NPC stat, use "initial estimate" or "invented".
 {{/reasons}}
