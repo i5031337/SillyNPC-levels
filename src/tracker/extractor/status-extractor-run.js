@@ -19,6 +19,7 @@ import { renderExtractionReport } from '../ui/status-ui-report.js';
 import { normalizeCollectionUpdates } from './status-collection-normalize.js';
 import { replacementReadingState, revertToBase } from '../snapshots/status-snapshot-swipe.js';
 import { trackerMessageIndex } from '../ui/status-ui-placement.js';
+import { generateNewNpcProfiles } from './status-npc-profiles.js';
 
 /** Guards against an extraction triggering the events that would start another. */
 let activeExtraction = null;
@@ -110,6 +111,8 @@ export async function extractStateFromMessage(messageText, messageId, options = 
     const run = {};
     activeExtraction = run;
     const reportMessage = startExtractionReport(messageId);
+    const sourceText = reportMessage?.mes;
+    const sourceMetadata = getContext()?.chatMetadata;
     const swipe = extractionSwipe(reportMessage);
     let report = { swipe, status: 'failed', summary: 'The request did not complete', output: null };
     const refreshReport = () => {
@@ -265,6 +268,20 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         parts.push(...warnings);
         if (blocked) parts.push(`${blocked} blocked by standing decisions`);
         report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput };
+        // Save the reading before the additional lore requests, so changing chats or
+        // replies during profile generation cannot lose applied rows or review proposals.
+        const profiles = await generateNewNpcProfiles(
+            (parsed.characters || []).map(character => character?.name).filter(Boolean),
+            () => activeExtraction === run
+                && getContext()?.chatMetadata === sourceMetadata
+                && getContext()?.chat?.[Number(messageId)] === reportMessage
+                && reportMessage?.mes === sourceText
+                && extractionSwipe(reportMessage) === swipe
+                && Number(messageId) === trackerMessageIndex(getContext()?.chat || []),
+        );
+        if (profiles.generated) parts.push(`${profiles.generated} NPC profile(s) generated`);
+        if (profiles.failed) parts.push(`${profiles.failed} NPC profile(s) failed`);
+        report.summary = parts.join(' · ');
         // Cleared on success so a later failure is announced rather than swallowed as a
         // repeat of one the user has already dealt with.
         lastReportedProblem = '';

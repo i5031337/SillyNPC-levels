@@ -82,6 +82,7 @@ function harness(mode = 'extract') {
         requestExtraction: async () => { await onRequest(); return structuredClone(response); },
         coerceToUpdate: raw => raw, expandNumericDeltas, holdLevelBonusChanges: () => {},
         addLevelBonus: async () => null, applyGoalsFromReply: () => [],
+        generateNewNpcProfiles: async () => ({ generated: 0, failed: 0 }),
         startExtractionReport: () => message, finishExtractionReport: (id, msg, report) => { msg.report = report; },
         extractionSwipe: () => 0, renderExtractionReport: () => {},
         document: { querySelector: () => null }, LOG_PREFIX: 'test',

@@ -52,6 +52,8 @@ export const defaultTrackerSettings = {
          *             same response as the narrative.
          */
         extractionMode: 'extract',
+        /** Write a profile when the separate reader discovers an NPC without a card. */
+        autoGenerateNpcProfiles: false,
         /** Connection Manager profile for the extraction request. Empty = main API. */
         extractionProfileId: '',
         /** Token budget for the extraction reply. */

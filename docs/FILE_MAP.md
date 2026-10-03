@@ -146,6 +146,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/extractor/status-extractor-request.js` | Send and normalize model extraction responses. |
 | `src/tracker/extractor/status-extractor-replies.js` | Apply allowed profile, memory, and goal information from extraction. |
 | `src/tracker/extractor/status-extractor-run.js` | Per-message extraction lifecycle and cache invalidation. |
+| `src/tracker/extractor/status-npc-profiles.js` | Optional profile generation for newly discovered reader NPCs, with chat and reply guards. |
 | `src/prompts/prompt-texts.js` | Built-in prompt text and template substitution. |
 | `src/prompts/prompt-texts-reader.js` | Reader and status extraction prompt templates. |
 | `src/prompts/prompt-texts-other.js` | Other built-in prompt templates. |

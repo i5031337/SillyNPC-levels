@@ -98,6 +98,16 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
 
     if (settings.extractionMode === 'extract' || settings.extractionMode === 'manual') {
         container.appendChild(buildConnectionProfilePicker(onApply));
+        container.append(buildSettingToggle({
+            key: 'statusTracker.autoGenerateNpcProfiles',
+            label: 'Generate Profiles For New NPCs',
+            help: 'When the reader identifies an NPC without a character card, creates a '
+                + 'card in this chat and writes its configured profile fields to lore. '
+                + 'Uses the lore generation connection and context settings, with one extra '
+                + 'request per new NPC. Unsupported details may stay blank. Existing cards '
+                + 'are left as they are; portraits are generated separately.',
+            onChange: onApply,
+        }));
     }
 
     container.append(buildSettingSlider({

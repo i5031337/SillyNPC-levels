@@ -164,3 +164,29 @@ test('template lore contains only selected fields and remains readable after a t
     assert.equal(parseLoreContent(changed).species, 'Pikachu');
     setProfileSettingsProvider(() => null);
 });
+
+test('rebuilding a reading combines a template assignment with Saori’s stats and inventory', () => {
+    const state = { global: {}, player: { stats: {} }, characters: [
+        { name: 'Saori', stats: {}, collections: {} },
+    ] };
+    const stats = { Condition: 'Healthy', Standing: 0, Fertility: 3, Libido: 2, Inhibition: 3 };
+    const clothes = [
+        { description: 'Navy blue BRED University polo shirt' },
+        { description: 'Short, pleated white tennis skirt' },
+    ];
+    const template = { scope: 'character', actor: 'Saori', kind: 'npc-template', after: 'npc' };
+    const statRows = Object.entries(stats).map(([label, after]) => ({
+        scope: 'character', actor: 'Saori', kind: 'stat', label, after,
+    }));
+    const itemRows = clothes.map(item => ({ scope: 'character', actor: 'Saori', kind: 'item-add',
+        collectionId: 'inventory', item }));
+    const tracker = { collections: [{ id: 'inventory', fields: [{ name: 'description', isPrimary: true }] }] };
+    for (const rows of [[template, ...statRows, ...itemRows], [...statRows, template, ...itemRows]]) {
+        const update = buildUpdateFromChanges(rows, state, tracker);
+        assert.deepEqual(update.characters, [{ name: 'Saori', npcTemplateId: 'npc',
+            stats: Object.fromEntries(Object.entries(stats).map(([key, value]) => [key, String(value)])),
+            collections: { inventory: { replace: clothes } },
+        }]);
+    }
+    assert.deepEqual(state.characters[0], { name: 'Saori', stats: {}, collections: {} });
+});

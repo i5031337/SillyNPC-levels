@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createLoreEntryStore } from '../src/lore/lore-entry-store.js';
 
+test('a cancelled chat request cannot allocate or link a lore entry after loading', async () => {
+    let current = true;
+    const writes = [];
+    const create = createLoreEntryStore({
+        load: async () => { current = false; return { entries: {} }; },
+        save: async () => writes.push('save'), allocate: () => writes.push('allocate'),
+        identify: () => writes.push('identify'), persist: () => writes.push('persist'),
+    });
+    const card = { name: 'Mira', lorebook: null };
+    assert.equal(await create(card, 'Chat', 'Mira', 'owner', { isCurrent: () => current }), null);
+    assert.equal(card.lorebook, null);
+    assert.deepEqual(writes, []);
+});
+
 function fixture() {
     const books = { Chat: { entries: {} } };
     let saves = 0;

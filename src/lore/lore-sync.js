@@ -20,18 +20,20 @@ export function readLoreValues(content, cardProfile, scope = 'npc') {
 }
 
 /** Write current structured card values to its linked lorebook entry. */
-export async function syncProfileToLore(char, memories) {
-    if (!char?.name) return;
+export async function syncProfileToLore(char, memories, { isCurrent = () => true } = {}) {
+    if (!char?.name || !isCurrent()) return;
     if (!char.lorebook?.world) {
         if (!Object.values(char.profile || {}).some(value => String(value ?? '').trim())) return;
         const target = await ensureChatLorebookForFill();
-        if (!target) return;
-        await createLoreEntry(char, target);
+        if (!target || !isCurrent()) return;
+        await createLoreEntry(char, target, char.name, { isCurrent });
     }
+    if (!isCurrent() || !char.lorebook) return;
     const { world, uid } = char.lorebook;
     const scope = char.isPlayer ? 'player' : 'npc';
     return inOrder(world, async () => {
         const data = await loadWorldInfo(world);
+        if (!isCurrent()) return;
         const entry = data?.entries?.[uid];
         if (!entry) throw new Error(`Lorebook entry ${world} / #${uid} is missing.`);
         const parsed = entry.content ? parseLoreContent(entry.content, { scope }) : {};
@@ -43,6 +45,7 @@ export async function syncProfileToLore(char, memories) {
         const identityChanged = syncEntryIdentity(char, entry);
         entry.comment = title;
         if (entry.content !== previous || identityChanged) await saveWorldInfo(world, data);
+        if (!isCurrent()) return;
         if (Object.entries(values || {}).some(([id, value]) => char.profile?.[id] !== value)) {
             char.profile = { ...char.profile, ...values };
             saveSettings();

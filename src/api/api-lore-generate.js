@@ -158,7 +158,7 @@ export async function requestLore(prompt) {
  */
 export async function generateLoreContent(char, world, uid, options = {}) {
     let existingLore = '';
-    try {
+    if (world) try {
         const worldData = await loadWorldInfo(world);
         const entries = worldData.entries;
         const entry = Array.isArray(entries) ? entries.find(e => Number(e.uid) === Number(uid)) : entries[uid];

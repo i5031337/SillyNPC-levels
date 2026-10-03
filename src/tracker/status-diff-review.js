@@ -159,6 +159,7 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
                 update.characters ||= [];
                 let entry = update.characters.find(c => c.name === change.actor);
                 if (!entry) { entry = { name: change.actor, stats: {} }; update.characters.push(entry); }
+                entry.stats ||= {};
                 entry.stats[change.label] = value;
             }
             continue;

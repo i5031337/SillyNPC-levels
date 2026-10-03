@@ -52,6 +52,7 @@ try:
         const { renderProfileFields } = await import(root + 'src/ui/characters/ui-profile.js');
         const { buildStatusHtml } = await import(root + 'src/tracker/ui/status-ui-template.js');
         const { buildUserPrompt } = await import(root + 'src/tracker/extractor/status-extractor-prompt.js');
+        const { buildUpdateFromChanges } = await import(root + 'src/tracker/status-diff-review.js');
         const { renderReviewPanel } = await import(root + 'src/ui/tracker/ui-change-review.js');
         const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
         const settings = getSettings();
@@ -97,7 +98,15 @@ try:
           const lore = formatLoreContent({ species: 'Pikachu' }, '', undefined, 'npc',
             [{ id: 'species', label: 'Species' }]);
           const reader = buildUserPrompt(state, 'Trainer greets Pikachu.', settings.statusTracker);
+          const rebuilt = buildUpdateFromChanges([
+            { scope: 'character', actor: 'Saori', kind: 'npc-template', after: 'npc' },
+            { scope: 'character', actor: 'Saori', kind: 'stat', label: 'Condition', after: 'Healthy' },
+            { scope: 'character', actor: 'Saori', kind: 'stat', label: 'Standing', after: 0 }
+          ], { characters: [{ name: 'Saori', stats: {}, collections: {} }] }, settings.statusTracker);
           result = {
+            templateWithStats: rebuilt.characters[0].npcTemplateId === 'npc'
+              && rebuilt.characters[0].stats.Condition === 'Healthy'
+              && rebuilt.characters[0].stats.Standing === '0',
             reviewOptions: [...reviewSelect.options].map(option => option.value),
             reviewSelected: reviewSelect.value,
             loreSelectedOnly: lore === 'Species: Pikachu' && parseLoreContent(lore)?.species === 'Pikachu',
@@ -128,6 +137,7 @@ try:
     assert result['selections'] == [[True, False, True, False], [False, True, True, True]], result
     assert result['selected'] == 'pokemon' and result['options'] == ['', 'human', 'pokemon'], result
     assert result['humanFields'] == ['Occupation'] and result['pokemonFields'] == ['Species'], result
+    assert result['templateWithStats'], result
     assert result['reviewOptions'] == ['', 'human', 'pokemon'] and result['reviewSelected'] == 'pokemon', result
     assert result['loreSelectedOnly'], result
     assert result['readerTemplates'] and result['humanHidden'] and result['pokemonShown'], result
@@ -136,4 +146,8 @@ finally:
     if session:
         try: webdriver('DELETE', f'/session/{session}')
         except Exception: pass
-    driver.terminate()
+    try:
+        driver.terminate()
+    except PermissionError:
+        # Some sandbox runners own the driver; the WebDriver session is closed above.
+        pass

@@ -11,10 +11,10 @@ const create = createLoreEntryStore({
 });
 
 /** Reuse a link or an entry previously created for this identity, including after Unlink. */
-export function createLoreEntry(card, world, name = card.name) {
+export function createLoreEntry(card, world, name = card.name, options) {
     const owner = card.isPlayer
         ? JSON.stringify(['player', card.personaKey || card.name])
         : card.id ? JSON.stringify(['npc', isChatCharacter(card.id)
             ? getContext()?.getCurrentChatId?.() : null, card.id]) : null;
-    return create(card, world, name, owner);
+    return create(card, world, name, owner, options);
 }
