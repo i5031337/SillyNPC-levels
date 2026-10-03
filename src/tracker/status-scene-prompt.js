@@ -13,36 +13,8 @@ import { applyMacros } from '../prompts/macros.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { DEFAULT_INLINE_RULES } from '../core/settings-tracker-defaults.js';
 import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 
 export function bind(deps) {
-function describeProfileInline(card) {
-    return fieldsForCard(card)
-        .map(field => {
-            const value = String(card?.profile?.[field.id] ?? '').trim();
-            return value ? `${field.label}: ${value}` : null;
-        })
-        .filter(Boolean)
-        .join(' | ');
-}
-
-function describeCastProfiles(state) {
-    const lines = [];
-
-    if (state.player?.name) {
-        // The player's profile lives on their persona record, not in the scene cast.
-        const line = describeProfileInline(deps.getPlayerCard());
-        if (line) lines.push(`${state.player.name} - ${line}`);
-    }
-
-    for (const actor of state.characters || []) {
-        const line = describeProfileInline(deps.findCardForName(actor?.name));
-        if (line) lines.push(`${actor.name} - ${line}`);
-    }
-
-    return lines.join('\n');
-}
-
 /**
  * Builds the system instruction for the AI
  */
@@ -244,8 +216,6 @@ function buildSceneContext(given = null) {
  */
 
 Object.defineProperties(deps, {
-    describeProfileInline: { enumerable: true, configurable: true, get: () => describeProfileInline },
-    describeCastProfiles: { enumerable: true, configurable: true, get: () => describeCastProfiles },
     getStatusInstructions: { enumerable: true, configurable: true, get: () => getStatusInstructions },
     getStatusExample: { enumerable: true, configurable: true, get: () => getStatusExample },
     applyScenePrompt: { enumerable: true, configurable: true, get: () => applyScenePrompt },

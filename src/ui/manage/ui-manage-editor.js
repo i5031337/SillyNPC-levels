@@ -291,7 +291,7 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
     renderProfileFields(char, profileContainer);
     if (char.lorebook?.world) readLoreEntry(char).then(content => {
         if (!content || !profileContainer.isConnected) return;
-        const merged = readLoreValues(content, char.profile);
+        const merged = readLoreValues(content, char.profile, char.isPlayer ? 'player' : 'npc');
         if (!merged) return;
         const missing = resolveProfileFields('npc').filter(field =>
             !char.profile?.[field.id] && merged[field.id]);

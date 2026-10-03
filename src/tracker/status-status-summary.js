@@ -180,8 +180,6 @@ function formatCompactStatus(state, fullDetail = false) {
 
     return promptText('sceneBlock', {
         status: output.trim(),
-        // Who these people actually are, for everyone the lines above just listed.
-        profiles: deps.describeCastProfiles(state),
         // And who the story just named without putting on stage.
         offstage: describeNamedButUnlisted(state),
         // What the bracketed lines on the earlier messages are, when they are being sent.
@@ -190,27 +188,10 @@ function formatCompactStatus(state, fullDetail = false) {
 }
 
 /**
- * Age, appearance, personality and speech, for the people in the scene.
- *
- * These four were collected, filled, displayed and exported, and never once shown to the
- * narrator. Worse than merely unused: the lore writer is told not to describe them because
- * "those are fields on the character", which assumed they arrived some other way - so
- * filling a profile in actually removed that material from the one thing the model does
- * read, and put it where nothing looked. A character with a filled profile gave the
- * narrator less to work with than one without.
- *
- * Here rather than on the lore entry because this is how somebody is played, and it has to
- * be in front of the model every time they speak. An entry only fires when its keyword
- * matches, which is not the same as being on stage.
- *
- * Only the cast the block already lists, so this costs nothing for characters who are not
- * in the scene, and only characters with something written.
- */
-/**
  * Characters whose lorebook entry fired, who are not in the scene list.
  *
  * Their entry reaching the prompt without them means the narrator gets a page of background
- * about somebody and none of their numbers or their profile - so when the story gives one of
+ * about somebody and none of their numbers - so when the story gives one of
  * them a line, everything except the entry text is invented.
  *
  * The wording is the careful part. Their entry fired because a keyword matched, which says
@@ -259,9 +240,7 @@ function describeNamedButUnlisted(state) {
             .map(([colId, items]) => summarizeCollection(colId, items, true))
             .filter(Boolean);
 
-        const profile = deps.describeProfileInline(card);
-
-        const parts = [stats, ...carried, profile].filter(Boolean);
+        const parts = [stats, ...carried].filter(Boolean);
         if (parts.length) lines.push(`${card.name} - ${parts.join(' | ')}`);
     }
 
@@ -272,8 +251,6 @@ function describeNamedButUnlisted(state) {
        block is for is enough; why these names are in a separate paragraph is our business. */
     return lines.join('\n');
 }
-
-/** The four profile fields on one line, or '' when none is written. */
 
 Object.defineProperties(deps, {
     createInitialState: { enumerable: true, configurable: true, get: () => createInitialState },

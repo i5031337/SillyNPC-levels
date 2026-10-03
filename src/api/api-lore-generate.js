@@ -272,15 +272,9 @@ export async function saveLoreContent(char, world, uid, tags, content, { preserv
             const values = preserveEmpty ? Object.fromEntries(Object.entries(parsed).filter(([, value]) => value)) : parsed;
             profile = { ...profile, ...values };
             profileFieldsSaved = Object.values(values).filter(Boolean).length;
-            if (preserveEmpty) {
-                const existing = parseGeneratedProfileFields(entry.content, 'player') || {};
-                const combined = { ...existing, ...values };
-                entry.content = resolveProfileFields('player')
-                    .filter(field => Object.hasOwn(combined, field.id))
-                    .map(field => `${field.label}: ${combined[field.id]}`).join('\n');
-            } else {
-                entry.content = submitted;
-            }
+            const existing = preserveEmpty ? mergeLoreValues(entry.content, char.profile, 'player') || char.profile || {} : {};
+            entry.content = formatLoreContent({ ...existing, ...values },
+                preserveEmpty ? entry.content : '', undefined, 'player');
         } else {
             entry.content = submitted;
         }

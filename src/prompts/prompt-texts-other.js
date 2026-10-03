@@ -27,17 +27,12 @@ export const otherPromptTexts = [
         when: 'Every message while the tracker is on. Inside the Tracker block too, as its {{status}}, in inline mode.',
         placeholders: {
             status: 'The world, the player and each character present, with their stats and belongings.',
-            profiles: 'The profiles of everyone present.',
             offstage: 'Characters whose lorebook entry fired but who are not in the scene.',
             rule: 'The note above about the world notes, when they are on.',
         },
         text: lines(
             '[Current Scene Status]',
             '{{status}}',
-            '{{#profiles}}',
-            'Who they are:',
-            '{{profiles}}',
-            '{{/profiles}}',
             '{{#offstage}}',
             'Other known characters, listed for reference only:',
             '{{offstage}}',

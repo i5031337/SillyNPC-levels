@@ -60,11 +60,26 @@ try:
           const { getSettings } = await import(root + 'src/core/settings.js');
           const { renderStatusView } = await import(root + 'src/ui/tracker/ui-tracker-settings.js');
           const { refreshReadButton } = await import(root + 'src/ui/tracker/ui-read-button.js');
+          const { buildSceneContext } = await import(root + 'src/tracker/status-logic.js');
+          const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
+          const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
           const settings = getSettings().statusTracker;
           const saved = { enabled: settings.enabled, extractionMode: settings.extractionMode };
           const panel = document.querySelector('#sillynpc-status-view');
           const result = {};
           try {
+            const scene = buildSceneContext({ global: {},
+              player: { name: 'Smoke Player', stats: {}, collections: {} },
+              characters: [{ name: 'Smoke NPC', stats: {}, collections: {} }] });
+            result.sceneStatusOnly = scene.includes('[Current Scene Status]')
+              && scene.includes('Smoke Player') && scene.includes('Smoke NPC')
+              && !scene.includes('Who they are:');
+            const fields = resolveProfileFields('player');
+            const values = Object.fromEntries(fields.map(field => [field.id, 'Smoke value']));
+            const lore = formatLoreContent(values, '', undefined, 'player');
+            const parsed = parseLoreContent(lore, { scope: 'player' });
+            result.playerLoreFields = fields.every(field => parsed?.[field.id] === 'Smoke value')
+              && lore.split(String.fromCharCode(10)).filter(Boolean).length === fields.length;
             settings.enabled = true; settings.extractionMode = 'manual';
             renderStatusView(panel); refreshReadButton(); refreshReadButton();
             result.manualOption = !!panel.querySelector('option[value="manual"]');
@@ -89,6 +104,7 @@ try:
     execute("""document.querySelector('#sillynpc-manual-smoke')?.remove();
         document.documentElement.removeAttribute('data-manual-smoke');""")
     assert manual_result and manual_result.get('manualOption'), manual_result
+    assert manual_result.get('sceneStatusOnly') and manual_result.get('playerLoreFields'), manual_result
     assert manual_result.get('buttons') == 1 and manual_result.get('accessible'), manual_result
     assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")

@@ -342,7 +342,7 @@ export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
 export async function renderProfileView(char, container) {
     if (!container || !char) return;
     const linkedContent = char.lorebook?.world ? await readLoreEntry(char) : '';
-    const unified = readLoreValues(linkedContent, char.profile) || char.profile || {};
+    const unified = readLoreValues(linkedContent, char.profile, char.isPlayer ? 'player' : 'npc') || char.profile || {};
     container.replaceChildren();
     container.className = 'sillynpc-charview';
 

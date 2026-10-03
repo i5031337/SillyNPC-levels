@@ -37,6 +37,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/character-scope.mjs` | Character visibility and pattern tests. |
 | `tests/chat-npc-sources.mjs` | Chat NPC source routing tests. |
 | `tests/fill-preset.mjs` | Automatic fill stage tests. |
+| `tests/lore-entry-store.mjs` | Concurrent lore creation, ownership, and entry reuse tests. |
+| `tests/profile-lore-storage.mjs` | Player lore persistence and tracker-only scene context tests. |
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
@@ -166,9 +168,12 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/characters/default-portraits.js` | Stranger portrait pool and assignments. |
 | `src/characters/image-tags.js` | Portrait tag fields and tag lookup. |
 | `src/lore/lorebook.js` | Lorebook linking, identity, and synchronization. |
+| `src/lore/lore-entries.js` | Create or reuse lore entries for player and NPC identities. |
+| `src/lore/lore-entry-store.js` | Serialize entry allocation and reuse ownership markers. |
 | `src/lore/lorebook-target.js` | Choose and name a chat lorebook for Fill without overwriting an existing book. |
 | `src/lore/lore-format.js` | Parse and format active System fields while retaining unknown saved lore lines. |
-| `src/lore/lore-sync.js` | Sync NPC fields with the linked lorebook entry. |
+| `src/lore/lore-sync.js` | Save player and NPC profile fields to lore, creating a link when needed. |
+| `src/entry/entry-profile-lore.js` | Sync existing active profiles on startup, chat changes, and persona changes. |
 | `src/lore/activated-lore.js` | Capture activated lore entries and their characters. |
 | `src/story/beats.js` | Segment visible message content into story beats. |
 | `src/story/mentions.js` | Detect named character mentions. |

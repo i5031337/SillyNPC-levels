@@ -69,6 +69,8 @@ export function getChatLorebookName() {
     return (typeof name === 'string' && knownWorlds().includes(name)) ? name : '';
 }
 
+const pendingChatBooks = new WeakMap();
+
 /** Fill creates a chat-bound target only when no existing target was chosen. */
 export async function ensureChatLorebookForFill() {
     const selected = existingFillLorebookName(getChatLorebookName(),
@@ -77,12 +79,20 @@ export async function ensureChatLorebookForFill() {
     const context = getContext();
     const chatId = context?.getCurrentChatId?.();
     if (!chatId || !context?.chatMetadata) return '';
-    const name = newChatLorebookName(chatId, knownWorlds());
-    if (!await createNewWorldInfo(name)) return '';
-    context.chatMetadata[METADATA_KEY] = name;
-    context.saveMetadataDebounced?.();
-    document.querySelector('.chat_lorebook_button')?.classList.add('world_set');
-    return name;
+    const metadata = context.chatMetadata;
+    if (pendingChatBooks.has(metadata)) return pendingChatBooks.get(metadata);
+    const work = (async () => {
+        const name = newChatLorebookName(chatId, knownWorlds());
+        if (!await createNewWorldInfo(name)) return '';
+        if (getContext()?.chatMetadata !== metadata) return '';
+        metadata[METADATA_KEY] = name;
+        context.saveMetadataDebounced?.();
+        document.querySelector('.chat_lorebook_button')?.classList.add('world_set');
+        return name;
+    })();
+    pendingChatBooks.set(metadata, work);
+    try { return await work; }
+    finally { pendingChatBooks.delete(metadata); }
 }
 
 /**

@@ -102,6 +102,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         collectionExample: buildDeltaExample(trackerSettings),
         minimalReply: buildMinimalExample(state, trackerSettings),
         changedReply: buildChangedExample(state, trackerSettings),
+        newNpcReply: buildNewNpcExample(trackerSettings),
         earlier: leadUp.join('\n---\n'),
         message: messageText,
         reasons: trackerSettings.extractionReasons === false ? '' : 'on',
@@ -180,6 +181,28 @@ export function buildMinimalExample(state, trackerSettings = {}) {
         player: {},
         characters: present.map(name => ({ name })),
     });
+}
+
+/** Show a populated NPC entry even when the current scene has no cast. */
+export function buildNewNpcExample(trackerSettings = {}) {
+    const stats = Object.fromEntries((trackerSettings.npcStats || [])
+        .filter(stat => stat?.name && isTurnStat(stat))
+        .map(stat => [stat.name, '<initial value following this field\'s rules>']));
+    const collections = Object.fromEntries((trackerSettings.collections || [])
+        .filter(col => col?.id && ['all', 'npc'].includes(col.target))
+        .map(col => {
+            const primary = (col.fields || []).find(field => field.isPrimary)?.name || 'name';
+            return [col.id, { add: [{ [primary]: '<starting item identifier>' }] }];
+        }));
+    return JSON.stringify({
+        global: {},
+        player: {},
+        characters: [{
+            name: '<exact NPC name from the story>',
+            ...(Object.keys(stats).length ? { stats } : {}),
+            ...(Object.keys(collections).length ? { collections } : {}),
+        }],
+    }, null, 2);
 }
 
 /** Show a changed value only when this system has a stat to name in the example. */

@@ -109,6 +109,7 @@ function getPlayerCard() {
     const record = takePersonaRecord(settings.personaData, key, name) || initPersonaData(key, name);
 
     record.isPlayer = true;
+    record.personaKey = key;
     record.name = name;
     // No description: the sheet had a box for one and it only ever restated the persona
     // prompt, which the model is already given. The lore entry is where the player is

@@ -172,8 +172,8 @@ async function buildLorebookView(char) {
             renderBrokenLink(wrap, char, titleEl, contentEl);
         } else {
             titleEl.textContent = `${char.lorebook.world} / ${entry.comment || `Entry #${entry.uid}`}`;
-            const values = char.isPlayer ? null : readLoreValues(entry.content, char.profile);
-            if (!char.isPlayer && values) {
+            const values = readLoreValues(entry.content, char.profile, char.isPlayer ? 'player' : 'npc');
+            if (values) {
                 char.profile ||= {};
                 let restored = false;
                 for (const [id, value] of Object.entries(values)) {

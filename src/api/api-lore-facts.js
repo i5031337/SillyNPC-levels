@@ -1,54 +1,14 @@
 import { promptText } from '../prompts/prompt-texts.js';
 import { chat } from '../../../../../../script.js';
-import { loadWorldInfo, saveWorldInfo, createWorldInfoEntry } from '../../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../../slash-commands.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 import { applyMacros, modernisePlaceholders } from '../prompts/macros.js';
-import { getSettings, saveSettings } from '../core/settings.js';
-import { syncEntryIdentity } from '../lore/lorebook.js';
+import { getSettings } from '../core/settings.js';
 import { loadStateFromMetadata } from '../tracker/status-logic.js';
 import { imageItemsFromCollections } from './api-image-items.js';
 
-/**
- * Creates a new entry in a lorebook.
- * @param {object} char Character object
- * @param {string} targetWorld Lorebook name
- * @param {string} entryName Name for the entry
- * @returns {Promise<{world: string, uid: number}>}
- */
-export async function createLoreEntry(char, targetWorld, entryName) {
-    debugLog('Creating lore entry', { targetWorld, entryName });
-    if (!targetWorld) throw new Error('No lorebook selected.');
-
-    const worldData = await loadWorldInfo(targetWorld);
-    if (!worldData || !worldData.entries) throw new Error(`Could not load lorebook "${targetWorld}".`);
-
-    // SillyTavern's own constructor, rather than a hand-written object.
-    //
-    // A world-info entry carries 39 fields from the template. The version written here
-    // set ten of them and
-    // invented two that do not exist - `weight` and `recursive`, where the real fields
-    // are `groupWeight` and excludeRecursion/preventRecursion - and set `depth` without
-    // setting the `position` that gives depth its meaning. Everything now comes from
-    // newWorldInfoEntryTemplate, and only the three fields we actually mean to fill are
-    // touched afterwards.
-    const entry = createWorldInfoEntry(targetWorld, worldData);
-    if (!entry) throw new Error('SillyTavern could not allocate a new entry.');
-
-    entry.content = '';
-    // Title, keywords and - once there is a body to head - the heading that names whose
-    // entry this is. entryName rather than char.name: a caller may be filing this under a
-    // title of its own.
-    syncEntryIdentity({ ...char, name: entryName }, entry);
-
-    await saveWorldInfo(targetWorld, worldData);
-
-    char.lorebook = { world: targetWorld, uid: entry.uid };
-    saveSettings();
-
-    return { world: targetWorld, uid: entry.uid };
-}
+export { createLoreEntry } from '../lore/lore-entries.js';
 
 /**
  * What the tracker already knows about this character, as lines for the lore prompt.

@@ -9,6 +9,33 @@ import { DEFAULT_LORE_PROMPT } from '../src/prompts/default-prompt-texts.js';
 import { loreReplyWasTruncated, parseLoreReply } from '../src/lore/lore-reply.js';
 import { resolveProfileFields, resolveProfileFieldsFromSystem, setProfileSettingsProvider, profileStrings } from '../src/core/profile-fields.js';
 
+test('player profiles use player fields and preserve additional lore and memories', () => {
+    const prose = '### Hero\nA traveler from the coast.\nKeeps a journal.';
+    const content = formatLoreContent({ appearance: 'Red cloak' }, prose, undefined, 'player');
+    assert.equal(content.includes('Role:'), false);
+    assert.match(content, /### Additional lore\nA traveler from the coast\.\nKeeps a journal\.$/);
+    assert.equal(parseLoreContent(content, { scope: 'player' }).appearance, 'Red cloak');
+    const updated = formatLoreContent({ appearance: 'Blue cloak' }, content,
+        { entries: [{ id: 'm1', text: 'Visited the docks.' }] }, 'player');
+    assert.equal(updated.split('### Additional lore').length, 2);
+    assert.match(updated, /### Memories\n- Visited the docks\.$/);
+    assert.equal(mergeLoreValues(updated, { age: '28' }, 'player').appearance, 'Blue cloak');
+    assert.equal(parseLoreContent('Appearance: Red cloak', { scope: 'player' }).appearance, 'Red cloak');
+});
+
+test('custom player profile fields never use the NPC schema', () => {
+    setProfileSettingsProvider(() => ({ activeSystem: 'Custom', statusTracker: { presets: {
+        Custom: { definition: { profiles: { player: [{ id: 'origin', label: 'Origin' }],
+            npc: [{ id: 'role', label: 'Role' }] } } },
+    } } }));
+    try {
+        const content = formatLoreContent({ origin: 'Coast' }, '', undefined, 'player');
+        assert.equal(content, 'Origin: Coast');
+        assert.deepEqual(parseLoreContent(content, { scope: 'player' }), { origin: 'Coast' });
+        assert.deepEqual(mergeLoreValues(content, { origin: 'Hills' }, 'player'), { origin: 'Hills' });
+    } finally { setProfileSettingsProvider(() => null); }
+});
+
 test('active System fields replace defaults while retired fields stay on cards', () => {
     const system = { profiles: { npc: [
         { id: 'calling', label: 'Calling', guidance: 'Their calling', policy: 'anchored' },
@@ -141,7 +168,7 @@ test('saving partial lore records supported NPC and player fields', async () => 
     const playerSaved = await saveLoreContent(player, 'World', 0, 'Hero', 'Appearance: Red cloak');
     assert.equal(playerSaved.profileFieldsSaved, 1);
     assert.equal(player.profile.appearance, 'Red cloak');
-    assert.equal(entries[0].content, 'Appearance: Red cloak');
+    assert.equal(entries[0].content, formatLoreContent({ appearance: 'Red cloak' }, '', undefined, 'player'));
     assert.equal(saved, 3);
     await assert.rejects(saveLoreContent(npc, 'World', 0, '', 'Unknown: Lost detail'),
         /named fields/);
@@ -172,7 +199,7 @@ test('empty generated fields preserve existing lore and profile values', async (
     await saveLoreContent(player, 'World', 0, '', 'Appearance: \nPersonality: Patient',
         { preserveEmpty: true });
     assert.equal(player.profile.appearance, 'Red cloak');
-    assert.equal(entries[0].content, 'Appearance: Red cloak\nPersonality: Patient');
+    assert.equal(entries[0].content, formatLoreContent({ appearance: 'Red cloak', personality: 'Patient' }, '', undefined, 'player'));
 });
 
 test('lore truncation uses provider finish reason when available', () => {
