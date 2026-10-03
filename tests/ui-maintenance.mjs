@@ -42,6 +42,39 @@ function load(file, names, values, result) {
     return new Function(...names, `${source}\nreturn ${result};`)(...values);
 }
 
+test('tracker display controls redraw immediately without reprocessing chat or rebuilding settings', () => {
+    const document = { createElement: tag => new Element(tag) };
+    const control = options => ({ ...options, style: {} });
+    const display = load('tracker/ui-tracker-display-reading.js', [
+        'buildSettingToggle', 'buildSettingSlider', 'buildSettingSelect', 'buildSettingNumber',
+        'buildPlacementPicker', 'buildHistoryNoteFields', 'buildConnectionProfilePicker',
+    ], [control, control, control, control,
+        (settings, onChange) => control({ key: 'placement', onChange }), control, control,
+    ], 'renderTrackerDisplayAndReading');
+    const counts = { save: 0, redraw: 0, reprocess: 0, hud: 0 };
+    const render = load('tracker/ui-tracker-settings.js', [
+        'document', 'getSettings', 'saveSettings', 'triggerReprocess', 'updateHUD',
+        'redrawStatusBoxes', 'renderTrackerDisplayAndReading', 'renderTrackerScanAndReview',
+        'renderTrackerCastAndRecovery', 'foldSettings',
+    ], [document, () => ({ statusTracker: {} }), () => counts.save++,
+        () => counts.reprocess++, () => counts.hud++, () => counts.redraw++,
+        display, () => {}, () => {}, () => {},
+    ], 'renderStatusView');
+    const panel = new Element('div');
+    render(panel);
+    const children = [...panel.children];
+    const keys = ['placement', ...['showGlobalStats', 'showPlayerStats', 'showNpcStats',
+        'showRawTrackerOutput', 'showNpcPortraits', 'characterColumns', 'summaryThreshold']
+        .map(key => `statusTracker.${key}`)];
+    for (const [index, key] of keys.entries()) {
+        const setting = panel.children.find(child => child.key === key);
+        assert.ok(setting, key);
+        setting.onChange();
+        assert.deepEqual(counts, { save: index + 1, redraw: index + 1, reprocess: 0, hud: 0 });
+        assert.deepEqual(panel.children, children);
+    }
+});
+
 test('linked lore entry with UID zero can generate and save', async () => {
     const elements = [];
     const document = { createElement: tag => {

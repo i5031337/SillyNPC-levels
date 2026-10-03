@@ -7,6 +7,7 @@ import { renderTrackerCastAndRecovery } from './ui-tracker-cast-recovery.js';
 import { foldSettings } from '../settings/ui-settings-details.js';
 import { refreshReadButton } from './ui-read-button.js';
 import { refreshScanButton } from './ui-scan-button.js';
+import { redrawStatusBoxes } from '../../tracker/ui/status-ui-box.js';
 
 /**
  * The Tracker settings tab, and the two popups it opens.
@@ -57,6 +58,12 @@ export function renderStatusView(container) {
         updateHUD();
     };
 
+    // Display edits need no dialogue processing and must bypass the chat render cache.
+    const onDisplay = () => {
+        saveSettings();
+        redrawStatusBoxes();
+    };
+
     const section = (name) => {
         const h = document.createElement('h3');
         h.className = 'sillynpc-section-title';
@@ -65,14 +72,16 @@ export function renderStatusView(container) {
         container.appendChild(h);
     };
 
-    const view = { container, settings, onApply, onChange, section };
+    const view = { container, settings, onApply, onDisplay, onChange, section };
     renderTrackerDisplayAndReading(view);
     renderTrackerScanAndReview(view);
     renderTrackerCastAndRecovery(view);
 
     foldSettings(container, 'Customize display', [
-        'statusTracker.showWorldStats', 'statusTracker.showPortraits',
-        'statusTracker.charactersSideBySide', 'statusTracker.summaryThreshold',
+        'statusTracker.showGlobalStats', 'statusTracker.showPlayerStats',
+        'statusTracker.showNpcStats', 'statusTracker.showRawTrackerOutput',
+        'statusTracker.showNpcPortraits', 'statusTracker.characterColumns',
+        'statusTracker.summaryThreshold',
     ]);
     foldSettings(container, 'Customize the reader', [
         'statusTracker.extractionContextMessages', 'statusTracker.extractionMaxTokens',

@@ -5,7 +5,21 @@ import { renderCharacters } from './status-ui-template-characters.js';
 
 export function buildStatusHtml(state, settings) {
     try {
+        const showPlayer = settings.showPlayerStats !== false;
+        const showNpcs = settings.showNpcStats !== false && settings.showCharacters !== false;
+        if (!settings.showGlobalStats && !showPlayer && !showNpcs) return '';
         let html = settings.template;
+
+        if (!showPlayer) {
+            html = html.replace(/<div[^>]*class="[^"]*sillynpc-status-player[^"]*"[^>]*>[\s\S]*?<\/div>/s, '');
+            html = html.replace(/{{player}}/g, '');
+            // Shared collection placeholders inside NPC rows still belong to the NPC.
+            html = html.split(/({{#characters}}[\s\S]*?{{\/characters}})/g)
+                .map(part => part.startsWith('{{#characters}}') ? part
+                    : settings.collections.reduce((text, col) => text.replace(
+                        new RegExp(`{{${escapeRegExp(col.id)}}}`, 'g'), ''), part))
+                .join('');
+        }
 
         // Handle Global Stats Toggling
         if (!settings.showGlobalStats) {
@@ -15,9 +29,8 @@ export function buildStatusHtml(state, settings) {
             html = html.replace(/<div[^>]*class="[^"]*sillynpc-status-divider[^"]*"[^>]*><\/div>/s, '');
         }
 
-        // The eye's middle state: the world line without the character rows. Absent means
-        // shown, so nothing already saved renders differently for having no opinion.
-        if (settings.showCharacters === false) {
+        // Hide the whole NPC section, including its headings and portraits.
+        if (!showNpcs) {
             // The mustache block first. It contains the per-character <div>, so once it is
             // gone the wrapper holds no nested div and can be matched to its own closing
             // tag - which is also how any heading somebody put inside it goes with it.
@@ -103,7 +116,7 @@ export function buildStatusHtml(state, settings) {
          * character rows, so whichever goes in last ends up nearer them.
          */
         const visiblePlayerStats = (settings.playerStats || []).filter(stat => stat?.name
-            && stat.visible !== false);
+            && showPlayer && stat.visible !== false);
         (settings.playerStats || []).forEach(stat => {
             if (stat?.name && stat.visible === false) html = stripFieldReference(html, stat.name);
         });
@@ -151,22 +164,23 @@ export function buildStatusHtml(state, settings) {
         }
 
         // Handle Player Collections in Template
-        if (state.player && state.player.collections) {
+        if (showPlayer && state.player && state.player.collections) {
             for (const [colId, items] of Object.entries(state.player.collections)) {
                 const colDef = settings.collections.find(c => c.id === colId);
                 if (colDef && colDef.visible === false) continue;
 
                 const colRegex = new RegExp(`{{${escapeRegExp(colId)}}}`, 'g');
-                if (html.includes(`{{${colId}}}`)) {
-                    const summary = summarizeCollectionUI(colId, items, settings);
-                    html = html.replace(colRegex, summary || '');
+                html = html.split(/({{#characters}}[\s\S]*?{{\/characters}})/g).map(part => {
+                    if (part.startsWith('{{#characters}}') || !part.includes(`{{${colId}}}`)) return part;
                     renderedGlobalCollections.add(colId.toLowerCase());
-                }
+                    return part.replace(colRegex, summarizeCollectionUI(colId, items, settings) || '');
+                }).join('');
             }
         }
 
         // Handle missing defined player collections (appended to top or wherever player data is)
         const missingDefinedPlayerCollections = settings.collections.filter(col => 
+            showPlayer &&
             (col.target === 'player' || col.target === 'all') && 
             col.visible !== false && 
             !renderedGlobalCollections.has(col.id.toLowerCase())
@@ -176,16 +190,24 @@ export function buildStatusHtml(state, settings) {
             const extraPlayerColHtml = missingDefinedPlayerCollections.map(col => {
                 const items = (state.player && state.player.collections && state.player.collections[col.id]) || [];
                 const summary = summarizeCollectionUI(col.id, items, settings);
-                return summary ? ` | ${summary}` : '';
-            }).join('');
-            
-            // Heuristic: Append player collections after player stats if we can find a place,
-            // or just to the header/box.
-            if (html.includes('sillynpc-status-box')) {
-                 // Append before characters section
-                 html = html.replace(/({{#characters}})/, (match) => {
-                     return extraPlayerColHtml + "\n    " + match;
-                 });
+                return summary || '';
+            }).filter(Boolean).join(' | ');
+
+            // Collections belong with the player even when there are no NPC rows.
+            if (extraPlayerColHtml) {
+                if (html.includes('sillynpc-status-player')) {
+                    html = html.replace(/(<div[^>]*class="[^"]*sillynpc-status-player[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/s,
+                        (match, open, content, close) => `${open}${content}${content.trim() ? ' | ' : ''}${extraPlayerColHtml}${close}`);
+                } else {
+                    const block = `<div class="sillynpc-status-player">${extraPlayerColHtml}</div>`;
+                    if (html.includes('sillynpc-status-characters')) {
+                        html = html.replace(/(<div[^>]*class="[^"]*sillynpc-status-characters[^"]*"[^>]*>)/s, `${block}\n$1`);
+                    } else if (html.includes('sillynpc-status-box')) {
+                        html = html.replace(/(<div[^>]*class="[^"]*sillynpc-status-box[^"]*"[^>]*>)/s, `$1\n${block}`);
+                    } else {
+                        html += `\n${block}`;
+                    }
+                }
             }
         }
         

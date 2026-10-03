@@ -2,7 +2,7 @@ import { buildSettingToggle, buildSettingSlider, buildSettingSelect, buildSettin
 import { buildPlacementPicker, buildHistoryNoteFields } from './ui-tracker-history.js';
 import { buildConnectionProfilePicker } from '../settings/ui-connection-profiles.js';
 
-export function renderTrackerDisplayAndReading({ container, settings, onApply, onChange, section }) {
+export function renderTrackerDisplayAndReading({ container, settings, onApply, onDisplay, onChange, section }) {
     /* -- Display ----------------------------------------------------------- */
 
     container.append(buildSettingToggle({
@@ -14,13 +14,36 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
     }));
 
     // One question, not two: both of these only ever answered "where does the box go".
-    container.append(buildPlacementPicker(settings, onApply));
+    container.append(buildPlacementPicker(settings, onDisplay));
 
     container.append(buildSettingToggle({
         key: 'statusTracker.showGlobalStats',
         label: 'Show World Stats',
         help: 'Location, time and the rest of your world-level stats.',
-        onChange: onApply
+        onChange: onDisplay
+    }));
+
+    container.append(buildSettingToggle({
+        key: 'statusTracker.showPlayerStats',
+        label: 'Show Player Stats',
+        help: 'Shows the player’s stats and collections in the tracker. Hide World, Player '
+            + 'and NPC Stats to hide the tracker bar while tracking continues in the background.',
+        onChange: onDisplay
+    }));
+
+    container.append(buildSettingToggle({
+        key: 'statusTracker.showNpcStats',
+        label: 'Show NPC Stats',
+        help: 'Shows NPC rows, including their stats, collections and portraits, in the tracker.',
+        onChange: onDisplay
+    }));
+
+    container.append(buildSettingToggle({
+        key: 'statusTracker.showRawTrackerOutput',
+        label: 'Show Raw Tracker Output',
+        help: 'Shows the reader’s progress and output dropdown beneath messages. '
+            + 'Hiding it leaves tracking and change review active.',
+        onChange: onDisplay
     }));
 
     container.append(buildSettingToggle({
@@ -28,7 +51,7 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
         label: 'Show Portraits',
         help: 'Each character\'s card image beside their name. Put {{portrait}} in your '
             + 'template to place it yourself.',
-        onChange: onApply
+        onChange: onDisplay
     }));
 
     container.append(buildSettingToggle({
@@ -38,7 +61,7 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
             + 'the visual novel stage uses its width instead of leaving most of every line '
             + 'empty. A character with a lot to show gets a wider column, down to one. Needs '
             + 'the character rows of the default template.',
-        onChange: onApply
+        onChange: onDisplay
     }));
 
     container.append(buildSettingSlider({
@@ -50,7 +73,7 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
         help: 'How many items the status box lists before summarising the rest as '
             + '"+N more". Display only - the model is always told the whole collection, '
             + 'however this is set.',
-        onChange: onApply
+        onChange: onDisplay
     }));
 
 

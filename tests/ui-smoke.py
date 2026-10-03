@@ -61,10 +61,19 @@ try:
           const { renderStatusView } = await import(root + 'src/ui/tracker/ui-tracker-settings.js');
           const { refreshReadButton } = await import(root + 'src/ui/tracker/ui-read-button.js');
           const { buildSceneContext } = await import(root + 'src/tracker/status-logic.js');
+          const { buildStatusHtml } = await import(root + 'src/tracker/ui/status-ui-template.js');
+          const { buildTrackerBox } = await import(root + 'src/tracker/ui/status-ui-box.js');
+          const { renderExtractionReport } = await import(root + 'src/tracker/ui/status-ui-report.js');
+          const { getExtractionReport } = await import(root + 'src/tracker/extractor/status-extraction-report.js');
+          const { defaultTrackerSettings } = await import(root + 'src/core/settings-tracker-defaults.js');
           const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
           const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
           const settings = getSettings().statusTracker;
-          const saved = { enabled: settings.enabled, extractionMode: settings.extractionMode };
+          const keys = ['enabled', 'extractionMode', 'showGlobalStats', 'showPlayerStats',
+            'showNpcStats', 'showRawTrackerOutput'];
+          const saved = Object.fromEntries(keys.map(key => [key, settings[key]]));
+          const chat = SillyTavern.getContext().chat;
+          const savedChat = chat.slice();
           const panel = document.querySelector('#sillynpc-status-view');
           const result = {};
           try {
@@ -82,6 +91,57 @@ try:
               && lore.split(String.fromCharCode(10)).filter(Boolean).length === fields.length;
             settings.enabled = true; settings.extractionMode = 'manual';
             renderStatusView(panel); refreshReadButton(); refreshReadButton();
+            result.visibilityControls = keys.slice(2).every(key =>
+              panel.querySelector('[data-setting="statusTracker.' + key + '"]')
+                ?.closest('details')?.querySelector('summary')?.textContent === 'Customize display');
+            const fixture = { global: { Location: 'Smoke World' },
+              player: { name: 'Smoke Player', stats: { HP: '17/20' },
+                collections: { inventory: [{ name: 'Player Sword', quantity: 1 }] } },
+              characters: [{ name: 'Smoke NPC', stats: { HP: '7/10' },
+                collections: { inventory: [{ name: 'NPC Shield', quantity: 1 }] } }] };
+            const display = structuredClone(defaultTrackerSettings);
+            display.showNpcPortraits = false;
+            result.visibilityCombinations = true;
+            for (let mask = 0; mask < 8; mask++) {
+              display.showGlobalStats = !!(mask & 1);
+              display.showPlayerStats = !!(mask & 2);
+              display.showNpcStats = !!(mask & 4);
+              const html = buildStatusHtml(fixture, display);
+              result.visibilityCombinations &&= html.includes('Smoke World') === display.showGlobalStats
+                && html.includes('17/20') === display.showPlayerStats
+                && html.includes('Player Sword') === display.showPlayerStats
+                && html.includes('Smoke NPC') === display.showNpcStats
+                && html.includes('NPC Shield') === display.showNpcStats
+                && (mask !== 0 || html === '');
+            }
+            display.showGlobalStats = true; display.showNpcStats = true;
+            display.showPlayerStats = false;
+            display.template = '<div class="sillynpc-status-box">{{globals}} {{player}} {{inventory}}'
+              + '<div class="sillynpc-status-characters">{{#characters}}'
+              + '<div class="sillynpc-status-char">{{name}} {{fields}} {{inventory}}</div>'
+              + '{{/characters}}</div></div>';
+            const customHtml = buildStatusHtml(fixture, display);
+            result.customCollectionVisibility = !customHtml.includes('Player Sword')
+              && customHtml.includes('NPC Shield');
+            const sceneBefore = buildSceneContext(fixture);
+            Object.assign(settings, { showGlobalStats: false, showPlayerStats: false, showNpcStats: false });
+            result.noTrackerBar = buildTrackerBox(fixture, { view: 'full' }) === null;
+            result.backgroundUnchanged = settings.enabled && buildSceneContext(fixture) === sceneBefore;
+            chat.splice(0, chat.length, { mes: 'Smoke story', swipe_id: 0, extra: {
+              sillynpc_reader_report: { swipe: 0, status: 'done', summary: 'Smoke report',
+                output: { player: { stats: { HP: '17/20' } } } } } });
+            const message = document.createElement('div');
+            message.innerHTML = '<div class="mes_text">Smoke story</div>';
+            settings.showRawTrackerOutput = true;
+            renderExtractionReport(message, 0);
+            result.reportShown = !!message.querySelector('.sillynpc-reader-report details');
+            settings.showRawTrackerOutput = false;
+            renderExtractionReport(message, 0);
+            result.reportHidden = !message.querySelector('.sillynpc-reader-report')
+              && getExtractionReport(0)?.summary === 'Smoke report';
+            settings.showRawTrackerOutput = true;
+            renderExtractionReport(message, 0);
+            result.reportRestored = !!message.querySelector('.sillynpc-reader-report details');
             result.manualOption = !!panel.querySelector('option[value="manual"]');
             result.buttons = document.querySelectorAll('#sillynpc-read-button').length;
             result.accessible = document.querySelector('#sillynpc-read-button')?.getAttribute('aria-label');
@@ -90,7 +150,14 @@ try:
             settings.enabled = true; settings.extractionMode = 'extract'; refreshReadButton();
             result.hiddenWhenAutomatic = !document.querySelector('#sillynpc-read-button');
           } catch (error) { result.error = String(error); }
-          finally { Object.assign(settings, saved); renderStatusView(panel); refreshReadButton(); }
+          finally {
+            chat.splice(0, chat.length, ...savedChat);
+            for (const key of keys) {
+              if (saved[key] === undefined) delete settings[key];
+              else settings[key] = saved[key];
+            }
+            renderStatusView(panel); refreshReadButton();
+          }
           document.documentElement.setAttribute('data-manual-smoke', JSON.stringify(result));
         `;
         document.head.appendChild(script);""")
@@ -107,6 +174,10 @@ try:
     assert manual_result.get('sceneStatusOnly') and manual_result.get('playerLoreFields'), manual_result
     assert manual_result.get('buttons') == 1 and manual_result.get('accessible'), manual_result
     assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
+    assert all(manual_result.get(key) for key in [
+        'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
+        'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored',
+    ]), manual_result
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];

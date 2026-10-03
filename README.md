@@ -135,6 +135,7 @@ Reload SillyTavern.
    * Generated portraits use SillyTavern's Image Generation extension and its configured provider.
 3. **Enabling Tracker & HUD:**
    * The tracker is **on by default** for new settings. If it is not reading messages, check **Enable Status Tracker** under the **Tracker** tab; previously saved settings may have it off.
+   * Under **Tracker → Customize display**, toggle **Show World Stats**, **Show Player Stats**, and **Show NPC Stats** independently. Hiding all three removes the tracker bar while background tracking continues. Turn off **Show Raw Tracker Output** to hide the reader’s progress and output dropdown. The HUD has its own visibility setting.
    * To run the reader on demand, select **Tracker → How Stats Are Read → Method → Manual — run from the send bar**. Click the book icon (**Read latest reply**) beside the send controls after an assistant reply. It reads that reply with the configured lead-up, using the usual reader connection and review settings. Reading the same reply again replaces its previous reading without awarding XP twice.
    * The HUD appears once the tracker is running; choose Plate, Underlines, Pip Rows, or Split Ring under the **HUD** tab.
 

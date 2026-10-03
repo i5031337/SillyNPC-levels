@@ -50,6 +50,7 @@ export function renderExtractionReport(mesEl, messageId) {
     const previous = mesEl.querySelector('.sillynpc-reader-report');
     const wasOpen = previous?.querySelector('details')?.open;
     previous?.remove();
+    if (getSettings().statusTracker.showRawTrackerOutput === false) return;
     const report = getExtractionReport(messageId);
     if (!report) return;
 

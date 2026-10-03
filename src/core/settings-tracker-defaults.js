@@ -9,6 +9,9 @@ export const defaultTrackerSettings = {
             { name: 'Quest', defaultValue: 'None', format: '<b>{{name}}:</b> {{value}}', visible: true }
         ],
         showGlobalStats: true,
+        showPlayerStats: true,
+        showNpcStats: true,
+        showRawTrackerOutput: true,
         npcStats: [
             { name: 'HP', type: 'number', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true },
             { name: 'Energy', type: 'number', defaultValue: '5/5', format: '{{name}}: {{value}}', maxStatValue: '5', visible: true },

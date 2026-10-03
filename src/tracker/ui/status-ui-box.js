@@ -172,7 +172,7 @@ export function buildTrackerBox(state, {
 } = {}) {
     const settings = getSettings().statusTracker;
     const htmlToRender = buildStatusHtml(state,
-        view === 'globals' ? { ...settings, showCharacters: false } : settings);
+        view === 'globals' ? { ...settings, showPlayerStats: false, showNpcStats: false } : settings);
 
     if (!hasVisibleContent(htmlToRender)) return null;
 
