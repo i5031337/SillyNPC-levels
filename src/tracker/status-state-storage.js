@@ -1,3 +1,4 @@
+import { npcStatsFor, npcTemplateFor } from '../core/npc-templates.js';
 import { 
     eventSource, 
     event_types, 
@@ -130,11 +131,15 @@ function loadStateFromMetadata() {
             stateChanged = true;
         }
 
+        if (!char.npcTemplateId) {
+            const selected = npcTemplateFor(char) || npcTemplateFor(deps.findCardForName?.(char.name));
+            if (selected) { char.npcTemplateId = selected.id; stateChanged = true; }
+        }
         // Optimization: Use a map for existing stats lookup
         const charStatsLower = new Map(Object.keys(char.stats).map(k => [k.toLowerCase(), k]));
 
         // Ensure missing NPC stats from settings are added
-        (settings.npcStats || []).forEach(stat => {
+        npcStatsFor(char, settings).forEach(stat => {
             if (stat && stat.name) {
                 const lowerName = stat.name.toLowerCase();
                 const existingKey = charStatsLower.get(lowerName);

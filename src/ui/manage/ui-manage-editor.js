@@ -1,6 +1,7 @@
+import { buildNpcTemplateSelect } from '../characters/ui-npc-template.js';
 import { Popup } from '../../../../../../popup.js';
 import { LOG_PREFIX } from '../../core/constants.js';
-import { resolveProfileFields } from '../../core/profile-fields.js';
+import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { saveSettings } from '../../core/settings.js';
 import { deleteCharacter, findCharacter } from '../../characters/characters.js';
 import { renameLorebookEntry } from '../../lore/lorebook.js';
@@ -293,7 +294,7 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
         if (!content || !profileContainer.isConnected) return;
         const merged = readLoreValues(content, char.profile, char.isPlayer ? 'player' : 'npc');
         if (!merged) return;
-        const missing = resolveProfileFields('npc').filter(field =>
+        const missing = profileFieldsForCard(char).filter(field =>
             !char.profile?.[field.id] && merged[field.id]);
         if (!missing.length) return;
         char.profile ||= {};
@@ -318,6 +319,7 @@ export function renderEditor(showGrid) {
     // Resolve a removed Pictures tab before building the tab bar.
     if (manageState.charView === 'pictures' && taggedFields().length === 0) manageState.charView = 'profile';
     const { sticky, title } = buildEditorHeader(char, showGrid, refreshEditor);
+    if (!char.isPlayer) sticky.appendChild(buildNpcTemplateSelect(char, refreshEditor));
 
     if (manageState.charView === 'profile') {
         const view = document.createElement('div');

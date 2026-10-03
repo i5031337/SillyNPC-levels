@@ -66,8 +66,10 @@ export function attachReasons(changes, why) {
 }
 
 export function partitionChanges(changes, trackerSettings) {
+    const unresolved = changes.filter(change => change.kind === 'npc-template' && !change.after);
+    const resolved = changes.filter(change => !unresolved.includes(change));
     const mode = trackerSettings.reviewMode || 'risky';
-    if (mode === 'off') return { auto: changes, pending: [] };
+    if (mode === 'off') return { auto: resolved, pending: unresolved };
     if (mode === 'all') return { auto: [], pending: changes };
     return {
         auto: changes.filter(c => c.risk !== 'risky'),
@@ -116,6 +118,14 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
     };
 
     for (const change of changes) {
+        if (change.kind === 'npc-template') {
+            if (!change.after) continue;
+            update.characters ||= [];
+            let entry = update.characters.find(actor => actor.name === change.actor);
+            if (!entry) { entry = { name: change.actor }; update.characters.push(entry); }
+            entry.npcTemplateId = change.after;
+            continue;
+        }
         if (change.kind === 'stat' || change.kind === 'stat-max') {
             // Re-join the halves so a max-only acceptance does not drop the current value.
             const live = change.scope === 'global'

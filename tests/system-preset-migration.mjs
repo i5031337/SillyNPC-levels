@@ -88,3 +88,21 @@ test('old profile import ignores its world; modern definition import is usable',
     assert.equal(settings.characters[0].name, 'Live');
     assert.ok(saves > 0);
 });
+
+test('template definitions survive System capture and modern import', () => {
+    const system = normalizeSystemDefinition({ schemaVersion: 1, name: 'Mixed Cast',
+        profiles: { player: [], npc: [{ id: 'species', label: 'Species' }] },
+        stats: { world: [], player: [], npc: [{ id: 'hp', name: 'HP' }] },
+        npcTemplates: [{ id: 'pokemon', name: 'Pokémon', description: 'Pokémon creatures.',
+            profileIds: ['species'], statIds: ['hp'] }],
+    });
+    deps.importSystemPreset(JSON.stringify(system));
+    settings.statusTracker.npcStats = structuredClone(system.stats.npc);
+    deps.saveSystemPreset('Mixed Cast');
+    assert.deepEqual(settings.statusTracker.presets['Mixed Cast'].definition.npcTemplates, system.npcTemplates);
+    assert.equal(settings.statusTracker.presets['Mixed Cast'].definition.legacyNpcTemplateId, undefined);
+    deps.chatHasStarted = () => false;
+    assert.equal(deps.createSystem('New Empty System'), true);
+    assert.deepEqual(settings.statusTracker.presets['New Empty System'].definition.npcTemplates, []);
+    assert.equal(settings.statusTracker.presets['New Empty System'].definition.legacyNpcTemplateId, undefined);
+});

@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../core/npc-templates.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { chat } from '../../../../../../script.js';
 import { executeSlashCommandsOnChatInput } from '../../../../../slash-commands.js';
@@ -79,7 +80,9 @@ export function liveFactsFor(char) {
     const wanted = String(char?.name ?? '').toLowerCase();
     const actor = (state?.characters || []).find(c => String(c.name).toLowerCase() === wanted) || null;
     return {
-        stats: actor?.stats || char?.statusOverrides || {},
+        stats: Object.fromEntries(Object.entries(actor?.stats || char?.statusOverrides || {})
+            .filter(([name]) => npcStatsFor(actor?.npcTemplateId ? actor : char, getSettings().statusTracker)
+                .some(stat => stat.name.toLowerCase() === name.toLowerCase()))),
         collections: actor?.collections || char?.statusCollections || {},
     };
 }

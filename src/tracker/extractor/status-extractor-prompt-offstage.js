@@ -1,3 +1,4 @@
+import { npcTemplateFor } from '../../core/npc-templates.js';
 import { charactersMentionedIn } from '../../chat/chat.js';
 import { charactersFromActivatedLore } from '../../lore/activated-lore.js';
 import { liveFactsFor } from '../../api/api.js';
@@ -72,6 +73,7 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
 
         records.push({
             name: char.name,
+            npcTemplateId: npcTemplateFor(char)?.id || '(unassigned)',
             ...(hasStats ? { stats: visibleStats } : {}),
             ...(hasItems ? { collections: listed } : {}),
             ...profile,

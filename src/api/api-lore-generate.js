@@ -11,7 +11,7 @@ import { syncEntryIdentity, mergeKeywords, namesFor } from '../lore/lorebook.js'
 import { escapeRegExp, describeConnection } from '../core/utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';
 import { hintFor } from '../core/constants-profile.js';
-import { resolveProfileFields } from '../core/profile-fields.js';
+import { profileFieldsForCard } from '../core/profile-fields.js';
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../lore/lore-format.js';
 import { loreReplyWasTruncated, parseLoreReply } from '../lore/lore-reply.js';
 
@@ -175,7 +175,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     const givenFacts = typeof options.facts === 'function' ? options.facts() : options.facts;
     const established = char.isPlayer ? (char.profile || {})
         : (mergeLoreValues(existingLore, char.profile) || char.profile || {});
-    const fields = resolveProfileFields(char.isPlayer ? 'player' : 'npc');
+    const fields = profileFieldsForCard(char);
     const profileFields = fields.map(field =>
         `- ${field.label}: ${hintFor(field)}${established[field.id]
             ? ` (established: ${String(established[field.id]).trim()})` : ''}`).join('\n');
@@ -211,7 +211,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     const { text, truncated } = await requestLore(prompt);
 
     let { tags, content, followedSections } = parseLoreReply(text,
-        !options.template ? resolveProfileFields(char.isPlayer ? 'player' : 'npc') : []);
+        !options.template ? profileFieldsForCard(char) : []);
 
     const namePattern = new RegExp(`^#*\\s*${escapeRegExp(char.name)}\\s*[:\\-]?\\s*\\n?`, 'i');
     content = content.replace(namePattern, '').trim();
@@ -219,7 +219,7 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     if (!options.template && !char.isPlayer) {
         const generated = parseLoreContent(content, { allowPartial: true });
         if (generated) {
-            content = resolveProfileFields('npc')
+            content = profileFieldsForCard(char)
                 .filter(field => Object.hasOwn(generated, field.id))
                 .map(field => `${field.label}: ${String(options.preserveLore
                     ? (established[field.id] || generated[field.id] || '')
@@ -278,13 +278,16 @@ export async function saveLoreContent(char, world, uid, tags, content, { preserv
         } else {
             entry.content = submitted;
         }
+    } else if (!profileFieldsForCard(char).length) {
+        entry.content = submitted;
     } else {
         const parsed = parseGeneratedProfileFields(submitted, 'npc');
         if (!parsed) throw new Error('NPC lore must use named fields in the required order.');
-        const accepted = preserveEmpty ? Object.fromEntries(Object.entries(parsed).filter(([, value]) => value)) : parsed;
-        const complete = Object.keys(accepted).length === resolveProfileFields('npc').length;
+        const selectedIds = new Set(profileFieldsForCard(char).map(field => field.id));
+        const accepted = Object.fromEntries(Object.entries(parsed).filter(([id, value]) => selectedIds.has(id) && (!preserveEmpty || value)));
+        const complete = Object.keys(accepted).length === profileFieldsForCard(char).length;
         const values = complete ? accepted : { ...(mergeLoreValues(entry.content, profile) || profile || {}), ...accepted };
-        entry.content = formatLoreContent(values, entry.content);
+        entry.content = formatLoreContent(values, entry.content, undefined, 'npc', profileFieldsForCard(char));
         profile = { ...profile, ...accepted };
         profileFieldsSaved = Object.values(accepted).filter(Boolean).length;
     }

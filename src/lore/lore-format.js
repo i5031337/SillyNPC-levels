@@ -1,3 +1,4 @@
+import { npcTemplates } from '../core/npc-templates.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from '../core/constants-profile.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
 import { normalizeMemoryStore } from '../core/profile-memories.js';
@@ -13,8 +14,7 @@ const memorySection = content => {
 };
 
 /** Keep earlier labels after a System renames or retires a field. */
-export function formatLoreContent(values = {}, existingContent = '', memories, scope = 'npc') {
-    const fields = resolveProfileFields(scope);
+export function formatLoreContent(values = {}, existingContent = '', memories, scope = 'npc', fields = resolveProfileFields(scope)) {
     const activeLabels = new Set(fields.map(field => field.label));
     const current = fields.map(field =>
         `${field.label}: ${String(values[field.id] ?? '').replace(/\s*\r?\n\s*/g, ' ').trim()}`)
@@ -41,7 +41,9 @@ export function parseLoreContent(content, { allowPartial = false, scope = 'npc' 
     const active = resolveProfileFields(scope);
     if (allowPartial) return parseGeneratedProfileFields(lines.join('\n'), scope);
     // Entries written before a System changed its fields keep their original labels.
-    for (const fields of [active, scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS]) {
+    const templates = scope === 'npc' ? npcTemplates().map(template => active.filter(field => template.profileIds.includes(field.id))) : [];
+    for (const fields of [active, ...templates, scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS]) {
+        if (!fields.length) continue;
         if (lines.length < fields.length) continue;
         const values = {};
         if (fields.every((field, i) => {

@@ -1,3 +1,4 @@
+import { setNpcTemplateSettingsProvider, npcProfileIdsFor } from './npc-templates.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 
 let settingsProvider = () => null;
@@ -5,6 +6,7 @@ let settingsProvider = () => null;
 /** Installed by settings.js; keeping this module pure lets lore formatting run in Node. */
 export function setProfileSettingsProvider(provider) {
     settingsProvider = provider;
+    setNpcTemplateSettingsProvider(provider);
 }
 
 /** The active System is the authority for fields shown and requested at runtime. */
@@ -32,7 +34,11 @@ export function resolveProfileFields(scope, settings = settingsProvider()) {
 }
 
 export function profileFieldsForCard(card, settings) {
-    return resolveProfileFields(card?.isPlayer ? 'player' : 'npc', settings);
+    const fields = resolveProfileFields(card?.isPlayer ? 'player' : 'npc', settings);
+    if (card?.isPlayer) return fields;
+    const ids = npcProfileIdsFor(card, settings === undefined ? undefined
+        : settings?.statusTracker?.presets?.[settings.activeSystem]?.definition);
+    return ids ? fields.filter(field => ids.has(field.id)) : fields;
 }
 
 export function blankActiveProfile(isPlayer = false, settings) {

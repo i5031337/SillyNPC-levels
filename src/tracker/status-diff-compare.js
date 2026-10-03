@@ -11,6 +11,7 @@
  * mistake that slips through.
  */
 
+import { activeNpcSystem, npcTemplateFor } from '../core/npc-templates.js';
 import { splitValue } from '../core/utils.js';
 import { debugLog } from '../core/constants.js';
 
@@ -241,6 +242,14 @@ export function computeStateDiff(before, after, trackerSettings, { fromReplace =
         // meant a scan could learn an NPC's whole spell list and produce no rows at all,
         // which read as "nothing to change".
         const beforeChar = beforeChars.get(key) || { name: afterChar.name, stats: {}, collections: {} };
+        const system = activeNpcSystem();
+        const assigned = npcTemplateFor(afterChar, system);
+        const previous = npcTemplateFor(beforeChar, system);
+        if (Array.isArray(system?.npcTemplates) && (!assigned || assigned.id !== previous?.id)) {
+            changes.push({ scope: 'character', actor: afterChar.name, label: 'NPC template',
+                kind: 'npc-template', before: previous?.name || '(unassigned)', after: assigned?.id || '',
+                risk: assigned ? 'normal' : 'risky', reason: assigned ? 'NPC template assigned' : 'Choose an NPC template; the story did not identify one.' });
+        }
         const statKeys = new Set([
             ...Object.keys(beforeChar.stats || {}),
             ...Object.keys(afterChar.stats || {}),

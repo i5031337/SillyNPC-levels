@@ -211,3 +211,9 @@ Run the focused tests with `node --experimental-default-type=module --test tests
 ## License
 
 [MIT](LICENSE)
+
+### NPC templates
+
+A System can contain multiple reusable NPC templates, such as Human, Elf, and Pokémon. In **Systems → NPC Templates**, name each template, describe which characters belong to it, and select its profile fields and stats. Define shared fields in **NPC Profile** and **NPC** first. Each NPC uses one template and keeps its own values.
+
+The background reader assigns an unassigned NPC when the story identifies its type. Uncertain assignments appear in review with a template dropdown, even when ordinary change review is disabled. Correct an assignment using **NPC template** on the character sheet. Assignments survive leaving and returning to the scene. New Systems have no fallback template; existing Systems retain their previous NPC schema as an editable **NPC** template so saved chats remain readable.

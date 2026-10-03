@@ -1,3 +1,4 @@
+import { npcTemplates } from '../core/npc-templates.js';
 import { fnv1a } from '../core/hash.js';
 import { LOG_PREFIX, BUILT_IN_DEFAULT_AVATAR, paletteColorFor, debugLog } from '../core/constants.js';
 import { getSettings } from '../core/settings.js';
@@ -82,6 +83,7 @@ export function chatRenderSignature() {
         // Shown in the tracker box, and editable from the character page - which
         // asked for a redraw that a signature blind to them would have declined.
         JSON.stringify(char.statusOverrides || {}),
+        char.npcTemplateId || '',
         (char.aliases || []).map(alias => `${alias.pattern}~${alias.isRegex}`).join(','),
     ].join('|')).join(';');
 
@@ -123,6 +125,7 @@ export function chatRenderSignature() {
         JSON.stringify(tracker.globalStats || []),
         JSON.stringify(tracker.playerStats || []),
         JSON.stringify(tracker.npcStats || []),
+        JSON.stringify(npcTemplates()),
         JSON.stringify(tracker.collections || []),
         settings.trackerFontScale,
         // Not a setting at all: which face a stranger wears is chat metadata, and

@@ -1,3 +1,4 @@
+import { describeNpcTemplates, npcTemplates, npcStatsFor } from '../../core/npc-templates.js';
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
 import { debugLog } from '../../core/constants.js';
@@ -96,7 +97,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         numericDeltas: describeNumericDeltas(state, trackerSettings),
         xpProgression: progressionXpName(trackerSettings, state) ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
-        notes: describeExtractionNotes(state, messageText),
+        notes: [describeNpcTemplates(), describeExtractionNotes(state, messageText)].filter(Boolean).join('\n'),
         ...strangerValues(strangers),
         collections: describeCollections(trackerSettings),
         collectionExample: buildDeltaExample(trackerSettings),
@@ -185,7 +186,8 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 
 /** Show a populated NPC entry even when the current scene has no cast. */
 export function buildNewNpcExample(trackerSettings = {}) {
-    const stats = Object.fromEntries((trackerSettings.npcStats || [])
+    const template = npcTemplates()[0];
+    const stats = Object.fromEntries((template ? npcStatsFor({ npcTemplateId: template.id }, trackerSettings) : trackerSettings.npcStats || [])
         .filter(stat => stat?.name && isTurnStat(stat))
         .map(stat => [stat.name, describeReaderStats({ npcStats: [stat] }, { initializeNpc: true })
             .replace(`- NPC.${stat.name}: `, '')]));
@@ -207,6 +209,7 @@ export function buildNewNpcExample(trackerSettings = {}) {
         player: {},
         characters: [{
             name: '<exact NPC name from the story>',
+            ...(template ? { npcTemplateId: template.id } : {}),
             ...(Object.keys(stats).length ? { stats } : {}),
             ...(Object.keys(collections).length ? { collections } : {}),
         }],

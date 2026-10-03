@@ -146,7 +146,7 @@ function formatCompactStatus(state, fullDetail = false) {
     if (state.characters && Array.isArray(state.characters)) {
         for (const char of state.characters) {
             const charParts = [];
-            for (const [key, val] of Object.entries(deps.statsInSystem(char.stats, 'npcStats'))) {
+            for (const [key, val] of Object.entries(deps.statsInSystem(char.stats, 'npcStats', char))) {
                 if (val !== undefined && val !== null && val !== '') {
                     charParts.push(`${key}=${val}`);
                 }

@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../core/npc-templates.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
@@ -77,10 +78,11 @@ function moveKey(holder, oldName, newName) {
  * @param {'globalStats'|'playerStats'|'npcStats'} listKey
  * @returns {Record<string, any>} A copy holding only what the schema still declares.
  */
-function statsInSystem(stored, listKey) {
+function statsInSystem(stored, listKey, actor) {
     if (!stored || typeof stored !== 'object') return {};
     const declared = new Set(
-        (getSettings().statusTracker?.[listKey] || [])
+        (listKey === 'npcStats' && actor ? npcStatsFor(actor, getSettings().statusTracker)
+            : getSettings().statusTracker?.[listKey] || [])
             .map(stat => String(stat?.name ?? '').trim().toLowerCase())
             .filter(Boolean));
 

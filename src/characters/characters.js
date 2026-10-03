@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../core/npc-templates.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { makeId } from '../core/utils.js';
 import { SPEAKER_PALETTE, paletteColorFor } from '../core/constants.js';
@@ -45,6 +46,7 @@ export function createCharacter(name = '') {
     const char = {
         id: makeId(),
         name: String(name || ''),
+        npcTemplateId: '',
         imageUrl: '',
         /**
          * Every portrait kept for this character, oldest first; imageUrl names whichever
@@ -66,6 +68,10 @@ export function createCharacter(name = '') {
         /** Named prose fields from the active System. */
         profile: blankActiveProfile(),
     };
+    const state = getContext()?.chatMetadata?.sillynpc_status_state;
+    const actor = state?.characters?.find(actor => actor.name?.toLowerCase() === char.name.toLowerCase());
+    const assigned = actor?.npcTemplateId || state?.npcTemplateAssignments?.[char.name.toLowerCase()];
+    if (assigned) char.npcTemplateId = assigned;
     addCharacterRecord(char);
     return char;
 }
@@ -300,7 +306,7 @@ export function instantiateWorldCharacter(id) {
     const card = structuredClone(source);
     card.id = makeId();
     card.statusOverrides = initialiseNpcStats(source.statusOverrides,
-        getSettings().statusTracker?.npcStats);
+        npcStatsFor(source, getSettings().statusTracker));
     card.statusCollections = {};
     addCharacterRecord(card);
     addCharacterToChat(card.id);

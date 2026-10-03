@@ -1,3 +1,4 @@
+import { npcTemplates } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -148,10 +149,10 @@ test('saving partial lore records supported NPC and player fields', async () => 
     let saved = 0;
     const saveLoreContent = new Function('loadWorldInfo', 'saveWorldInfo', 'parseLoreContent',
         'parseGeneratedProfileFields', 'mergeLoreValues', 'formatLoreContent', 'syncEntryIdentity',
-        'mergeKeywords', 'saveSettings', 'resolveProfileFields', `${saveSource}\nreturn saveLoreContent;`)(
+        'mergeKeywords', 'saveSettings', 'profileFieldsForCard', `${saveSource}\nreturn saveLoreContent;`)(
         async () => ({ entries }), async () => { saved++; }, parseLoreContent,
         parseGeneratedProfileFields, mergeLoreValues, formatLoreContent, () => {},
-        (old, tags) => [...old, tags], () => {}, resolveProfileFields,
+        (old, tags) => [...old, tags], () => {}, card => resolveProfileFields(card.isPlayer ? 'player' : 'npc'),
     );
     const npc = { name: 'Mira', profile: { role: '' } };
     const npcSaved = await saveLoreContent(npc, 'World', 0, 'Mira', 'Role: Watchmaker\nHistory: Moved here.');
@@ -182,10 +183,10 @@ test('empty generated fields preserve existing lore and profile values', async (
     const entries = { 0: { uid: 0, content: formatLoreContent({ role: 'Professor', wants: 'Help trainers' }), key: [] } };
     const saveLoreContent = new Function('loadWorldInfo', 'saveWorldInfo', 'parseLoreContent',
         'parseGeneratedProfileFields', 'mergeLoreValues', 'formatLoreContent', 'syncEntryIdentity',
-        'mergeKeywords', 'saveSettings', 'resolveProfileFields', `${saveSource}\nreturn saveLoreContent;`)(
+        'mergeKeywords', 'saveSettings', 'profileFieldsForCard', `${saveSource}\nreturn saveLoreContent;`)(
         async () => ({ entries }), async () => {}, parseLoreContent,
         parseGeneratedProfileFields, mergeLoreValues, formatLoreContent, () => {},
-        (old, tags) => [...old, tags], () => {}, resolveProfileFields,
+        (old, tags) => [...old, tags], () => {}, card => resolveProfileFields(card.isPlayer ? 'player' : 'npc'),
     );
     const npc = { name: 'Sycamore', profile: { role: 'Professor', wants: 'Help trainers' } };
     const saved = await saveLoreContent(npc, 'World', 0, '', 'Role: \nWants: Prepare trainers',
@@ -244,10 +245,10 @@ test('tracker schema excludes lore fields and retains goals and stats', () => {
         .replaceAll('export function ', 'function ');
     const npc = { name: 'Mira', aiProfileFields: ['appearance'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['appearance'] };
-    const build = new Function('getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
+    const build = new Function('npcTemplates', 'getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
         'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'goalFields',
         `${source}\nreturn buildExtractionSchema;`)(
-        () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
+        npcTemplates, () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
         numericDeltaNames, configuredXpName, isTurnStat, scope => scope === 'player'
             ? [{ id: 'shortTerm', label: 'Short-term goal' }, { id: 'longTerm', label: 'Long-term goal' }]
             : [{ id: 'shortTerm', label: 'Short-term goal' }],
@@ -287,14 +288,14 @@ test('Fill requests missing named fields in one generation call', async () => {
     const entry = formatLoreContent({ role: 'Watchmaker' });
     const fillLore = new Function('loadWorldInfo', 'debugLog', 'getSettings', 'saveSettings',
         'createLoreEntry', 'generateLoreContent', 'saveLoreContent',
-        'tryAutoSyncLorebook', 'getChatLorebookName', 'resolveProfileFields', 'parseLoreContent',
+        'tryAutoSyncLorebook', 'getChatLorebookName', 'profileFieldsForCard', 'parseLoreContent',
         'parseGeneratedProfileFields',
         `${source}\nreturn fillLore;`)(
         async () => ({ entries: { 0: { content: entry } } }),
         () => {}, () => ({ defaultLorebook: 'World' }), () => {},
         () => { throw new Error('should reuse linked entry'); },
         async () => { calls++; return { content: formatLoreContent({ age: '34', role: 'Watchmaker' }), tags: '' }; },
-        async () => {}, () => false, () => 'World', resolveProfileFields, parseLoreContent,
+        async () => {}, () => false, () => 'World', card => resolveProfileFields(card.isPlayer ? 'player' : 'npc'), parseLoreContent,
         parseGeneratedProfileFields,
     );
     const char = { name: 'Mira', profile: {}, lorebook: { world: 'World', uid: 0 } };

@@ -1,3 +1,4 @@
+import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { isTurnStat } from '../stat-update-policy.js';
@@ -169,8 +170,8 @@ export function summariseCollections(actor, target, trackerSettings) {
 
 export function describeCurrentState(state, trackerSettings, { includeAdvancement = false } = {}) {
     const summarise = (actor, target) => summariseCollections(actor, target, trackerSettings);
-    const visibleStats = (values, listKey) => {
-        const kept = statsInSystem(values, listKey);
+    const visibleStats = (values, listKey, actor) => {
+        const kept = statsInSystem(values, listKey, actor);
         if (includeAdvancement) return kept;
         const hidden = new Set((trackerSettings[listKey] || [])
             .filter(def => !isTurnStat(def)).map(def => def.name?.toLowerCase()));
@@ -197,7 +198,8 @@ export function describeCurrentState(state, trackerSettings, { includeAdvancemen
             const charCollections = summarise(char, 'npc');
             return {
                 name: char.name,
-                stats: visibleStats(char.stats, 'npcStats'),
+                npcTemplateId: npcTemplateFor(char)?.id || '(unassigned)',
+                stats: visibleStats(char.stats, 'npcStats', char),
                 ...(charCollections ? { collections: charCollections } : {}),
                 ...profileBlock(findCardForName(char.name)),
             };

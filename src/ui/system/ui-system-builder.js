@@ -1,3 +1,4 @@
+import { buildNpcTemplatesEditor } from './ui-npc-templates.js';
 import { makeActivatable } from '../../core/utils.js';
 import { buildCollectionsEditor } from './ui-system-collections.js';
 import { buildStatsEditor } from './ui-system-stats.js';
@@ -32,6 +33,7 @@ export function buildSystemBuilder(onRefresh) {
     const tabList = [
         { id: 'global', label: 'Global' },
         { id: 'npc', label: 'NPC' },
+        { id: 'npc-templates', label: 'NPC Templates' },
         { id: 'player', label: 'Player' },
         { id: 'npc-profile', label: 'NPC Profile' },
         { id: 'player-profile', label: 'Player Profile' },
@@ -68,6 +70,8 @@ export function buildSystemBuilder(onRefresh) {
         content.replaceChildren();
         if (systemBuilderActiveTab === 'global') {
             content.appendChild(buildStatsEditor('Global Stats', 'globalStats', onRefresh));
+        } else if (systemBuilderActiveTab === 'npc-templates') {
+            content.appendChild(buildNpcTemplatesEditor(onRefresh));
         } else if (systemBuilderActiveTab === 'npc') {
             content.appendChild(buildStatsEditor('NPC Stats', 'npcStats', onRefresh));
         } else if (systemBuilderActiveTab === 'player') {

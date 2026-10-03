@@ -156,9 +156,21 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
     }));
     const playerProfile = profileFields(modern ? profiles.player : legacyProfile(PROFILE_FIELDS));
     const npcProfile = profileFields(modern ? profiles.npc : legacyProfile(NPC_LORE_FIELDS));
+    const npcStats = statFields(modern ? stats.npc : tracker.npcStats ?? defaultTrackerSettings.npcStats, 'npc');
+    const templateIds = new Set();
+    const templates = Array.isArray(input.npcTemplates) ? input.npcTemplates.map(value => {
+        const template = object(value);
+        return {
+            id: uniqueId(template.id || template.name, templateIds),
+            name: string(template.name, 'NPC'), description: string(template.description),
+            profileIds: [...new Set(list(template.profileIds).filter(id => npcProfile.some(field => field.id === id)))],
+            statIds: [...new Set(list(template.statIds).filter(id => npcStats.some(field => field.id === id)))],
+        };
+    }) : [{ id: 'npc', name: 'NPC', description: 'NPCs using this System’s original character fields.',
+        profileIds: npcProfile.filter(field => !field.retired).map(field => field.id),
+        statIds: npcStats.map(field => field.id) }];
     const worldStats = statFields(modern ? stats.world : tracker.globalStats ?? defaultTrackerSettings.globalStats, 'world');
     const playerStats = statFields(modern ? stats.player : tracker.playerStats ?? defaultTrackerSettings.playerStats, 'player');
-    const npcStats = statFields(modern ? stats.npc : tracker.npcStats ?? defaultTrackerSettings.npcStats, 'npc');
     const hud = modern ? object(input.hud) : tracker;
     const systemName = string(name, string(input.name, string(metadata.name, 'System')));
     return {
@@ -167,6 +179,9 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
         name: systemName,
         metadata: { description: string(metadata.description), author: string(metadata.author) },
         profiles: { player: playerProfile, npc: npcProfile },
+        npcTemplates: templates,
+        ...(!Array.isArray(input.npcTemplates) || templates.some(template => template.id === input.legacyNpcTemplateId)
+            ? { legacyNpcTemplateId: input.legacyNpcTemplateId || 'npc' } : {}),
         stats: { world: worldStats, player: playerStats, npc: npcStats },
         collections: collections(modern ? input.collections : tracker.collections ?? defaultTrackerSettings.collections),
         progression: progression(modern ? input.progression : {}, playerStats, npcStats),

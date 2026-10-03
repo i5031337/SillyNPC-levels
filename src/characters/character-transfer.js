@@ -1,3 +1,4 @@
+import { npcTemplateFor, npcStatsFor } from '../core/npc-templates.js';
 import { getSettings, saveSettings, normalizeSettings } from '../core/settings.js';
 import { createCharacter, instantiateWorldCharacter } from './characters.js';
 import { adoptImageForCharacter, createLoreEntry, saveLoreContent } from '../api/api.js';
@@ -73,6 +74,7 @@ export async function serialiseCharacter(char, { npcStats = getSettings().status
         imageFit: String(char.imageFit || ''),
         aliases: Array.isArray(char.aliases) ? structuredClone(char.aliases) : [],
         profile,
+        npcTemplateId: npcTemplateFor(char)?.id || char.npcTemplateId || '',
         // Keep the version 2 field name so existing character files remain readable.
         innateStats: splitNpcStats(char.statusOverrides, npcStats).innate,
         // No portraits. They used to be inlined as data URIs, which was the right instinct -
@@ -161,11 +163,12 @@ function applyRecord(char, record, name, version) {
     char.name = name;
     char.color = String(record.color || char.color || '');
     char.imageFit = String(record.imageFit || '');
+    char.npcTemplateId = String(record.npcTemplateId || '');
     char.aliases = Array.isArray(record.aliases) ? structuredClone(record.aliases) : [];
     // Version 1 mixed every override. The destination schema decides which values
     // travel; turn fields receive its defaults instead.
     const incoming = version >= 2 ? record.innateStats : record.statusOverrides;
-    char.statusOverrides = initialiseNpcStats(incoming, getSettings().statusTracker?.npcStats);
+    char.statusOverrides = initialiseNpcStats(incoming, npcStatsFor(char, getSettings().statusTracker));
     // Collections, conditions and inventory belong to the adventure instance.
     char.statusCollections = {};
 

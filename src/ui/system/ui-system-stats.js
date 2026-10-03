@@ -1,3 +1,4 @@
+import { ensureNpcStatIds } from './ui-npc-templates.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { Popup } from '../../../../../../popup.js';
 import { updateHUD } from '../hud/ui-hud.js';
@@ -172,6 +173,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                 return;
             }
 
+            if (settingsKey === 'npcStats') ensureNpcStatIds();
             stat.name = newName;
             const carried = renameStat(settingsKey, oldName, newName);
             saveSettings();
@@ -299,6 +301,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         if (settingsKey === 'playerStats') newStat.advanceOnLevel = false;
         newStat.maxStatValue = '';
         stats.push(newStat);
+        if (settingsKey === 'npcStats') ensureNpcStatIds();
         saveSettings();
         onRefresh();
     });

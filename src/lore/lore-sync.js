@@ -1,3 +1,4 @@
+import { profileFieldsForCard } from '../core/profile-fields.js';
 import { loadWorldInfo, saveWorldInfo } from '../../../../../world-info.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from './lore-format.js';
 import { saveSettings } from '../core/settings.js';
@@ -38,7 +39,7 @@ export async function syncProfileToLore(char, memories) {
         const values = (entry.content && mergeLoreValues(entry.content, char.profile, scope)) || char.profile;
         const previous = entry.content;
         const title = entry.comment;
-        entry.content = formatLoreContent(values, previous, memories, scope);
+        entry.content = formatLoreContent(values, previous, memories, scope, profileFieldsForCard(char));
         const identityChanged = syncEntryIdentity(char, entry);
         entry.comment = title;
         if (entry.content !== previous || identityChanged) await saveWorldInfo(world, data);

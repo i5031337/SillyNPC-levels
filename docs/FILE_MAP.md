@@ -41,6 +41,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/profile-lore-storage.mjs` | Player lore persistence and tracker-only scene context tests. |
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
+| `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
@@ -67,6 +68,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/constants.js` | Extension constants, themes, profile schema, and built-in writing/image prompts. |
 | `src/core/constants-base.js` | Base extension, theme, layout, and image constants. |
 | `src/core/constants-profile.js` | Legacy player and NPC profile fields and defaults. |
+| `src/core/npc-templates.js` | Resolve NPC templates and their selected stats and profile fields; compact reader assignment guidance. |
 | `src/core/profile-fields.js` | Resolve the active System's player and NPC fields, with legacy fallback. |
 | `src/core/profile-memories.js` | Normalize and edit bounded character memory lists. |
 | `src/core/profile-update-policy.js` | Enforce System profile update policies for turn reads. |
@@ -247,6 +249,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/shared/ui-shared.js` | Shared UI facade and choice helpers. |
 | `src/ui/shared/ui-choice.js` | Shared choice field controls. |
 | `src/ui/shared/ui-stats.js` | Stats view. |
+| `src/ui/system/ui-npc-templates.js` | Edit reusable NPC templates and shared field selections. |
+| `src/ui/characters/ui-npc-template.js` | Choose or correct a character’s NPC template. |
+| `tests/npc-templates.mjs` | Template normalization, assignment, validation, review, and scene return tests. |
 | `src/ui/system/ui-system-builder.js` | Public entry point for system schema editor. |
 | `src/ui/system/ui-system-profiles.js` | Player and NPC profile field controls in System Builder. |
 | `src/ui/system/ui-system-profile-operations.js` | Pure add, rename, order, retire, and restore operations for profile fields. |

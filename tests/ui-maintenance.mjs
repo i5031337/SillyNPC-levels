@@ -39,7 +39,7 @@ function load(file, names, values, result) {
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replaceAll('export async function ', 'async function ')
         .replaceAll('export function ', 'function ');
-    return new Function(...names, `${source}\nreturn ${result};`)(...values);
+    return new Function('buildNpcTemplateSelect', ...names, `${source}\nreturn ${result};`)(() => new Element('select'), ...values);
 }
 
 test('tracker display controls redraw immediately without reprocessing chat or rebuilding settings', () => {

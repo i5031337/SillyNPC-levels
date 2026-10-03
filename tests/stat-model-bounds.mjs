@@ -1,3 +1,4 @@
+import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -10,10 +11,10 @@ import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 const source = readFileSync(new URL('../src/tracker/status-stat-values.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
-const bind = new Function('keepNumericMaximum', 'configuredNumericMaximum',
+const bind = new Function('npcStatsFor', 'proposedNpcTemplate', 'keepNumericMaximum', 'configuredNumericMaximum',
     'isTurnStat', 'canAdvanceStat', 'earnsLevel',
     'canTrackerSetNpcStat', 'ceilingFromValue', 'splitValue',
-    `${source}\nreturn bind;`)(keepNumericMaximum, configuredNumericMaximum,
+    `${source}\nreturn bind;`)(npcStatsFor, proposedNpcTemplate, keepNumericMaximum, configuredNumericMaximum,
     isTurnStat, canAdvanceStat, earnsLevel,
     canTrackerSetNpcStat,
     value => { const cap = String(value ?? '').split('/')[1]; return cap && Number.isFinite(Number(cap)) ? Number(cap) : null; },

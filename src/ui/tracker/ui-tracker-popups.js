@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../../core/npc-templates.js';
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
 import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
@@ -193,7 +194,7 @@ function buildStatusDashboard() {
         charWrap.style.border = '1px solid var(--sillynpc-border)';
         charWrap.innerHTML = `<div><strong>${escapeHtml(char.name)}</strong></div>`;
         
-        settings.npcStats.forEach(stat => {
+        npcStatsFor(char, settings).forEach(stat => {
             const key = stat.name;
             const value = char.stats[key] || stat.defaultValue || '';
             const row = document.createElement('div');

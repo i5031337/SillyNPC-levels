@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../../core/npc-templates.js';
 /** Numeric readings the reader may change by an amount rather than recalculate. */
 const READING = /^\s*(-?\d+(?:\.\d+)?)(?:\s*\/\s*(-?\d+(?:\.\d+)?))?\s*$/;
 
@@ -43,7 +44,7 @@ export function describeNumericDeltas(state, settings) {
     if (global.length) lines.push(`World: ${global.join(', ')}`);
     if (player.length) lines.push(`Player: ${player.join(', ')}`);
     for (const actor of state?.characters || []) {
-        const actorNames = numericDeltaNames(settings.npcStats, actor.stats);
+        const actorNames = numericDeltaNames(npcStatsFor(actor, settings), actor.stats);
         if (actorNames.length) lines.push(`${actor.name}: ${actorNames.join(', ')}`);
     }
     return lines.join('\n');
@@ -98,7 +99,7 @@ export function expandNumericDeltas(update, state, settings) {
         if (!actor?.deltas) continue;
         const held = (state?.characters || []).find(char => char.name?.toLowerCase() === actor.name?.toLowerCase());
         const target = actor.stats && typeof actor.stats === 'object' ? actor.stats : actor;
-        expand(target, held?.stats, actor.deltas, settings.npcStats);
+        expand(target, held?.stats, actor.deltas, npcStatsFor(held || actor, settings));
         delete actor.deltas;
     }
     return update;

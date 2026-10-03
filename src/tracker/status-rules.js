@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../core/npc-templates.js';
 import { getSettings } from '../core/settings.js';
 import { debugLog } from '../core/constants.js';
 import { loadStateFromMetadata, applyUpdate, saveStateToMetadata } from './status-logic.js';
@@ -165,6 +166,8 @@ function evaluateTimeRules(state, messageId) {
         if (!Number.isFinite(amount) || amount === 0) continue;
 
         for (const target of targetsFor(rule, state)) {
+            if (rule.scope === 'characters' && !npcStatsFor(target.actor, trackerSettings)
+                .some(stat => stat.name === rule.stat)) continue;
             const carryKey = `${rule.id}|${target.name || rule.scope}`;
 
             /* Before the time is banked, not after it is spent. Time spent outside the

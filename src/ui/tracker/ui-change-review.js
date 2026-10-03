@@ -1,3 +1,4 @@
+import { npcTemplates } from '../../core/npc-templates.js';
 import { getPendingChanges, resolvePendingChanges, getLooseNotes, getRefusedValues } from '../../tracker/status-review.js';
 import { getSettings } from '../../core/settings.js';
 import { getAllCharacters } from '../../characters/character-repository.js';
@@ -15,6 +16,7 @@ import { acceptedByDefault } from '../../tracker/status-diff.js';
  */
 
 const KIND_LABEL = {
+    'npc-template': 'template',
     'stat': 'changed',
     'stat-max': 'maximum',
     'item-add': 'gained',
@@ -23,6 +25,7 @@ const KIND_LABEL = {
 };
 
 const KIND_ICON = {
+    'npc-template': 'fa-shapes',
     'stat': 'fa-arrow-right-arrow-left',
     'stat-max': 'fa-arrows-up-down',
     'item-add': 'fa-plus',
@@ -287,9 +290,20 @@ function buildRow(row) {
 
     // Item rows name a thing rather than hold a value, so only stats are editable.
     const editable = change.kind === 'stat' || change.kind === 'stat-max' || change.kind === 'item-change';
-    const to = document.createElement(editable ? 'input' : 'span');
+    const to = document.createElement(change.kind === 'npc-template' ? 'select' : editable ? 'input' : 'span');
     to.className = 'sillynpc-review-to';
-    if (editable) {
+    if (change.kind === 'npc-template') {
+        const blank = document.createElement('option');
+        blank.value = ''; blank.textContent = 'Choose template';
+        to.append(blank);
+        for (const template of npcTemplates()) {
+            const option = document.createElement('option');
+            option.value = template.id; option.textContent = template.name;
+            to.append(option);
+        }
+        to.value = row.value;
+        to.addEventListener('change', () => { row.value = to.value; });
+    } else if (editable) {
         to.type = 'text';
         to.value = row.value;
         to.title = 'Correct this value before applying';

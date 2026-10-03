@@ -1,3 +1,4 @@
+import { npcTemplates } from '../../core/npc-templates.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
@@ -114,6 +115,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                     required: ['name'],
                     properties: {
                         name: { type: 'string' },
+                        ...(npcTemplates().length ? { npcTemplateId: { type: 'string' } } : {}),
                         stats: stringMap(npcStatDefs),
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),

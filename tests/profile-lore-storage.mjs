@@ -1,3 +1,4 @@
+import { profileFieldsForCard } from '../src/core/profile-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -27,7 +28,7 @@ test('player profile saves create and update one lore entry using player fields'
     });
     const dependencies = {
         loadWorldInfo: async () => book, saveWorldInfo: async () => {},
-        formatLoreContent, parseLoreContent, mergeLoreValues,
+        formatLoreContent, parseLoreContent, mergeLoreValues, profileFieldsForCard,
         saveSettings: () => {}, syncEntryIdentity: identify,
         ensureChatLorebookForFill: async () => 'Chat',
         createLoreEntry: (card, world) => create(card, world, card.name, 'player/avatar'),

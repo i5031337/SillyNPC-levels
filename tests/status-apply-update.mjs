@@ -1,3 +1,4 @@
+import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -67,7 +68,7 @@ test('reader ignores raw-only XP and nonpositive XP deltas', () => {
 const source = readFileSync(new URL('../src/tracker/status-apply-update.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
-const loadBind = new Function('eventSource', 'getSettings', 'saveSettings',
+const loadBind = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'saveSettings',
     'canTrackerSetNpcStat', 'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp',
     `${source}\nreturn bind;`);
 
@@ -92,6 +93,7 @@ function fixture({ openChat = true } = {}) {
     };
     const calls = { saved: [], emitted: [], settings: 0 };
     const bind = loadBind(
+        npcStatsFor, npcTemplateFor, proposedNpcTemplate,
         { emit: (...args) => calls.emitted.push(args) },
         () => settings,
         () => { calls.settings++; },
@@ -203,7 +205,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     const source = readFileSync(new URL('../src/tracker/status-scene-presence.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replace('export function bind', 'function bind');
-    const bindPresence = new Function('eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'archiveNpcGoals',
+    const bindPresence = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'archiveNpcGoals',
         `${source}\nreturn bind;`);
     const settings = { statusTracker: {
         npcStats: [{ name: 'HP', defaultValue: '' }],
@@ -219,7 +221,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
         resolveMaxValue: () => '',
         saveStateToMetadata(state) { saved.push(structuredClone(state)); this.committedState = state; },
     };
-    bindPresence({ emit() {} }, () => settings, () => [], () => {}, archiveNpcGoals)(deps);
+    bindPresence(npcStatsFor, npcTemplateFor, proposedNpcTemplate, { emit() {} }, () => settings, () => [], () => {}, archiveNpcGoals)(deps);
 
     deps.reconcileScenePresence(['Other'], '4');
     deps.reconcileScenePresence(['Mira', 'Rejected'], '4', { authoritative: true });

@@ -1,3 +1,4 @@
+import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { 
     eventSource, 
     event_types, 
@@ -135,14 +136,20 @@ function updateCardOffstage(card, updChar, state, settings,
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
+    const selected = proposedNpcTemplate(card, updChar);
+    if (selected) actor.npcTemplateId = selected.id;
+    const statDefs = npcStatsFor(actor, settings);
+    for (const stat of statDefs) if (actor.stats[stat.name] === undefined) {
+        actor.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
+    }
 
     /* Through the same two guards the scene's cast gets. Written raw, this path let a value
        no list allows onto a card - a Condition of "Unconscious" where the nine allowed words
        do not include it - and let a bare number lose the ceiling the card already had. Being
        off stage is about where somebody is, not about which rules their sheet follows. */
-    const defOf = (name) => (settings.npcStats || [])
+    const defOf = (name) => statDefs
         .find(stat => String(stat?.name).toLowerCase() === String(name).toLowerCase());
-    const validKeys = new Set((settings.npcStats || []).map(s => s.name.toLowerCase()));
+    const validKeys = new Set(statDefs.map(s => s.name.toLowerCase()));
     const sourceStats = updChar.stats || {};
     for (const [key, value] of Object.entries(sourceStats)) {
         const matched = deps.findMatchingStatKey(actor.stats, key) || key;
@@ -166,6 +173,11 @@ function updateCardOffstage(card, updChar, state, settings,
 
     if (dryRun) return actor;
 
+    if (selected) {
+        card.npcTemplateId = selected.id;
+        state.npcTemplateAssignments ||= {};
+        state.npcTemplateAssignments[card.id || card.name.toLowerCase()] = selected.id;
+    }
     card.statusOverrides = { ...(card.statusOverrides || {}), ...actor.stats };
     if (Object.keys(collectionsToProcess).length) {
         card.statusCollections = structuredClone(actor.collections || {});
@@ -176,17 +188,20 @@ function updateCardOffstage(card, updChar, state, settings,
 }
 
 function buildCharacterState(charName, state, trackerSettings) {
-    const charData = { name: charName, stats: {}, collections: {} };
+    const charData = { name: charName, npcTemplateId: '', stats: {}, collections: {} };
     const matchedChar = getAllCharacters()
         .find(c => (c.name || '').toLowerCase() === charName.toLowerCase());
     if (matchedChar?.id) charData.id = matchedChar.id;
+    const remembered = state.npcTemplateAssignments?.[matchedChar?.id || charName.toLowerCase()];
+    const selected = npcTemplateFor(remembered ? { npcTemplateId: remembered } : matchedChar);
+    if (selected) charData.npcTemplateId = selected.id;
     const savedGoals = state.npcGoals?.[matchedChar?.id] || state.npcGoals?.[charName.toLowerCase()];
     if (savedGoals) {
         charData.goals = structuredClone(savedGoals.goals || {});
         charData.goalSources = structuredClone(savedGoals.goalSources || {});
     }
 
-    (trackerSettings.npcStats || []).forEach(stat => {
+    npcStatsFor(charData, trackerSettings).forEach(stat => {
         let value = stat.defaultValue || '';
         const override = matchedChar?.statusOverrides?.[stat.name];
         if (override !== undefined && String(override).trim() !== '') value = override;
@@ -219,24 +234,7 @@ function registerActiveCharacter(charName) {
     const existingChar = state.characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
     if (existingChar) return false; // Already registered
 
-    const charData = { name: charName, stats: {}, collections: {} };
-    
-    const settingsChars = getAllCharacters();
-    const matchedChar = settingsChars.find(c => c.name.toLowerCase() === charName.toLowerCase());
-    if (matchedChar?.id) charData.id = matchedChar.id;
-    const savedGoals = state.npcGoals?.[matchedChar?.id] || state.npcGoals?.[charName.toLowerCase()];
-    if (savedGoals) {
-        charData.goals = structuredClone(savedGoals.goals || {});
-        charData.goalSources = structuredClone(savedGoals.goalSources || {});
-    }
-
-    trackerSettings.npcStats.forEach(s => {
-        let value = s.defaultValue || '';
-        if (matchedChar && matchedChar.statusOverrides && matchedChar.statusOverrides[s.name] !== undefined && String(matchedChar.statusOverrides[s.name]).trim() !== '') {
-            value = matchedChar.statusOverrides[s.name];
-        }
-        charData.stats[s.name] = deps.getInitialStatValue(value, s.maxStatValue, s);
-    });
+    const charData = buildCharacterState(charName, state, trackerSettings);
 
     state.characters.push(charData);
     if (state.presence?.suppressed) {

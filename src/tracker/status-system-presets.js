@@ -93,11 +93,17 @@ function migrateSavedPresets(settings) {
     const presets = settings.statusTracker?.presets || {};
     let changed = false;
     for (const [name, preset] of Object.entries(presets)) {
-        if (!preset || (preset.definition && !preset.world
+        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && !preset.world
             && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
                 .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
         presets[name] = migratePreset(name, preset);
         changed = true;
+    }
+    const active = presets[settings.activeSystem]?.definition;
+    if (active) {
+        for (const stat of settings.statusTracker.npcStats || []) {
+            if (!stat.id) stat.id = active.stats.npc.find(field => field.name === stat.name)?.id;
+        }
     }
     if (changed) saveSettings();
     return changed;
@@ -222,6 +228,8 @@ function createSystem(name) {
     assignExcept(settings, defaults, SYSTEM_EXCLUDED_ROOT);
 
     saveSystemPreset(name);
+    st.presets[name].definition.npcTemplates = [];
+    delete st.presets[name].definition.legacyNpcTemplateId;
     settings.activeSystem = name;
     if (deps.hasOpenChat?.() && !deps.chatHasStarted?.()
         && deps.getChatSystem?.() !== name) deps.resetUnplayedChatState?.();
@@ -259,6 +267,8 @@ function saveSystemPreset(name, description = '', author = 'User') {
     profile.definition = normalizeSystemDefinition({
         ...liveDefinition,
         profiles: previous?.definition?.profiles || liveDefinition.profiles,
+        npcTemplates: previous?.definition?.npcTemplates || liveDefinition.npcTemplates,
+        legacyNpcTemplateId: previous ? previous.definition?.legacyNpcTemplateId : liveDefinition.legacyNpcTemplateId,
         memories: previous?.definition?.memories || liveDefinition.memories,
         goals: previous?.definition?.goals || liveDefinition.goals,
     }, { name });
@@ -304,6 +314,9 @@ function applySystemPreset(profile) {
     }
     normaliseStatUpdatePolicies(st);
     normaliseNpcPersistence(st.npcStats);
+    for (const stat of st.npcStats || []) {
+        if (!stat.id) stat.id = profile.definition?.stats?.npc?.find(field => field.name === stat.name)?.id;
+    }
 
     // The theme was called displayStyle and lived in config; it is menuStyle at the root
     // now, and carried like anything else. Old profiles still name the old one.

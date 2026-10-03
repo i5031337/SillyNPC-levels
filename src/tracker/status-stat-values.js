@@ -1,3 +1,4 @@
+import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { isTurnStat, canAdvanceStat, earnsLevel } from './stat-update-policy.js';
@@ -161,8 +162,9 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
             .find(c => String(c?.name).toLowerCase() === String(actor?.name).toLowerCase());
+        const selected = proposedNpcTemplate(current?.npcTemplateId ? current : deps.findCardForName(actor?.name), actor);
         clean(actor?.stats && typeof actor.stats === 'object' ? actor.stats : actor,
-            trackerSettings.npcStats, current?.stats,
+            npcStatsFor({ npcTemplateId: selected?.id }, trackerSettings), current?.stats,
             { npc: true, cardStats: deps.findCardForName(actor?.name)?.statusOverrides });
     }
     return update;

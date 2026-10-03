@@ -1,3 +1,4 @@
+import { npcStatsFor, npcTemplateFor } from '../../core/npc-templates.js';
 import { escapeHtml, escapeRegExp } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { summarizeCollectionUI, buildPortraitHtml, stripFieldReference, tidyLeftovers, joinTo } from './status-ui-template-core.js';
@@ -37,6 +38,8 @@ export function renderCharacters(html, state, settings, renderFieldSet) {
 
         state.characters.forEach((char, index) => {
             try {
+                const allowedStats = new Set(npcStatsFor(char, settings).map(stat => stat.name));
+                const actorVisibleStats = visibleCharStats.filter(stat => allowedStats.has(stat.name));
                 let charRow = charTemplate;
                 const removeBtnHtml = `<i class="sillynpc-char-remove fa-solid fa-minus" data-name="${escapeHtml(char.name)}" title="Remove ${escapeHtml(char.name)} from scene" style="cursor: pointer; opacity: 0.5; margin-right: 4px; font-size:var(--sillynpc-text-sm); z-index: 2; position: relative;"></i>`;
                 
@@ -57,13 +60,13 @@ export function renderCharacters(html, state, settings, renderFieldSet) {
                 }
 
                 // Always ensure name is replaced
-                charRow = charRow.replace(/{{name}}/g, escapeHtml(char.name));
+                charRow = charRow.replace(/{{name}}/g, escapeHtml(char.name) + (npcTemplateFor(char) ? '' : ' <small class="notes">[template required]</small>'));
                 
                 const renderedCharCollections = new Set();
 
-                if (visibleCharStats.length > 0) {
+                if (actorVisibleStats.length > 0) {
                     const fieldSet = renderFieldSet(
-                        visibleCharStats,
+                        actorVisibleStats,
                         (stat) => (char.stats && char.stats[stat.name]) || stat.defaultValue || '',
                         'character', index);
 

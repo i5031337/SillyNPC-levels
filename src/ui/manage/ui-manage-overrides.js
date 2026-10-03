@@ -1,3 +1,4 @@
+import { npcStatsFor } from '../../core/npc-templates.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { escapeHtml } from '../../core/utils.js';
@@ -15,7 +16,7 @@ export function renderOverridesSection(char, container) {
         </div>
     `;
 
-    const stats = getSettings().statusTracker.npcStats || [];
+    const stats = npcStatsFor(char, getSettings().statusTracker);
     if (stats.length === 0) {
         const p = document.createElement('p');
         p.className = 'notes';

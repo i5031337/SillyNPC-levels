@@ -1,3 +1,4 @@
+import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { eventSource } from '../../../../../events.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { canTrackerSetNpcStat } from './stat-persistence.js';
@@ -188,8 +189,25 @@ export function bind(deps) {
             state.characters.push(charData);
             lookup.stateMap.set(lowerName, charData);
         }
-        let cardChanged = applyCharacterStats(charData, updChar, matchedChar, settings, validKeys,
+        const selected = proposedNpcTemplate(charData.npcTemplateId ? charData : matchedChar || charData, updChar);
+        let assigned = false;
+        if (selected && charData.npcTemplateId !== selected.id) {
+            charData.npcTemplateId = selected.id;
+            state.npcTemplateAssignments ||= {};
+            state.npcTemplateAssignments[charData.id || lowerName] = selected.id;
+            assigned = true;
+            if (matchedChar && !dryRun) matchedChar.npcTemplateId = selected.id;
+        }
+        const actorSettings = { ...settings, npcStats: npcStatsFor(charData, settings) };
+        if (assigned) for (const stat of actorSettings.npcStats) {
+            if (charData.stats[stat.name] === undefined) {
+                charData.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
+            }
+        }
+        const actorKeys = new Set(actorSettings.npcStats.map(stat => stat.name.toLowerCase()));
+        let cardChanged = applyCharacterStats(charData, updChar, matchedChar, actorSettings, actorKeys,
             collectionIds, { verbatim, allowAdvancementChanges, dryRun });
+        cardChanged ||= assigned && !!matchedChar && !dryRun;
         const collections = collectCollections(updChar, collectionIds, `character update for ${updChar.name}`);
         Object.keys(collections).forEach(id => {
             deps.applyCollectionUpdate(charData, id, collections[id], { allowReplace });

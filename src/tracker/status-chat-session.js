@@ -121,6 +121,7 @@ function snapshotProfiles() {
         const name = String(card?.name ?? '').trim();
         if (name) out[name.toLowerCase()] = {
             profile: structuredClone(card.profile || {}),
+            npcTemplateId: card.npcTemplateId || '',
             memories: structuredClone(card.memories || []),
         };
     };
@@ -138,6 +139,11 @@ function restoreProfiles(profiles) {
     const put = (card) => {
         const was = profiles[String(card?.name ?? '').trim().toLowerCase()];
         if (!was) return;
+        if (Object.hasOwn(was, 'npcTemplateId') && (card.npcTemplateId || '') !== was.npcTemplateId) {
+            card.npcTemplateId = was.npcTemplateId;
+            restored += 1;
+            touched.add(card);
+        }
         // Older bases stored the profile directly; new bases include memories too.
         const profile = was.profile && typeof was.profile === 'object' ? was.profile : was;
         if (JSON.stringify(card.profile || {}) !== JSON.stringify(profile)) {
