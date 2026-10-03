@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
 import { 
     setExtensionPrompt,
     extension_prompt_types,
@@ -208,7 +209,7 @@ function createChatPlayerSeed() {
         if (stat?.name) stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
     }
     for (const col of trackerSettings.collections || []) {
-        if (col?.id && (col.target === 'player' || col.target === 'all')) collections[col.id] = [];
+        if (col?.id && collectionAppliesTo(col, 'player')) collections[col.id] = [];
     }
     return {
         stats,

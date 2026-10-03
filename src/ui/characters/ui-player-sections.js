@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { debugLog } from '../../core/constants.js';
 import { eventSource } from '../../../../../../events.js';
 import { getSettings } from '../../core/settings.js';
@@ -127,7 +128,7 @@ export function renderTabExtras(dom) {
 /** The collections a player can hold anything in. */
 export function playerCollections() {
     return (getSettings().statusTracker.collections || [])
-        .filter(col => col.target === 'player' || col.target === 'all');
+        .filter(col => collectionAppliesTo(col, 'player'));
 }
 
 /** One collection under its own heading, however the tab wants it drawn. */

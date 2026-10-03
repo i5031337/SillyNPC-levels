@@ -62,7 +62,7 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
         const visibleStats = Object.fromEntries(Object.entries(stats || {}).filter(([name]) =>
             !(trackerSettings.npcStats || []).some(def => !isTurnStat(def)
                 && def.name?.toLowerCase() === name.toLowerCase())));
-        const listed = summariseCollections({ collections }, 'npc', trackerSettings);
+        const listed = summariseCollections({ ...char, collections }, 'npc', trackerSettings);
         const profile = profileBlock(char);
 
         // Nothing at all to say is not worth a line. A card with only a profile still is:

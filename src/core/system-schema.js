@@ -1,3 +1,4 @@
+import { collectionTargets } from './collection-targets.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { normalizeHudLayoutId } from './constants-base.js';
@@ -5,7 +6,6 @@ import { normalizeHudLayoutId } from './constants-base.js';
 export const SYSTEM_SCHEMA_VERSION = 1;
 const PROFILE_POLICIES = new Set(['anchored', 'replaceable', 'memory']);
 const STAT_POLICIES = new Set(['turn', 'advancement']);
-const COLLECTION_TARGETS = new Set(['player', 'npc', 'all']);
 const IDENTIFIER = /^[a-z][a-z0-9_-]*$/;
 
 const object = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -89,7 +89,7 @@ function collections(source) {
         return {
             id,
             name: string(collection.name, id),
-            target: COLLECTION_TARGETS.has(collection.target) ? collection.target : 'all',
+            targets: collectionTargets(collection),
             includeInImagePrompt: collection.includeInImagePrompt !== false,
             guidance: string(collection.guidance),
             retired: collection.retired === true,

@@ -256,7 +256,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-system-builder.js` | Public entry point for system schema editor. |
 | `src/ui/system/ui-system-profiles.js` | Player and NPC profile field controls in System Builder. |
 | `src/ui/system/ui-system-profile-operations.js` | Pure add, rename, order, retire, and restore operations for profile fields. |
-| `src/ui/system/ui-system-collections.js` | Collection schema editor. |
+| `src/ui/system/ui-system-collections.js` | Collection schema editor, including NPC template targets. |
+| `src/ui/system/ui-collection-targets.js` | Collection target checkboxes for player and NPC template combinations. |
+| `src/core/collection-targets.js` | Shared collection targeting rules for sheets, prompts, and updates. |
+| `tests/collection-targets.mjs` | Template target normalization and update boundary tests. |
 | `src/ui/system/ui-collection-fields.js` | Collection field controls and row wiring for the schema editor. |
 | `src/ui/system/ui-system-stats.js` | Stat schema editor. |
 | `src/ui/system/ui-system-stat-policy.js` | Stat update policy and level-up eligibility controls. |

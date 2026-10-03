@@ -1,11 +1,12 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
 /** Names from collections selected for portrait generation. */
-export function imageItemsFromCollections(collections = {}, definitions = [], isPlayer = false) {
+export function imageItemsFromCollections(collections = {}, definitions = [], isPlayer = false, actor) {
     const names = [];
     const seen = new Set();
     const scope = isPlayer ? 'player' : 'npc';
     for (const collection of definitions) {
         if (!collection?.id || collection.includeInImagePrompt === false || collection.retired
-            || (collection.target && collection.target !== 'all' && collection.target !== scope)) continue;
+            || !collectionAppliesTo(collection, scope, actor)) continue;
         const primary = collection.fields?.find(field => field.isPrimary)?.name || 'name';
         for (const item of collections[collection.id] || []) {
             const name = String(item?.[primary] ?? '').trim();

@@ -57,7 +57,7 @@ SillyNPC operates across two core modules:
 * **Faces for Strangers:** Speakers without a card draw from a pool of fallback portraits, tagged so a guard draws from the guards. A stranger keeps the same face for as long as they keep appearing.
 
 ### RPG Status Tracking & Character Sheets
-* **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define.
+* **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define. In **Systems → Collections**, select any combination of the player, all NPCs, and named NPC templates (for example, clothing for the player and humans, or moves for Pokémon).
 * **Dedicated Extraction Pass:** Processes state updates in a background pass to keep tracker logic from polluting the primary prompt context.
 * **Review Controls:** Valid reader changes apply automatically by default. You can switch to review modes that hold risky changes or all changes for approval.
 * **Interactive Sheets:** Edit the selected persona's profile, stats, items, memories, and goals on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.

@@ -1,3 +1,5 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
+import { loadStateFromMetadata } from '../../tracker/status-logic.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 import { getPendingChanges, resolvePendingChanges, getLooseNotes, getRefusedValues } from '../../tracker/status-review.js';
 import { getSettings } from '../../core/settings.js';
@@ -139,7 +141,7 @@ function buildReviewPanel(messageId) {
             list.appendChild(group);
             lastOwner = owner;
         }
-        list.appendChild(buildRow(row));
+        list.appendChild(buildRow(row, rows));
     }
     panel.appendChild(list);
 
@@ -187,7 +189,7 @@ function buildReviewPanel(messageId) {
  *
  * Stats get the same line as plain text. A stat's home is fixed by the schema.
  */
-function buildDestination(row) {
+function buildDestination(row, rows) {
     const { change } = row;
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-review-dest';
@@ -211,16 +213,27 @@ function buildDestination(row) {
     const colSelect = document.createElement('select');
     colSelect.className = 'sillynpc-review-dest-select';
     colSelect.title = 'Which collection this belongs in. A scan often files a spell as an item.';
-    for (const col of settings.collections || []) {
-        const forPlayer = col.target !== 'npc';
-        const forNpc = col.target !== 'player';
-        if (row.scope === 'player' ? !forPlayer : !forNpc) continue;
-        const option = document.createElement('option');
-        option.value = col.id;
-        option.textContent = col.id;
-        option.selected = col.id === row.collectionId;
-        colSelect.appendChild(option);
-    }
+    const refreshCollections = () => {
+        colSelect.replaceChildren();
+        let actor = loadStateFromMetadata()?.characters?.find(actor => actor.name?.toLowerCase() === row.actor?.toLowerCase())
+            || getAllCharacters().find(actor => actor.name?.toLowerCase() === row.actor?.toLowerCase()) || {};
+        const assignment = rows.find(entry => entry.change.kind === 'npc-template' && entry.accepted
+            && entry.actor?.toLowerCase() === row.actor?.toLowerCase());
+        if (assignment?.value) actor = { npcTemplateId: assignment.value };
+        for (const col of settings.collections || []) {
+            if (!collectionAppliesTo(col, row.scope === 'player' ? 'player' : 'npc', actor)) continue;
+            const option = document.createElement('option');
+            option.value = col.id;
+            option.textContent = col.id;
+            option.selected = col.id === row.collectionId;
+            colSelect.appendChild(option);
+        }
+        if (![...colSelect.options].some(option => option.value === row.collectionId)) {
+            row.collectionId = colSelect.options[0]?.value ?? row.collectionId;
+        }
+    };
+    row.refreshCollections = refreshCollections;
+    refreshCollections();
     colSelect.addEventListener('change', () => { row.collectionId = colSelect.value; });
 
     // Whose. The player, plus everyone with a card - a scan is mostly about people who
@@ -248,15 +261,14 @@ function buildDestination(row) {
         row.scope = ownerSelect.value ? 'character' : 'player';
         row.actor = ownerSelect.value || null;
         // The collection list differs between the player and a character, so rebuild it.
-        const stillValid = [...colSelect.options].some(o => o.value === row.collectionId);
-        if (!stillValid) row.collectionId = colSelect.options[0]?.value ?? row.collectionId;
+        refreshCollections();
     });
 
     wrap.append(ownerSelect, colSelect);
     return wrap;
 }
 
-function buildRow(row) {
+function buildRow(row, rows) {
     const { change } = row;
     const el = document.createElement('div');
     el.className = `sillynpc-review-row kind-${change.kind}`;
@@ -266,7 +278,10 @@ function buildRow(row) {
     toggle.checked = row.accepted;
     toggle.className = 'sillynpc-review-toggle';
     toggle.title = 'Include this change';
-    toggle.addEventListener('change', () => { row.accepted = toggle.checked; });
+    toggle.addEventListener('change', () => {
+        row.accepted = toggle.checked;
+        if (change.kind === 'npc-template') rows.forEach(entry => entry.refreshCollections?.());
+    });
 
     const icon = document.createElement('i');
     icon.className = `fa-solid ${KIND_ICON[change.kind] || 'fa-circle'} sillynpc-review-icon`;
@@ -302,7 +317,7 @@ function buildRow(row) {
             to.append(option);
         }
         to.value = row.value;
-        to.addEventListener('change', () => { row.value = to.value; });
+        to.addEventListener('change', () => { row.value = to.value; rows.forEach(entry => entry.refreshCollections?.()); });
     } else if (editable) {
         to.type = 'text';
         to.value = row.value;
@@ -331,7 +346,7 @@ function buildRow(row) {
         why.textContent = ours;
     }
 
-    el.append(toggle, icon, label, from, arrow, to, buildDestination(row), why);
+    el.append(toggle, icon, label, from, arrow, to, buildDestination(row, rows), why);
 
     // Blacklisting an item forever is a different decision from turning it down now, and
     // has to be asked for. Inferring it from an ordinary decline meant that discarding a

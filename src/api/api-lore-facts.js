@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
 import { npcStatsFor } from '../core/npc-templates.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { chat } from '../../../../../../script.js';
@@ -83,7 +84,9 @@ export function liveFactsFor(char) {
         stats: Object.fromEntries(Object.entries(actor?.stats || char?.statusOverrides || {})
             .filter(([name]) => npcStatsFor(actor?.npcTemplateId ? actor : char, getSettings().statusTracker)
                 .some(stat => stat.name.toLowerCase() === name.toLowerCase()))),
-        collections: actor?.collections || char?.statusCollections || {},
+        collections: Object.fromEntries(Object.entries(actor?.collections || char?.statusCollections || {})
+            .filter(([id]) => collectionAppliesTo(getSettings().statusTracker.collections?.find(col => col.id === id),
+                'npc', actor?.npcTemplateId ? actor : char))),
     };
 }
 
@@ -143,7 +146,7 @@ export function fillImagePrompt(template, { name, lore, items, context } = {}) {
 export function describeCarriedItems(char) {
     if (!char?.name) return '';
     const { collections } = liveFactsFor(char);
-    return imageItemsFromCollections(collections, getSettings().statusTracker.collections, char.isPlayer);
+    return imageItemsFromCollections(collections, getSettings().statusTracker.collections, char.isPlayer, char);
 }
 
 /** How much retrieved reference text the prompt will take. */

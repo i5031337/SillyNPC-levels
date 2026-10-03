@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,10 @@ function bindFrom(file, names, values) {
 const settings = {
     statusTracker: {
         playerStats: [{ name: 'HP', defaultValue: '10' }],
-        collections: [{ id: 'inventory', target: 'player', fields: [{ name: 'name', isPrimary: true }] }],
+        collections: [
+            { id: 'inventory', targets: ['player', 'template:human'], fields: [{ name: 'name', isPrimary: true }] },
+            { id: 'moves', targets: ['template:pokemon'], fields: [{ name: 'name', isPrimary: true }] },
+        ],
     },
     personaData: {
         'Rhea.png': {
@@ -25,8 +29,8 @@ const settings = {
 let saves = 0;
 const deps = { getInitialStatValue: value => value };
 bindFrom('../src/tracker/status-persona-state.js',
-    ['getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'resolveProfileFields'],
-    [() => ({}), { personas: { 'Rhea.png': 'Rhea' } }, 'Rhea.png',
+    ['collectionAppliesTo', 'getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'resolveProfileFields'],
+    [collectionAppliesTo, () => ({}), { personas: { 'Rhea.png': 'Rhea' } }, 'Rhea.png',
         () => settings, () => { saves++; }, () => {}, () => []])(deps);
 
 test('fresh chat and persona values start at System defaults, without old global inventory', () => {

@@ -1,3 +1,4 @@
+import { collectionAppliesTo, collectionTargetLabel } from '../../core/collection-targets.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
@@ -64,7 +65,7 @@ export function describeCollections(trackerSettings) {
             ? `"${col.id}" (${label})` : `"${col.id}"`;
         const note = String(col.hint ?? '').trim();
 
-        lines.push(`- ${title} for ${col.target || 'all'}`
+        lines.push(`- ${title} for ${collectionTargetLabel(col)}`
             + `${note ? ` - ${endsSentence(note)}` : ''}`
             + ` Fields: ${fields || 'name'}`);
     }
@@ -130,7 +131,7 @@ export function buildDeltaExample(trackerSettings) {
  */
 export function summariseCollections(actor, target, trackerSettings) {
         const cols = (trackerSettings.collections || [])
-            .filter(c => c.target === 'all' || c.target === target);
+            .filter(c => collectionAppliesTo(c, target, actor));
         if (!cols.length) return undefined;
         const out = {};
         for (const col of cols) {

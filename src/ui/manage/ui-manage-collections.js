@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { Popup } from '../../../../../../popup.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { getAllCategories, createCategory } from '../../characters/characters.js';
@@ -15,9 +16,10 @@ export function renderCollectionsSection(char, container) {
     if (!container) return;
     
     const settings = getSettings().statusTracker;
-    const collections = settings.collections.filter(col => col.target === 'npc' || col.target === 'all');
+    const sceneActor = loadStateFromMetadata()?.characters?.find(actor => actor.name?.toLowerCase() === char.name?.toLowerCase());
+    const collections = settings.collections.filter(col => collectionAppliesTo(col, 'npc', sceneActor?.npcTemplateId ? sceneActor : char));
     
-    if (collections.length === 0) return;
+    if (collections.length === 0) { container.replaceChildren(); return; }
 
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
@@ -85,6 +87,7 @@ export function renderCollectionsSection(char, container) {
         // work unchanged rather than needing an off-stage variant.
         const actor = charInState || {
             name: char.name,
+            npcTemplateId: char.npcTemplateId || '',
             stats: char.statusOverrides || {},
             collections: char.statusCollections || (char.statusCollections = {}),
         };

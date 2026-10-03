@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { describeNpcTemplates, npcTemplates, npcStatsFor } from '../../core/npc-templates.js';
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
@@ -192,7 +193,7 @@ export function buildNewNpcExample(trackerSettings = {}) {
         .map(stat => [stat.name, describeReaderStats({ npcStats: [stat] }, { initializeNpc: true })
             .replace(`- NPC.${stat.name}: `, '')]));
     const collections = Object.fromEntries((trackerSettings.collections || [])
-        .filter(col => col?.id && ['all', 'npc'].includes(col.target))
+        .filter(col => col?.id && collectionAppliesTo(col, 'npc', { npcTemplateId: template?.id || '' }))
         .map(col => {
             const primary = (col.fields || []).find(field => field.isPrimary)?.name || 'name';
             const item = Object.fromEntries((col.fields || [{ name: primary }]).map(field => [
@@ -226,7 +227,7 @@ function buildChangedExample(state, trackerSettings) {
     const firstTurnStat = list => (list || []).find(stat => stat?.name && isTurnStat(stat) && !stat.locked
         && !['xp', 'level', 'level bonus'].includes(stat.name.toLowerCase()))?.name;
     const collectionFor = target => (trackerSettings.collections || [])
-        .find(c => c?.id && (c.target === 'all' || c.target === target));
+        .find(c => c?.id && (collectionAppliesTo(c, target, target === 'npc' ? npc || {} : undefined)));
     const collectionChange = (col, verb) => {
         if (!col) return undefined;
         const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';

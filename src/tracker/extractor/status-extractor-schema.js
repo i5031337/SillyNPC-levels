@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
@@ -35,7 +36,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     // kept being proposed for losing things the story never took from them.
     const collectionProps = (target) => {
         const relevant = (trackerSettings.collections || [])
-            .filter(c => c.target === 'all' || c.target === target);
+            .filter(c => collectionAppliesTo(c, target));
         if (!relevant.length) return null;
         const itemShape = (col) => ({
             type: 'object',

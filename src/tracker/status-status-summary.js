@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
@@ -124,7 +125,7 @@ function formatCompactStatus(state, fullDetail = false) {
         const colSummaries = [];
         // When fullDetail is true, we show all relevant collections even if empty
         if (fullDetail) {
-            const relevantCollections = (settings.collections || []).filter(c => c.target === 'all' || c.target === 'player');
+            const relevantCollections = (settings.collections || []).filter(c => collectionAppliesTo(c, 'player'));
             relevantCollections.forEach(col => {
                 const items = state.player.collections?.[col.id] || [];
                 const summary = summarizeCollection(col.id, items, fullDetail);
@@ -132,6 +133,7 @@ function formatCompactStatus(state, fullDetail = false) {
             });
         } else if (state.player.collections) {
             for (const [colId, items] of Object.entries(state.player.collections)) {
+                if (!collectionAppliesTo(settings.collections?.find(c => c.id === colId), 'player')) continue;
                 const summary = summarizeCollection(colId, items, fullDetail);
                 if (summary) colSummaries.push(summary);
             }
@@ -157,7 +159,7 @@ function formatCompactStatus(state, fullDetail = false) {
 
             const colSummaries = [];
             if (fullDetail) {
-                const relevantCollections = (settings.collections || []).filter(c => c.target === 'all' || c.target === 'npc');
+                const relevantCollections = (settings.collections || []).filter(c => collectionAppliesTo(c, 'npc', char));
                 relevantCollections.forEach(col => {
                     const items = char.collections?.[col.id] || [];
                     const summary = summarizeCollection(col.id, items, fullDetail);
@@ -165,6 +167,7 @@ function formatCompactStatus(state, fullDetail = false) {
                 });
             } else if (char.collections) {
                 for (const [colId, items] of Object.entries(char.collections)) {
+                    if (!collectionAppliesTo(settings.collections?.find(c => c.id === colId), 'npc', char)) continue;
                     const summary = summarizeCollection(colId, items, fullDetail);
                     if (summary) colSummaries.push(summary);
                 }

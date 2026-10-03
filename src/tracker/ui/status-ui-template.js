@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { escapeRegExp } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { summarizeCollectionUI, stripFieldReference, tidyLeftovers, renderFieldSet } from './status-ui-template-core.js';
@@ -167,7 +168,7 @@ export function buildStatusHtml(state, settings) {
         if (showPlayer && state.player && state.player.collections) {
             for (const [colId, items] of Object.entries(state.player.collections)) {
                 const colDef = settings.collections.find(c => c.id === colId);
-                if (colDef && colDef.visible === false) continue;
+                if (!collectionAppliesTo(colDef, 'player') || colDef.visible === false) continue;
 
                 const colRegex = new RegExp(`{{${escapeRegExp(colId)}}}`, 'g');
                 html = html.split(/({{#characters}}[\s\S]*?{{\/characters}})/g).map(part => {
@@ -181,7 +182,7 @@ export function buildStatusHtml(state, settings) {
         // Handle missing defined player collections (appended to top or wherever player data is)
         const missingDefinedPlayerCollections = settings.collections.filter(col => 
             showPlayer &&
-            (col.target === 'player' || col.target === 'all') && 
+            collectionAppliesTo(col, 'player') &&
             col.visible !== false && 
             !renderedGlobalCollections.has(col.id.toLowerCase())
         );

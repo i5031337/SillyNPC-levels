@@ -1,3 +1,4 @@
+import { collectionAppliesTo, collectionTargetLabel } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { isTurnStat } from './stat-update-policy.js';
 import { describeStatDefinitions } from './stat-prompt-definitions.js';
@@ -30,18 +31,16 @@ function getStatusInstructions() {
     if (settings.collections && settings.collections.length > 0) {
         // Filter collections to only those relevant to current actors
         const hasPlayer = !!currentState.player;
-        const hasNPCs = currentState.characters && currentState.characters.length > 0;
+        const actors = currentState.characters || [];
 
         const relevantCollections = settings.collections.filter(col => {
-            if (col.target === 'all') return true;
-            if (col.target === 'player' && hasPlayer) return true;
-            if (col.target === 'npc' && hasNPCs) return true;
-            return false;
+            return (hasPlayer && collectionAppliesTo(col, 'player'))
+                || actors.some(actor => collectionAppliesTo(col, 'npc', actor));
         });
 
         schemas = relevantCollections.map(col => {
             const fieldInfo = col.fields.map(f => `${f.name} (${f.type}${f.isMultiline ? ', multiline' : ''})`).join(', ');
-            return `- ${col.id} (${col.name}): ${fieldInfo}`;
+            return `- ${col.id} (${col.name}) for ${collectionTargetLabel(col)}: ${fieldInfo}`;
         }).join('\n');
     }
 
@@ -75,7 +74,7 @@ function getStatusExample() {
     if (playerStat) player.stats = { [playerStat]: '<new value>' };
     const sampleCollection = (target, verb) => {
         const col = (settings.collections || []).find(c => c?.id
-            && (c.target === 'all' || c.target === target));
+            && (collectionAppliesTo(c, target, target === 'npc' ? state?.characters?.[0] || {} : undefined)));
         if (!col) return undefined;
         const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
         const item = { [primary]: '<item name>' };

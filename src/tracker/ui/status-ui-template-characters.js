@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { npcStatsFor, npcTemplateFor } from '../../core/npc-templates.js';
 import { escapeHtml, escapeRegExp } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
@@ -90,7 +91,7 @@ export function renderCharacters(html, state, settings, renderFieldSet) {
                 if (char.collections) {
                     for (const [colId, items] of Object.entries(char.collections)) {
                         const colDef = settings.collections.find(c => c.id === colId);
-                        if (colDef && colDef.visible === false) continue;
+                        if (!collectionAppliesTo(colDef, 'npc', char) || colDef.visible === false) continue;
 
                         const colRegex = new RegExp(`{{${escapeRegExp(colId)}}}`, 'g');
                         if (charTemplate.includes(`{{${colId}}}`)) {
@@ -103,7 +104,7 @@ export function renderCharacters(html, state, settings, renderFieldSet) {
 
                 // Handle missing defined collections
                 const missingDefinedCharCollections = settings.collections.filter(col => 
-                    (col.target === 'npc' || col.target === 'all') && 
+                    collectionAppliesTo(col, 'npc', char) &&
                     col.visible !== false && 
                     !renderedCharCollections.has(col.id.toLowerCase())
                 );

@@ -48,6 +48,13 @@ try:
         const { getSettings } = await import(root + 'src/core/settings.js');
         const { normalizeSystemDefinition } = await import(root + 'src/core/system-schema.js');
         const { buildSystemBuilder } = await import(root + 'src/ui/system/ui-system-builder.js');
+        const { buildCollectionTargetsEditor } = await import(root + 'src/ui/system/ui-collection-targets.js');
+        const { playerCollections } = await import(root + 'src/ui/characters/ui-player-sections.js');
+        const { collectionAppliesTo } = await import(root + 'src/core/collection-targets.js');
+        const { buildCollectionsEditor } = await import(root + 'src/ui/system/ui-system-collections.js');
+        const { renderCollectionsSection } = await import(root + 'src/ui/manage/ui-manage-collections.js');
+        const { summariseCollections } = await import(root + 'src/tracker/extractor/status-extractor-prompt-state.js');
+        const { buildExtractionSchema } = await import(root + 'src/tracker/extractor/status-extractor-schema.js');
         const { buildNpcTemplateSelect } = await import(root + 'src/ui/characters/ui-npc-template.js');
         const { renderProfileFields } = await import(root + 'src/ui/characters/ui-profile.js');
         const { buildStatusHtml } = await import(root + 'src/tracker/ui/status-ui-template.js');
@@ -69,19 +76,39 @@ try:
             stats: { world: [], player: [], npc: [
               { id: 'hp', name: 'HP', type: 'number', defaultValue: '10/10' },
               { id: 'friendship', name: 'Friendship', type: 'number', defaultValue: '0' }] },
+            collections: [
+              { id: 'moves', name: 'Moves', target: 'npc', npcTemplateId: 'pokemon', fields: [{ name: 'name', isPrimary: true }] },
+              { id: 'clothes', name: 'Clothing', targets: ['player', 'template:human'], fields: [{ name: 'name', isPrimary: true }] }],
             npcTemplates: [
               { id: 'human', name: 'Human', description: 'Human trainers.', profileIds: ['occupation'], statIds: ['hp'] },
               { id: 'pokemon', name: 'Pokémon', description: 'Pokémon creatures.', profileIds: ['species'], statIds: ['hp', 'friendship'] }] });
           settings.activeSystem = 'Fixture';
-          settings.statusTracker = { ...tracker, presets: { Fixture: { definition } }, npcStats: definition.stats.npc, globalStats: [], playerStats: [], collections: [] };
+          settings.statusTracker = { ...tracker, presets: { Fixture: { definition } }, npcStats: definition.stats.npc, globalStats: [], playerStats: [], collections: definition.collections };
+          const collectionsEditor = buildCollectionsEditor(() => {}); host.append(collectionsEditor);
+          const edited = { id: 'edited', target: 'all', fields: [] };
+          let targetSaves = 0;
+          const targetEditor = buildCollectionTargetsEditor(edited, () => { targetSaves++; }); host.append(targetEditor);
+          const tick = (value, checked) => {
+            const input = [...targetEditor.querySelectorAll('.col-target')].find(input => input.value === value);
+            input.checked = checked; input.dispatchEvent(new Event('change'));
+          };
+          tick('npc', false); tick('template:human', true);
+          const savedTargets = normalizeSystemDefinition({ schemaVersion: 1, collections: [edited] }).collections[0].targets;
+          const targetRoundtrip = [...buildCollectionTargetsEditor(edited, () => {}).querySelectorAll('.col-target:checked')].map(input => input.value);
+          tick('player', false); tick('template:human', false);
+          const emptyTargetsDisabled = !collectionAppliesTo(edited, 'player') && !collectionAppliesTo(edited, 'npc', { npcTemplateId: 'human' });
           const builder = buildSystemBuilder(() => {}); host.append(builder);
           [...builder.querySelectorAll('[role=tab]')].find(tab => tab.textContent === 'NPC Templates').click();
           const sections = [...builder.querySelectorAll('.sillynpc-npc-templates details')];
           const human = { name: 'Trainer', npcTemplateId: 'human', profile: {} };
           const pokemon = { name: 'Pikachu', npcTemplateId: 'pokemon', profile: {} };
-          const state = { global: {}, player: { stats: {} }, characters: [
-            { ...human, stats: { HP: '8/10', Friendship: '99' }, collections: {} },
-            { ...pokemon, stats: { HP: '6/10', Friendship: '50' }, collections: {} }] };
+          const state = { global: {}, player: { name: 'Player', stats: {}, collections: { clothes: [{ name: 'Player jacket' }], moves: [{ name: 'Wrong player move' }] } }, characters: [
+            { ...human, stats: { HP: '8/10', Friendship: '99' }, collections: { clothes: [{ name: 'Trainer jacket' }], moves: [{ name: 'Wrong human move' }] } },
+            { ...pokemon, stats: { HP: '6/10', Friendship: '50' }, collections: { moves: [{ name: 'Thunderbolt' }], clothes: [{ name: 'Wrong pokemon clothes' }] } }] };
+          const humanCollections = document.createElement('div'); const pokemonCollections = document.createElement('div');
+          host.append(humanCollections, pokemonCollections);
+          renderCollectionsSection(human, humanCollections); renderCollectionsSection(pokemon, pokemonCollections);
+          const schema = buildExtractionSchema(settings.statusTracker, { state });
           const selector = buildNpcTemplateSelect(pokemon, () => {}, state); host.append(selector);
           const humanFields = document.createElement('div'); const pokemonFields = document.createElement('div');
           host.append(humanFields, pokemonFields);
@@ -91,9 +118,18 @@ try:
           const rows = [...box.querySelectorAll('.sillynpc-character-status, .sillynpc-status-char')];
           chat.splice(0, chat.length, { extra: { sillynpc_pending: [{
             scope: 'character', actor: 'Unknown NPC', label: 'NPC template', kind: 'npc-template',
-            before: '(unassigned)', after: '', risk: 'risky', reason: 'Choose an NPC template' }] } });
+            before: '(unassigned)', after: '', risk: 'risky', reason: 'Choose an NPC template' },
+            { scope: 'character', actor: 'Unknown NPC', label: 'Thunderbolt', kind: 'item-add', collectionId: 'moves',
+              item: { name: 'Thunderbolt' }, after: 'Thunderbolt' }] } });
           const review = document.createElement('div'); host.append(review); renderReviewPanel(review, 0);
           const reviewSelect = review.querySelector('select.sillynpc-review-to');
+          reviewSelect.value = 'pokemon'; reviewSelect.dispatchEvent(new Event('change'));
+          const templateToggle = review.querySelector('.kind-npc-template .sillynpc-review-toggle');
+          templateToggle.checked = true; templateToggle.dispatchEvent(new Event('change'));
+          const reviewCollections = () => [...review.querySelector('.kind-item-add .sillynpc-review-dest-select:last-child').options].map(option => option.value);
+          const pokemonReviewCollections = reviewCollections();
+          reviewSelect.value = 'human'; reviewSelect.dispatchEvent(new Event('change'));
+          const humanReviewCollections = reviewCollections();
           reviewSelect.value = 'pokemon'; reviewSelect.dispatchEvent(new Event('change'));
           const lore = formatLoreContent({ species: 'Pikachu' }, '', undefined, 'npc',
             [{ id: 'species', label: 'Species' }]);
@@ -104,6 +140,22 @@ try:
             { scope: 'character', actor: 'Saori', kind: 'stat', label: 'Standing', after: 0 }
           ], { characters: [{ name: 'Saori', stats: {}, collections: {} }] }, settings.statusTracker);
           result = {
+            pokemonReviewCollections, humanReviewCollections,
+            savedTargets, targetRoundtrip, targetSaves, emptyTargetsDisabled,
+            collectionTargets: [...collectionsEditor.querySelectorAll('.col-targets')].map(group => ({
+              selected: [...group.querySelectorAll('.col-target:checked')].map(input => input.value),
+              options: [...group.querySelectorAll('.col-target')].map(input => input.value) })),
+            playerCollections: playerCollections().map(col => col.id),
+            playerReaderCollections: Object.keys(summariseCollections(state.player, 'player', settings.statusTracker)),
+            humanCollections: [...humanCollections.querySelectorAll('[data-tab]')].map(tab => tab.dataset.tab),
+            pokemonCollections: [...pokemonCollections.querySelectorAll('[data-tab]')].map(tab => tab.dataset.tab),
+            humanReaderCollections: Object.keys(summariseCollections(state.characters[0], 'npc', settings.statusTracker)),
+            pokemonReaderCollections: Object.keys(summariseCollections(state.characters[1], 'npc', settings.statusTracker)),
+            schemaNpcCollections: Object.keys(schema.properties.characters.items.properties.collections.properties),
+            schemaPlayerCollections: Object.keys(schema.properties.player.properties.collections.properties),
+            trackerCollectionTargets: box.textContent.includes('Thunderbolt') && box.textContent.includes('Trainer jacket') && box.textContent.includes('Player jacket')
+              && !box.textContent.includes('Wrong player move') && !box.textContent.includes('Wrong human move') && !box.textContent.includes('Wrong pokemon clothes'),
+            readerCollectionTargets: reader.includes('npcTemplateId: pokemon') && reader.includes('npcTemplateId: human'),
             templateWithStats: rebuilt.characters[0].npcTemplateId === 'npc'
               && rebuilt.characters[0].stats.Condition === 'Healthy'
               && rebuilt.characters[0].stats.Standing === '0',
@@ -133,6 +185,16 @@ try:
         time.sleep(0.1)
     execute("document.querySelector('#sillynpc-template-smoke')?.remove(); document.body.removeAttribute('data-npc-template-smoke')")
     assert result and 'error' not in result, result
+    assert result['pokemonReviewCollections'] == ['moves'] and result['humanReviewCollections'] == ['clothes'], result
+    assert [target['selected'] for target in result['collectionTargets']] == [['template:pokemon'], ['player', 'template:human']], result
+    assert all(target['options'] == ['player', 'npc', 'template:human', 'template:pokemon'] for target in result['collectionTargets']), result
+    assert result['savedTargets'] == result['targetRoundtrip'] == ['player', 'template:human'], result
+    assert result['targetSaves'] == 4 and result['emptyTargetsDisabled'], result
+    assert result['playerCollections'] == result['playerReaderCollections'] == ['clothes'], result
+    assert result['humanCollections'] == result['humanReaderCollections'] == ['clothes'], result
+    assert result['pokemonCollections'] == result['pokemonReaderCollections'] == ['moves'], result
+    assert result['schemaNpcCollections'] == ['moves', 'clothes'] and result['schemaPlayerCollections'] == ['clothes'], result
+    assert result['trackerCollectionTargets'] and result['readerCollectionTargets'], result
     assert result['templates'] == ['Human', 'Pokémon'], result
     assert result['selections'] == [[True, False, True, False], [False, True, True, True]], result
     assert result['selected'] == 'pokemon' and result['options'] == ['', 'human', 'pokemon'], result

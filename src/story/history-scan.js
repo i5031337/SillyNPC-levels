@@ -1,3 +1,5 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
+import { npcTemplates } from '../core/npc-templates.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { getContext } from '../../../../../st-context.js';
 import { getSettings } from '../core/settings.js';
@@ -58,31 +60,33 @@ function buildOutputTemplate(trackerSettings) {
         return item;
     };
 
-    const forTarget = (exclude) => {
+    const template = npcTemplates()[0];
+    const forTarget = (target) => {
         const out = {};
-        for (const col of cols.filter(c => c.target !== exclude)) out[col.id] = [sample(col)];
+        for (const col of cols.filter(c => collectionAppliesTo(c, target, target === 'npc' ? { npcTemplateId: template?.id || '' } : undefined))) out[col.id] = [sample(col)];
         return out;
     };
 
     return JSON.stringify({
-        player: { collections: forTarget('npc') },
-        characters: [{ name: '<their exact name>', collections: forTarget('player') }],
+        player: { collections: forTarget('player') },
+        characters: [{ name: '<their exact name>', ...(template ? { npcTemplateId: template.id } : {}), collections: forTarget('npc') }],
     }, null, 2);
 }
 
 /** What each actor currently holds, so the reply is a correction rather than a guess. */
 function describeCurrentCollections(state) {
     const lines = [];
-    const describe = (who, collections) => {
+    const describe = (who, collections, scope, actor) => {
         const parts = [];
         for (const [colId, items] of Object.entries(collections || {})) {
+            if (!collectionAppliesTo(getSettings().statusTracker.collections?.find(col => col.id === colId), scope, actor)) continue;
             const names = (items || []).map(i => i?.name).filter(Boolean);
             if (names.length) parts.push(`  ${colId}: ${names.join(', ')}`);
         }
         if (parts.length) lines.push(`${who}:`, ...parts);
     };
-    describe(state.player?.name || 'Player', state.player?.collections);
-    for (const character of state.characters || []) describe(character.name, character.collections);
+    describe(state.player?.name || 'Player', state.player?.collections, 'player', state.player);
+    for (const character of state.characters || []) describe(character.name, character.collections, 'npc', character);
     return lines.join('\n');
 }
 

@@ -85,6 +85,7 @@ function harness(mode = 'extract') {
         generateNewNpcProfiles: async () => ({ generated: 0, failed: 0 }),
         startExtractionReport: () => message, finishExtractionReport: (id, msg, report) => { msg.report = report; },
         extractionSwipe: () => 0, renderExtractionReport: () => {},
+        getAllCharacters: () => [],
         document: { querySelector: () => null }, LOG_PREFIX: 'test',
     });
     return { run: (options = { regenerate: true }) => extraction.extractStateFromMessage(message.mes, 0, options),

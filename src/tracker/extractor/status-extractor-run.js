@@ -1,3 +1,4 @@
+import { getAllCharacters } from '../../characters/character-repository.js';
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../../core/constants.js';
@@ -160,9 +161,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // Those steps change the object in place, and the original is what explains the
         // reader's decisions, including values the tracker later refuses.
         const readerOutput = structuredClone(parsed);
-        const warnings = normalizeCollectionUpdates(parsed, trackerSettings);
         const liveState = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
         if (!liveState || (options.regenerate && !canReplace())) return { applied: false, reason: 'reply changed while reading' };
+        const warnings = normalizeCollectionUpdates(parsed, trackerSettings, liveState, getAllCharacters());
         expandNumericDeltas(parsed, liveState, trackerSettings);
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.

@@ -1,3 +1,4 @@
+import { collectionAppliesTo } from '../core/collection-targets.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
 
@@ -37,12 +38,8 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
 
     // Validate target
     const isPlayer = actor.name === deps.getCurrentPersonaName(); // Simple check for player
-    if (isPlayer && colDef.target === 'npc') {
-        debugLog(`Blocked collection update: ${collectionId} is NPC-only, but target is player.`);
-        return;
-    }
-    if (!isPlayer && colDef.target === 'player') {
-        debugLog(`Blocked collection update: ${collectionId} is player-only, but target is NPC (${actor.name}).`);
+    if (!collectionAppliesTo(colDef, isPlayer ? 'player' : 'npc', actor)) {
+        debugLog(`Blocked collection update: ${collectionId} does not apply to ${actor.name}.`);
         return;
     }
 

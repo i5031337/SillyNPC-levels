@@ -1,3 +1,4 @@
+import { buildCollectionTargetsEditor } from './ui-collection-targets.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { Popup } from '../../../../../../popup.js';
 import { escapeHtml, moveInList } from '../../core/utils.js';
@@ -43,7 +44,7 @@ export function buildCollectionsEditor(onRefresh) {
                 { name: 'quantity', label: 'Quantity', type: 'number', isPrimary: false, isStatic: false, defaultValue: '1' },
                 { name: 'description', label: 'Description', type: 'text', isMultiline: true, isPrimary: false, isStatic: true, defaultValue: '' }
             ],
-            target: 'all',
+            targets: ['player', 'npc'],
             includeInImagePrompt: false,
         });
         saveSettings();
@@ -67,11 +68,6 @@ function createCollectionRow(col, index, collections, bulk, onRefresh) {
         <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; margin-bottom:12px;">
             <input type="text" class="text_pole col-name" value="${escapeHtml(col.name)}" placeholder="Collection Name" style="flex:2">
             <input type="text" class="text_pole col-id" value="${escapeHtml(col.id)}" placeholder="id (slug)" style="flex:1">
-            <select class="text_pole col-target" style="flex:1">
-                <option value="all" ${col.target === 'all' ? 'selected' : ''}>All Targets</option>
-                <option value="player" ${col.target === 'player' ? 'selected' : ''}>Player Only</option>
-                <option value="npc" ${col.target === 'npc' ? 'selected' : ''}>NPCs Only</option>
-            </select>
             <label class="sillynpc-check-group" style="margin-right:10px; cursor:pointer;" title="Visible in Tracker">
                 <input type="checkbox" class="col-visible" ${col.visible !== false ? 'checked' : ''}>
                 <small>Visible</small>
@@ -84,6 +80,7 @@ function createCollectionRow(col, index, collections, bulk, onRefresh) {
             <button type="button" class="menu_button move-down-btn" title="Move Down" ${index === collections.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
             <button type="button" class="menu_button delete-btn" title="Delete Collection" style="color: var(--sillynpc-danger);"><i class="fa-solid fa-trash"></i></button>
         </div>
+        <div class="col-targets-slot"></div>
         <div style="display:flex; gap:8px; width:100%; align-items:center; margin-bottom:12px;">
             <small class="sillynpc-field-note" title="What this collection holds, in your own words. Sent to the reader with every extraction.">What it holds:</small>
             <input type="text" class="text_pole col-hint" value="${escapeHtml(col.hint || '')}"
@@ -117,7 +114,7 @@ function wireCollectionControls(colWrap, col, index, collections, bulk, onRefres
     colWrap.querySelector('.col-name').addEventListener('input', (e) => { col.name = e.target.value; saveSettings(); });
     colWrap.querySelector('.col-hint')?.addEventListener('input', (e) => { col.hint = e.target.value; saveSettings(); });
     wireCollectionIdRename(colWrap, col, collections, onRefresh);
-    colWrap.querySelector('.col-target').addEventListener('change', (e) => { col.target = e.target.value; saveSettings(); });
+    colWrap.querySelector('.col-targets-slot').append(buildCollectionTargetsEditor(col, saveSettings));
     colWrap.querySelector('.col-image-prompt').addEventListener('change', (e) => {
         col.includeInImagePrompt = e.target.checked;
         saveSettings();
