@@ -1,3 +1,4 @@
+import { constrainNumericStat } from '../../tracker/numeric-stat-bounds.js';
 import { choiceOptionsHtml, isChoiceField } from '../shared/ui-choice.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { isStaticField } from '../../core/constants.js';
@@ -57,7 +58,8 @@ export function renderCollectionUI(tabId, actor, settings, options = {}) {
                                         `;
                                     }
                                     const width = f.isPrimary ? 'flex:1; min-width:150px;' : 'width:80px;';
-                                    return `<input type="${f.type === 'number' ? 'number' : 'text'}" 
+                                    return `<input type="${f.type === 'number' ? 'number' : 'text'}"
+                                                   ${f.type === 'number' ? `step="any" min="${escapeHtml(f.min ?? '')}" max="${escapeHtml(f.maxStatValue ?? '')}"` : ''}
                                                    class="text_pole item-field-input" 
                                                    data-field="${escapeHtml(f.name)}" 
                                                    value="${escapeHtml(String(val))}" 
@@ -231,7 +233,11 @@ export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
 
         let value = input.value;
         if (input.type === 'checkbox') value = input.checked;
-        else if (input.type === 'number') value = parseFloat(input.value) || 0;
+        else if (input.type === 'number') {
+            const bounded = constrainNumericStat(fieldDef, input.value === '' ? 0 : input.value, items[idx][fieldName]);
+            value = parseFloat(bounded) || 0;
+            input.value = String(value);
+        }
 
         // Nothing settled since the last commit - skip the whole write.
         if (items[idx][fieldName] === value) return;

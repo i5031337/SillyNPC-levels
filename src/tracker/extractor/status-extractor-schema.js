@@ -40,6 +40,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
         if (!relevant.length) return null;
         const itemShape = (col) => ({
             type: 'object',
+            required: [(col.fields || []).find(field => field.isPrimary)?.name || 'name'],
             properties: Object.fromEntries((col.fields || []).map(f => [
                 f.name,
                 { type: f.type === 'number' ? 'number' : (f.type === 'boolean' ? 'boolean' : 'string') },

@@ -38,11 +38,15 @@ export function describeCollections(trackerSettings) {
     for (const col of trackerSettings.collections || []) {
         const fields = (col.fields || []).map((f) => {
             const type = f.type && f.type !== 'text' ? ` (${f.type})` : '';
-            const choices = (f.options || []).length ? ` [one of ${f.options.join(', ')}]` : '';
+            const choices = f.type !== 'number' && (f.options || []).length ? ` [one of ${f.options.join(', ')}]` : '';
             // Said out loud, because the state no longer shows these on anything that is
             // already held. Without it a model could reasonably conclude they are not
             // wanted at all and stop supplying one when adding - and the first time an item
             // is added is the only chance the library gets to learn its description.
+            const range = f.type === 'number' ? [
+                String(f.min ?? '').trim() ? `minimum ${f.min}` : '',
+                String(f.maxStatValue ?? '').trim() ? `maximum ${f.maxStatValue}` : '',
+            ].filter(Boolean).join(', ') : '';
             const library = !f.isPrimary && f.isMultiline && isStaticField(f)
                 ? ' [write it when adding; kept in the library afterwards]' : '';
             /* What the field is for, in the owner's words. A collection could say what it
@@ -50,7 +54,7 @@ export function describeCollections(trackerSettings) {
                nowhere to say anything at all - so "value (number)" reached the reader as a
                number called Cost with nothing saying what it costs. */
             const says = String(f.hint ?? '').trim();
-            return `${f.name}${type}${choices}`
+            return `${f.name}${type}${choices}${range ? ` [${range}]` : ''}`
                 + `${f.isPrimary ? ' [identifies the item]' : ''}${library}`
                 + `${says ? ` - ${endsSentence(says)}` : ''}`;
         }).join(', ');

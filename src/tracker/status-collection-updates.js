@@ -15,7 +15,7 @@ function normaliseItem(itemData, fields, previous = null) {
         }
 
         if (fieldDef.type === 'number') {
-            out[fieldDef.name] = parseFloat(val) || 0;
+            out[fieldDef.name] = parseFloat(deps.constrainToDefinition(fieldDef, parseFloat(val) || 0, previous?.[fieldDef.name])) || 0;
         } else if (fieldDef.type === 'boolean') {
             out[fieldDef.name] = (val === true || val === 'true');
         } else {
@@ -140,8 +140,10 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
 
     // Handle "update"
     if (Array.isArray(update.update)) {
+        const primary = colDef.fields.find(field => field.isPrimary)?.name || 'name';
         for (const upd of update.update) {
-            if (upd.name) updateItem(actor, actualCollectionId, upd.name, upd);
+            const itemName = upd[primary] ?? upd.name;
+            if (itemName !== undefined && itemName !== null) updateItem(actor, actualCollectionId, itemName, upd);
         }
     }
 }

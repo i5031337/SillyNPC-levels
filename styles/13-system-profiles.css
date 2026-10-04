@@ -7,3 +7,25 @@
 .sillynpc-system-profile-header small { overflow-wrap: anywhere; }
 .sillynpc-system-profile-row textarea { width: 100%; resize: vertical; }
 .sillynpc-system-profile-row select, .sillynpc-system-profile-row .profile-placeholder { width: 100%; }
+
+.sillynpc-system-builder .f-min,
+.sillynpc-system-builder .f-max {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+.sillynpc-system-builder .f-min::-webkit-inner-spin-button,
+.sillynpc-system-builder .f-min::-webkit-outer-spin-button,
+.sillynpc-system-builder .f-max::-webkit-inner-spin-button,
+.sillynpc-system-builder .f-max::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.sillynpc-collection-field-row > * { flex-shrink: 0; }
+.sillynpc-collection-field-row .f-label { min-width: 110px; }
+.sillynpc-collection-bound,
+.sillynpc-collection-field-actions { display: inline-flex; align-items: center; gap: 5px; }
+.sillynpc-collection-field-actions { margin-left: auto; }
+.col-targets .is-disabled { opacity: .55; cursor: default; }
+.sillynpc-range-error { flex-basis: 100%; color: var(--sillynpc-danger, #e57373); }
+.sillynpc-range-error[hidden] { display: none; }

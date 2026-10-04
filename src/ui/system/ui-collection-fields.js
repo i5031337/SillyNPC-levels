@@ -1,10 +1,13 @@
+import { attachRangeValidation } from './ui-system-range.js';
+import { ensureCollectionIdentifier, moveCollectionField, deleteCollectionField } from '../../core/collection-fields.js';
 import { saveSettings } from '../../core/settings.js';
-import { escapeHtml, moveInList } from '../../core/utils.js';
+import { escapeHtml } from '../../core/utils.js';
 import { renameCollectionField } from '../../tracker/status-logic.js';
 import { parseOptions } from './ui-system-stats.js';
 
 /** Render and wire one collection's field rows. Rebuild after structural edits. */
 export function renderCollectionFields(col, fieldsList, onRefresh) {
+    if (ensureCollectionIdentifier(col)) saveSettings();
     fieldsList.replaceChildren();
     col.fields.forEach((field, index) => {
         const box = createFieldBox();
@@ -26,7 +29,9 @@ function createFieldBox() {
 
 function createFieldControls(col, field, fIdx) {
     const fRow = document.createElement('div');
+    fRow.className = 'sillynpc-collection-field-row';
     fRow.style.display = 'flex';
+    fRow.style.flexWrap = 'wrap';
     fRow.style.gap = '5px';
     fRow.style.alignItems = 'center';
     fRow.innerHTML = `
@@ -38,26 +43,39 @@ function createFieldControls(col, field, fIdx) {
             <option value="number" ${field.type === 'number' ? 'selected' : ''}>Num</option>
             <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Bool</option>
         </select>
-        <label class="sillynpc-check-group-tight" title="Primary identifier">
-            <input type="checkbox" class="f-primary" ${field.isPrimary ? 'checked' : ''}>
-            <small class="sillynpc-row-hint">Pri</small>
-        </label>
+        ${fIdx === 0 ? '<small class="sillynpc-collection-identifier" title="The first field always identifies each entry and cannot be moved or deleted.">Identifier</small>' : ''}
+        ${field.type === 'text' ? `
         <label class="sillynpc-check-group-tight" title="Edit this field in a box you can write several lines in, rather than on one line. Text fields only.&#10;&#10;Ticked together with Static, it also means the field is prose belonging to the item rather than to whoever is holding it - see Static.">
-            <input type="checkbox" class="f-multiline" ${field.isMultiline ? 'checked' : ''} ${field.type !== 'text' ? 'disabled' : ''}>
+            <input type="checkbox" class="f-multiline" ${field.isMultiline ? 'checked' : ''}>
             <small class="sillynpc-row-hint">Multi</small>
         </label>
-        <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody.&#10;&#10;The tracker's reader is shown the value every message - it has to know what a thing is to judge what a message did with it - but it cannot change one: the Library's value is written back over whatever it returns. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers ignore this and are always per-holder, unless the number is the Primary field.">
+        ` : ''}
+        ${field.type !== 'number' || field.isPrimary ? `
+        <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody.&#10;&#10;The tracker's reader is shown the value every message - it has to know what a thing is to judge what a message did with it - but it cannot change one: the Library's value is written back over whatever it returns. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers ignore this and are always per-holder, unless the number is the identifier.">
             <input type="checkbox" class="f-static" ${field.isStatic !== false ? 'checked' : ''}>
             <small class="sillynpc-row-hint">Static</small>
         </label>
-        <input type="text" class="text_pole f-options"
+        ` : ''}
+        ${field.type === 'number' ? `
+            <label class="sillynpc-collection-bound"><small class="sillynpc-field-note">Min:</small>
+            <input type="number" step="any" class="text_pole f-min" value="${escapeHtml(field.min ?? '')}"
+                   placeholder="Min" title="Optional minimum value. Leave blank for no lower bound."
+                   style="width:55px; font-size:var(--sillynpc-text-sm);"></label>
+            <label class="sillynpc-collection-bound"><small class="sillynpc-field-note">Max:</small>
+            <input type="number" step="any" class="text_pole f-max" value="${escapeHtml(field.maxStatValue ?? '')}"
+                   placeholder="Max" title="Optional maximum value. Leave blank for no upper bound."
+                   style="width:55px; font-size:var(--sillynpc-text-sm);"></label>
+        ` : `<input type="text" class="text_pole f-options"
                value="${escapeHtml((field.options || []).join(', '))}"
                placeholder="Any value"
                title="Allowed values, separated by commas. Leave empty to allow anything."
-               style="width:110px; font-size:var(--sillynpc-text-sm);">
-        <button type="button" class="menu_button move-field-up" title="Move up" style="padding:0 5px;" ${fIdx === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
+               style="width:110px; font-size:var(--sillynpc-text-sm);">`}
+        ${fIdx === 0 ? '' : `
+        <span class="sillynpc-collection-field-actions">
+        <button type="button" class="menu_button move-field-up" title="Move up" style="padding:0 5px;" ${fIdx === 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
         <button type="button" class="menu_button move-field-down" title="Move down" style="padding:0 5px;" ${fIdx === col.fields.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
-        <button type="button" class="menu_button delete-field-btn" style="padding:0 5px; color:var(--red);"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="menu_button delete-field-btn" style="padding:0 5px; color:var(--red);"><i class="fa-solid fa-xmark"></i></button></span>`}
+
     `;
     return fRow;
 }
@@ -66,6 +84,7 @@ function wireFieldControls(fRow, col, field, fIdx, fieldsList, onRefresh) {
     wireFieldRename(fRow, col, field, onRefresh);
     wireFieldProperties(fRow, col, field, fieldsList, onRefresh);
     wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh);
+    attachRangeValidation(fRow, fRow.querySelector('.f-min'), fRow.querySelector('.f-max'));
 }
 
 function wireFieldRename(fRow, col, field, onRefresh) {
@@ -104,49 +123,39 @@ function wireFieldRename(fRow, col, field, onRefresh) {
 function wireFieldProperties(fRow, col, field, fieldsList, onRefresh) {
     fRow.querySelector('.f-label').addEventListener('input', (e) => { field.label = e.target.value; saveSettings(); });
     fRow.querySelector('.f-default').addEventListener('input', (e) => { field.defaultValue = e.target.value; saveSettings(); });
-    fRow.querySelector('.f-options').addEventListener('change', (e) => {
+    fRow.querySelector('.f-options')?.addEventListener('change', (e) => {
         field.options = parseOptions(e.target.value);
         saveSettings();
         renderCollectionFields(col, fieldsList, onRefresh);
     });
+    fRow.querySelector('.f-min')?.addEventListener('input', (e) => { field.min = e.target.value; saveSettings(); });
+    fRow.querySelector('.f-max')?.addEventListener('input', (e) => { field.maxStatValue = e.target.value; saveSettings(); });
     fRow.querySelector('.f-type').addEventListener('change', (e) => {
         field.type = e.target.value;
-        const multi = fRow.querySelector('.f-multiline');
-        multi.disabled = field.type !== 'text';
-        if (multi.disabled) { multi.checked = false; field.isMultiline = false; }
+        if (field.type === 'number') delete field.options;
+        if (field.type !== 'text') field.isMultiline = false;
 
         // Default isStatic logic: numbers are dynamic by default, others static
-        const staticCheck = fRow.querySelector('.f-static');
         field.isStatic = field.type !== 'number';
-        staticCheck.checked = field.isStatic;
 
         saveSettings();
+        renderCollectionFields(col, fieldsList, onRefresh);
     });
-    fRow.querySelector('.f-primary').addEventListener('change', (e) => {
-        if (e.target.checked) {
-            col.fields.forEach(f => f.isPrimary = false);
-            field.isPrimary = true;
-            renderCollectionFields(col, fieldsList, onRefresh);
-        } else {
-            field.isPrimary = false;
-        }
-        saveSettings();
-    });
-    fRow.querySelector('.f-multiline').addEventListener('change', (e) => { field.isMultiline = e.target.checked; saveSettings(); });
-    fRow.querySelector('.f-static').addEventListener('change', (e) => { field.isStatic = e.target.checked; saveSettings(); });
+    fRow.querySelector('.f-multiline')?.addEventListener('change', (e) => { field.isMultiline = e.target.checked; saveSettings(); });
+    fRow.querySelector('.f-static')?.addEventListener('change', (e) => { field.isStatic = e.target.checked; saveSettings(); });
 }
 
 function wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh) {
     for (const [selector, delta] of [['.move-field-up', -1], ['.move-field-down', 1]]) {
         fRow.querySelector(selector)?.addEventListener('click', () => {
-            if (!moveInList(col.fields, fIdx, delta)) return;
+            if (!moveCollectionField(col, fIdx, delta)) return;
             saveSettings();
             renderCollectionFields(col, fieldsList, onRefresh);
         });
     }
 
-    fRow.querySelector('.delete-field-btn').addEventListener('click', () => {
-        col.fields.splice(fIdx, 1);
+    fRow.querySelector('.delete-field-btn')?.addEventListener('click', () => {
+        if (!deleteCollectionField(col, fIdx)) return;
         saveSettings();
         renderCollectionFields(col, fieldsList, onRefresh);
     });

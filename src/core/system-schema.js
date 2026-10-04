@@ -1,3 +1,4 @@
+import { ensureCollectionIdentifier } from './collection-fields.js';
 import { collectionTargets } from './collection-targets.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
@@ -86,7 +87,7 @@ function collections(source) {
         const collection = object(value);
         const id = uniqueId(collection.id || collection.name, used);
         const fieldIds = new Set();
-        return {
+        const normalized = {
             id,
             name: string(collection.name, id),
             targets: collectionTargets(collection),
@@ -102,6 +103,8 @@ function collections(source) {
                     label: string(field.label, string(field.name, fieldId)),
                     type: ['number', 'boolean'].includes(field.type) ? field.type : 'text',
                     defaultValue: copy(field.defaultValue ?? ''),
+                    ...(field.type === 'number' ? { min: String(field.min ?? ''), maxStatValue: String(field.maxStatValue ?? '') }
+                        : Array.isArray(field.options) ? { options: field.options.map(value => String(value).trim()).filter(Boolean) } : {}),
                     guidance: string(field.guidance, string(field.hint)),
                     isPrimary: field.isPrimary === true,
                     isMultiline: field.isMultiline === true,
@@ -111,6 +114,8 @@ function collections(source) {
                 };
             }),
         };
+        ensureCollectionIdentifier(normalized);
+        return normalized;
     });
 }
 

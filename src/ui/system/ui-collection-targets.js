@@ -20,6 +20,15 @@ export function buildCollectionTargetsEditor(collection, onChange) {
             choices.push({ value, label: `Missing template: ${value.slice(9)}` });
         }
     }
+    const refreshAvailability = () => {
+        const allNpcs = wrap.querySelector('.col-target[value="npc"]').checked;
+        for (const input of wrap.querySelectorAll('.col-target')) {
+            if (!input.value.startsWith('template:')) continue;
+            input.disabled = allNpcs;
+            input.closest('label').classList.toggle('is-disabled', allNpcs);
+            input.closest('label').title = allNpcs ? 'Included by All NPCs. Uncheck All NPCs to choose individual templates.' : '';
+        }
+    };
     for (const { value, label: text } of choices) {
         const label = document.createElement('label');
         label.className = 'sillynpc-check-group';
@@ -32,15 +41,12 @@ export function buildCollectionTargetsEditor(collection, onChange) {
             collection.targets = [...wrap.querySelectorAll('.col-target:checked')].map(input => input.value);
             delete collection.target;
             delete collection.npcTemplateId;
+            refreshAvailability();
             onChange();
         });
         label.append(check, document.createTextNode(text));
         wrap.append(label);
     }
-    const note = document.createElement('small');
-    note.className = 'notes';
-    note.style.width = '100%';
-    note.textContent = 'Select any combination. All NPCs includes every template. No selections disables this collection for everyone.';
-    wrap.append(note);
+    refreshAvailability();
     return wrap;
 }

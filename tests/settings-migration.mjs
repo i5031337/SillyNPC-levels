@@ -1,3 +1,4 @@
+import { ensureCollectionIdentifier } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -13,7 +14,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
-    'normalizeHudLayoutId',
+    'normalizeHudLayoutId', 'ensureCollectionIdentifier',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -28,7 +29,7 @@ function migration() {
         NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
-        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId);
+        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier);
     return { normalize, saves };
 }
 
@@ -98,4 +99,20 @@ test('legacy profile hints enter old System presets before the flat setting is r
     assert.equal(settings.statusTracker.presets.old.config.profileHints.appearance,
         'Describe distinguishing features');
     assert.equal('profileHints' in settings, false);
+});
+
+test('collection identifiers normalize on startup while retaining existing item identities', () => {
+    const { normalize } = migration();
+    const settings = { characters: [], statusTracker: { playerStats: [], collections: [
+        { id: 'moves', fields: [{ name: 'pp' }, { name: 'move', isPrimary: true }] },
+        { id: 'empty', fields: [] },
+        { id: 'legacy', fields: ['quantity', 'name'] },
+    ] } };
+    normalize(settings);
+    assert.equal(settings.statusTracker.collections[0].fields[0].name, 'move');
+    assert.equal(settings.statusTracker.collections[1].fields[0].name, 'name');
+    assert.equal(settings.statusTracker.collections[2].fields[0].name, 'name');
+    for (const collection of settings.statusTracker.collections) {
+        assert.equal(collection.fields.filter(field => field.isPrimary).length, 1);
+    }
 });

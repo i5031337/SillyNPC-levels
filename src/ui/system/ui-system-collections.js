@@ -12,6 +12,28 @@ export function buildCollectionsEditor(onRefresh) {
     const settings = getSettings().statusTracker;
     const collections = settings.collections || [];
 
+    const guide = document.createElement('div');
+    guide.className = 'sillynpc-collection-guide';
+    guide.innerHTML = `
+        <p class="notes">Collections hold lists of entries, such as inventory, skills or clothing.
+            Use stats or profile fields for individual character attributes.</p>
+        <details style="margin-bottom:12px;">
+            <summary>Choosing stats, profiles or collections</summary>
+            <ul>
+                <li><b>Stats:</b> tracked values such as health, stamina or level. Define player stats
+                    in the Player tab, or NPC stats in the NPC tab and select them for each NPC template.</li>
+                <li><b>Profiles:</b> character details such as appearance, occupation or background.
+                    Define NPC profile fields in NPC Profile and select them for each NPC template.</li>
+                <li><b>Collections:</b> one entry per item, skill or piece of clothing.
+                    An inventory collection might have a name, quantity and description.</li>
+                <li><b>Identifier:</b> the first field always identifies each entry, usually by name.
+                    The reader must include this value when adding an entry; an entry without an identifier is skipped.</li>
+                <li><b>Static:</b> static text is shared through the Item Library for the same item across holders.
+                    Untick Static for text that should change per holder, such as equipped status.</li>
+            </ul>
+        </details>`;
+    wrap.append(guide);
+
     // Migration logic: convert string fields to object fields
     collections.forEach(col => {
         if (Array.isArray(col.fields) && col.fields.length > 0 && typeof col.fields[0] === 'string') {

@@ -92,7 +92,15 @@ try:
             const input = [...targetEditor.querySelectorAll('.col-target')].find(input => input.value === value);
             input.checked = checked; input.dispatchEvent(new Event('change'));
           };
+          const templateDisabledByAllNpcs = [...targetEditor.querySelectorAll('.col-target')]
+              .filter(input => input.value.startsWith('template:')).every(input => input.disabled);
           tick('npc', false); tick('template:human', true);
+          tick('npc', true);
+          const individualSelectionPreserved = targetEditor.querySelector('[value="template:human"]').checked
+              && targetEditor.querySelector('[value="template:human"]').disabled;
+          tick('npc', false);
+          const individualSelectionRestored = targetEditor.querySelector('[value="template:human"]').checked
+              && !targetEditor.querySelector('[value="template:human"]').disabled;
           const savedTargets = normalizeSystemDefinition({ schemaVersion: 1, collections: [edited] }).collections[0].targets;
           const targetRoundtrip = [...buildCollectionTargetsEditor(edited, () => {}).querySelectorAll('.col-target:checked')].map(input => input.value);
           tick('player', false); tick('template:human', false);
@@ -141,6 +149,7 @@ try:
           ], { characters: [{ name: 'Saori', stats: {}, collections: {} }] }, settings.statusTracker);
           result = {
             pokemonReviewCollections, humanReviewCollections,
+            templateDisabledByAllNpcs, individualSelectionPreserved, individualSelectionRestored,
             savedTargets, targetRoundtrip, targetSaves, emptyTargetsDisabled,
             collectionTargets: [...collectionsEditor.querySelectorAll('.col-targets')].map(group => ({
               selected: [...group.querySelectorAll('.col-target:checked')].map(input => input.value),
@@ -153,6 +162,7 @@ try:
             pokemonReaderCollections: Object.keys(summariseCollections(state.characters[1], 'npc', settings.statusTracker)),
             schemaNpcCollections: Object.keys(schema.properties.characters.items.properties.collections.properties),
             schemaPlayerCollections: Object.keys(schema.properties.player.properties.collections.properties),
+            requiredItemIdentifier: schema.properties.characters.items.properties.collections.properties.moves.properties.add.items.required,
             trackerCollectionTargets: box.textContent.includes('Thunderbolt') && box.textContent.includes('Trainer jacket') && box.textContent.includes('Player jacket')
               && !box.textContent.includes('Wrong player move') && !box.textContent.includes('Wrong human move') && !box.textContent.includes('Wrong pokemon clothes'),
             readerCollectionTargets: reader.includes('npcTemplateId: pokemon') && reader.includes('npcTemplateId: human'),
@@ -189,10 +199,12 @@ try:
     assert [target['selected'] for target in result['collectionTargets']] == [['template:pokemon'], ['player', 'template:human']], result
     assert all(target['options'] == ['player', 'npc', 'template:human', 'template:pokemon'] for target in result['collectionTargets']), result
     assert result['savedTargets'] == result['targetRoundtrip'] == ['player', 'template:human'], result
-    assert result['targetSaves'] == 4 and result['emptyTargetsDisabled'], result
+    assert result['templateDisabledByAllNpcs'] and result['individualSelectionPreserved'] and result['individualSelectionRestored'], result
+    assert result['targetSaves'] == 6 and result['emptyTargetsDisabled'], result
     assert result['playerCollections'] == result['playerReaderCollections'] == ['clothes'], result
     assert result['humanCollections'] == result['humanReaderCollections'] == ['clothes'], result
     assert result['pokemonCollections'] == result['pokemonReaderCollections'] == ['moves'], result
+    assert result['requiredItemIdentifier'] == ['name'], result
     assert result['schemaNpcCollections'] == ['moves', 'clothes'] and result['schemaPlayerCollections'] == ['clothes'], result
     assert result['trackerCollectionTargets'] and result['readerCollectionTargets'], result
     assert result['templates'] == ['Human', 'Pokémon'], result

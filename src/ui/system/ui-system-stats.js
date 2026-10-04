@@ -1,3 +1,4 @@
+import { attachRangeValidation } from './ui-system-range.js';
 import { ensureNpcStatIds } from './ui-npc-templates.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { Popup } from '../../../../../../popup.js';
@@ -209,6 +210,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         row.querySelector('.stat-max')?.addEventListener('input', (e) => { stat.maxStatValue = e.target.value; saveSettings(); });
         // The lower bound is where a meter starts filling from, so the HUD is showing it.
         row.querySelector('.stat-min')?.addEventListener('input', (e) => { stat.min = e.target.value; saveSettings(); updateHUD(); });
+        attachRangeValidation(row, row.querySelector('.stat-min'), row.querySelector('.stat-max'));
         row.querySelector('.stat-hint')?.addEventListener('input', (e) => { stat.hint = e.target.value; saveSettings(); });
         row.querySelector('.stat-length')?.addEventListener('input', (e) => {
             // Kept as typed rather than coerced: a half-typed number must not become 0,

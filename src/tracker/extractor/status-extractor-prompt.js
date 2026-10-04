@@ -200,7 +200,7 @@ export function buildNewNpcExample(trackerSettings = {}) {
                 field.name, [String(field.hint || '').trim(),
                     field.name === primary ? 'identifies the item' : '',
                     field.type && field.type !== 'text' ? field.type : '',
-                    field.options?.length ? `choose: ${field.options.join(', ')}` : '',
+                    field.type !== 'number' && field.options?.length ? `choose: ${field.options.join(', ')}` : '',
                 ].filter(Boolean).join('; '),
             ]));
             return [col.id, { add: [item] }];

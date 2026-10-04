@@ -260,7 +260,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-collection-targets.js` | Collection target checkboxes for player and NPC template combinations. |
 | `src/core/collection-targets.js` | Shared collection targeting rules for sheets, prompts, and updates. |
 | `tests/collection-targets.mjs` | Template target normalization and update boundary tests. |
-| `src/ui/system/ui-collection-fields.js` | Collection field controls and row wiring for the schema editor. |
+| `src/ui/system/ui-collection-fields.js` | Collection field controls with a pinned first identifier. |
+| `src/ui/system/ui-system-range.js` | Inline validation of optional minimum and maximum values in Systems. |
+| `src/core/collection-fields.js` | Require one collection identifier and preserve it during field edits. |
 | `src/ui/system/ui-system-stats.js` | Stat schema editor. |
 | `src/ui/system/ui-system-stat-policy.js` | Stat update policy and level-up eligibility controls. |
 | `src/ui/system/ui-system-manager.js` | Reusable System manager, import, export, and selection. |

@@ -38,6 +38,7 @@ export function choiceOptionsHtml(options, current) {
 
 /** Whether this definition restricts what it may hold. */
 export function isChoiceField(def) {
+    if (def?.type === 'number' || def?.type === 'bar') return false;
     return (def?.options || []).some(v => String(v ?? '').trim());
 }
 
