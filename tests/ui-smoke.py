@@ -54,11 +54,14 @@ with browser_session() as browser:
             rewardHost.style.width = '280px';
             rewardHost.append(rewardUi); document.body.append(rewardHost);
             try {
-              const details = rewardUi.querySelector('details');
-              result.rewardsInitiallyCollapsed = details.hidden && !details.open;
+              const options = rewardUi.querySelector('.col-rewards-options');
+              result.rewardsInitiallyHidden = options.hidden;
               const enabled = rewardUi.querySelector('.col-rewards-enabled');
               enabled.click();
-              result.rewardsEnabled = !details.hidden && details.open && rewardCollection.levelUpRewards.enabled;
+              result.rewardsEnabled = !options.hidden && !rewardUi.querySelector('details')
+                && rewardCollection.levelUpRewards.enabled;
+              const restoredRewards = buildCollectionRewardsEditor(rewardCollection, () => {});
+              result.rewardsVisibleOnLoad = !restoredRewards.querySelector('.col-rewards-options').hidden;
               const mode = rewardUi.querySelector('.col-rewards-mode');
               result.rewardsDefaultGuided = mode.value === 'guided'
                 && rewardUi.querySelector('.col-rewards-interval').value === '1'
@@ -89,7 +92,7 @@ with browser_session() as browser:
               interval.value = '2'; interval.dispatchEvent(new Event('input'));
               result.rewardsValidInterval = interval.checkValidity() && rewardCollection.levelUpRewards.interval === 2;
               enabled.click();
-              result.rewardsDisabled = details.hidden && !rewardCollection.levelUpRewards.enabled && rewardSaves > 0;
+              result.rewardsDisabled = options.hidden && !rewardCollection.levelUpRewards.enabled && rewardSaves > 0;
             } finally { rewardHost.remove(); }
             const scene = buildSceneContext({ global: {},
               player: { name: 'Smoke Player', stats: {}, collections: {} },
@@ -203,7 +206,7 @@ with browser_session() as browser:
         'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
         'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored',
         'collectionWarningsVisible', 'collectionWarningsCleared',
-        'rewardsInitiallyCollapsed', 'rewardsEnabled', 'rewardsActualFields',
+        'rewardsInitiallyHidden', 'rewardsEnabled', 'rewardsVisibleOnLoad', 'rewardsActualFields',
         'rewardsIdentifierValidation', 'rewardsRangeValidation', 'rewardsValidSchedule',
         'rewardsNarrowLayout', 'rewardsGuidedControls', 'rewardsIntervalValidation',
         'rewardsValidInterval', 'rewardsDisabled',
@@ -217,7 +220,7 @@ with browser_session() as browser:
         builderVisible: !!document.querySelector('.sillynpc-system-builder')};""")
     assert system_nav == {'section': 'System', 'page': 'systems', 'subtabsHidden': True,
                           'panelLabel': 'sillynpc-section-systems', 'builderVisible': True}, system_nav
-    execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
+    execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player Stats').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
         return {rows: rows.length,
           obsoletePolicies: rows.filter(row => row.querySelector('.stat-update-policy')).length,

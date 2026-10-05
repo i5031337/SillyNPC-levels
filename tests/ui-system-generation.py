@@ -65,7 +65,7 @@ with browser_session() as browser:
               && panel.querySelector('.gen-summary').textContent.includes('scheduled');
             panel.querySelector('.gen-edit').click();
             const tab = text => [...panel.querySelectorAll('[role=tab]')].find(el => el.textContent === text).click();
-            tab('Player');
+            tab('Player Stats');
             const energy = [...panel.querySelectorAll('.sillynpc-alias-row')].find(row => row.querySelector('.stat-name')?.value === 'Energy');
             input(energy.querySelector('.stat-name'), 'Focus', 'change');
             input(energy.querySelector('.stat-min'), '20');

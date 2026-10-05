@@ -14,11 +14,9 @@ export function buildCollectionRewardsEditor(collection, save) {
     enabled.className = 'col-rewards-enabled';
     enabled.checked = config.enabled;
     enabledLabel.append(enabled, document.createTextNode(' Level-up rewards'));
-    const details = document.createElement('details');
-    details.className = 'col-rewards-details';
-    details.hidden = !config.enabled;
-    const summary = document.createElement('summary');
-    summary.textContent = 'Configure collection rewards';
+    const options = document.createElement('div');
+    options.className = 'col-rewards-options';
+    options.hidden = !config.enabled;
     const note = document.createElement('p');
     note.className = 'notes';
     note.textContent = 'Uses this collection’s targets. Earned entries await tracker review; authoring a reward does not add it to holdings or the Item Library.';
@@ -38,13 +36,12 @@ export function buildCollectionRewardsEditor(collection, save) {
     };
     enabled.addEventListener('change', () => {
         config.enabled = enabled.checked;
-        details.hidden = !config.enabled;
-        details.open = config.enabled;
+        options.hidden = !config.enabled;
         persist();
     });
     mode.addEventListener('change', () => { config.mode = mode.value; persist(); render(); });
-    details.append(summary, note, mode, content);
-    wrap.append(enabledLabel, details);
+    options.append(note, mode, content);
+    wrap.append(enabledLabel, options);
     render();
     return wrap;
 }

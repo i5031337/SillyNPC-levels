@@ -3,5 +3,6 @@ temp_*.txt
 *.bak
 *.orig
 *.rej
+*.pyc
 .DS_Store
 Thumbs.db

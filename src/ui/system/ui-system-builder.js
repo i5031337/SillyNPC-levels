@@ -35,10 +35,10 @@ export function buildSystemBuilder(onRefresh, context = liveSystemContext) {
 
     const tabList = [
         { id: 'global', label: 'Global' },
-        { id: 'npc', label: 'NPC' },
-        { id: 'npc-templates', label: 'NPC Templates' },
-        { id: 'player', label: 'Player' },
+        { id: 'npc', label: 'NPC Stats' },
         { id: 'npc-profile', label: 'NPC Profile' },
+        { id: 'npc-templates', label: 'NPC Templates' },
+        { id: 'player', label: 'Player Stats' },
         { id: 'player-profile', label: 'Player Profile' },
         { id: 'collections', label: 'Collections' }
     ];
