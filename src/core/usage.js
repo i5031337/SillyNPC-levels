@@ -1,4 +1,5 @@
-import { getSettings, saveSettings } from './settings.js';
+import { getSettings } from './settings.js';
+import { saveSettingsDebounced } from '../../../../../../script.js';
 import { countTokens } from './tokens.js';
 import { debugLog } from './constants.js';
 
@@ -9,6 +10,8 @@ import { debugLog } from './constants.js';
  * so counting reply tokens for it would be inventing a number.
  */
 export const USAGE_KINDS = [
+    { id: 'system', label: 'System Generation', sends: 'text',
+      note: 'All planning, definition, and repair requests for generated Systems.' },
     { id: 'extraction', label: 'Tracker Extraction', sends: 'text',
       note: 'One per message, when the tracker is set to a separate pass.' },
     { id: 'lore', label: 'Lore Generation', sends: 'text',
@@ -63,7 +66,7 @@ export async function recordUsage(kindId, { prompt = '', reply = '' } = {}) {
         entry.replyTokens += replyTokens;
         entry.lastTotal = promptTokens + replyTokens;
         entry.lastWhen = Date.now();
-        saveSettings();
+        saveSettingsDebounced();
     } catch (err) {
         debugLog('Could not record usage', err);
     }
@@ -88,5 +91,5 @@ export function resetUsage() {
     const settings = getSettings();
     settings.usage = {};
     getUsage();
-    saveSettings();
+    saveSettingsDebounced();
 }

@@ -1,4 +1,6 @@
 import { collectionAppliesTo } from '../../core/collection-targets.js';
+import { progressionFields } from '../progression-fields.js';
+import { npcStatsFor } from '../../core/npc-templates.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
@@ -15,7 +17,7 @@ import { goalFields } from '../goals.js';
  *
  * @param {object} trackerSettings
  */
-export function buildExtractionSchema(trackerSettings, { strangers = [], state = null } = {}) {
+export function buildExtractionSchema(trackerSettings, { strangers = [], state = null, cards = [] } = {}) {
     // Takes the stat definitions rather than their names, so a field that says how it
     // should be written can pass that on. A free-text field used to arrive as nothing but
     // a name and `{ type: 'string' }`, which is how one grew into a running log.
@@ -68,15 +70,19 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const globalStatDefs = trackerSettings.globalStats || [];
     const playerStatDefs = trackerSettings.playerStats || [];
     const xpName = configuredXpName(trackerSettings);
+    const playerProgression = progressionFields(trackerSettings, { isPlayer: true });
+    // The array schema is a union across templates; per-actor sanitization reserves
+    // enabled owners' Level/XP while disabled templates retain ordinary writable fields.
     const npcStatDefs = (trackerSettings.npcStats || []).filter(isTurnStat);
     const deltaMap = (keys) => ({
         type: 'object',
         properties: Object.fromEntries(keys.map(key => [key, { type: 'number' }])),
     });
     const worldDeltas = numericDeltaNames(globalStatDefs, state?.global);
-    const playerDeltas = numericDeltaNames(playerStatDefs, state?.player?.stats);
-    const npcDeltas = [...new Set((state?.characters || [])
-        .flatMap(actor => numericDeltaNames(npcStatDefs, actor.stats)))];
+    const playerDeltas = numericDeltaNames(playerStatDefs, state?.player?.stats, playerProgression);
+    const npcDeltas = [...new Set([...(state?.characters || []),
+        ...cards.map(card => ({ ...card, stats: card.statusOverrides || {} }))]
+        .flatMap(actor => numericDeltaNames(npcStatsFor(actor, trackerSettings), actor.stats, progressionFields(trackerSettings, { actor }))))];
 
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
@@ -104,7 +110,8 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
             player: {
                 type: 'object',
                 properties: {
-                    stats: stringMap(playerStatDefs.filter(stat => stat.name?.toLowerCase() !== xpName?.toLowerCase())),
+                    stats: stringMap(playerStatDefs.filter(stat => stat.name?.toLowerCase() !== xpName?.toLowerCase()
+                        && (!playerProgression.enabled || stat.name !== playerProgression.levelName))),
                     ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
                     ...(goalProps('player') ? { goals: goalProps('player') } : {}),
@@ -117,6 +124,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                     required: ['name'],
                     properties: {
                         name: { type: 'string' },
+                        offstage: { type: 'boolean', description: 'True only for a known NPC who remains outside the scene but has an evidenced update.' },
                         ...(npcTemplates().length ? { npcTemplateId: { type: 'string' } } : {}),
                         stats: stringMap(npcStatDefs),
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),

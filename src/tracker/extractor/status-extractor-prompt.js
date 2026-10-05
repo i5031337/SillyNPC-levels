@@ -96,7 +96,8 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         limits: describeLimits(trackerSettings, state),
         npcFields: describeReaderStats(trackerSettings, { initializeNpc: true }),
         numericDeltas: describeNumericDeltas(state, trackerSettings),
-        xpProgression: progressionXpName(trackerSettings, state) ? 'on' : '',
+        xpProgression: progressionXpName(trackerSettings, state)
+            || (trackerSettings.npcTemplates || []).some(template => template.progression?.enabled) ? 'on' : '',
         // Whatever else has asked to be told to the reader - see registerExtractionNotes.
         notes: [describeNpcTemplates(), describeExtractionNotes(state, messageText)].filter(Boolean).join('\n'),
         ...strangerValues(strangers),
@@ -127,18 +128,6 @@ function describeGoalFields(state) {
 
 export function buildUserPrompt(state, messageText, trackerSettings, leadUp = [], options = {}) {
     return promptText('reader', readerValues(state, messageText, trackerSettings, leadUp, options));
-}
-
-/** The level-up request gets the same scene and recent-message context as extraction. */
-export function buildLevelBonusPrompt(state, messageText, trackerSettings, leadUp, details) {
-    return promptText('levelBonus', {
-        ...readerValues(state, messageText, trackerSettings, leadUp),
-        state: describeCurrentState(state, trackerSettings, { includeAdvancement: true }),
-        level: details.level,
-        eligible: details.eligible,
-        sheet: JSON.stringify(state?.player?.stats || {}),
-        pendingChanges: JSON.stringify(details.pendingChanges),
-    });
 }
 
 /**

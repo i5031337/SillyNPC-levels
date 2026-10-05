@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "id": "expedition",
+  "name": "Expedition",
+  "metadata": {
+    "description": "Catch monsters and learn techniques.",
+    "author": "Generated"
+  },
+  "profiles": {
+    "player": [
+      {
+        "id": "background",
+        "label": "Background",
+        "guidance": "Training history",
+        "policy": "anchored",
+        "placeholder": "",
+        "multiline": false,
+        "retired": false
+      }
+    ],
+    "npc": [
+      {
+        "id": "species",
+        "label": "Species",
+        "guidance": "Stable visible species",
+        "policy": "anchored",
+        "placeholder": "",
+        "multiline": false,
+        "retired": false
+      }
+    ]
+  },
+  "npcTemplates": [
+    {
+      "id": "creature",
+      "name": "Creature",
+      "description": "Catchable monsters.",
+      "profileIds": [
+        "species"
+      ],
+      "statIds": [
+        "xp",
+        "level",
+        "vigor"
+      ],
+      "progression": {
+        "enabled": true,
+        "xpFieldId": "xp",
+        "levelFieldId": "level",
+        "statGrowth": "all",
+        "statIds": [
+          "vigor"
+        ],
+        "increments": {
+          "vigor": 2
+        }
+      }
+    }
+  ],
+  "stats": {
+    "world": [
+      {
+        "id": "location",
+        "name": "Location",
+        "type": "text",
+        "defaultValue": "",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Current region",
+        "updatePolicy": "turn",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      }
+    ],
+    "player": [
+      {
+        "id": "xp",
+        "name": "XP",
+        "type": "number",
+        "defaultValue": "0/100",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "100",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Earned training XP",
+        "updatePolicy": "turn",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      },
+      {
+        "id": "level",
+        "name": "Level",
+        "type": "number",
+        "defaultValue": "1",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Training level",
+        "updatePolicy": "advancement",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      },
+      {
+        "id": "energy",
+        "name": "Energy",
+        "type": "number",
+        "defaultValue": "6/10",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Spent on expeditions",
+        "updatePolicy": "turn",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": true,
+        "color": "",
+        "retired": false
+      }
+    ],
+    "npc": [
+      {
+        "id": "xp",
+        "name": "XP",
+        "type": "number",
+        "defaultValue": "0/100",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "100",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Earned combat XP",
+        "updatePolicy": "turn",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      },
+      {
+        "id": "level",
+        "name": "Level",
+        "type": "number",
+        "defaultValue": "1",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Learned level",
+        "updatePolicy": "advancement",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      },
+      {
+        "id": "vigor",
+        "name": "Vigor",
+        "type": "number",
+        "defaultValue": "6/10",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Combat stamina",
+        "updatePolicy": "turn",
+        "advanceOnLevel": false,
+        "persistence": "turn",
+        "isPrimary": false,
+        "color": "",
+        "retired": false
+      }
+    ]
+  },
+  "collections": [
+    {
+      "id": "techniques",
+      "name": "Techniques",
+      "targets": [
+        "player",
+        "template:creature"
+      ],
+      "includeInImagePrompt": true,
+      "guidance": "Learned combat actions",
+      "retired": false,
+      "fields": [
+        {
+          "id": "name",
+          "name": "name",
+          "label": "Name",
+          "type": "text",
+          "defaultValue": "",
+          "guidance": "",
+          "isPrimary": true,
+          "isMultiline": false,
+          "isStatic": true,
+          "retired": false
+        },
+        {
+          "id": "power",
+          "name": "power",
+          "label": "Power",
+          "type": "number",
+          "defaultValue": 1,
+          "min": "1",
+          "maxStatValue": "3",
+          "guidance": "",
+          "isPrimary": false,
+          "isMultiline": false,
+          "isStatic": false,
+          "retired": false
+        }
+      ],
+      "levelUpRewards": {
+        "enabled": true,
+        "mode": "scheduled",
+        "guidance": "Learn at training milestones.",
+        "interval": 1,
+        "schedule": [
+          {
+            "id": "reward-2",
+            "level": 2,
+            "entry": {
+              "name": "Quick Strike",
+              "power": 2
+            }
+          },
+          {
+            "id": "reward-3",
+            "level": 3,
+            "entry": {
+              "name": "Guard",
+              "power": 1
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "progression": {
+    "player": {
+      "enabled": true,
+      "xpFieldId": "xp",
+      "levelFieldId": "level",
+      "statGrowth": "all",
+      "statIds": [
+        "energy"
+      ],
+      "increments": {
+        "energy": 2
+      }
+    },
+    "npc": {
+      "enabled": false,
+      "xpFieldId": "",
+      "levelFieldId": "",
+      "statGrowth": "none",
+      "statIds": [],
+      "increments": {}
+    }
+  },
+  "memories": {
+    "maxEntriesPerCharacter": 50
+  },
+  "goals": {
+    "npcShortTerm": true,
+    "playerShortTerm": true,
+    "playerLongTerm": true
+  },
+  "hud": {
+    "layout": "plate",
+    "showWorld": true,
+    "showNpcPortraits": true,
+    "playerStatIds": [
+      "energy"
+    ],
+    "npcStatIds": [
+      "vigor"
+    ],
+    "worldStatIds": [
+      "location"
+    ]
+  }
+}

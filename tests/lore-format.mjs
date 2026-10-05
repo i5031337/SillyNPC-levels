@@ -1,3 +1,5 @@
+import { progressionFields } from '../src/tracker/progression-fields.js';
+import { npcStatsFor } from '../src/core/npc-templates.js';
 import { npcTemplates } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -246,10 +248,10 @@ test('tracker schema excludes lore fields and retains goals and stats', () => {
     const npc = { name: 'Mira', aiProfileFields: ['appearance'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['appearance'] };
     const build = new Function('npcTemplates', 'getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
-        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'goalFields',
+        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'progressionFields', 'npcStatsFor', 'goalFields',
         `${source}\nreturn buildExtractionSchema;`)(
         npcTemplates, () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
-        numericDeltaNames, configuredXpName, isTurnStat, scope => scope === 'player'
+        numericDeltaNames, configuredXpName, isTurnStat, progressionFields, npcStatsFor, scope => scope === 'player'
             ? [{ id: 'shortTerm', label: 'Short-term goal' }, { id: 'longTerm', label: 'Long-term goal' }]
             : [{ id: 'shortTerm', label: 'Short-term goal' }],
     );
@@ -270,12 +272,12 @@ test('tracker schema excludes lore fields and retains goals and stats', () => {
     assert.equal(withDeltas.properties.player.properties.deltas.properties.HP.type, 'number');
 
     const xpSchema = build({
-        globalStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }], npcStats: [], collections: [],
+        globalStats: [], playerStats: [{ name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }], npcStats: [], collections: [],
     }, { state: { player: { stats: { XP: '90/100', Level: '1' } }, characters: [] } });
     assert.equal(xpSchema.properties.player.properties.stats.properties.XP, undefined);
     assert.equal(xpSchema.properties.player.properties.deltas.properties.XP.type, 'number');
     const blankXpSchema = build({
-        globalStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }], npcStats: [], collections: [],
+        globalStats: [], playerStats: [{ name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }], npcStats: [], collections: [],
     }, { state: { player: { stats: { XP: '', Level: '1' } }, characters: [] } });
     assert.equal(blankXpSchema.properties.player.properties.stats.properties.XP, undefined);
 });

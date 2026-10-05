@@ -1,3 +1,5 @@
+import { normalizeProgressionConfig } from './progression-config.js';
+import { normalizeCollectionRewards } from './collection-rewards.js';
 import { ensureCollectionIdentifier } from './collection-fields.js';
 import { collectionTargets } from './collection-targets.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
@@ -115,34 +117,16 @@ function collections(source) {
             }),
         };
         ensureCollectionIdentifier(normalized);
+        normalized.levelUpRewards = normalizeCollectionRewards(collection.levelUpRewards, normalized);
         return normalized;
     });
 }
 
-function matchingId(fields, name) {
-    return fields.find(field => field.name.toLowerCase() === name)?.id || '';
-}
-
 function progression(source, playerStats, npcStats) {
     const incoming = object(source);
-    const player = object(incoming.player);
-    const npc = object(incoming.npc);
-    const xpFieldId = string(player.xpFieldId, matchingId(playerStats, 'xp'));
-    const levelFieldId = string(player.levelFieldId, matchingId(playerStats, 'level'));
-    const bonusFieldId = string(player.bonusFieldId, matchingId(playerStats, 'level bonus'));
     return {
-        player: {
-            enabled: player.enabled === undefined ? Boolean(xpFieldId && levelFieldId) : player.enabled === true,
-            xpFieldId, levelFieldId, bonusFieldId,
-            bonusStatIds: Array.isArray(player.bonusStatIds)
-                ? player.bonusStatIds.filter(id => playerStats.some(stat => stat.id === id))
-                : playerStats.filter(stat => stat.advanceOnLevel).map(stat => stat.id),
-        },
-        npc: {
-            enabled: npc.enabled === true,
-            xpFieldId: string(npc.xpFieldId, matchingId(npcStats, 'xp')),
-            levelFieldId: string(npc.levelFieldId, matchingId(npcStats, 'level')),
-        },
+        player: normalizeProgressionConfig(incoming.player, playerStats, { enabledByDefault: true }),
+        npc: normalizeProgressionConfig(incoming.npc, npcStats),
     };
 }
 
@@ -170,10 +154,11 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
             name: string(template.name, 'NPC'), description: string(template.description),
             profileIds: [...new Set(list(template.profileIds).filter(id => npcProfile.some(field => field.id === id)))],
             statIds: [...new Set(list(template.statIds).filter(id => npcStats.some(field => field.id === id)))],
+            progression: normalizeProgressionConfig(template.progression, npcStats, { statIds: list(template.statIds) }),
         };
     }) : [{ id: 'npc', name: 'NPC', description: 'NPCs using this System’s original character fields.',
         profileIds: npcProfile.filter(field => !field.retired).map(field => field.id),
-        statIds: npcStats.map(field => field.id) }];
+        statIds: npcStats.map(field => field.id), progression: normalizeProgressionConfig({}, npcStats) }];
     const worldStats = statFields(modern ? stats.world : tracker.globalStats ?? defaultTrackerSettings.globalStats, 'world');
     const playerStats = statFields(modern ? stats.player : tracker.playerStats ?? defaultTrackerSettings.playerStats, 'player');
     const hud = modern ? object(input.hud) : tracker;
@@ -189,7 +174,7 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
             ? { legacyNpcTemplateId: input.legacyNpcTemplateId || 'npc' } : {}),
         stats: { world: worldStats, player: playerStats, npc: npcStats },
         collections: collections(modern ? input.collections : tracker.collections ?? defaultTrackerSettings.collections),
-        progression: progression(modern ? input.progression : {}, playerStats, npcStats),
+        progression: progression(modern ? input.progression : tracker.progression, playerStats, npcStats),
         memories: { maxEntriesPerCharacter: memoryLimit(input.memories?.maxEntriesPerCharacter) },
         goals: {
             npcShortTerm: input.goals?.npcShortTerm !== false,

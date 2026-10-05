@@ -20,8 +20,11 @@ def webdriver(method, path, data=None):
     body = None if data is None else json.dumps(data).encode()
     request = urllib.request.Request(base + path, body,
                                      {'Content-Type': 'application/json'}, method=method)
-    with urllib.request.urlopen(request, timeout=25) as response:
-        return json.load(response)['value']
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            return json.load(response)['value']
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(error.read().decode()) from error
 
 
 driver = subprocess.Popen(['geckodriver', '--port', str(port)],
@@ -66,6 +69,7 @@ try:
           const { renderExtractionReport } = await import(root + 'src/tracker/ui/status-ui-report.js');
           const { getExtractionReport } = await import(root + 'src/tracker/extractor/status-extraction-report.js');
           const { defaultTrackerSettings } = await import(root + 'src/core/settings-tracker-defaults.js');
+          const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
           const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
           const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
           const settings = getSettings().statusTracker;
@@ -77,6 +81,54 @@ try:
           const panel = document.querySelector('#sillynpc-status-view');
           const result = {};
           try {
+            const rewardCollection = { id: 'smoke-rewards', targets: ['player', 'template:smoke'], fields: [
+              { id: 'reward-title', name: 'technique', label: 'Technique', type: 'text', isPrimary: true },
+              { id: 'reward-power', name: 'power', label: 'Power', type: 'number', min: '1', maxStatValue: '3' },
+              { id: 'reward-equipped', name: 'equipped', type: 'boolean', defaultValue: 'false' }
+            ] };
+            let rewardSaves = 0;
+            const rewardUi = buildCollectionRewardsEditor(rewardCollection, () => rewardSaves++);
+            const rewardHost = document.createElement('div');
+            rewardHost.style.width = '280px';
+            rewardHost.append(rewardUi); document.body.append(rewardHost);
+            try {
+              const details = rewardUi.querySelector('details');
+              result.rewardsInitiallyCollapsed = details.hidden && !details.open;
+              const enabled = rewardUi.querySelector('.col-rewards-enabled');
+              enabled.click();
+              result.rewardsEnabled = !details.hidden && details.open && rewardCollection.levelUpRewards.enabled;
+              const mode = rewardUi.querySelector('.col-rewards-mode');
+              result.rewardsDefaultGuided = mode.value === 'guided'
+                && rewardUi.querySelector('.col-rewards-interval').value === '1'
+                && rewardUi.querySelector('.col-rewards-guidance').value === '';
+              mode.value = 'scheduled'; mode.dispatchEvent(new Event('change'));
+              rewardUi.querySelector('.col-rewards-add').click();
+              const fields = [...rewardUi.querySelectorAll('.col-reward-field')];
+              result.rewardsActualFields = fields.length === 3 && fields[0].dataset.fieldId === 'reward-title'
+                && fields[1].type === 'number' && fields[1].min === '1' && fields[1].max === '3'
+                && fields[2].tagName === 'SELECT';
+              const error = rewardUi.querySelector('.col-reward-errors');
+              result.rewardsIdentifierValidation = error.textContent.includes('required');
+              fields[0].value = 'Smoke Technique'; fields[0].dispatchEvent(new Event('input'));
+              fields[1].value = '4'; fields[1].dispatchEvent(new Event('input'));
+              result.rewardsRangeValidation = error.textContent.includes('maximum');
+              fields[1].value = '2'; fields[1].dispatchEvent(new Event('input'));
+              result.rewardsValidSchedule = error.textContent === ''
+                && rewardCollection.levelUpRewards.schedule[0].entry['reward-title'] === 'Smoke Technique'
+                && rewardCollection.levelUpRewards.schedule[0].entry['reward-power'] === 2;
+              result.rewardsNarrowLayout = rewardHost.scrollWidth <= rewardHost.clientWidth + 2;
+              mode.value = 'guided'; mode.dispatchEvent(new Event('change'));
+              const interval = rewardUi.querySelector('.col-rewards-interval');
+              result.rewardsGuidedControls = interval.value === '1'
+                && !!rewardUi.querySelector('.col-rewards-guidance') && !rewardUi.querySelector('.col-reward-row');
+              interval.value = '0'; interval.dispatchEvent(new Event('input'));
+              result.rewardsIntervalValidation = !interval.checkValidity()
+                && rewardCollection.levelUpRewards.interval === 1;
+              interval.value = '2'; interval.dispatchEvent(new Event('input'));
+              result.rewardsValidInterval = interval.checkValidity() && rewardCollection.levelUpRewards.interval === 2;
+              enabled.click();
+              result.rewardsDisabled = details.hidden && !rewardCollection.levelUpRewards.enabled && rewardSaves > 0;
+            } finally { rewardHost.remove(); }
             const scene = buildSceneContext({ global: {},
               player: { name: 'Smoke Player', stats: {}, collections: {} },
               characters: [{ name: 'Smoke NPC', stats: {}, collections: {} }] });
@@ -177,6 +229,10 @@ try:
     assert all(manual_result.get(key) for key in [
         'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
         'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored',
+        'rewardsInitiallyCollapsed', 'rewardsEnabled', 'rewardsActualFields',
+        'rewardsIdentifierValidation', 'rewardsRangeValidation', 'rewardsValidSchedule',
+        'rewardsNarrowLayout', 'rewardsGuidedControls', 'rewardsIntervalValidation',
+        'rewardsValidInterval', 'rewardsDisabled',
     ]), manual_result
     execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
@@ -189,8 +245,8 @@ try:
             const policy = row.querySelector('.stat-update-policy')?.value;
             if (!policy || row.querySelector('.stat-type')?.value !== 'number') return false;
             const label = [...row.querySelectorAll('small')].map(el => el.textContent.trim())
-              .find(text => text === 'Max:' || text === 'Starts max:');
-            return label !== (policy === 'advancement' ? 'Max:' : 'Starts max:');
+              .find(text => text === 'Max:' || text === 'Capacity limit:');
+            return label !== (policy === 'advancement' ? 'Max:' : 'Capacity limit:');
           }).length};""")
     assert result['rows'] > 0 and result['purpose'] == result['rows'], result
     assert result['numericOptions'] == 0 and result['wrongMaxLabels'] == 0, result

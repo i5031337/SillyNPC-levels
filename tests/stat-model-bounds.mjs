@@ -1,9 +1,10 @@
+import { progressionFields } from '../src/tracker/progression-fields.js';
 import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { configuredNumericMaximum, constrainNumericStat, keepNumericMaximum } from '../src/tracker/numeric-stat-bounds.js';
-import { isTurnStat, canAdvanceStat, earnsLevel } from '../src/tracker/stat-update-policy.js';
+import { isTurnStat } from '../src/tracker/stat-update-policy.js';
 import { expandNumericDeltas } from '../src/tracker/extractor/status-extractor-deltas.js';
 import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 
@@ -12,10 +13,10 @@ const source = readFileSync(new URL('../src/tracker/status-stat-values.js', impo
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
 const bind = new Function('npcStatsFor', 'proposedNpcTemplate', 'keepNumericMaximum', 'configuredNumericMaximum',
-    'isTurnStat', 'canAdvanceStat', 'earnsLevel',
+    'isTurnStat', 'progressionFields',
     'canTrackerSetNpcStat', 'ceilingFromValue', 'splitValue',
     `${source}\nreturn bind;`)(npcStatsFor, proposedNpcTemplate, keepNumericMaximum, configuredNumericMaximum,
-    isTurnStat, canAdvanceStat, earnsLevel,
+    isTurnStat, progressionFields,
     canTrackerSetNpcStat,
     value => { const cap = String(value ?? '').split('/')[1]; return cap && Number.isFinite(Number(cap)) ? Number(cap) : null; },
     value => { const [current, max] = String(value ?? '').split('/'); return { current, max }; });
@@ -48,7 +49,7 @@ test('a fixed Advancement range starts as a plain rating', () => {
     assert.equal(deps.getInitialStatValue('1', '5', { updatePolicy: 'turn' }), '1/5');
 });
 
-test('an inline level-up cannot expand an Advancement maximum', () => {
+test('inline updates cannot author level-derived Advancement growth', () => {
     const deps = { findMatchingStatKey: (stats, name) => Object.keys(stats || {})
         .find(key => key.toLowerCase() === name.toLowerCase()), findCardForName: () => null };
     bind(deps);
@@ -62,8 +63,8 @@ test('an inline level-up cannot expand an Advancement maximum', () => {
     } } };
     const update = { player: { stats: { XP: '110/100', Swordplay: '8/9' } } };
     deps.sanitizeModelUpdate(update, state, settings, { allowInlineLevelBonus: true });
-    assert.equal(update.player.stats.Swordplay, '8');
-    assert.equal(constrainNumericStat(skill, update.player.stats.Swordplay, '4'), '5');
+    assert.equal(update.player.stats.Swordplay, undefined);
+    assert.equal(update.player.stats.XP, '110/100');
 });
 
 test('Standing deltas on plain ratings stay within configured bounds across scopes', () => {
@@ -85,4 +86,23 @@ test('Standing deltas on plain ratings stay within configured bounds across scop
     assert.equal(apply(update.characters[0].Standing, state.characters[0].stats.Standing), '5');
     assert.equal(deps.promptCeiling(standing, '5'), '5');
     assert.equal(deps.promptCeiling(standing, '7/10'), '10');
+});
+
+test('enabled NPC Advancement XP remains writable while configured Level fragments are reserved', () => {
+    const deps = { findMatchingStatKey: (stats, name) => Object.keys(stats || {})
+        .find(key => key.toLowerCase() === name.toLowerCase()), findCardForName: () => null };
+    bind(deps);
+    const settings = { globalStats: [], playerStats: [], npcStats: [
+        { id: 'earned', name: 'Experience', type: 'number', updatePolicy: 'advancement' },
+        { id: 'rank', name: 'Rank', type: 'number', updatePolicy: 'turn' },
+    ], npcTemplates: [{ id: 'fighter', statIds: ['earned', 'rank'], progression: {
+        enabled: true, xpFieldId: 'earned', levelFieldId: 'rank',
+    } }] };
+    const state = { characters: [{ name: 'Mira', npcTemplateId: 'fighter',
+        stats: { Experience: '90/100', Rank: '1' } }] };
+    const update = { characters: [{ name: 'Mira', stats: {
+        Experience: '110/999', Rank: '99', Rank_current: '99', Rank_max: '100',
+    } }] };
+    deps.sanitizeModelUpdate(update, state, settings);
+    assert.deepEqual(update.characters[0].stats, { Experience: '110/100' });
 });

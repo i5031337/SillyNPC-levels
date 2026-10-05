@@ -2,7 +2,7 @@ import { collectionTargets } from '../../core/collection-targets.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 
 /** Checkboxes allow combinations without modifier keys or an exclusive “all” option. */
-export function buildCollectionTargetsEditor(collection, onChange) {
+export function buildCollectionTargetsEditor(collection, onChange, templates = npcTemplates()) {
     const wrap = document.createElement('fieldset');
     wrap.className = 'col-targets';
     wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 12px;';
@@ -13,7 +13,7 @@ export function buildCollectionTargetsEditor(collection, onChange) {
     const choices = [
         { value: 'player', label: 'Player' },
         { value: 'npc', label: 'All NPCs' },
-        ...npcTemplates().map(template => ({ value: `template:${template.id}`, label: `NPC template: ${template.name}` })),
+        ...templates.map(template => ({ value: `template:${template.id}`, label: `NPC template: ${template.name}` })),
     ];
     for (const value of selected) {
         if (!choices.some(choice => choice.value === value)) {

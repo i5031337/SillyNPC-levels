@@ -1,11 +1,10 @@
 import { attachRangeValidation } from './ui-system-range.js';
 import { ensureNpcStatIds } from './ui-npc-templates.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
+import { liveSystemContext } from './ui-system-context.js';
 import { Popup } from '../../../../../../popup.js';
-import { updateHUD } from '../hud/ui-hud.js';
 import { escapeHtml, moveInList } from '../../core/utils.js';
 import { buildBulkBar, buildBulkCheckbox, spliceIndexes } from '../shared/ui-bulk-select.js';
-import { renameStat, isNumericStat } from '../../tracker/status-logic.js';
+import { isNumericStat } from '../../tracker/status-logic.js';
 import { statPolicyMarkup, bindStatPolicy } from './ui-system-stat-policy.js';
 
 export function parseOptions(text) {
@@ -29,17 +28,9 @@ function formatIsToggleable(format) {
     if (!text || text === BARE_FORMAT) return true;
     return text.includes('{{name}}');
 }
-/**
- * One bulk-select handle per stat list, kept across the redraws ticking a box causes.
- *
- * Keyed by the settings key rather than shared, or ticking a global stat would carry its
- * index onto the NPC list - and index 2 exists in both.
- *
- * @type {Map<string, object>}
- */
-const statBulkBars = new Map();
-
-export function statsBulkBar(settingsKey, onRefresh, noun = 'field') {
+/** Keep bulk selection across redraws, isolated by editor context and stat list. */
+export function statsBulkBar(settingsKey, onRefresh, noun = 'field', context = liveSystemContext) {
+    const { getSettings, saveSettings, bulkBars: statBulkBars } = context;
     if (!statBulkBars.has(settingsKey)) {
         statBulkBars.set(settingsKey, buildBulkBar({
             noun,
@@ -55,10 +46,11 @@ export function statsBulkBar(settingsKey, onRefresh, noun = 'field') {
     return statBulkBars.get(settingsKey);
 }
 
-export function buildStatsEditor(label, settingsKey, onRefresh) {
+export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSystemContext) {
+    const { getSettings, saveSettings, renameStat, updateHUD } = context;
     const wrap = document.createElement('div');
     const stats = getSettings().statusTracker[settingsKey];
-    const bulk = statsBulkBar(settingsKey, onRefresh);
+    const bulk = statsBulkBar(settingsKey, onRefresh, 'field', context);
     wrap.appendChild(bulk.bar);
 
     stats.forEach((stat, index) => {
@@ -88,11 +80,11 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                 <small class="sillynpc-field-note">Min:</small>
                 <input type="text" class="text_pole stat-min" value="${escapeHtml(stat.min ?? '')}" placeholder="0" title="Lowest current value. The tracker enforces this bound; use a negative number for ranges like -100..100." style="width:45px; font-size:var(--sillynpc-text-md); height:24px;">
                 <small class="sillynpc-field-note" title="${advancement
-                    ? 'Fixed upper bound for this Advancement rating. Level bonuses cannot raise it.'
-                    : 'Initial maximum for a Turn pool. Each actor then carries its own maximum, which only a level-up bonus can raise.'}">${advancement ? 'Max:' : 'Starts max:'}</small>
+                    ? 'Fixed upper bound for this Advancement rating. Level growth cannot raise it.'
+                    : 'Hard ceiling for level growth. Leave blank to let a Turn pool grow beyond its default capacity.'}">${advancement ? 'Max:' : 'Capacity limit:'}</small>
                 <input type="text" class="text_pole stat-max" value="${escapeHtml(stat.maxStatValue || '')}" placeholder="Max" title="${advancement
                     ? 'Fixed upper bound. A rating such as 1 to 5 stays within this range.'
-                    : 'Starting maximum for a new Turn pool. Ordinary story updates keep each actor’s maximum fixed.'}" style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
+                    : 'Optional hard capacity limit. Set the starting pool in Default, for example 6/10. Leave this limit blank for expandable capacity.'}" style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
                 ` : `
                 <small class="sillynpc-field-note">Write it:</small>
                 <input type="text" class="text_pole stat-hint" value="${escapeHtml(stat.hint || '')}"
@@ -108,7 +100,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                     <option value="text" ${!isNumericStat(stat) ? 'selected' : ''}>Text</option>
                     <option value="number" ${isNumericStat(stat) ? 'selected' : ''}>Number</option>
                 </select>
-                ${statPolicyMarkup(stat, settingsKey, isNumericStat(stat), escapeHtml)}
+                ${statPolicyMarkup(stat, settingsKey, escapeHtml)}
                 ${settingsKey === 'playerStats' ? `
                 <label class="sillynpc-check-group" style="margin-left:10px;"
                        title="Draw this on the floating HUD, as a meter with its name and value.">
@@ -174,7 +166,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
                 return;
             }
 
-            if (settingsKey === 'npcStats') ensureNpcStatIds();
+            if (settingsKey === 'npcStats') ensureNpcStatIds(context);
             stat.name = newName;
             const carried = renameStat(settingsKey, oldName, newName);
             saveSettings();
@@ -211,7 +203,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         // The lower bound is where a meter starts filling from, so the HUD is showing it.
         row.querySelector('.stat-min')?.addEventListener('input', (e) => { stat.min = e.target.value; saveSettings(); updateHUD(); });
         attachRangeValidation(row, row.querySelector('.stat-min'), row.querySelector('.stat-max'));
-        row.querySelector('.stat-hint')?.addEventListener('input', (e) => { stat.hint = e.target.value; saveSettings(); });
+        row.querySelector('.stat-hint')?.addEventListener('input', (e) => { stat.guidance = stat.hint = e.target.value; saveSettings(); });
         row.querySelector('.stat-length')?.addEventListener('input', (e) => {
             // Kept as typed rather than coerced: a half-typed number must not become 0,
             // which would read as a limit of nothing. capToLength ignores anything that
@@ -303,7 +295,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh) {
         if (settingsKey === 'playerStats') newStat.advanceOnLevel = false;
         newStat.maxStatValue = '';
         stats.push(newStat);
-        if (settingsKey === 'npcStats') ensureNpcStatIds();
+        if (settingsKey === 'npcStats') ensureNpcStatIds(context);
         saveSettings();
         onRefresh();
     });

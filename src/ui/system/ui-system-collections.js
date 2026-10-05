@@ -1,13 +1,14 @@
 import { buildCollectionTargetsEditor } from './ui-collection-targets.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
+import { liveSystemContext } from './ui-system-context.js';
 import { Popup } from '../../../../../../popup.js';
 import { escapeHtml, moveInList } from '../../core/utils.js';
 import { buildBulkCheckbox } from '../shared/ui-bulk-select.js';
-import { renameCollectionId } from '../../tracker/status-logic.js';
 import { statsBulkBar } from './ui-system-stats.js';
 import { renderCollectionFields } from './ui-collection-fields.js';
+import { buildCollectionRewardsEditor } from './ui-collection-rewards.js';
 
-export function buildCollectionsEditor(onRefresh) {
+export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
+    const { getSettings, saveSettings } = context;
     const wrap = document.createElement('div');
     const settings = getSettings().statusTracker;
     const collections = settings.collections || [];
@@ -25,7 +26,8 @@ export function buildCollectionsEditor(onRefresh) {
                 <li><b>Profiles:</b> character details such as appearance, occupation or background.
                     Define NPC profile fields in NPC Profile and select them for each NPC template.</li>
                 <li><b>Collections:</b> one entry per item, skill or piece of clothing.
-                    An inventory collection might have a name, quantity and description.</li>
+                    An inventory collection might have a name, quantity and description. Enable Level-up rewards
+                    to propose scheduled or story-guided entries for the collection’s existing targets.</li>
                 <li><b>Identifier:</b> the first field always identifies each entry, usually by name.
                     The reader must include this value when adding an entry; an entry without an identifier is skipped.</li>
                 <li><b>Static:</b> static text is shared through the Item Library for the same item across holders.
@@ -49,10 +51,10 @@ export function buildCollectionsEditor(onRefresh) {
         }
     });
 
-    const bulk = statsBulkBar('collections', onRefresh, 'collection');
+    const bulk = statsBulkBar('collections', onRefresh, 'collection', context);
     wrap.appendChild(bulk.bar);
 
-    collections.forEach((col, index) => wrap.appendChild(createCollectionRow(col, index, collections, bulk, onRefresh)));
+    collections.forEach((col, index) => wrap.appendChild(createCollectionRow(col, index, collections, bulk, onRefresh, context)));
 
     const addBtn = document.createElement('button');
     addBtn.className = 'menu_button';
@@ -77,7 +79,7 @@ export function buildCollectionsEditor(onRefresh) {
     return wrap;
 }
 
-function createCollectionRow(col, index, collections, bulk, onRefresh) {
+function createCollectionRow(col, index, collections, bulk, onRefresh, context) {
     const colWrap = document.createElement('div');
     colWrap.className = 'sillynpc-alias-row';
     colWrap.style.marginBottom = '20px';
@@ -117,15 +119,19 @@ function createCollectionRow(col, index, collections, bulk, onRefresh) {
                 <i class="fa-solid fa-plus"></i> Add Field
             </button>
         </div>
+        <div class="col-rewards-slot"></div>
     `;
 
-    wireCollectionControls(colWrap, col, index, collections, bulk, onRefresh);
+    wireCollectionControls(colWrap, col, index, collections, bulk, onRefresh, context);
     return colWrap;
 }
 
-function wireCollectionControls(colWrap, col, index, collections, bulk, onRefresh) {
+function wireCollectionControls(colWrap, col, index, collections, bulk, onRefresh, context) {
+    const { saveSettings } = context;
     const fieldsList = colWrap.querySelector('.fields-list');
-    const renderFields = () => renderCollectionFields(col, fieldsList, onRefresh);
+    const renderRewards = () => colWrap.querySelector('.col-rewards-slot').replaceChildren(buildCollectionRewardsEditor(col, saveSettings));
+    const renderFields = () => { renderCollectionFields(col, fieldsList, onRefresh, context); renderRewards(); };
+    fieldsList.addEventListener('change', renderRewards);
 
     colWrap.querySelector('.add-field-btn').addEventListener('click', () => {
         col.fields.push({ name: 'new_field', label: 'New Field', type: 'text' });
@@ -134,9 +140,9 @@ function wireCollectionControls(colWrap, col, index, collections, bulk, onRefres
     });
 
     colWrap.querySelector('.col-name').addEventListener('input', (e) => { col.name = e.target.value; saveSettings(); });
-    colWrap.querySelector('.col-hint')?.addEventListener('input', (e) => { col.hint = e.target.value; saveSettings(); });
-    wireCollectionIdRename(colWrap, col, collections, onRefresh);
-    colWrap.querySelector('.col-targets-slot').append(buildCollectionTargetsEditor(col, saveSettings));
+    colWrap.querySelector('.col-hint')?.addEventListener('input', (e) => { col.guidance = col.hint = e.target.value; saveSettings(); });
+    wireCollectionIdRename(colWrap, col, collections, onRefresh, context);
+    colWrap.querySelector('.col-targets-slot').append(buildCollectionTargetsEditor(col, saveSettings, context.definition()?.npcTemplates));
     colWrap.querySelector('.col-image-prompt').addEventListener('change', (e) => {
         col.includeInImagePrompt = e.target.checked;
         saveSettings();
@@ -170,7 +176,8 @@ function wireCollectionControls(colWrap, col, index, collections, bulk, onRefres
     renderFields();
 }
 
-function wireCollectionIdRename(colWrap, col, collections, onRefresh) {
+function wireCollectionIdRename(colWrap, col, collections, onRefresh, context) {
+    const { saveSettings, renameCollectionId } = context;
     const colIdInput = colWrap.querySelector('.col-id');
     colIdInput.title = 'Storage key for this collection. Renaming it migrates existing items.';
     colIdInput.addEventListener('change', (e) => {

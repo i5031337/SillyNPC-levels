@@ -3,9 +3,11 @@ import { getSettings } from '../core/settings.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { debugLog } from '../core/constants.js';
 import { eventSource } from '../../../../../events.js';
-import { loadStateFromMetadata, applyUpdate, saveStateToMetadata } from './status-logic.js';
+import { loadStateFromMetadata, applyUpdate, saveStateToMetadata, getCurrentPersonaKey } from './status-logic.js';
 import { buildUpdateFromChanges } from './status-diff.js';
 import { recordAppliedChanges, saveChatSoon } from './snapshots/status-snapshots.js';
+import { appliedChangesForCurrentSwipe } from './snapshots/status-snapshot-records.js';
+import { selectReviewRows, materializeGrantRows, validateReviewedTransitions } from './level-grant-review.js';
 
 /**
  * Changes waiting for a decision.
@@ -242,26 +244,34 @@ export function clearItemRule(key, actorSlotName, collectionId, itemName) {
  *   merely declining a row: declining is a decision about this message, and a standing
  *   rule is not.
  */
-export function resolvePendingChanges(messageId, accepted, dismissed = []) {
+export function resolvePendingChanges(messageId, accepted, dismissed = [], { discardAll = false } = {}) {
     const pending = getPendingChanges(messageId);
     if (!pending.length) return { applied: 0, discarded: 0 };
 
-    const rows = Array.isArray(accepted) ? accepted : [];
-    if (rows.length > 0) {
-        const trackerSettings = getSettings().statusTracker;
-        // Cards too: an accepted row may name a character who is off stage, whose
-        // belongings live on their card rather than in the scene.
-        const update = buildUpdateFromChanges(
-            rows, loadStateFromMetadata(), trackerSettings, getAllCharacters());
-        // These rows have been looked at and accepted, so a character named in one is
-        // wanted whether or not they are on stage - a scan proposes mostly about people
-        // who are not. Without this, approving an NPC's spells silently did nothing.
-        applyUpdate(update, { label: 'Reviewed change', admitCharacters: true, partOfMessage: true });
-        // Appended to whatever the automatic half of this message already recorded, so
-        // the history knows the full effect of the message, however late it was decided.
-        recordAppliedChanges(messageId, rows);
-        debugLog(`Applied ${rows.length} reviewed change(s) from message ${messageId}`);
+    const appliedRows = appliedChangesForCurrentSwipe(messageId) || [];
+    const selection = selectReviewRows(pending, accepted, appliedRows);
+    const trackerSettings = getSettings().statusTracker;
+    const cards = getAllCharacters();
+    const validated = validateReviewedTransitions(selection.rows, loadStateFromMetadata(), trackerSettings, cards, getCurrentPersonaKey());
+    for (const id of validated.invalid) selection.rejectedTransitions.add(id);
+    const rows = validated.rows;
+    const ordinary = rows.filter(row => !row.grant);
+    const before = loadStateFromMetadata();
+    const applyOptions = { label: 'Reviewed change', admitCharacters: true, partOfMessage: true,
+        allowReplace: true, allowAdvancementChanges: true };
+    const preview = ordinary.length ? applyUpdate(buildUpdateFromChanges(ordinary, before, trackerSettings, cards),
+        { ...applyOptions, dryRun: true }) : before;
+    const grants = materializeGrantRows(rows.filter(row => row.grant), preview || before, trackerSettings,
+        cards, { appliedRows, personaId: getCurrentPersonaKey(),
+            acceptedTransitionIds: ordinary.map(row => row.transition?.id || row.transition?.transitionId).filter(Boolean) });
+    const proposed = [...ordinary, ...grants.rows];
+    let recorded = [];
+    if (proposed.length) {
+        const update = buildUpdateFromChanges(proposed, before, trackerSettings, cards);
+        if (applyUpdate(update, applyOptions)) recorded = proposed;
     }
+    if (recorded.length) recordAppliedChanges(messageId, recorded);
+    debugLog(`Applied ${recorded.length} reviewed change(s) from message ${messageId}`);
 
     // Only what was explicitly marked. Inferring this from an ordinary decision was a
     // mistake: turning down a row once, or discarding a panel there was no time to read,
@@ -276,6 +286,17 @@ export function resolvePendingChanges(messageId, accepted, dismissed = []) {
         if (noted) saveStateToMetadata(state, { label: 'Standing item decisions' });
     }
 
-    clearPendingChanges(messageId);
-    return { applied: rows.length, discarded: pending.length - rows.length };
+    const attempted = new Set(rows.filter(row => row.grant).map(row => row.grant.id));
+    const remaining = discardAll ? [] : pending.filter(row => row.grant
+        && !attempted.has(row.grant.id) && !selection.rejectedTransitions.has(row.grant.transitionId));
+    const reading = messageAt(messageId)?.extra?.sillynpc_level_reading;
+    if (reading && typeof reading === 'object') {
+        const outstanding = new Set(remaining.map(row => row.grant.id));
+        reading.decidedGrantIds = [...new Set([...(reading.decidedGrantIds || []),
+            ...pending.filter(row => row.grant && !outstanding.has(row.grant.id)).map(row => row.grant.id)])];
+        reading.rejectedTransitionIds = [...new Set([...(reading.rejectedTransitionIds || []),
+            ...selection.rejectedTransitions])];
+    }
+    setPendingChanges(messageId, remaining, getLooseNotes(messageId), getRefusedValues(messageId));
+    return { applied: recorded.length, discarded: pending.length - rows.length - remaining.length, remaining: remaining.length };
 }

@@ -29,3 +29,14 @@
 .col-targets .is-disabled { opacity: .55; cursor: default; }
 .sillynpc-range-error { flex-basis: 100%; color: var(--sillynpc-danger, #e57373); }
 .sillynpc-range-error[hidden] { display: none; }
+
+.sillynpc-system-generation { margin-top: 16px; padding: 12px; border: 1px solid var(--sillynpc-border); border-radius: 8px; min-width: 0; }
+.sillynpc-system-generation > label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.sillynpc-system-generation .text_pole { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.sillynpc-system-generation > label > .text_pole { width: 100%; }
+.sillynpc-system-generation .gen-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sillynpc-system-generation .gen-errors { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--sillynpc-danger, #e66); }
+.sillynpc-system-generation .gen-summary { overflow-wrap: anywhere; }
+.sillynpc-system-generation .gen-editor { margin-top: 16px; min-width: 0; }
+.sillynpc-system-generation .gen-draft-details label { display: block; margin: 8px 0; }
+.sillynpc-system-generation .gen-draft-details textarea { display: block; width: 100%; }

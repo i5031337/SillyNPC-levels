@@ -1,19 +1,19 @@
 import { attachRangeValidation } from './ui-system-range.js';
 import { ensureCollectionIdentifier, moveCollectionField, deleteCollectionField } from '../../core/collection-fields.js';
-import { saveSettings } from '../../core/settings.js';
+import { liveSystemContext } from './ui-system-context.js';
 import { escapeHtml } from '../../core/utils.js';
-import { renameCollectionField } from '../../tracker/status-logic.js';
 import { parseOptions } from './ui-system-stats.js';
 
 /** Render and wire one collection's field rows. Rebuild after structural edits. */
-export function renderCollectionFields(col, fieldsList, onRefresh) {
+export function renderCollectionFields(col, fieldsList, onRefresh, context = liveSystemContext) {
+    const { saveSettings } = context;
     if (ensureCollectionIdentifier(col)) saveSettings();
     fieldsList.replaceChildren();
     col.fields.forEach((field, index) => {
         const box = createFieldBox();
         const row = createFieldControls(col, field, index);
-        wireFieldControls(row, col, field, index, fieldsList, onRefresh);
-        box.append(row, createFieldHint(field));
+        wireFieldControls(row, col, field, index, fieldsList, onRefresh, context);
+        box.append(row, createFieldHint(field, context));
         fieldsList.appendChild(box);
     });
 }
@@ -80,14 +80,15 @@ function createFieldControls(col, field, fIdx) {
     return fRow;
 }
 
-function wireFieldControls(fRow, col, field, fIdx, fieldsList, onRefresh) {
-    wireFieldRename(fRow, col, field, onRefresh);
-    wireFieldProperties(fRow, col, field, fieldsList, onRefresh);
-    wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh);
+function wireFieldControls(fRow, col, field, fIdx, fieldsList, onRefresh, context) {
+    wireFieldRename(fRow, col, field, onRefresh, context);
+    wireFieldProperties(fRow, col, field, fieldsList, onRefresh, context);
+    wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh, context);
     attachRangeValidation(fRow, fRow.querySelector('.f-min'), fRow.querySelector('.f-max'));
 }
 
-function wireFieldRename(fRow, col, field, onRefresh) {
+function wireFieldRename(fRow, col, field, onRefresh, context) {
+    const { saveSettings, renameCollectionField } = context;
     const nameInput = fRow.querySelector('.f-name');
     nameInput.title = 'Field key. Renaming it carries the stored values across.';
     // Sanitised as you type, committed when you leave the box. Renaming on
@@ -120,13 +121,14 @@ function wireFieldRename(fRow, col, field, onRefresh) {
     });
 }
 
-function wireFieldProperties(fRow, col, field, fieldsList, onRefresh) {
+function wireFieldProperties(fRow, col, field, fieldsList, onRefresh, context) {
+    const { saveSettings } = context;
     fRow.querySelector('.f-label').addEventListener('input', (e) => { field.label = e.target.value; saveSettings(); });
     fRow.querySelector('.f-default').addEventListener('input', (e) => { field.defaultValue = e.target.value; saveSettings(); });
     fRow.querySelector('.f-options')?.addEventListener('change', (e) => {
         field.options = parseOptions(e.target.value);
         saveSettings();
-        renderCollectionFields(col, fieldsList, onRefresh);
+        renderCollectionFields(col, fieldsList, onRefresh, context);
     });
     fRow.querySelector('.f-min')?.addEventListener('input', (e) => { field.min = e.target.value; saveSettings(); });
     fRow.querySelector('.f-max')?.addEventListener('input', (e) => { field.maxStatValue = e.target.value; saveSettings(); });
@@ -139,29 +141,31 @@ function wireFieldProperties(fRow, col, field, fieldsList, onRefresh) {
         field.isStatic = field.type !== 'number';
 
         saveSettings();
-        renderCollectionFields(col, fieldsList, onRefresh);
+        renderCollectionFields(col, fieldsList, onRefresh, context);
     });
     fRow.querySelector('.f-multiline')?.addEventListener('change', (e) => { field.isMultiline = e.target.checked; saveSettings(); });
     fRow.querySelector('.f-static')?.addEventListener('change', (e) => { field.isStatic = e.target.checked; saveSettings(); });
 }
 
-function wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh) {
+function wireFieldStructure(fRow, col, fIdx, fieldsList, onRefresh, context) {
+    const { saveSettings } = context;
     for (const [selector, delta] of [['.move-field-up', -1], ['.move-field-down', 1]]) {
         fRow.querySelector(selector)?.addEventListener('click', () => {
             if (!moveCollectionField(col, fIdx, delta)) return;
             saveSettings();
-            renderCollectionFields(col, fieldsList, onRefresh);
+            renderCollectionFields(col, fieldsList, onRefresh, context);
         });
     }
 
     fRow.querySelector('.delete-field-btn')?.addEventListener('click', () => {
         if (!deleteCollectionField(col, fIdx)) return;
         saveSettings();
-        renderCollectionFields(col, fieldsList, onRefresh);
+        renderCollectionFields(col, fieldsList, onRefresh, context);
     });
 }
 
-function createFieldHint(field) {
+function createFieldHint(field, context) {
+    const { saveSettings } = context;
     const hint = document.createElement('input');
     hint.type = 'text';
     hint.className = 'text_pole f-hint';
@@ -171,6 +175,6 @@ function createFieldHint(field) {
         + 'so a number called Cost can say what it costs. Leave empty to send only the name and type.';
     hint.style.fontSize = 'var(--sillynpc-text-sm)';
     hint.style.opacity = '0.9';
-    hint.addEventListener('input', (e) => { field.hint = e.target.value; saveSettings(); });
+    hint.addEventListener('input', (e) => { field.guidance = field.hint = e.target.value; saveSettings(); });
     return hint;
 }

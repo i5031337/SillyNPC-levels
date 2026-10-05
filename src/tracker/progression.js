@@ -25,11 +25,15 @@ export function boostStat(previousValue, proposedValue, amount,
     const [currentText] = String(proposedValue ?? previousValue ?? '').split('/');
     const [, previousCap] = String(previousValue ?? '').split('/');
     const current = Number(currentText);
-    if (!Number.isFinite(current) || !Number.isInteger(amount) || amount < 1) return null;
+    if (!currentText.trim() || !Number.isFinite(current) || !Number.isInteger(amount) || amount < 1
+        || (fixedMaximum !== null && !Number.isFinite(fixedMaximum))) return null;
     const cap = previousCap ? Number(previousCap) : null;
     if (cap !== null && (!Number.isFinite(cap) || cap <= 0)) return null;
-    const nextCap = cap === null ? null : growMaximum ? cap + amount : cap;
-    const limit = fixedMaximum === null ? nextCap : fixedMaximum;
-    const next = limit === null ? current + amount : Math.min(current + amount, limit);
-    return nextCap === null ? String(next) : `${next}/${fixedMaximum ?? nextCap}`;
+    if (growMaximum && cap !== null && fixedMaximum !== null && fixedMaximum < cap) return null;
+    const nextCap = cap === null ? null : growMaximum
+        ? (fixedMaximum === null ? cap + amount : Math.min(cap + amount, fixedMaximum)) : cap;
+    const limit = fixedMaximum === null ? nextCap : nextCap === null ? fixedMaximum : Math.min(nextCap, fixedMaximum);
+    const increase = growMaximum && cap !== null ? Math.max(0, nextCap - cap) : amount;
+    const next = limit === null ? current + increase : Math.min(current + increase, limit);
+    return nextCap === null ? String(next) : `${next}/${growMaximum ? nextCap : fixedMaximum ?? nextCap}`;
 }

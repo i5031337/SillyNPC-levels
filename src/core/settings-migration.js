@@ -1,3 +1,4 @@
+import { normalizeTrackerProgression } from './progression-config.js';
 import { ensureCollectionIdentifier } from './collection-fields.js';
 import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS, normalizeHudLayoutId } from './constants.js';
 import { paletteIndexFor } from './hash.js';
@@ -280,12 +281,6 @@ function normalizeTrackerSchema(settings) {
         if (!settings.statusTracker.playerStats) {
             settings.statusTracker.playerStats = structuredClone(defaultSettings.statusTracker.playerStats);
         } else {
-            if (settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'xp')
-                && settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'level')
-                && !settings.statusTracker.playerStats.some(stat => stat.name?.toLowerCase() === 'level bonus')) {
-                settings.statusTracker.playerStats.push(structuredClone(
-                    defaultSettings.statusTracker.playerStats.find(stat => stat.name === 'Level Bonus')));
-            }
             // Ensure all player stats have format and maxStatValue
             for (const stat of settings.statusTracker.playerStats) {
                 if (stat.format === undefined) stat.format = '{{value}}';
@@ -342,6 +337,7 @@ function normalizeTrackerSchema(settings) {
         }
     }
 
+    normalizeTrackerProgression(settings.statusTracker, settings.statusTracker.presets?.[settings.activeSystem]?.definition);
 }
 
 /**

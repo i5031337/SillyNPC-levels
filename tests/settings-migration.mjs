@@ -1,3 +1,4 @@
+import { normalizeTrackerProgression } from '../src/core/progression-config.js';
 import { ensureCollectionIdentifier } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -14,7 +15,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
-    'normalizeHudLayoutId', 'ensureCollectionIdentifier',
+    'normalizeHudLayoutId', 'ensureCollectionIdentifier', 'normalizeTrackerProgression',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -29,7 +30,7 @@ function migration() {
         NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
-        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier);
+        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier, normalizeTrackerProgression);
     return { normalize, saves };
 }
 
@@ -115,4 +116,19 @@ test('collection identifiers normalize on startup while retaining existing item 
     for (const collection of settings.statusTracker.collections) {
         assert.equal(collection.fields.filter(field => field.isPrimary).length, 1);
     }
+});
+
+test('progression migration assigns IDs and retains saved narrative bonuses without creating new ones', () => {
+    const { normalize } = migration();
+    const settings = { version: '1.0.0', characters: [], statusTracker: {
+        playerStats: [{ name: 'XP', type: 'number', defaultValue: '0/10' },
+            { name: 'Level', type: 'number', defaultValue: '1' }], npcStats: [], collections: [],
+    } };
+    normalize(settings);
+    assert.equal(settings.statusTracker.playerStats.length, 2);
+    assert.equal(settings.statusTracker.progression.player.xpFieldId, 'xp');
+    assert.equal(settings.statusTracker.progression.player.enabled, true);
+    settings.statusTracker.playerStats.push({ name: 'Level Bonus', defaultValue: 'Saved narrative' });
+    normalize(settings);
+    assert.equal(settings.statusTracker.playerStats.at(-1).defaultValue, 'Saved narrative');
 });

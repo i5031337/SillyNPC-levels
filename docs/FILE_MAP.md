@@ -9,6 +9,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/entry/` | SillyTavern event and avatar handlers. |
 | `src/core/` | Constants, settings, System schemas, active profile fields, memories, migrations, and shared utilities. |
 | `src/api/` | Lore and image generation and file operations. |
+| `src/generation/` | Staged System generation, canonical schema fragments, validation, requests, and isolated drafts. |
 | `src/characters/` | Character records, ownership, portraits, and transfer. |
 | `src/chat/` | Chat ownership, message decoration, and reprocessing. |
 | `src/lore/` | Lorebook entries and synchronization. |
@@ -28,6 +29,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `LICENSE` | Project license. |
 | `docs/chat-owned-npcs-plan.md` | Design notes for chat-owned NPCs. |
 | `docs/FILE_MAP.md` | This source map. |
+| `docs/level-up-rewards-plan.md` | Design and acceptance criteria for player/NPC progression and collection rewards. |
+| `docs/system-generation-plan.md` | Implemented staged System generator design, verification criteria, and schema simplification candidates. |
 | `docs/PRODUCT_SPEC_DRAFT.md`, `docs/REWRITE_PLAN.md` | Product direction and staged rewrite plan. |
 | `docs/REWRITE_DECISIONS.md` | Resolved rewrite behavior choices. |
 | `img/SillyNPCLogo.jpg` | Extension logo. |
@@ -40,6 +43,11 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/lore-entry-store.mjs` | Concurrent lore creation, ownership, and entry reuse tests. |
 | `tests/profile-lore-storage.mjs` | Player lore persistence and tracker-only scene context tests. |
 | `tests/progression.mjs` | XP advancement tests. |
+| `tests/level-grants.mjs`, `tests/level-grant-review.mjs` | Actor-specific grant generation, bounds, dependencies, and atomic review acceptance. |
+| `tests/level-reading-retry.mjs`, `tests/inline-level-review.mjs` | Missing-choice retries, freshness, and inline reading replacement. |
+| `tests/collection-preview-purity.mjs` | Verify that previews never create library entries or mutate tombstones. |
+| `tests/ui-level-rewards.py`, `tests/ui-progression-smoke.py` | Unsaved live Firefox fixtures for rewards, review dependencies, and Player/NPC progression controls. |
+| `tests/collection-rewards.mjs` | Reward field validation, schedules, intervals, targets, duplicate prevention, and rename stability. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
 | `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
@@ -80,7 +88,20 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/settings-migration.js` | Normalize settings across versions. |
 | `src/core/settings-base-migration.js` | Normalize common settings and their defaults. |
 | `src/core/settings-store-migration.js` | Normalize stored collections and presets. |
+| `src/generation/contracts.js` | Canonical generation schema fragments and response/count limits. |
+| `src/generation/validate-shape.js` | Strict provider-compatible shape checks and complete JSON extraction. |
+| `src/generation/validate-definition.js` | Pure semantic validation before and after canonical normalization. |
+| `src/generation/planning-prompt.js` | Dedicated planning instructions and a valid example with scoped field-name references. |
+| `src/generation/plan.js` | Manifest validation, deterministic ID allocation, and empty canonical draft. |
+| `src/generation/stages.js` | Catalog/rule, collection, and reward requests, fixed-ID coverage checks, and local display defaults. |
+| `src/generation/catalog-rules.js` | Joint stat/progression response contracts, validation, and atomic application for each catalog. |
+| `src/generation/stage-request.js` | Section-specific context and instructions, with schemas restricted to allocated IDs and object counts. |
+| `src/generation/generate-system.js` | Sequential generation, bounded repair, retry, cancellation, progress, and assembly. |
+| `src/generation/request.js` | Captured reader connection adapter and usage reporting without connection fallback. |
+| `src/generation/draft-context.js` | Isolated Builder projection, draft capture, and local rename callbacks. |
 | `src/core/system-schema.js` | Versioned reusable System definitions, profile policy, and bounded legacy preset normalization. |
+| `src/core/progression-config.js` | Canonical player and per-template progression configuration and configured stat resolution. |
+| `src/core/collection-rewards.js` | Pure collection reward normalization, typed entries, schedules, guided intervals, targeting, and duplicate checks. |
 | `src/core/utils.js` | Image preparation, JSON repair, stat display, downloads, and DOM helpers. |
 | `src/core/utils-media.js` | Image resizing, upload preparation, and media helpers. |
 | `src/core/utils-format.js` | JSON, stat display, text, and DOM formatting helpers. |
@@ -93,7 +114,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/api/api-image-generate.js` | Portrait prompt assembly and SillyTavern Image Generation `/imagine` call. |
 | `src/core/usage.js` | Model usage accounting. |
 | `src/core/tokens.js` | Token budget readout. |
-| `src/tracker/progression.js` | XP advancement and level bonus calculations. |
+| `src/tracker/progression.js` | XP transitions and bounded stat growth, including multiple crossed levels. |
+| `src/tracker/progression-fields.js` | Resolve actor progression and reserve configured XP and Level fields in tracker updates. |
+| `src/tracker/extractor/status-level-grants.js` | Owner-specific One stat and guided collection selection alongside deterministic level grants. |
+| `src/tracker/level-grant-review.js` | Structured grant provenance, XP dependencies, freshness, and acceptance-time grant arithmetic. |
 | `src/tracker/numeric-stat-bounds.js` | Enforce numeric minimums and pool ceilings. |
 | `src/tracker/stat-prompt-definitions.js` | Format stat purposes and rules for reader and inline prompts. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
@@ -146,6 +170,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/extractor/status-extractor-request.js` | Send and normalize model extraction responses. |
 | `src/tracker/extractor/status-extractor-replies.js` | Apply allowed profile, memory, and goal information from extraction. |
 | `src/tracker/extractor/status-extractor-run.js` | Per-message extraction lifecycle and cache invalidation. |
+| `src/tracker/extractor/status-level-reading.js` | Swipe-specific choice cache, decision retention, and missing-reward retries. |
+| `src/tracker/extractor/status-inline-grants.js` | Inline XP delta conversion, review, and replacement-reading orchestration. |
 | `src/tracker/extractor/status-npc-profiles.js` | Optional profile generation for newly discovered reader NPCs, with chat and reply guards. |
 | `src/prompts/prompt-texts.js` | Built-in prompt text and template substitution. |
 | `src/prompts/prompt-texts-reader.js` | Reader and status extraction prompt templates. |
@@ -257,6 +283,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-system-profiles.js` | Player and NPC profile field controls in System Builder. |
 | `src/ui/system/ui-system-profile-operations.js` | Pure add, rename, order, retire, and restore operations for profile fields. |
 | `src/ui/system/ui-system-collections.js` | Collection schema editor, including NPC template targets. |
+| `src/ui/system/ui-collection-rewards.js` | Collapsed Level-up rewards controls with field-driven schedules and guided selection settings. |
+| `src/ui/system/ui-system-progression.js` | Player and NPC template XP/Level selection, stat growth policies, eligible stats, and per-stat gains. |
 | `src/ui/system/ui-collection-targets.js` | Collection target checkboxes for player and NPC template combinations. |
 | `src/core/collection-targets.js` | Shared collection targeting rules for sheets, prompts, and updates. |
 | `tests/collection-targets.mjs` | Template target normalization and update boundary tests. |
@@ -265,6 +293,13 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/collection-fields.js` | Require one collection identifier and preserve it during field edits. |
 | `src/ui/system/ui-system-stats.js` | Stat schema editor. |
 | `src/ui/system/ui-system-stat-policy.js` | Stat update policy and level-up eligibility controls. |
+| `src/ui/system/ui-system-generation.js` | Premise form, staged progress/retry, draft summary/editing, and validated save-as-new. |
+| `src/ui/system/ui-system-context.js` | Explicit live Builder data/save/rename callbacks; draft contexts use the same interface. |
+| `src/ui/system/ui-draft-details.js` | Draft description and display choices outside the Builder tabs. |
+| `tests/system-generation-planning.mjs` | Regression for Gemma counter defaults, missing counters, and cross-scope template selections. |
+| `tests/system-generation.mjs`, `tests/system-generation-request.mjs` | Staged contracts, semantic corruption, limits, retries, cancellation, requests, and fixture progression. |
+| `tests/ui-system-generation.py` | Mocked, unsaved Firefox generator workflow and live-state isolation checks. |
+| `tests/fixtures/generated-expedition-system.json` | Canonical generated example with targeted progression and scheduled technique rewards. |
 | `src/ui/system/ui-system-manager.js` | Reusable System manager, import, export, and selection. |
 | `src/ui/shared/ui-template-tidy.js` | Prompt template cleanup UI. |
 | `src/ui/shared/ui-theme.js` | Apply themes and portrait/speech display options. |

@@ -2,15 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats,
     canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
-import { normaliseStatUpdatePolicies, canAdvanceStat, holdLevelBonusChanges,
-    earnsLevel } from '../src/tracker/stat-update-policy.js';
+import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
+import { progressionStatEligible } from '../src/core/progression-config.js';
+import { prepareGrantReview } from '../src/tracker/level-grant-review.js';
 
-test('numeric Advancement bonuses require a fixed maximum', () => {
-    const rating = { name: 'Swordplay', type: 'number', updatePolicy: 'advancement',
-        advanceOnLevel: true };
-    assert.equal(canAdvanceStat(rating), false);
-    assert.equal(canAdvanceStat({ ...rating, maxStatValue: '5' }), true);
-    assert.equal(canAdvanceStat({ ...rating, updatePolicy: 'turn' }), true);
+test('canonical growth eligibility excludes locked, retired and progression fields', () => {
+    const rating = { id: 'power', name: 'Power', type: 'number', updatePolicy: 'advancement' };
+    const config = { xpFieldId: 'earned', levelFieldId: 'rank' };
+    assert.equal(progressionStatEligible(rating, config), true);
+    assert.equal(progressionStatEligible({ ...rating, locked: true }, config), false);
+    assert.equal(progressionStatEligible({ ...rating, retired: true }, config), false);
+    assert.equal(progressionStatEligible({ ...rating, id: 'rank' }, config), false);
 });
 
 test('legacy transfer settings are retired without changing stored values', () => {
@@ -56,35 +58,47 @@ test('legacy NPC policy remains editable after migration', () => {
 
 test('existing numeric player fields keep level-up eligibility separately from turn policy', () => {
     const tracker = { playerStats: [
-        { name: 'Strength', defaultValue: '5' },
-        { name: 'XP', defaultValue: '0/100' },
+        { id: 'strength', name: 'Strength', defaultValue: '5' },
+        { id: 'xp', name: 'XP', defaultValue: '0/100' },
         { name: 'Level', defaultValue: '1' },
         { name: 'Level Bonus', defaultValue: '' },
     ], npcStats: [] };
     normaliseStatUpdatePolicies(tracker);
     assert.equal(tracker.playerStats[0].updatePolicy, 'turn');
-    assert.equal(canAdvanceStat(tracker.playerStats[0]), true);
-    assert.equal(canAdvanceStat(tracker.playerStats[1]), false);
+    assert.equal(progressionStatEligible(tracker.playerStats[0]), true);
+    assert.equal(progressionStatEligible(tracker.playerStats[1]), false);
     assert.equal(tracker.playerStats[2].updatePolicy, 'advancement');
     assert.equal(tracker.playerStats[3].updatePolicy, 'advancement');
 });
 
-test('a level-up bonus waits for review while XP and Level apply', () => {
+test('structured growth grants wait for review while earned XP and Level apply', () => {
     const auto = [
-        { scope: 'player', label: 'XP' },
-        { scope: 'player', label: 'Level' },
-        { scope: 'player', label: 'Strength' },
-        { scope: 'player', label: 'Level Bonus' },
+        { scope: 'player', actor: null, kind: 'stat', label: 'Experience' },
+        { scope: 'player', actor: null, kind: 'stat', label: 'Rank' },
+        { scope: 'player', actor: null, kind: 'stat', label: 'Strength', grant: { id: 'growth', gain: 1 } },
     ];
     const pending = [];
-    holdLevelBonusChanges(auto, pending, { stat: 'Strength', bonusName: 'Level Bonus' });
-    assert.deepEqual(auto.map(change => change.label), ['XP', 'Level']);
-    assert.deepEqual(pending.map(change => change.label).sort(), ['Level Bonus', 'Strength']);
+    prepareGrantReview(auto, pending, [{ transitionId: 'turn:2', scope: 'player', actor: null,
+        xpName: 'Experience', levelName: 'Rank', oldLevel: 1, newLevel: 2 }]);
+    assert.deepEqual(auto.map(change => change.label), ['Experience', 'Rank']);
+    assert.equal(pending[0].grant.id, 'growth');
+    assert.equal(auto[0].transition.transitionId, 'turn:2');
 });
 
-test('inline bonuses require an XP update that actually crosses the cap', () => {
-    const state = { player: { stats: { XP: '90/100', Level: '1' } } };
-    assert.equal(earnsLevel({ player: { stats: { XP: '110/100' } } }, state), true);
-    assert.equal(earnsLevel({ player: { stats: { XP: '95/100' } } }, state), false);
-    assert.equal(earnsLevel({ player: { stats: { 'Level Bonus': 'Power' } } }, state), false);
+test('NPC Advancement experience, level, and earned ratings survive a new adventure without backfill', () => {
+    const definitions = [
+        { id: 'earned', name: 'Experience', updatePolicy: 'advancement', defaultValue: '0/100' },
+        { id: 'rank', name: 'Rank', updatePolicy: 'advancement', defaultValue: '1' },
+        { id: 'power', name: 'Power', updatePolicy: 'advancement', defaultValue: '3' },
+        { id: 'health', name: 'Health', updatePolicy: 'turn', defaultValue: '10/10' },
+    ];
+    const earned = { Experience: '17/100', Rank: '4', Power: '6', Health: '2/12' };
+    const transferred = initialiseNpcStats(earned, definitions);
+    assert.deepEqual(transferred, { Experience: '17/100', Rank: '4', Power: '6', Health: '10/10' });
+    assert.deepEqual(earned, { Experience: '17/100', Rank: '4', Power: '6', Health: '2/12' });
+    // A different destination template only carries fields it actually selects.
+    assert.deepEqual(initialiseNpcStats(earned, [definitions[3]]), { Health: '10/10' });
+    assert.deepEqual(initialiseNpcStats({}, definitions), {
+        Experience: '0/100', Rank: '1', Power: '3', Health: '10/10',
+    });
 });

@@ -38,3 +38,10 @@ test('advancement bonuses stop at the configured maximum without raising it', ()
     assert.equal(boostStat('4', undefined, 3, { fixedMaximum: 5 }), '5');
     assert.equal(boostStat('4/5', undefined, 3, { fixedMaximum: 5 }), '5/5');
 });
+
+test('bounded pool growth preserves depletion and never shrinks an existing capacity', () => {
+    assert.equal(boostStat('6/10', undefined, 2, { growMaximum: true, fixedMaximum: 11 }), '7/11');
+    assert.equal(boostStat('6/10', undefined, 2, { growMaximum: true, fixedMaximum: 10 }), '6/10');
+    assert.equal(boostStat('6/10', undefined, 2, { growMaximum: true, fixedMaximum: 5 }), null);
+    assert.equal(boostStat('', undefined, 1), null);
+});

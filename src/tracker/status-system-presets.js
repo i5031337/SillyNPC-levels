@@ -1,3 +1,4 @@
+import { normalizeTrackerProgression } from '../core/progression-config.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
 import { normaliseStatUpdatePolicies } from './stat-update-policy.js';
@@ -56,6 +57,7 @@ function configFromDefinition(definition) {
     }));
     const collections = definition.collections.map(collection => ({
         ...collection,
+        hint: collection.guidance,
         fields: collection.fields.map(field => ({ ...field, hint: field.guidance })),
     }));
     return {
@@ -64,6 +66,8 @@ function configFromDefinition(definition) {
             playerStats: stat(definition.stats.player),
             npcStats: stat(definition.stats.npc),
             collections,
+            progression: structuredClone(definition.progression),
+            npcTemplates: structuredClone(definition.npcTemplates),
             hudLayout: definition.hud.layout,
             showGlobalStats: definition.hud.showWorld,
             showNpcPortraits: definition.hud.showNpcPortraits,
@@ -93,7 +97,7 @@ function migrateSavedPresets(settings) {
     const presets = settings.statusTracker?.presets || {};
     let changed = false;
     for (const [name, preset] of Object.entries(presets)) {
-        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && !preset.world
+        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && preset.definition?.progression?.player?.statGrowth && !preset.world
             && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
                 .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
         presets[name] = migratePreset(name, preset);
@@ -101,6 +105,8 @@ function migrateSavedPresets(settings) {
     }
     const active = presets[settings.activeSystem]?.definition;
     if (active) {
+        settings.statusTracker.progression ||= structuredClone(active.progression);
+        settings.statusTracker.npcTemplates = active.npcTemplates;
         for (const stat of settings.statusTracker.npcStats || []) {
             if (!stat.id) stat.id = active.stats.npc.find(field => field.name === stat.name)?.id;
         }
@@ -268,9 +274,15 @@ function saveSystemPreset(name, description = '', author = 'User') {
         ...liveDefinition,
         profiles: previous?.definition?.profiles || liveDefinition.profiles,
         npcTemplates: previous?.definition?.npcTemplates || liveDefinition.npcTemplates,
+        progression: st.progression || previous?.definition?.progression || liveDefinition.progression,
         legacyNpcTemplateId: previous ? previous.definition?.legacyNpcTemplateId : liveDefinition.legacyNpcTemplateId,
         memories: previous?.definition?.memories || liveDefinition.memories,
         goals: previous?.definition?.goals || liveDefinition.goals,
+        hud: { ...liveDefinition.hud,
+            playerStatIds: liveDefinition.stats.player.filter(stat => stat.isPrimary).map(stat => stat.id),
+            npcStatIds: previous?.definition?.hud?.npcStatIds ?? liveDefinition.hud.npcStatIds,
+            worldStatIds: previous?.definition?.hud?.worldStatIds ?? liveDefinition.hud.worldStatIds,
+        },
     }, { name });
 
     if (!st.presets) st.presets = {};
@@ -299,6 +311,11 @@ function applySystemPreset(profile) {
         assignExcept(st, cfg, new Set([...SYSTEM_EXCLUDED_TRACKER, 'displayStyle']));
     }
 
+    if (profile.definition) {
+        const projected = configFromDefinition(normalizeSystemDefinition(profile.definition)).statusTracker;
+        Object.assign(st, projected);
+    }
+
     // A stat list from an older profile may predate either field.
     for (const stat of st.playerStats || []) {
         if (stat.format === undefined) stat.format = '{{value}}';
@@ -314,6 +331,7 @@ function applySystemPreset(profile) {
     }
     normaliseStatUpdatePolicies(st);
     normaliseNpcPersistence(st.npcStats);
+    normalizeTrackerProgression(st, profile.definition);
     for (const stat of st.npcStats || []) {
         if (!stat.id) stat.id = profile.definition?.stats?.npc?.find(field => field.name === stat.name)?.id;
     }

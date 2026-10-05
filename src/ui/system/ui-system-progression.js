@@ -1,0 +1,69 @@
+import { normalizeSystemDefinition } from '../../core/system-schema.js';
+import { liveSystemContext } from './ui-system-context.js';
+import { normalizeProgressionConfig, progressionStatEligible, normalizeTrackerProgression } from '../../core/progression-config.js';
+
+/** Shared player/template progression controls. */
+export function buildProgressionEditor({ template, onRefresh = () => {}, context = liveSystemContext, onSave = context.saveSettings } = {}) {
+    const { getSettings } = context;
+    const tracker = getSettings().statusTracker;
+    const stats = template ? tracker.npcStats || [] : tracker.playerStats || [];
+    const normalized = normalizeSystemDefinition({ statusTracker: tracker });
+    const normalizedStats = template ? normalized.stats.npc : normalized.stats.player;
+    stats.forEach((stat, index) => { stat.id ||= normalizedStats[index].id; });
+    tracker.progression ||= {};
+    const owner = template || tracker.progression;
+    const key = template ? 'progression' : 'player';
+    const config = normalizeProgressionConfig(owner[key], stats,
+        { enabledByDefault: !template, ...(template ? { statIds: template.statIds } : {}) });
+    owner[key] = config;
+    const wrap = document.createElement('fieldset');
+    wrap.className = 'sillynpc-progression-editor';
+    const legend = document.createElement('legend'); legend.textContent = 'Level progression'; wrap.append(legend);
+    const save = () => { owner[key] = config; normalizeTrackerProgression(tracker, context.definition()); onSave(); onRefresh(); };
+    const enableLabel = document.createElement('label');
+    const enable = document.createElement('input'); enable.type = 'checkbox'; enable.checked = config.enabled;
+    enable.setAttribute('aria-label', 'Enable level progression');
+    enable.addEventListener('change', () => { config.enabled = enable.checked;
+        if (template && config.enabled) template.statIds = [...new Set([...template.statIds, config.xpFieldId, config.levelFieldId].filter(Boolean))];
+        save(); });
+    enableLabel.append(enable, ' Enable level progression'); wrap.append(enableLabel);
+    const controls = document.createElement('div'); wrap.append(controls);
+    const select = (labelText, key, options) => {
+        const label = document.createElement('label'); label.style.display = 'block'; label.textContent = `${labelText} `;
+        const input = document.createElement('select'); input.className = 'text_pole'; input.setAttribute('aria-label', labelText);
+        for (const [value, title] of options) { const opt = document.createElement('option'); opt.value = value; opt.textContent = title; input.append(opt); }
+        input.value = config[key]; input.addEventListener('change', () => {
+            config[key] = input.value;
+            if (template && ['xpFieldId', 'levelFieldId'].includes(key)) template.statIds = [...new Set([...template.statIds, input.value])];
+            save();
+        }); label.append(input); controls.append(label);
+    };
+    const options = [['', 'Choose field'], ...stats.filter(stat => !stat.retired && (stat.type === 'number' || /^\d/.test(String(stat.defaultValue))))
+        .map(stat => [stat.id, stat.name])];
+    select('XP field', 'xpFieldId', options); select('Level field', 'levelFieldId', options);
+    if (!config.enabled) return wrap;
+    select('Stat growth', 'statGrowth', [['none', 'None'], ['one', 'One stat'], ['all', 'All selected stats']]);
+    if (config.statGrowth !== 'none') for (const stat of stats.filter(stat => progressionStatEligible(stat, config)
+        && (!template || template.statIds.includes(stat.id)))) {
+        const label = document.createElement('label'); label.style.display = 'block';
+        const check = document.createElement('input'); check.type = 'checkbox'; check.checked = config.statIds.includes(stat.id);
+        check.setAttribute('aria-label', `${stat.name} level growth`);
+        check.addEventListener('change', () => {
+            config.statIds = check.checked ? [...new Set([...config.statIds, stat.id])] : config.statIds.filter(id => id !== stat.id);
+            config.increments[stat.id] ||= 1; save();
+        }); label.append(check, ` ${stat.name}`);
+        if (config.statGrowth === 'all' && check.checked) {
+            const amount = document.createElement('input'); amount.type = 'number'; amount.min = '1'; amount.step = '1';
+            amount.className = 'text_pole'; amount.style.width = '70px'; amount.value = config.increments[stat.id] || 1;
+            amount.setAttribute('aria-label', `${stat.name} increase per level`);
+            amount.addEventListener('change', () => {
+                if (!Number.isSafeInteger(Number(amount.value)) || Number(amount.value) < 1) {
+                    amount.setCustomValidity('Enter a positive whole number.'); amount.reportValidity(); return;
+                }
+                amount.setCustomValidity(''); config.increments[stat.id] = Number(amount.value); save();
+            }); label.append(' +', amount, ' per level');
+        }
+        controls.append(label);
+    }
+    return wrap;
+}

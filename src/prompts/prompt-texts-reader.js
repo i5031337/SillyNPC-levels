@@ -1,38 +1,5 @@
 export const readerPromptTexts = [
     {
-        id: 'levelBonusSystem', group: 'Tracker reader', label: 'Level bonus instructions',
-        where: 'The system prompt sent when the tracker chooses a bonus after an XP level-up.',
-        when: 'When XP crosses its cap in separate reader mode.',
-        placeholders: {},
-        text: 'Choose one story-appropriate player level bonus. Reply with one JSON object and no surrounding text.',
-    },
-    {
-        id: 'levelBonus', group: 'Tracker reader', label: 'Level bonus request',
-        where: 'The request sent when the tracker chooses a bonus after an XP level-up.',
-        when: 'When XP crosses its cap in separate reader mode.',
-        placeholders: {
-            level: 'The new player level.',
-            state: 'The current scene and player sheet as JSON.',
-            sheet: 'The current player sheet (for older custom prompt templates).',
-            offstage: 'Named tracked characters outside the scene.',
-            limits: 'Configured stat limits and allowed values.',
-            collections: 'Configured collections and their fields.',
-            notes: 'Additional reader context registered by other extensions.',
-            earlier: 'Recent messages, already reflected in the current state.',
-            message: 'The latest story event.',
-            pendingChanges: 'The tracker update that triggered this level-up.',
-            eligible: 'Numeric stats the bonus may raise.',
-        },
-        text: `The player reached level {{level}}.
-Current player stats: {{sheet}}
-Latest story message: {{message}}
-Eligible numeric stats (choose the exact name before the colon): {{eligible}}
-Choose exactly one bonus.
-For a narrative perk, reply in this shape: {"description":"A short, specific perk tied to the story"}
-For a numeric increase, choose a name from Eligible numeric stats and reply in this shape: {"description":"A short description of the improvement","stat":"Exact eligible stat name","amount":1}
-Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value and maximum together. An Advancement bonus raises the rating only, within its fixed range. If there are no eligible numeric stats, choose a narrative perk.`,
-    },
-    {
         id: 'reader', group: 'Tracker reader', label: 'Reader request',
         where: 'The request the tracker\'s reader gets for each new message, after your Extraction Instructions (which are its system prompt).',
         when: 'Every message, when the tracker reads replies separately.',
@@ -41,7 +8,7 @@ Use an integer from 1 to 5 for amount. A Turn pool bonus raises current value an
             offstage: 'Tracked characters the message names who are not on stage, with what is on file for them.',
             limits: 'Editable stats, their meanings and text formats.',
             npcFields: 'All configured NPC fields, including their purpose and initialization rules.',
-            xpProgression: 'Switch: on when the player has XP and Level stats.',
+            xpProgression: 'Switch: on when a player or NPC has enabled progression.',
             notes: 'Notes other extensions add, each with its own heading.',
             strangers: 'Speakers without a card, when you have tagged fallback portraits.',
             strangerKinds: 'Your portrait tags.',
@@ -75,13 +42,13 @@ The template's field values describe how to fill them, using the configured fiel
 {{/newNpcReply}}
 {{#xpProgression}}
 
-### PLAYER EXPERIENCE
-Award XP once for each concrete player accomplishment in the latest message, including small progress. Scale the award to the achievement. Report a positive number only in "player.deltas"; the extension handles Level and excess XP.
+### EXPERIENCE
+Award experience once per concrete accomplishment in the latest message, including small progress, for the player and enabled NPC templates. Use each owner’s configured XP field in "player.deltas" or that character’s "deltas" with a positive number. The extension handles Level, excess XP, and reward proposals; never write Level or level-up growth directly. Disabled NPC templates use ordinary stat rules.
 {{/xpProgression}}
 {{#offstage}}
 
 ### OFFSTAGE CHARACTERS
-These tracked characters are named in the message. Include one in "characters" if they enter the scene, with changes and initial values for blank NPC fields.
+These known characters are outside the current scene. If one enters, include them in "characters" without "offstage" (or with false). If they remain absent but the latest message establishes an earned XP award or other concrete change, include them with "offstage": true and only those changes. Use positive XP deltas for enabled progression. Never mark an unknown NPC offstage, and never infer scene presence from merely mentioning a name.
 {{offstage}}
 {{/offstage}}
 {{#limits}}
@@ -130,7 +97,7 @@ Only report an explicit, meaningful change in the latest message. Under the rele
 {{/goals}}
 ### REPLY FORMAT
 Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
-"characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present after the latest message, use "characters": [].
+"characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present and no known offstage NPC changes, use "characters": []. Known absent NPC updates must carry "offstage": true; all other entries describe the complete present cast.
 {{#reasons}}
 Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<name>.Health". Quote the latest message or name the event. For an initialized NPC stat, use "initial estimate" or "invented".
 {{/reasons}}
@@ -163,7 +130,7 @@ Changed-reply shape (include only changes supported by the latest message):
             statDefinitions: 'Configured stat purposes, types and bounds.',
             schemas: 'Each collection in play and its fields.',
             npcFields: 'All configured NPC fields, including allowed values and locked fields.',
-            xpProgression: 'Switch: on when the player has XP and Level stats.',
+            xpProgression: 'Switch: on when a player or NPC has enabled progression.',
         },
         text: `Update the status from the latest story events. Initialize every new NPC's blank configured stats with plausible individual values, even without context. List everyone present after the latest message.
 
@@ -181,12 +148,12 @@ NPC fields:
 For each present NPC, fill blank configured stats with plausible individual values. Follow each stat's purpose and rules. Update filled stats only when the story changes them. Initialize blank locked NPC stats once.
 {{/npcFields}}
 {{#xpProgression}}
-Player XP: award once for each concrete accomplishment in the latest message, including small progress. Scale the award to the achievement. Report the new absolute XP total with the same cap (90/100 plus 20 becomes 110/100). The extension handles level-ups and excess XP. When the award crosses the cap, add a story-appropriate Level Bonus to the player sheet.
+Experience: award once per concrete accomplishment for the player and enabled NPC templates. Report earned XP as a positive delta under "player.deltas" or that character’s "deltas", using the configured XP field. The extension handles Level, excess XP, stat growth, and collection reward review. Never write Level or level-up growth directly. Disabled templates use ordinary stat rules.
 {{/xpProgression}}
 
 ### COSTS
 Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
-Keep pool values such as "8/10" in that form. Keep maxima fixed during ordinary updates. Only a Turn stat may gain maximum capacity from a level-up bonus. Advancement ratings keep their configured range. Keep plain numbers as numbers.
+Keep pool values such as "8/10" in that form. Keep maxima fixed during ordinary updates. Configured level growth may increase Turn pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Advancement ratings keep their configured range. Keep plain numbers as numbers.
 
 {{#schemas}}
 ### COLLECTIONS

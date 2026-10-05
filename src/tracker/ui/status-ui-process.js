@@ -1,6 +1,8 @@
+import { getAllCharacters } from '../../characters/character-repository.js';
+import { queueInlineReading } from '../extractor/status-inline-grants.js';
 import { getSettings } from '../../core/settings.js';
 import { eventSource, event_types } from '../../../../../../events.js';
-import { loadStateFromMetadata, applyUpdate, sanitizeModelUpdate, parseMessageForUpdates } from '../status-logic.js';
+import { parseMessageForUpdates } from '../status-logic.js';
 import { extractJSON, safeJsonParse } from '../../core/utils.js';
 import { debugLog } from '../../core/constants.js';
 import { stripAndPersist } from '../status-history.js';
@@ -10,11 +12,6 @@ import { insideTracker, isEditingInside } from './status-ui-guards.js';
 
 
 const processingMessages = new Set();
-
-function sanitizeInlineUpdate(update) {
-    return sanitizeModelUpdate(update, loadStateFromMetadata(), getSettings().statusTracker,
-        { allowInlineLevelBonus: true });
-}
 
 /**
  * Live MutationObservers, keyed by message id.
@@ -155,7 +152,7 @@ export function processStatusUpdate(mesEl) {
     // measures offsets into textContent and the box's own text would be inside them. The
     // observer above is already registered by this point, and a message being typed into
     // has been processed before or there would be no box to type into.
-    if (isEditingInside(mesEl)) return;
+    if (isEditingInside(mesEl) || streaming || mesEl.classList.contains('writing')) return;
 
     processingMessages.add(mesId);
     try {
@@ -177,7 +174,7 @@ export function processStatusUpdate(mesEl) {
             const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== text;
             if (settings.extractionMode !== 'manual' && textUpdate
                 && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
-                applyUpdate(sanitizeInlineUpdate(textUpdate));
+                queueInlineReading(textUpdate, mesId, mesEl, text);
                 mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                 mesEl.setAttribute('data-sillynpc-last-update-text', text);
             }
@@ -208,7 +205,7 @@ export function processStatusUpdate(mesEl) {
                 const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== statusTagEl.textContent;
                 if (settings.extractionMode !== 'manual'
                     && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
-                    applyUpdate(sanitizeInlineUpdate(parsedUpdate));
+                    queueInlineReading(parsedUpdate, mesId, mesEl, statusTagEl.textContent);
                     mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                     mesEl.setAttribute('data-sillynpc-last-update-text', statusTagEl.textContent);
                 }
@@ -259,7 +256,7 @@ export function processStatusUpdate(mesEl) {
                     const hasNewContent = !mesEl.hasAttribute('data-sillynpc-last-update-text') || mesEl.getAttribute('data-sillynpc-last-update-text') !== extractedJson;
                     if (settings.extractionMode !== 'manual'
                         && (!mesEl.hasAttribute('data-sillynpc-status-applied') || hasNewContent)) {
-                        applyUpdate(sanitizeInlineUpdate(parsedCandidate));
+                        queueInlineReading(parsedCandidate, mesId, mesEl, extractedJson);
                         mesEl.setAttribute('data-sillynpc-status-applied', 'true');
                         mesEl.setAttribute('data-sillynpc-last-update-text', extractedJson);
                     }

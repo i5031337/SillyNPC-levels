@@ -1,3 +1,4 @@
+import { progressionFields } from './progression-fields.js';
 import { collectionAppliesTo, collectionTargetLabel } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { isTurnStat } from './stat-update-policy.js';
@@ -51,8 +52,8 @@ function getStatusInstructions() {
         statDefinitions,
         npcFields: deps.describeNpcStatFields(settings),
         schemas,
-        xpProgression: settings.playerStats.some(stat => stat.name?.toLowerCase() === 'xp' && !stat.locked)
-            && settings.playerStats.some(stat => stat.name?.toLowerCase() === 'level') ? 'on' : '',
+        xpProgression: progressionFields(settings, { isPlayer: true }).enabled
+            || (settings.npcTemplates || []).some(template => template.progression?.enabled) ? 'on' : '',
     }) + '\n';
 }
 
@@ -70,8 +71,11 @@ function getStatusExample() {
     const first = (list) => (list || []).map(s => s?.name).filter(Boolean)[0];
 
     const player = {};
-    const playerStat = first(settings.playerStats.filter(isTurnStat));
-    if (playerStat) player.stats = { [playerStat]: '<new value>' };
+    const playerProgression = progressionFields(settings, { isPlayer: true });
+    const playerStat = first(settings.playerStats.filter(stat => isTurnStat(stat)
+        && (!playerProgression.enabled || stat.name !== playerProgression.levelName)));
+    if (playerProgression.enabled && playerStat === playerProgression.xpName) player.deltas = { [playerStat]: 1 };
+    else if (playerStat) player.stats = { [playerStat]: '<new value>' };
     const sampleCollection = (target, verb) => {
         const col = (settings.collections || []).find(c => c?.id
             && (collectionAppliesTo(c, target, target === 'npc' ? state?.characters?.[0] || {} : undefined)));
@@ -87,8 +91,11 @@ function getStatusExample() {
     if (playerCollection) player.collections = playerCollection;
 
     const character = { name: first(state?.characters) || '<someone present>' };
-    const npcStat = first(settings.npcStats.filter(isTurnStat));
-    if (npcStat) character.stats = { [npcStat]: '<new value>' };
+    const npcProgression = progressionFields(settings, { actor: state?.characters?.[0] });
+    const npcStat = first(settings.npcStats.filter(stat => isTurnStat(stat)
+        && (!npcProgression.enabled || stat.name !== npcProgression.levelName)));
+    if (npcProgression.enabled && npcStat === npcProgression.xpName) character.deltas = { [npcStat]: 1 };
+    else if (npcStat) character.stats = { [npcStat]: '<new value>' };
     const npcCollection = sampleCollection('npc', 'remove');
     if (npcCollection) character.collections = npcCollection;
 

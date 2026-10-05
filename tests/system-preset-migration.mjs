@@ -1,3 +1,4 @@
+import { normalizeTrackerProgression } from '../src/core/progression-config.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -19,9 +20,9 @@ function loadBind(file, names, values) {
 const bindPresets = loadBind('status-system-presets.js', [
     'getSettings', 'saveSettings', 'defaultSettings', 'normaliseStatDefs',
     'normaliseNpcPersistence', 'normaliseStatUpdatePolicies', 'normalizeSystemDefinition',
-    'debugLog',
+    'debugLog', 'normalizeTrackerProgression',
 ], [() => settings, () => { saves++; }, { statusTracker: {}, characters: [], personaData: {}, master_items: {} },
-    () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}]);
+    () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}, normalizeTrackerProgression]);
 bindPresets(deps);
 
 test('loaded legacy world is discarded and stays outside the System', () => {
@@ -105,4 +106,48 @@ test('template definitions survive System capture and modern import', () => {
     assert.equal(deps.createSystem('New Empty System'), true);
     assert.deepEqual(settings.statusTracker.presets['New Empty System'].definition.npcTemplates, []);
     assert.equal(settings.statusTracker.presets['New Empty System'].definition.legacyNpcTemplateId, undefined);
+});
+
+test('canonical progression projects into live tracker and survives capture', () => {
+    const definition = normalizeSystemDefinition({ schemaVersion: 1, name: 'Growth',
+        stats: { world: [], npc: [
+            { id: 'xp', name: 'NPC Experience', defaultValue: '0/10' },
+            { id: 'level', name: 'NPC Rank', defaultValue: '1' },
+        ], player: [
+            { id: 'earned', name: 'Experience', defaultValue: '0/10' },
+            { id: 'rank', name: 'Rank', defaultValue: '1' },
+        ] },
+        progression: { player: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank', statGrowth: 'none' } },
+        npcTemplates: [{ id: 'human', name: 'Human', statIds: ['xp', 'level'],
+            progression: { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'none' } }],
+    });
+    const imported = deps.migratePreset('Growth', { definition, metadata: { name: 'Growth' } });
+    deps.applySystemPreset(imported);
+    assert.equal(settings.statusTracker.playerStats[0].id, 'earned');
+    assert.equal(settings.statusTracker.progression.player.xpFieldId, 'earned');
+    assert.equal(settings.statusTracker.npcTemplates[0].progression.enabled, true);
+    settings.statusTracker.presets.Growth = imported;
+    deps.saveSystemPreset('Growth');
+    assert.equal(settings.statusTracker.presets.Growth.definition.progression.player.xpFieldId, 'earned');
+});
+
+test('generated fixture imports without activation and retains rules through capture/export', () => {
+    const definition = JSON.parse(readFileSync(new URL('./fixtures/generated-expedition-system.json', import.meta.url), 'utf8'));
+    const before = structuredClone(settings);
+    const savedCount = saves;
+    const imported = deps.importSystemPreset(JSON.stringify(definition));
+    const after = structuredClone(settings);
+    delete before.statusTracker.presets; delete after.statusTracker.presets;
+    assert.deepEqual(after, before);
+    assert.equal(saves, savedCount + 1);
+    assert.deepEqual(imported.definition, definition);
+    assert.equal(imported.config.statusTracker.collections[0].hint, definition.collections[0].guidance);
+    deps.applySystemPreset(imported);
+    deps.saveSystemPreset(definition.name, definition.metadata.description, definition.metadata.author);
+    const captured = settings.statusTracker.presets[definition.name].definition;
+    assert.deepEqual(captured.hud.playerStatIds, ['energy']);
+    assert.deepEqual(captured.progression, definition.progression);
+    assert.deepEqual(captured.npcTemplates, definition.npcTemplates);
+    assert.deepEqual(captured.collections, definition.collections);
+    assert.deepEqual(captured.stats, definition.stats);
 });

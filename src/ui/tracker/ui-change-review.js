@@ -42,6 +42,18 @@ function ownerOf(change) {
     return change.actor || 'Character';
 }
 
+function refreshGrantDependencies(rows) {
+    for (const row of rows) {
+        if (!row.change.grant || !row.toggle) continue;
+        const dependency = rows.filter(entry => (entry.change.transition?.id || entry.change.transition?.transitionId)
+            === row.change.grant.transitionId);
+        const waiting = dependency.some(entry => !entry.accepted);
+        row.toggle.disabled = waiting;
+        row.toggle.checked = !waiting && row.accepted;
+        row.toggle.title = waiting ? 'Accept the earned XP and Level before this reward can apply' : 'Include this level-up reward';
+    }
+}
+
 /**
  * Draws the panel for one message, or nothing when there is nothing to review.
  *
@@ -79,6 +91,11 @@ function buildReviewPanel(messageId) {
     header.innerHTML = `<i class="fa-solid fa-list-check"></i> `
         + `<b>${pending.length} change${pending.length === 1 ? '' : 's'} to review</b>`;
     panel.appendChild(header);
+    if (pending.some(row => row.grant)) {
+        const hint = document.createElement('small');
+        hint.textContent = 'Apply selected keeps unselected level-up rewards pending. Discard all rejects the remaining rewards.';
+        panel.appendChild(hint);
+    }
 
     // Reasons the reader gave that belong to no row here - almost always a key it spelled
     // differently from the stat. Shown rather than dropped: a reason that could not be
@@ -143,6 +160,7 @@ function buildReviewPanel(messageId) {
         }
         list.appendChild(buildRow(row, rows));
     }
+    refreshGrantDependencies(rows);
     panel.appendChild(list);
 
     const actions = document.createElement('div');
@@ -158,8 +176,10 @@ function buildReviewPanel(messageId) {
             scope: r.scope, actor: r.actor, collectionId: r.collectionId,
         }));
         const dismissed = rows.filter(r => r.dismiss).map(r => r.change);
+        const container = panel.parentElement;
         resolvePendingChanges(messageId, accepted, dismissed);
         panel.remove();
+        renderReviewPanel(container, messageId);
     });
 
     const discard = document.createElement('button');
@@ -170,7 +190,7 @@ function buildReviewPanel(messageId) {
     discard.addEventListener('click', () => {
         // Declining is about this message. Only a ticked never-again box is permanent.
         const dismissed = rows.filter(r => r.dismiss).map(r => r.change);
-        resolvePendingChanges(messageId, [], dismissed);
+        resolvePendingChanges(messageId, [], dismissed, { discardAll: true });
         panel.remove();
     });
 
@@ -199,10 +219,10 @@ function buildDestination(row, rows) {
     wrap.appendChild(into);
 
     const isItem = change.kind === 'item-add' || change.kind === 'item-remove' || change.kind === 'item-change';
-    if (!isItem) {
+    if (!isItem || change.grant) {
         const fixed = document.createElement('span');
         fixed.className = 'sillynpc-review-dest-fixed';
-        fixed.textContent = `${ownerOf(change)} · ${change.label}`;
+        fixed.textContent = `${ownerOf(change)} · ${change.collectionId || change.label}`;
         wrap.appendChild(fixed);
         return wrap;
     }
@@ -278,8 +298,16 @@ function buildRow(row, rows) {
     toggle.checked = row.accepted;
     toggle.className = 'sillynpc-review-toggle';
     toggle.title = 'Include this change';
+    row.toggle = toggle;
     toggle.addEventListener('change', () => {
         row.accepted = toggle.checked;
+        const id = change.transition?.id || change.transition?.transitionId;
+        if (id) for (const entry of rows) {
+            if ((entry.change.transition?.id || entry.change.transition?.transitionId) !== id) continue;
+            entry.accepted = row.accepted;
+            if (entry.toggle) entry.toggle.checked = row.accepted;
+        }
+        refreshGrantDependencies(rows);
         if (change.kind === 'npc-template') rows.forEach(entry => entry.refreshCollections?.());
     });
 
@@ -304,7 +332,8 @@ function buildRow(row, rows) {
     arrow.textContent = '→';
 
     // Item rows name a thing rather than hold a value, so only stats are editable.
-    const editable = change.kind === 'stat' || change.kind === 'stat-max' || change.kind === 'item-change';
+    const editable = !change.grant && !change.transition
+        && (change.kind === 'stat' || change.kind === 'stat-max' || change.kind === 'item-change');
     const to = document.createElement(change.kind === 'npc-template' ? 'select' : editable ? 'input' : 'span');
     to.className = 'sillynpc-review-to';
     if (change.kind === 'npc-template') {
@@ -328,7 +357,7 @@ function buildRow(row, rows) {
             to.addEventListener(evt, e => e.stopPropagation());
         }
     } else {
-        to.textContent = change.after;
+        to.textContent = change.grant?.gain ? `+${change.grant.gain}` : change.after;
     }
 
     const why = document.createElement('small');

@@ -91,6 +91,7 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
     const update = {};
     /** Collections are rebuilt in full and marked as a replacement when they are written. */
     const collectionWork = new Map();
+    const statWork = new Map();
 
     const actorOf = (change) => {
         if (change.scope === 'player') return currentState?.player;
@@ -128,9 +129,10 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
         }
         if (change.kind === 'stat' || change.kind === 'stat-max') {
             // Re-join the halves so a max-only acceptance does not drop the current value.
-            const live = change.scope === 'global'
+            const statKey = `${change.scope}|${change.actor || ''}|${change.label}`;
+            const live = statWork.get(statKey) ?? (change.scope === 'global'
                 ? currentState?.global?.[change.label]
-                : actorOf(change)?.stats?.[change.label];
+                : actorOf(change)?.stats?.[change.label]);
             const parts = splitValue(live);
 
             /* A ceiling needs something to be the ceiling of. With no current value there
@@ -148,6 +150,7 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
             const value = change.kind === 'stat'
                 ? (parts.max ? `${change.after}/${parts.max}` : String(change.after))
                 : (change.after && change.after !== '(none)' ? `${parts.current}/${change.after}` : parts.current);
+            statWork.set(statKey, value);
 
             if (change.scope === 'global') {
                 update.global ||= {};

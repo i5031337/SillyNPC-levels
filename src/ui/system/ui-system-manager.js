@@ -1,3 +1,4 @@
+import { buildSystemGeneration } from './ui-system-generation.js';
 import { getSettings } from '../../core/settings.js';
 import { offerDownload } from '../../core/utils.js';
 import { updateAllExtensionThemes } from '../shared/ui-shared.js';
@@ -207,7 +208,17 @@ export function buildSystemManager(onRefresh) {
     libraryBtn.title = 'View and clean up what the extension remembers between chats - items, skills, spells, whatever your collections hold';
     libraryBtn.addEventListener('click', () => openItemLibrary());
 
-    globalActions.append(newBtn, importBtn, libraryBtn);
+    const generateBtn = document.createElement('button');
+    generateBtn.type = 'button'; generateBtn.className = 'menu_button';
+    generateBtn.textContent = 'Generate from premise';
+    generateBtn.addEventListener('click', () => {
+        if (wrap.querySelector('.sillynpc-system-generation')) return;
+        wrap.append(buildSystemGeneration(name => {
+            toastr.success(`Saved “${name}” as a new System.`, 'SillyNPC');
+            onRefresh();
+        }));
+    });
+    globalActions.append(newBtn, generateBtn, importBtn, libraryBtn);
     wrap.append(listWrap, globalActions);
     return wrap;
 }

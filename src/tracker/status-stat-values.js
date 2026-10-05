@@ -1,7 +1,8 @@
+import { progressionFields } from './progression-fields.js';
 import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
-import { isTurnStat, canAdvanceStat, earnsLevel } from './stat-update-policy.js';
+import { isTurnStat } from './stat-update-policy.js';
 import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
 import { configuredNumericMaximum, keepNumericMaximum } from './numeric-stat-bounds.js';
 
@@ -108,14 +109,17 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * @param {object} update Changed in place, and returned.
  * @param {object} state The state the reply is applied to.
  */
-function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker,
-    { allowInlineLevelBonus = false } = {}) {
+function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker) {
     if (!update || typeof update !== 'object') return update;
-    const levelUp = allowInlineLevelBonus && earnsLevel(update, state);
+    // Model replies never select level-derived stat growth or write narrative bonuses.
 
-    const clean = (stats, defs, stored, { npc = false, player = false, cardStats = {} } = {}) => {
+    const clean = (stats, defs, stored, { npc = false, player = false, cardStats = {}, progression = {} } = {}) => {
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
+            const fragment = key.replace(/_(?:current|cur|now|value|val|maximum|max|total|cap)$/i, '');
+            if (progression.enabled && fragment.toLowerCase() === progression.levelName?.toLowerCase()) {
+                delete stats[key]; continue;
+            }
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
             const maxFragment = key.match(/^(.*)_(?:maximum|max|total|cap)$/i);
             if (!def && maxFragment && (defs || []).some(d => d?.name?.toLowerCase() === maxFragment[1].toLowerCase()
@@ -124,12 +128,12 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 continue;
             }
             if (!def) continue;
-            const inlineBonus = player && levelUp
-                && (def.name.toLowerCase() === 'level bonus' || canAdvanceStat(def));
-            if (!isTurnStat(def) && !inlineBonus) { delete stats[key]; continue; }
+            if (progression.enabled && def.name === progression.levelName) { delete stats[key]; continue; }
+            const earnedXp = progression.enabled && def.name === progression.xpName && !def.locked;
+            if (!isTurnStat(def) && !earnedXp) { delete stats[key]; continue; }
             const held = stored?.[deps.findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, key) || key];
-            if (npc && !canTrackerSetNpcStat(def)) {
+            if (npc && !canTrackerSetNpcStat(def) && !earnedXp) {
                 delete stats[key];
                 continue;
             }
@@ -142,7 +146,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 }
             }
             const incoming = String(stats[key] ?? '');
-            if (isNumericStat(def) && (!inlineBonus || !isTurnStat(def))) {
+            if (isNumericStat(def)) {
                 const storedValue = String(held ?? '').trim() ? held : cardHeld;
                 const fixedCap = !isTurnStat(def) ? configuredNumericMaximum(def) : null;
                 const plainReading = String(storedValue ?? '').trim() && ceilingFromValue(storedValue) === null;
@@ -157,7 +161,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         // applyUpdate reads update.player.stats, or update.player itself when it is flat.
         const playerStats = update.player.stats && typeof update.player.stats === 'object'
             ? update.player.stats : update.player;
-        clean(playerStats, trackerSettings.playerStats, state?.player?.stats, { player: true });
+        clean(playerStats, trackerSettings.playerStats, state?.player?.stats, { player: true, progression: progressionFields(trackerSettings, { isPlayer: true }) });
     }
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
@@ -165,7 +169,9 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         const selected = proposedNpcTemplate(current?.npcTemplateId ? current : deps.findCardForName(actor?.name), actor);
         clean(actor?.stats && typeof actor.stats === 'object' ? actor.stats : actor,
             npcStatsFor({ npcTemplateId: selected?.id }, trackerSettings), current?.stats,
-            { npc: true, cardStats: deps.findCardForName(actor?.name)?.statusOverrides });
+            { npc: true, cardStats: deps.findCardForName(actor?.name)?.statusOverrides,
+                progression: progressionFields(trackerSettings, { actor: { npcTemplateId: selected?.id
+                    || current?.npcTemplateId || deps.findCardForName(actor?.name)?.npcTemplateId || actor?.npcTemplateId } }) });
     }
     return update;
 }

@@ -1,3 +1,4 @@
+import { progressionFields } from '../progression-fields.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { charactersMentionedIn } from '../../chat/chat.js';
 import { charactersFromActivatedLore } from '../../lore/activated-lore.js';
@@ -26,9 +27,8 @@ export function describeLocked(trackerSettings) {
  * reconciled. But that happens after this request was built, so the reader saw a state
  * without them and reported them as new with nothing to their name.
  *
- * Kept out of the "characters" array on purpose. That array is the scene cast, and the
- * prompt tells the reader to return it complete; putting an absent character in it would
- * be read as "they are here". This is a separate note saying what they already have.
+ * Kept separate from the current scene cast. The reader may return an evidenced
+ * update with offstage:true without adding the known character to scene presence.
  *
  * @param {object} state
  * @param {string} messageText
@@ -59,9 +59,11 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
            Their facts come from the card rather than the state, because being absent from
            the state is what makes them off-scene. liveFactsFor answers exactly that. */
         const { stats, collections } = liveFactsFor(char);
+        const progression = progressionFields(trackerSettings, { actor: char });
         const visibleStats = Object.fromEntries(Object.entries(stats || {}).filter(([name]) =>
             !(trackerSettings.npcStats || []).some(def => !isTurnStat(def)
-                && def.name?.toLowerCase() === name.toLowerCase())));
+                && def.name?.toLowerCase() === name.toLowerCase()
+                && !(progression.enabled && [progression.xpName, progression.levelName].includes(def.name)))));
         const listed = summariseCollections({ ...char, collections }, 'npc', trackerSettings);
         const profile = profileBlock(char);
 
@@ -73,6 +75,7 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
 
         records.push({
             name: char.name,
+            offstage: true,
             npcTemplateId: npcTemplateFor(char)?.id || '(unassigned)',
             ...(hasStats ? { stats: visibleStats } : {}),
             ...(hasItems ? { collections: listed } : {}),

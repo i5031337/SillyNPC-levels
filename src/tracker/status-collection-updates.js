@@ -24,7 +24,7 @@ function normaliseItem(itemData, fields, previous = null) {
     }
     return out;
 }
-function applyCollectionUpdate(actor, collectionId, update, { allowReplace = false } = {}) {
+function applyCollectionUpdate(actor, collectionId, update, { allowReplace = false, dryRun = false } = {}) {
     const settings = getSettings().statusTracker;
     const colDef = settings.collections.find(c => c.id.toLowerCase() === collectionId.toLowerCase());
     
@@ -59,12 +59,12 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
     // remembered by every caller of buildUpdateFromChanges and three of the four forgot -
     // so an accepted removal was read as a list of additions and the item never left.
     if (update && !Array.isArray(update) && Array.isArray(update.replace)) {
-        return applyCollectionUpdate(actor, collectionId, update.replace, { allowReplace: true });
+        return applyCollectionUpdate(actor, collectionId, update.replace, { allowReplace: true, dryRun });
     }
 
     if (Array.isArray(update) && !allowReplace) {
         debugLog(`Collection "${actualCollectionId}" arrived as a list; treating it as additions.`);
-        return applyCollectionUpdate(actor, collectionId, { add: update }, { allowReplace });
+        return applyCollectionUpdate(actor, collectionId, { add: update }, { allowReplace, dryRun });
     }
     // Handle Full State Sync (Array)
     if (Array.isArray(update)) {
@@ -87,7 +87,7 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
             }
 
             // Master Database Merge Logic
-            const masterItem = deps.getMergedItem(actualCollectionId, itemData);
+            const masterItem = deps.getMergedItem(actualCollectionId, itemData, { dryRun });
 
             actor.collections[actualCollectionId].push(normaliseItem(masterItem, validFields));
         });
@@ -129,7 +129,7 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
                     debugLog(`Skipping AI-added tombstoned item: ${itemName} in ${actualCollectionId}`);
                     continue;
                 }
-                addItem(actor, actualCollectionId, itemData);
+                addItem(actor, actualCollectionId, itemData, { dryRun });
             }
     }
 
@@ -151,7 +151,7 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
 /**
  * Adds an item to an actor's collection.
  */
-function addItem(actor, collectionId, itemData) {
+function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
     if (!actor.collections) actor.collections = {};
     if (!actor.collections[collectionId]) actor.collections[collectionId] = [];
     
@@ -166,7 +166,7 @@ function addItem(actor, collectionId, itemData) {
     // Clear from recently_deleted if it was there
     const lowerName = String(itemName).toLowerCase();
     const state = deps.committedState || deps.loadStateFromMetadata();
-    if (state && state.recently_deleted && state.recently_deleted[collectionId]) {
+    if (!dryRun && state && state.recently_deleted && state.recently_deleted[collectionId]) {
         if (state.recently_deleted[collectionId][lowerName]) {
             delete state.recently_deleted[collectionId][lowerName];
         }

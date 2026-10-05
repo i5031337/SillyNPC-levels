@@ -32,7 +32,7 @@ function syncOverrideToActiveState(charName, statName, newValue) {
  * Merges an AI-provided item with its Master Database entry if it exists.
  * If not, adds the item to the Master Database.
  */
-function getMergedItem(collectionId, aiItem) {
+function getMergedItem(collectionId, aiItem, { dryRun = false } = {}) {
     const settings = getSettings();
     const colDef = settings.statusTracker.collections.find(c => c.id === collectionId);
     if (!colDef) return aiItem;
@@ -42,10 +42,9 @@ function getMergedItem(collectionId, aiItem) {
     if (!itemName) return aiItem;
 
     const masterDb = settings.master_items || {};
-    if (!masterDb[collectionId]) masterDb[collectionId] = {};
     
     const lowerName = String(itemName).toLowerCase();
-    const masterEntry = masterDb[collectionId][lowerName];
+    const masterEntry = masterDb[collectionId]?.[lowerName];
 
     if (masterEntry) {
         const mergedItem = { ...aiItem };
@@ -58,7 +57,7 @@ function getMergedItem(collectionId, aiItem) {
         return mergedItem;
     } else {
         // Not found, add to master
-        updateMasterItem(collectionId, itemName, aiItem);
+        if (!dryRun) updateMasterItem(collectionId, itemName, aiItem);
         return aiItem;
     }
 }

@@ -132,7 +132,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
  * @param {{dryRun?: boolean}} options
  */
 function updateCardOffstage(card, updChar, state, settings,
-    { dryRun = false, allowReplace = false, allowAdvancementChanges = false } = {}) {
+    { dryRun = false, allowReplace = false, allowAdvancementChanges = false, verbatim = false } = {}) {
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
@@ -143,21 +143,10 @@ function updateCardOffstage(card, updChar, state, settings,
         actor.stats[stat.name] = deps.getInitialStatValue(stat.defaultValue, stat.maxStatValue, stat);
     }
 
-    /* Through the same two guards the scene's cast gets. Written raw, this path let a value
-       no list allows onto a card - a Condition of "Unconscious" where the nine allowed words
-       do not include it - and let a bare number lose the ceiling the card already had. Being
-       off stage is about where somebody is, not about which rules their sheet follows. */
-    const defOf = (name) => statDefs
-        .find(stat => String(stat?.name).toLowerCase() === String(name).toLowerCase());
-    const validKeys = new Set(statDefs.map(s => s.name.toLowerCase()));
-    const sourceStats = updChar.stats || {};
-    for (const [key, value] of Object.entries(sourceStats)) {
-        const matched = deps.findMatchingStatKey(actor.stats, key) || key;
-        if (!validKeys.has(matched.toLowerCase())) continue;
-        if (!allowAdvancementChanges && !canTrackerSetNpcStat(defOf(matched))) continue;
-        const merged = deps.mergeStatValue(actor.stats[matched], String(value));
-        actor.stats[matched] = deps.constrainToDefinition(defOf(matched), merged, actor.stats[matched]);
-    }
+    const collectionIdsForStats = new Set((settings.collections || []).map(c => c.id.toLowerCase()));
+    deps.applyCharacterStats(actor, updChar, null, { ...settings, npcStats: statDefs },
+        new Set(statDefs.map(stat => stat.name.toLowerCase())), collectionIdsForStats,
+        { dryRun: true, allowAdvancementChanges, verbatim, skipProgression: selected?.id !== card.npcTemplateId });
 
     const collectionIds = new Set((settings.collections || []).map(c => c.id.toLowerCase()));
     const collectionsToProcess = { ...(updChar.collections || {}) };
@@ -168,7 +157,7 @@ function updateCardOffstage(card, updChar, state, settings,
         }
     }
     for (const colId of Object.keys(collectionsToProcess)) {
-        deps.applyCollectionUpdate(actor, colId, collectionsToProcess[colId], { allowReplace });
+        deps.applyCollectionUpdate(actor, colId, collectionsToProcess[colId], { allowReplace, dryRun });
     }
 
     if (dryRun) return actor;

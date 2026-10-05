@@ -21,8 +21,7 @@ export const defaultTrackerSettings = {
             { name: 'HP', type: 'number', defaultValue: '20/20', format: '{{name}}: {{value}}', maxStatValue: '20', visible: true, isPrimary: true, color: '#e03131', advanceOnLevel: true },
             { name: 'Energy', type: 'number', defaultValue: '10/10', format: '{{name}}: {{value}}', maxStatValue: '10', visible: true, isPrimary: true, color: '#3b5bdb', advanceOnLevel: true },
             { name: 'Level', type: 'number', defaultValue: '1', format: '{{name}}: {{value}}', maxStatValue: '', visible: true, isPrimary: false },
-            { name: 'XP', type: 'number', defaultValue: '0/100', format: '{{name}}: {{value}}', maxStatValue: '100', visible: true, isPrimary: false },
-            { name: 'Level Bonus', defaultValue: '', format: '{{name}}: {{value}}', maxStatValue: '', visible: true, isPrimary: false }
+            { name: 'XP', type: 'number', defaultValue: '0/100', format: '{{name}}: {{value}}', maxStatValue: '100', visible: true, isPrimary: false }
         ],
         collections: [
             { 

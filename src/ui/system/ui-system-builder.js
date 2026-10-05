@@ -1,3 +1,5 @@
+import { liveSystemContext } from './ui-system-context.js';
+import { buildProgressionEditor } from './ui-system-progression.js';
 import { buildNpcTemplatesEditor } from './ui-npc-templates.js';
 import { makeActivatable } from '../../core/utils.js';
 import { buildCollectionsEditor } from './ui-system-collections.js';
@@ -13,7 +15,8 @@ import { buildProfilesEditor } from './ui-system-profiles.js';
 
 let systemBuilderActiveTab = 'global';
 
-export function buildSystemBuilder(onRefresh) {
+export function buildSystemBuilder(onRefresh, context = liveSystemContext) {
+    let activeTab = context === liveSystemContext ? systemBuilderActiveTab : (context.builderActiveTab || 'global');
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-system-builder';
     wrap.style.border = '1px solid var(--sillynpc-border)';
@@ -49,7 +52,7 @@ export function buildSystemBuilder(onRefresh) {
             btn.style.cursor = 'pointer';
             btn.style.flex = '1 1 105px';
             btn.style.textAlign = 'center';
-            if (systemBuilderActiveTab === tab.id) {
+            if (activeTab === tab.id) {
                 // A white wash, which is no wash at all on the light themes - the open tab
                 // there was indistinguishable from the two beside it. Mixed from the text
                 // colour instead, so it darkens a light theme and lightens a dark one.
@@ -58,7 +61,9 @@ export function buildSystemBuilder(onRefresh) {
             }
             makeActivatable(btn, { role: 'tab' });
             btn.addEventListener('click', () => {
-                systemBuilderActiveTab = tab.id;
+                activeTab = tab.id;
+                context.builderActiveTab = tab.id;
+                if (context === liveSystemContext) systemBuilderActiveTab = tab.id;
                 renderTabs();
                 renderContent();
             });
@@ -68,20 +73,21 @@ export function buildSystemBuilder(onRefresh) {
 
     const renderContent = () => {
         content.replaceChildren();
-        if (systemBuilderActiveTab === 'global') {
-            content.appendChild(buildStatsEditor('Global Stats', 'globalStats', onRefresh));
-        } else if (systemBuilderActiveTab === 'npc-templates') {
-            content.appendChild(buildNpcTemplatesEditor(onRefresh));
-        } else if (systemBuilderActiveTab === 'npc') {
-            content.appendChild(buildStatsEditor('NPC Stats', 'npcStats', onRefresh));
-        } else if (systemBuilderActiveTab === 'player') {
-            content.appendChild(buildStatsEditor('Player Stats', 'playerStats', onRefresh));
-        } else if (systemBuilderActiveTab === 'npc-profile') {
-            content.appendChild(buildProfilesEditor('npc', onRefresh));
-        } else if (systemBuilderActiveTab === 'player-profile') {
-            content.appendChild(buildProfilesEditor('player', onRefresh));
-        } else if (systemBuilderActiveTab === 'collections') {
-            content.appendChild(buildCollectionsEditor(onRefresh));
+        if (activeTab === 'global') {
+            content.appendChild(buildStatsEditor('Global Stats', 'globalStats', onRefresh, context));
+        } else if (activeTab === 'npc-templates') {
+            content.appendChild(buildNpcTemplatesEditor(onRefresh, context));
+        } else if (activeTab === 'npc') {
+            content.appendChild(buildStatsEditor('NPC Stats', 'npcStats', onRefresh, context));
+        } else if (activeTab === 'player') {
+            content.appendChild(buildStatsEditor('Player Stats', 'playerStats', onRefresh, context));
+            content.appendChild(buildProgressionEditor({ onRefresh, context }));
+        } else if (activeTab === 'npc-profile') {
+            content.appendChild(buildProfilesEditor('npc', onRefresh, context));
+        } else if (activeTab === 'player-profile') {
+            content.appendChild(buildProfilesEditor('player', onRefresh, context));
+        } else if (activeTab === 'collections') {
+            content.appendChild(buildCollectionsEditor(onRefresh, context));
         }
     };
 

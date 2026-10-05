@@ -76,6 +76,8 @@ function trimRow(row) {
     if (row.actor) out.actor = row.actor;
     if (row.collectionId) out.collectionId = row.collectionId;
     if (row.field) out.field = row.field;
+    if (row.grant) out.grant = structuredClone(row.grant);
+    if (row.transition) out.transition = structuredClone(row.transition);
     // An item row has to carry the item itself, or putting it back is impossible.
     if (row.item && (row.kind === 'item-add' || row.kind === 'item-remove')) out.item = row.item;
     return out;

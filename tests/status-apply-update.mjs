@@ -1,3 +1,4 @@
+import { progressionFields } from '../src/tracker/progression-fields.js';
 import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../src/core/npc-templates.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -10,7 +11,7 @@ import { archiveNpcGoals } from '../src/tracker/goals.js';
 test('reader deltas become absolute values without changing ceilings or innate stats', () => {
     const settings = {
         globalStats: [{ name: 'Heat' }],
-        playerStats: [{ name: 'HP' }, { name: 'XP' }, { name: 'Level' }],
+        playerStats: [{ name: 'HP' }, { name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }],
         npcStats: [{ name: 'Energy' }, { name: 'Power', persistence: 'innate' }],
     };
     const state = {
@@ -33,7 +34,7 @@ test('reader deltas become absolute values without changing ceilings or innate s
 });
 
 test('reader XP uses only a positive delta when raw XP is also present', () => {
-    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }] };
+    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }] };
     const state = { global: {}, characters: [], player: { stats: { XP: '90/100', Level: '1' } } };
     const reply = { player: { stats: { XP: '2' }, deltas: { XP: 2 } }, characters: [] };
     expandNumericDeltas(reply, state, settings);
@@ -48,7 +49,7 @@ test('reader XP uses only a positive delta when raw XP is also present', () => {
 });
 
 test('reader ignores raw-only XP and nonpositive XP deltas', () => {
-    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP' }, { name: 'Level' }] };
+    const settings = { globalStats: [], npcStats: [], playerStats: [{ name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }] };
     const state = { global: {}, characters: [], player: { stats: { XP: '90/100', Level: '1' } } };
     for (const player of [{ stats: { XP: '2' } }, { XP: '2', XP_current: '2' },
         { stats: { XP: '2' }, deltas: { XP: -2 } },
@@ -69,7 +70,7 @@ const source = readFileSync(new URL('../src/tracker/status-apply-update.js', imp
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
 const loadBind = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'saveSettings',
-    'canTrackerSetNpcStat', 'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp',
+    'canTrackerSetNpcStat', 'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp', 'progressionFields',
     `${source}\nreturn bind;`);
 
 function fixture({ openChat = true } = {}) {
@@ -91,7 +92,7 @@ function fixture({ openChat = true } = {}) {
         ],
         recently_deleted: { items: { lost: 1, retained: 2 } },
     };
-    const calls = { saved: [], emitted: [], settings: 0 };
+    const calls = { saved: [], emitted: [], settings: 0, collections: [] };
     const bind = loadBind(
         npcStatsFor, npcTemplateFor, proposedNpcTemplate,
         { emit: (...args) => calls.emitted.push(args) },
@@ -101,7 +102,7 @@ function fixture({ openChat = true } = {}) {
         () => [card],
         '[test]',
         () => {},
-        progressXp,
+        progressXp, progressionFields,
     );
     const deps = {
         committedState: initial,
@@ -121,7 +122,8 @@ function fixture({ openChat = true } = {}) {
             return groups;
         },
         combineStatValue: (_old, group) => group.whole,
-        applyCollectionUpdate: (owner, id, value) => {
+        applyCollectionUpdate: (owner, id, value, options) => {
+            calls.collections.push({ name: owner.name, id, options });
             owner.collections[id] = value;
         },
         resolveCanonicalName: name => name,
@@ -131,7 +133,7 @@ function fixture({ openChat = true } = {}) {
         saveStateToMetadata: (...args) => calls.saved.push(args),
     };
     bind(deps);
-    return { deps, card, calls, initial };
+    return { deps, card, calls, initial, settings };
 }
 
 test('committed update changes state and card, then saves once', () => {
@@ -252,4 +254,64 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     deps.removeActiveCharacter('Other');
     deps.reconcileScenePresence(['Other'], '5');
     assert.ok(deps.committedState.characters.some(char => char.name === 'Other'));
+});
+
+
+test('configured player and enabled NPC fields roll over identically without mutating dry-run cards', () => {
+    const { deps, card, initial, settings } = fixture();
+    const fields = [{ id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', updatePolicy: 'advancement' }];
+    settings.statusTracker.playerStats = fields;
+    settings.statusTracker.npcStats = fields;
+    settings.statusTracker.progression = { player: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank' } };
+    settings.statusTracker.npcTemplates = [{ id: 'fighter', statIds: ['earned', 'rank'],
+        progression: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank' } }];
+    initial.player.stats = { Experience: '90/100', Rank: '2' };
+    initial.characters[0].npcTemplateId = 'fighter';
+    initial.characters[0].stats = { Experience: '95/100', Rank: '3' };
+    const update = { player: { stats: { Experience: '310/100' } },
+        characters: [{ name: 'Mira', stats: { Experience: '200/100' } }] };
+    const preview = deps.applyUpdate(update, { dryRun: true });
+    assert.deepEqual(preview.player.stats, { Experience: '10/100', Rank: '5' });
+    assert.deepEqual(preview.characters[0].stats, { Experience: '0/100', Rank: '5' });
+    assert.deepEqual(card.statusOverrides, {});
+    const result = deps.applyUpdate(update);
+    assert.deepEqual(result.characters[0].stats, preview.characters[0].stats);
+    assert.equal(card.statusOverrides.Rank, '5');
+    assert.equal(initial.characters[0].stats.Rank, '3');
+    const manual = deps.applyUpdate(update, { dryRun: true, verbatim: true });
+    assert.equal(manual.player.stats.Experience, '310/100');
+    assert.equal(manual.player.stats.Rank, '2');
+    const initialization = deps.applyUpdate(update, { dryRun: true, allowAdvancementChanges: true });
+    assert.equal(initialization.characters[0].stats.Experience, '200/100');
+    assert.equal(initialization.characters[0].stats.Rank, '3');
+    settings.statusTracker.npcTemplates[0].progression.enabled = false;
+    const disabled = deps.applyUpdate(update, { dryRun: true });
+    assert.equal(disabled.characters[0].stats.Experience, '200/100');
+    assert.equal(disabled.characters[0].stats.Rank, '3');
+});
+
+test('enabled NPC XP accepts positive deltas; disabled templates keep ordinary stat behavior', () => {
+    const settings = { globalStats: [], playerStats: [], npcStats: [
+        { id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100', updatePolicy: 'advancement' },
+        { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', updatePolicy: 'advancement' },
+    ], npcTemplates: [{ id: 'fighter', statIds: ['earned', 'rank'],
+        progression: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank' } }] };
+    const state = { characters: [{ name: 'Mira', npcTemplateId: 'fighter', stats: { Experience: '90/100', Rank: '1' } }] };
+    const update = { characters: [{ name: 'Mira', stats: { Experience: '999/100' }, deltas: { Experience: 20, Rank: 10 } }] };
+    expandNumericDeltas(update, state, settings);
+    assert.deepEqual(update.characters[0].stats, { Experience: '110/100' });
+    const negative = { characters: [{ name: 'Mira', deltas: { Experience: -1 } }] };
+    expandNumericDeltas(negative, state, settings);
+    assert.equal(negative.characters[0].Experience, undefined);
+});
+
+
+test('dry-run collection writes carry preview options for both player and NPC', () => {
+    const { deps, calls } = fixture();
+    deps.applyUpdate({ player: { collections: { items: { replace: [{ name: 'Key' }] } } },
+        characters: [{ name: 'Mira', collections: { items: { replace: [{ name: 'Move' }] } } }] }, { dryRun: true });
+    assert.equal(calls.collections.length, 2);
+    assert.ok(calls.collections.every(call => call.options.dryRun === true));
+    assert.equal(calls.settings, 0);
+    assert.equal(calls.saved.length, 0);
 });

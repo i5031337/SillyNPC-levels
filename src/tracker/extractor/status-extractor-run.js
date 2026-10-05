@@ -2,7 +2,7 @@ import { getAllCharacters } from '../../characters/character-repository.js';
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../../core/constants.js';
-import { loadStateFromMetadata, rememberSwipeBase, refreshTurnBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues } from '../status-logic.js';
+import { loadStateFromMetadata, getCurrentPersonaKey, rememberSwipeBase, refreshTurnBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues } from '../status-logic.js';
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from '../status-diff.js';
 import { setPendingChanges, isItemDecided } from '../status-review.js';
 import { recordAppliedChanges } from '../snapshots/status-snapshots.js';
@@ -13,8 +13,9 @@ import { buildExtractionSchema, strangersToClassify } from './status-extractor-s
 import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { expandNumericDeltas } from './status-extractor-deltas.js';
-import { holdLevelBonusChanges } from '../stat-update-policy.js';
-import { addLevelBonus, applyGoalsFromReply } from './status-extractor-replies.js';
+import { applyGoalsFromReply } from './status-extractor-replies.js';
+import { prepareGrantReview, validateReviewedTransitions } from '../level-grant-review.js';
+import { prepareLevelReading, saveLevelReading, retryLevelReading, LEVEL_READING_KEY } from './status-level-reading.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
 import { renderExtractionReport } from '../ui/status-ui-report.js';
 import { normalizeCollectionUpdates } from './status-collection-normalize.js';
@@ -97,12 +98,20 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         return { applied: false, reason: 'extraction disabled' };
     }
     if (!messageText || !String(messageText).trim()) return { applied: false, reason: 'empty message' };
+    if (!options.regenerate && getContext()?.chat?.[Number(messageId)]?.extra?.[LEVEL_READING_KEY]?.failures?.length) {
+        return retryLevelReading(messageId);
+    }
 
     // Keyed on the swipe as well as the message. On the message alone, the first swipe
     // was read and every later one came back 'already extracted' and was never looked at
     // - so whichever reply you kept, the tracker held the numbers from swipe 1.
     const swipeId = getContext()?.chat?.[Number(messageId)]?.swipe_id ?? 0;
     const key = `${messageId}:${swipeId}`;
+    const savedReading = getContext()?.chat?.[Number(messageId)]?.extra?.[LEVEL_READING_KEY];
+    if (!options.regenerate && savedReading?.swipe === Number(swipeId)
+        && savedReading.sourceText === getContext()?.chat?.[Number(messageId)]?.mes) {
+        return { applied: false, reason: 'already extracted' };
+    }
     if (!options.force && !options.regenerate && extractedMessages.has(key)) return { applied: false, reason: 'already extracted' };
     if (activeExtraction) return { applied: false, reason: 'already running' };
 
@@ -131,7 +140,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // rather than from what this one leaves behind.
         rememberSwipeBase(messageId, state);
         const strangers = strangersToClassify(messageId);
-        const schema = buildExtractionSchema(trackerSettings, { strangers, state });
+        const schema = buildExtractionSchema(trackerSettings, { strangers, state, cards: getAllCharacters() });
         const leadUp = collectLeadUp(messageId, Number(trackerSettings.extractionContextMessages ?? 2));
         const userPrompt = buildUserPrompt(state, String(messageText), trackerSettings, leadUp, { strangers });
 
@@ -164,17 +173,25 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         const liveState = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
         if (!liveState || (options.regenerate && !canReplace())) return { applied: false, reason: 'reply changed while reading' };
         const warnings = normalizeCollectionUpdates(parsed, trackerSettings, liveState, getAllCharacters());
-        expandNumericDeltas(parsed, liveState, trackerSettings);
+        expandNumericDeltas(parsed, liveState, trackerSettings, { cards: getAllCharacters() });
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
         sanitizeModelUpdate(parsed, liveState, trackerSettings);
-        const levelBonus = await addLevelBonus(parsed, liveState, trackerSettings,
-            String(messageText), leadUp);
+        const grants = await prepareLevelReading(parsed, liveState, trackerSettings,
+            String(messageText), leadUp, reportMessage, messageId, options);
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
+            || getContext()?.chatMetadata !== sourceMetadata || reportMessage?.mes !== sourceText
+            || grants.reading.personaId !== getCurrentPersonaKey()
             || extractionSwipe(reportMessage) !== swipe
             || (options.manual && Number(messageId) !== trackerMessageIndex(getContext()?.chat || []))) {
             return { applied: false, reason: 'reply changed while reading' };
         }
+
+        const freshState = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
+        const freshness = validateReviewedTransitions(grants.transitions.map(transition => ({
+            scope: transition.scope, actor: transition.actor, transition,
+        })), freshState, getSettings().statusTracker, getAllCharacters(), getCurrentPersonaKey());
+        if (freshness.invalid.size) return { applied: false, reason: 'progression changed while reading' };
 
         if (options.regenerate) {
             if (!canReplace()) return { applied: false, reason: 'reply changed while reading' };
@@ -187,7 +204,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // so anyone the extraction reports must be admitted to the scene before their
         // stats can land.
         if (Array.isArray(parsed.characters)) {
-            const names = parsed.characters.map(c => c?.name).filter(Boolean);
+            const names = parsed.characters.filter(c => !c?.offstage).map(c => c?.name).filter(Boolean);
             // The prompt asks for everyone present, not just whoever changed, so this
             // list is complete and absence means departure.
             reconcileScenePresence(names, messageId, { authoritative: true });
@@ -208,7 +225,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         /* Anything refused before this run belongs to an older one; the dry run below sees
            this whole reply, so what it turns down is this message's. */
         takeRefusedValues();
-        const wouldBe = applyUpdate(parsed, { dryRun: true });
+        const wouldBe = applyUpdate(parsed, { dryRun: true, admitCharacters: true });
         const refused = takeRefusedValues().map(({ field, wanted, allowed, kept }) =>
             `${field}: "${wanted}" is not one of ${allowed.join(', ')} - kept "${kept}"`);
         if (refused.length) debugLog('Values refused by their allowed lists', refused);
@@ -228,18 +245,19 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         }
 
         const { auto, pending } = partitionChanges(changes, trackerSettings);
-        holdLevelBonusChanges(auto, pending, levelBonus);
+        prepareGrantReview(auto, pending, grants.transitions);
+        pending.push(...grants.rows.filter(change => !isItemDecided(change)));
 
         // The parsed update is only safe to apply whole when nothing was held back. If a
         // row was blocked by a standing decision, applying `parsed` would carry out the
         // very change that was blocked, so the surviving rows are rebuilt instead.
         if (pending.length === 0 && blocked === 0) {
-            applyUpdate(parsed, { partOfMessage: true });
+            applyUpdate(parsed, { partOfMessage: true, admitCharacters: true });
         } else if (auto.length > 0) {
             // Apply the uncontroversial part now so the tracker stays current while the
             // rest waits.
             applyUpdate(buildUpdateFromChanges(auto, currentState, trackerSettings),
-                { partOfMessage: true });
+                { partOfMessage: true, allowAdvancementChanges: true, admitCharacters: true });
         }
 
         // Now that the message's own update has landed, the clock has moved - so what
@@ -255,6 +273,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         const applied = (pending.length === 0 ? changes : auto).concat(timed.rows);
         recordAppliedChanges(messageId, applied);
 
+        saveLevelReading(reportMessage, grants.reading);
         setPendingChanges(messageId, pending, unmatched, refused);
         if (pending.length > 0) {
             debugLog(`${pending.length} change(s) awaiting review on message ${key}`);
@@ -267,6 +286,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             `${pending.length} awaiting review`,
         ];
         parts.push(...warnings);
+        if (grants.failures.length) parts.push(`${grants.failures.length} level-up choices failed; retry rewards`);
         if (blocked) parts.push(`${blocked} blocked by standing decisions`);
         report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput };
         // Save the reading before the additional lore requests, so changing chats or

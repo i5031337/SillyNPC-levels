@@ -1,4 +1,4 @@
-import { getSettings, saveSettings } from '../../core/settings.js';
+import { liveSystemContext } from './ui-system-context.js';
 import { addProfileField, renameProfileField, moveProfileField, retireProfileField } from './ui-system-profile-operations.js';
 
 const POLICIES = [
@@ -25,12 +25,8 @@ function button(label, title, action, disabled = false) {
     return element;
 }
 
-function activeDefinition() {
-    const settings = getSettings();
-    return settings.statusTracker?.presets?.[settings.activeSystem]?.definition;
-}
-
-function rowFor(field, fields, onRefresh) {
+function rowFor(field, fields, onRefresh, context) {
+    const { saveSettings } = context;
     const row = document.createElement('div');
     row.className = 'sillynpc-system-profile-row';
     if (field.retired) row.classList.add('is-retired');
@@ -93,10 +89,11 @@ function rowFor(field, fields, onRefresh) {
     return row;
 }
 
-export function buildProfilesEditor(scope, onRefresh) {
+export function buildProfilesEditor(scope, onRefresh, context = liveSystemContext) {
+    const { saveSettings } = context;
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-system-profiles';
-    const definition = activeDefinition();
+    const definition = context.definition();
     const fields = definition?.profiles?.[scope];
     if (!fields) {
         wrap.textContent = 'Select a System to edit its profile fields.';
@@ -105,7 +102,7 @@ export function buildProfilesEditor(scope, onRefresh) {
     const heading = document.createElement('p');
     heading.textContent = `${scope === 'player' ? 'Player' : 'NPC'} profile fields. IDs stay fixed when names change. Retired fields keep their saved values.`;
     wrap.appendChild(heading);
-    fields.filter(field => !field.retired).forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh)));
+    fields.filter(field => !field.retired).forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh, context)));
     const add = document.createElement('div');
     add.className = 'sillynpc-system-profile-add';
     const label = control('input', 'profile-new-label');
@@ -168,7 +165,7 @@ export function buildProfilesEditor(scope, onRefresh) {
         const title = document.createElement('h4');
         title.textContent = 'Retired fields';
         wrap.appendChild(title);
-        retired.forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh)));
+        retired.forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh, context)));
     }
     return wrap;
 }

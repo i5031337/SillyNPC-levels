@@ -1,3 +1,5 @@
+import { progressionFields } from '../src/tracker/progression-fields.js';
+import { progressXp } from '../src/tracker/progression.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -56,10 +58,10 @@ function applyFixture(settings) {
         saveStateToMetadata: state => { saves.push(state); deps.committedState = state; },
     };
     new Function('npcStatsFor', 'proposedNpcTemplate', 'eventSource', 'getSettings',
-        'saveSettings', 'getAllCharacters', 'debugLog', 'canTrackerSetNpcStat',
+        'saveSettings', 'getAllCharacters', 'debugLog', 'canTrackerSetNpcStat', 'progressionFields', 'progressXp',
         `${source('../src/tracker/status-apply-update.js')}\nreturn bind;`)(
         npcStatsFor, proposedNpcTemplate, { emit() {} }, () => settings, () => {},
-        () => [card], () => {}, canTrackerSetNpcStat)(deps);
+        () => [card], () => {}, canTrackerSetNpcStat, progressionFields, progressXp)(deps);
     return { deps, card, initial, saves };
 }
 

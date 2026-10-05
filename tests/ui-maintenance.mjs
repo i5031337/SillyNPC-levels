@@ -3,18 +3,18 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { statPolicyMarkup } from '../src/ui/system/ui-system-stat-policy.js';
 
-test('System Builder uses update authority and level bonuses without transfer selector', () => {
+test('System Builder keeps update authority separate from the progression editor', () => {
     const escape = text => text;
     const npc = statPolicyMarkup({ name: 'Wisdom', persistence: 'innate',
-        updatePolicy: 'turn' }, 'npcStats', true, escape);
+        updatePolicy: 'turn' }, 'npcStats', escape);
     assert.match(npc, /class="text_pole stat-update-policy"/);
     assert.match(npc, /value="turn" selected/);
     assert.doesNotMatch(npc, /stat-persistence|Innate|Variable/);
     assert.doesNotMatch(npc, /stat-advance-on-level/);
 
     const player = statPolicyMarkup({ name: 'Strength', advanceOnLevel: true },
-        'playerStats', true, escape);
-    assert.match(player, /stat-advance-on-level" checked/);
+        'playerStats', escape);
+    assert.doesNotMatch(player, /stat-advance-on-level/);
     assert.doesNotMatch(player, /stat-persistence/);
 });
 
