@@ -45,7 +45,7 @@ try:
           const render=(owner)=>{host.replaceChildren(buildProgressionEditor({template:owner,onSave:()=>{},onRefresh:()=>render(owner)}));};
           render();
           result.playerFields=[...host.querySelectorAll('select')].length===3;
-          result.playerIncrement=host.querySelector('input[type=number]').value==='2';
+          result.playerGrowth=!host.querySelector('input[type=number]') && host.textContent.includes('0–3');
           result.narrowLayout=host.scrollWidth<=host.clientWidth+2;
           render(template);
           const growth=host.querySelector('[aria-label="Stat growth"]'); growth.value='none'; growth.dispatchEvent(new Event('change'));

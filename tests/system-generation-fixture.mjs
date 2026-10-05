@@ -27,7 +27,7 @@ export function responseFor(stage, registry) {
             const candidates = section.filter(field => field.type === 'number' && (!owner.statIds || owner.statIds.includes(field.id))
                 && ![config.xpFieldId, config.levelFieldId].includes(field.id)).map(field => field.id);
             return [owner.id, { enabled: true, xpFieldId: config.xpFieldId, levelFieldId: config.levelFieldId,
-                statGrowth: candidates.length ? 'all' : 'none', statIds: candidates, increments: Object.fromEntries(candidates.map(id => [id, 2])) }];
+                statGrowth: candidates.length ? 'all' : 'none', statIds: candidates }];
         })) };
     }
     if (kind === 'collection') {

@@ -79,9 +79,7 @@ export function validateProgression(config, stats, path, errors, selections, npc
     if (config.statGrowth !== 'none' && !config.statIds.length) errors.push(`${path}.statIds: choose growth candidates`);
     for (const id of config.statIds) {
         if (!progressionStatEligible(fields.find(field => field.id === id), config)) errors.push(`${path}.statIds: ineligible growth field ${id}`);
-        if (!Number.isSafeInteger(config.increments[id]) || config.increments[id] < 1) errors.push(`${path}.increments.${id}: expected positive integer`);
     }
-    for (const id of Object.keys(config.increments)) if (!config.statIds.includes(id)) errors.push(`${path}.increments.${id}: not a growth candidate`);
 }
 export function validateCollections(collections, templates, errors) {
     unique(collections, 'id', 'collections', errors);

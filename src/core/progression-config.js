@@ -24,13 +24,11 @@ export function normalizeProgressionConfig(source, stats = [], { enabledByDefaul
         : Array.isArray(input.bonusStatIds) ? input.bonusStatIds : fields.filter(stat => stat.advanceOnLevel).map(stat => stat.id);
     const config = { xpFieldId, levelFieldId };
     const selected = [...new Set(requested)].filter(id => progressionStatEligible(fields.find(stat => stat.id === id), config));
-    const increments = Object.fromEntries(selected.map(id => [id,
-        Number.isSafeInteger(Number(input.increments?.[id])) && Number(input.increments[id]) > 0 ? Number(input.increments[id]) : 1]));
     return {
         enabled: validFields && (input.enabled === undefined ? enabledByDefault : input.enabled === true),
         xpFieldId, levelFieldId,
         statGrowth: ['none', 'one', 'all'].includes(input.statGrowth) ? input.statGrowth : selected.length ? 'one' : 'none',
-        statIds: selected, increments,
+        statIds: selected,
     };
 }
 /** Resolve live tracker configuration; template opt-in never inherits player behavior. */

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { collectLevelTransitions, selectLevelGrants } from '../src/tracker/extractor/status-level-grants.js';
+import { materializeGrantRows } from '../src/tracker/level-grant-review.js';
 import { boostStat } from '../src/tracker/progression.js';
 
 const stats = [
@@ -40,10 +41,13 @@ test('renamed configured fields transition only existing opted-in actors without
     assert.deepEqual(update, before);
 });
 
+const chooseGrowth = async prompt => ({ choices: JSON.parse(prompt).tasks.map(task => ({ id: task.id,
+    statId: task.eligibleStats[0].id, amount: task.eligibleStats[0].id === 'hp' ? 2 : 1 })) });
+
 test('all growth stays separate from simultaneous story changes and retains exact per-level gain', async () => {
     const update = parsed(), initial = state();
     const before = structuredClone({ update, initial });
-    const { rows, failures } = await selectLevelGrants(update, initial, tracker(), 'A hard fought victory');
+    const { rows, failures } = await selectLevelGrants(update, initial, tracker(), 'A hard fought victory', [], { requestExtraction: chooseGrowth });
     assert.equal(rows.length, 6);
     assert.deepEqual(failures, []);
     const hp = rows.find(row => row.scope === 'player' && row.label === 'Vitality');
@@ -75,12 +79,12 @@ test('one stat and guided selections are batched; malformed choices preserve det
     const requestExtraction = async prompt => {
         const tasks = JSON.parse(prompt).tasks; requests.push(tasks);
         return { choices: tasks.map(task => ({ id: task.id, ...(task.type === 'stat'
-            ? { statId: 'hp', amount: 2 }
+            ? { statId: task.eligibleStats[0].id, amount: 2 }
             : task.recipient === 'Ada' ? { entry: null } : { entry: { Technique: `Skill ${task.level}`, Power: 99 } }) })) };
     };
     const result = await selectLevelGrants(parsed(), state(), settings, 'Victory', [], { requestExtraction });
     assert.equal(requests.length, 1);
-    assert.equal(requests[0].length, 5);
+    assert.equal(requests[0].length, 7);
     assert.equal(result.failures.length, 2);
     assert.equal(result.rows.length, 4);
     const retry = await selectLevelGrants(parsed(), state(), settings, 'Victory', [], { cache: result.cache,
@@ -123,12 +127,12 @@ test('offstage existing cards can earn rewards without creating scene presence',
     assert.deepEqual(initial.characters, []);
 });
 
-test('failed model selection preserves scheduled and all-stat proposals and reports each missing task', async () => {
+test('failed model selection preserves scheduled proposals and reports each missing task', async () => {
     const settings = tracker(); settings.collections = [collection('scheduled'), { ...collection('guided'), id: 'abilities' }];
     const result = await selectLevelGrants(parsed(), state(), settings, 'Victory', [], {
         requestExtraction: async () => { throw new Error('Reader unavailable'); } });
-    assert.equal(result.rows.length, 9);
-    assert.equal(result.failures.length, 3);
+    assert.equal(result.rows.length, 3);
+    assert.equal(result.failures.length, 9);
     assert.ok(result.failures.every(failure => failure.message === 'Reader unavailable'));
 });
 
@@ -143,7 +147,7 @@ test('offstage aliases resolve canonical ownership once, including regex names a
     assert.equal(transitions.length, 1);
     assert.equal(transitions[0].actor, 'Ada');
     assert.equal(transitions[0].actorId, 'npc:ada');
-    const result = await selectLevelGrants(update, initial, settings, 'Victory', [], { cards });
+    const result = await selectLevelGrants(update, initial, settings, 'Victory', [], { cards, requestExtraction: chooseGrowth });
     assert.equal(result.rows.length, 3);
     assert.ok(result.rows.every(row => row.actor === 'Ada'));
     assert.deepEqual(initial.characters, []);
@@ -155,7 +159,7 @@ test('legacy definitions without projected IDs still resolve XP and numeric grow
         { name: 'Aim', type: 'number', advanceOnLevel: true }],
         progression: { player: { statGrowth: 'all', statIds: ['aim'] } } };
     const result = await selectLevelGrants({ player: { stats: { XP: '10/10' } } },
-        { player: { stats: { XP: '9/10', Level: '1', Aim: '2' } } }, settings, 'Victory');
+        { player: { stats: { XP: '9/10', Level: '1', Aim: '2' } } }, settings, 'Victory', [], { requestExtraction: chooseGrowth });
     assert.equal(result.rows.length, 1);
     assert.equal(result.rows[0].label, 'Aim');
     assert.equal(result.rows[0].grant.statId, 'aim');
@@ -201,10 +205,70 @@ test('batch schema uses provider-compatible keywords and owner-specific objects;
                 }
             }
             return { choices: Object.fromEntries(tasks.map(task => [task.id, task.type === 'stat'
-                ? { statId: 'hp', amount: 2 } : task.recipient === 'Ada'
+                ? { statId: task.eligibleStats[0].id, amount: 2 } : task.recipient === 'Ada'
                     ? { noReward: true } : { entry: { Technique: `Skill ${task.level}`, Power: 2 } }])) };
         } });
     assert.equal(result.failures.length, 0);
     assert.equal(result.rows.length, 6);
     assert.equal(result.rows.filter(row => row.kind === 'item-add').length, 2);
+});
+
+
+test('all-stat growth varies by stat, level and owner; zero and accepted choices are never rerolled', async () => {
+    const settings = tracker(), initial = state(), update = parsed();
+    const requests = [];
+    const first = await selectLevelGrants(update, initial, settings, 'Training and victory', [], {
+        requestExtraction: async prompt => {
+            const tasks = JSON.parse(prompt).tasks; requests.push(tasks);
+            assert.equal(tasks.length, 6);
+            assert.ok(tasks.every(task => task.eligibleStats.length === 1 && task.amount === 'integer 0 through 3'));
+            return { choices: Object.fromEntries(tasks.map(task => [task.id, {
+                statId: task.eligibleStats[0].id,
+                amount: task.recipient === 'Ada' ? 0 : task.eligibleStats[0].id === 'hp'
+                    ? (task.level === 2 ? 0 : 3) : (task.level === 2 ? 1 : 4),
+            }])) };
+        },
+    });
+    assert.equal(first.failures.length, 1);
+    assert.deepEqual(first.rows.map(row => [row.label, row.grant.level, row.grant.gain]),
+        [['Power', 2, 1], ['Vitality', 3, 3]]);
+    assert.equal(Object.keys(first.cache).length, 5);
+    const accepted = first.rows.find(row => row.label === 'Power');
+    const retry = await selectLevelGrants(update, initial, settings, 'Training and victory', [], {
+        cache: first.cache, decidedGrantIds: [accepted.grant.id],
+        requestExtraction: async prompt => {
+            const tasks = JSON.parse(prompt).tasks; requests.push(tasks);
+            assert.equal(tasks.length, 1);
+            assert.equal(tasks[0].level, 3);
+            return { choices: { [tasks[0].id]: { statId: 'power', amount: 2 } } };
+        },
+    });
+    assert.deepEqual(retry.failures, []);
+    assert.deepEqual(retry.rows.map(row => [row.label, row.grant.level, row.grant.gain]),
+        [['Vitality', 3, 3], ['Power', 3, 2]]);
+    const transitions = collectLevelTransitions(update, initial, settings);
+    const leveled = structuredClone(initial);
+    leveled.player.stats.Rank = '3';
+    const applied = materializeGrantRows([accepted, ...retry.rows], leveled, settings, [], {
+        acceptedTransitionIds: transitions.map(item => item.transitionId),
+    });
+    assert.deepEqual(applied.rejected, []);
+    assert.equal(applied.rows.find(row => row.label === 'Vitality').grant.valueAfter, '9/13');
+    assert.deepEqual(applied.rows.filter(row => row.label === 'Power').map(row => row.after), ['5']);
+    await selectLevelGrants(update, initial, settings, 'Training and victory', [], {
+        cache: retry.cache, decidedGrantIds: [accepted.grant.id],
+        requestExtraction: () => assert.fail('Valid choices, including zero, must remain cached'),
+    });
+});
+
+test('all-stat growth rejects foreign stat IDs and invalid amounts without substituting fixed increases', async () => {
+    for (const choice of [{ statId: 'xp', amount: 1 }, { statId: 'hp', amount: -1 },
+        { statId: 'hp', amount: 0.5 }, { statId: 'hp', amount: 4 }]) {
+        const result = await selectLevelGrants({ player: { stats: { Experience: '10/10' } } }, state(), tracker(), '', [], {
+            requestExtraction: async prompt => ({ choices: Object.fromEntries(JSON.parse(prompt).tasks.map(task => [task.id, choice])) }),
+        });
+        assert.equal(result.rows.length, 0);
+        assert.equal(result.failures.length, 2);
+        assert.deepEqual(result.cache, {});
+    }
 });

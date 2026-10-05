@@ -85,7 +85,7 @@ try:
             { name: 'Fixture Disabled NPC', stats: { Experience: '95/100' } }
           ] };
           const context = { messageId: 0, swipeId: 0, personaId: getCurrentPersonaKey(),
-            system: tracker.presets[settings.activeSystem].definition, requestExtraction: () => { throw new Error('Fixture must not request models'); } };
+            system: tracker.presets[settings.activeSystem].definition, requestExtraction: async prompt => ({ choices: Object.fromEntries(JSON.parse(prompt).tasks.map(task => [task.id, {statId: task.eligibleStats[0].id, amount: 1}])) }) };
           const preview = applyUpdate(parsed, { dryRun: true });
           result.playerRollover = preview.player.stats.Rank === '2' && preview.player.stats.Experience === '10/100';
           result.npcRollover = preview.characters[0].stats.Rank === '2' && preview.characters[0].stats.Experience === '10/100';

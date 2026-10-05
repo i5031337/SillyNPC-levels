@@ -16,7 +16,8 @@ test('canonical config migrates old candidates, validates growth, and respects f
     const renamed = stats.map(stat => ({ ...stat, name: `Renamed ${stat.id}` }));
     const edited = normalizeProgressionConfig({ ...config, statGrowth: 'all', statIds: ['hp', 'locked', 'rank'], increments: { hp: 3 } }, renamed);
     assert.equal(edited.enabled, true);
-    assert.deepEqual(edited.increments, { hp: 3 });
+    assert.deepEqual(edited.statIds, ['hp']);
+    assert.equal(edited.increments, undefined);
 });
 test('NPC templates opt in independently and only select owned fields', () => {
     const tracker = { npcStats: stats, npcTemplates: [
@@ -34,5 +35,6 @@ test('progression config and template IDs survive System round trip', () => {
     });
     assert.deepEqual(normalizeSystemDefinition(system), system);
     assert.equal(system.npcTemplates[0].progression.enabled, true);
-    assert.equal(system.npcTemplates[0].progression.increments.hp, 2);
+    assert.deepEqual(system.npcTemplates[0].progression.statIds, ['hp']);
+    assert.equal(system.npcTemplates[0].progression.increments, undefined);
 });

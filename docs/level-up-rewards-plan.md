@@ -62,15 +62,16 @@ Each enabled owner configuration selects:
 - XP field and Level field, both included in that owner's stat selection.
 - Stat growth policy: None, One stat, or All selected stats.
 - Eligible numeric stats. Exclude XP, Level, retired/locked fields, and nonnumeric values.
-- For All selected stats, a positive integer increase per selected stat per level,
-  defaulting to +1. Do not invent random gains or ask the model to calculate growth.
+- For All selected stats, the reader chooses an independent integer increase of
+  0–3 for each selected stat at each crossed level, informed by the story. Zero
+  means no growth; positive increases remain optional review proposals.
 
 Retain the current fixed XP-cap arithmetic for the first implementation. Variable
 experience curves and level caps can be separate work; do not conflate them with rewards.
 
 One stat retains the current story-informed selection and small increase, within
-the existing allowed range. All selected stats applies every configured increase
-for every crossed level. Collection rewards are independent of the stat growth policy:
+the existing allowed range. All selected stats asks the reader for each stat
+at every crossed level and caches valid choices, including zero, for retries. Collection rewards are independent of the stat growth policy:
 an owner may receive both stat growth and rewards, or rewards without stat growth.
 
 ### Collection rewards
@@ -127,7 +128,8 @@ reward, allow an explicit no-reward result rather than forcing duplicates.
 - Respect existing fixed bounds and clarify their interaction with expandable Turn
   pool capacities before implementation; do not silently remove configured limits.
 - No automatic revival, cleansing, refilling, or full healing.
-- All selected stats gives +N times levels gained, subject to bounds. One stat chooses
+- All selected stats chooses independent 0–3 increases per stat per crossed level,
+  subject to bounds. One stat chooses
   one increase per crossed level. Scheduled rewards include each crossed threshold;
   guided intervals are evaluated for each crossed level, not just the final level.
 - Direct manual edits of Level/XP are edits, not automatic reward triggers. Imported
@@ -184,7 +186,7 @@ Apply actor/chat freshness checks after asynchronous selection, as the reader al
 
 - Add a compact progression editor to the Player and NPC template screens.
 - Extend One stat selection to NPCs and remove dependence on a Level bonus text field.
-- Implement deterministic All selected stats growth and per-stat increments.
+- Implement reader-chosen All selected stats growth with independent 0–3 increases.
 - Replace player-only bonus review matching with actor-aware structured grant provenance.
 - Integrate grant dependencies, acceptance-time arithmetic, regeneration, and undo.
 

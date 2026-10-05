@@ -43,6 +43,11 @@ export function buildProgressionEditor({ template, onRefresh = () => {}, context
     select('XP field', 'xpFieldId', options); select('Level field', 'levelFieldId', options);
     if (!config.enabled) return wrap;
     select('Stat growth', 'statGrowth', [['none', 'None'], ['one', 'One stat'], ['all', 'All selected stats']]);
+    if (config.statGrowth === 'all') {
+        const help = document.createElement('p');
+        help.textContent = 'The reader chooses a separate increase of 0–3 for each selected stat at every level, based on the story. Review positive increases before applying them.';
+        controls.append(help);
+    }
     if (config.statGrowth !== 'none') for (const stat of stats.filter(stat => progressionStatEligible(stat, config)
         && (!template || template.statIds.includes(stat.id)))) {
         const label = document.createElement('label'); label.style.display = 'block';
@@ -50,19 +55,8 @@ export function buildProgressionEditor({ template, onRefresh = () => {}, context
         check.setAttribute('aria-label', `${stat.name} level growth`);
         check.addEventListener('change', () => {
             config.statIds = check.checked ? [...new Set([...config.statIds, stat.id])] : config.statIds.filter(id => id !== stat.id);
-            config.increments[stat.id] ||= 1; save();
+            save();
         }); label.append(check, ` ${stat.name}`);
-        if (config.statGrowth === 'all' && check.checked) {
-            const amount = document.createElement('input'); amount.type = 'number'; amount.min = '1'; amount.step = '1';
-            amount.className = 'text_pole'; amount.style.width = '70px'; amount.value = config.increments[stat.id] || 1;
-            amount.setAttribute('aria-label', `${stat.name} increase per level`);
-            amount.addEventListener('change', () => {
-                if (!Number.isSafeInteger(Number(amount.value)) || Number(amount.value) < 1) {
-                    amount.setCustomValidity('Enter a positive whole number.'); amount.reportValidity(); return;
-                }
-                amount.setCustomValidity(''); config.increments[stat.id] = Number(amount.value); save();
-            }); label.append(' +', amount, ' per level');
-        }
         controls.append(label);
     }
     return wrap;

@@ -126,11 +126,11 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
         for (const level of transition.crossedLevels) {
             if (transition.config.statGrowth === 'all') {
                 for (const def of defs) {
-                    const row = statRow(transition, def, level, transition.config.increments[def.id] || 1);
-                    if (row && !decided.has(row.grant.id)) rows.push(row);
+                    tasks.push({ id: provenance(transition, level, `stat:${def.id}`).id,
+                        type: 'stat', transition, level, defs: [def], minimum: 0, maximum: 3 });
                 }
             } else if (transition.config.statGrowth === 'one' && defs.length) {
-                tasks.push({ id: provenance(transition, level, 'one').id, type: 'stat', transition, level, defs });
+                tasks.push({ id: provenance(transition, level, 'one').id, type: 'stat', transition, level, defs, minimum: 1, maximum: 5 });
             }
         }
         for (const collection of tracker.collections || []) {
@@ -155,7 +155,9 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
     if (missing.length) {
         const choices = missing.map(task => ({ id: task.id, recipient: task.transition.actor || 'Player',
             level: task.level, type: task.type, currentStats: task.transition.current,
-            ...(task.type === 'stat' ? { eligibleStats: task.defs.map(def => ({ id: def.id, name: def.name })), amount: 'integer 1 through 5' }
+            ...(task.type === 'stat' ? { eligibleStats: task.defs.map(({ id, name, purpose, guidance, maxStatValue }) =>
+                ({ id, name, purpose, guidance, maxStatValue })),
+                amount: `integer ${task.minimum} through ${task.maximum}` }
                 : { collection: task.collection.name, fields: collectionSchema(task.collection),
                     fieldRules: (task.collection.fields || []).filter(field => !field.retired && !field.locked)
                         .map(({ name, label, type, guidance, min, maxStatValue, options }) =>
@@ -171,7 +173,7 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
                         : { entry: collectionSchema(task.collection), noReward: { type: 'boolean' } }) } }])) } } };
         try {
             const request = context.requestExtraction || (await import('./status-extractor-request.js')).requestExtraction;
-            const raw = await request(JSON.stringify({ instructions: 'Choose each requested level-up grant. Return choices as an object keyed by exact task id. Stat choices contain statId and amount, an integer 1 through 5. Collection choices contain entry with the configured fields; return noReward:true and omit entry when no suitable new reward exists. Never repeat an existing reward. Respect field types, ranges and options. Do not calculate XP or levels.',
+            const raw = await request(JSON.stringify({ instructions: 'Choose each requested level-up grant. Return choices as an object keyed by exact task id. Stat choices contain an eligible statId and an integer amount within the task range. For All selected stats, choose each stat independently from 0 through 3 at each level: 0 means no increase. Base growth on the story, recipient, and stat purpose; vary increases to reflect what they practiced or accomplished instead of giving every stat the same bonus. For One stat, choose one eligible stat and an increase from 1 through 5. Collection choices contain entry with the configured fields; return noReward:true and omit entry when no suitable new reward exists. Never repeat an existing reward. Respect field types, ranges and options. Do not calculate XP or levels.',
                 leadUp, story: text, tasks: choices }), schema, tracker,
             'Return only a JSON object with a choices object keyed by task id. Respect each owner, stat ID, collection field type and bound.');
             const result = typeof raw === 'object' ? raw : (await import('./status-extractor-request.js')).coerceToUpdate(raw);
@@ -193,8 +195,8 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
         if (!choice) error = 'The reader omitted this level-up choice.';
         else if (task.type === 'stat') {
             const def = task.defs.find(item => item.id === choice.statId);
-            if (!def || !Number.isInteger(choice.amount) || choice.amount < 1 || choice.amount > 5) error = 'The stat growth choice was invalid.';
-            else {
+            if (!def || !Number.isInteger(choice.amount) || choice.amount < task.minimum || choice.amount > task.maximum) error = 'The stat growth choice was invalid.';
+            else if (choice.amount > 0) {
                 row = statRow(task.transition, def, task.level, choice.amount, String(choice.description || '').slice(0, 180));
                 if (row) row.grant.id = task.id;
             }

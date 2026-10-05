@@ -24,7 +24,7 @@ A complete draft should cover:
   types, numeric bounds, display formats, purposes, and Turn or Advancement policies.
 - NPC templates with assignment guidance and explicit selections from those catalogs.
 - Player progression and independently enabled NPC template progression, including
-  XP and Level field IDs, growth policy, eligible stats, and positive increments.
+  XP and Level field IDs, growth policy and eligible stats; growth amounts are chosen by the reader.
 - Collections with existing Player, All NPCs, and template targets; a pinned primary
   identifier; typed fields; optional ranges; and shared static versus personal fields.
 - Optional scheduled or guided collection rewards, with scheduled entries authored
@@ -164,7 +164,7 @@ Return stage- and field-specific errors for:
 - Enabled progression without distinct, selected, usable XP and Level fields, a positive
   XP capacity, or an integer starting Level of at least one.
 - Growth candidates that are locked, retired, nonnumeric, or progression counters;
-  nonpositive increments; and conflicting NPC persistence choices.
+  invalid growth candidates; and conflicting NPC persistence choices.
 - Invalid scheduled levels, entries, field ranges, or guided intervals.
 - HUD selections pointing outside their respective catalogs.
 - Embedded world data, executable markup, or settings outside the generation contract.
@@ -268,7 +268,7 @@ supply presentation details where possible.
 | HUD `playerStatIds` versus stat `isPrimary` | The floating HUD consumes isPrimary while exports contain both representations. The generator translates selected IDs to player flags; draft capture translates flags back. Use one authoritative selection. |
 | HUD `npcStatIds` and `worldStatIds` | They are preserved and validated in definitions, but the floating HUD currently renders only player meters. They should either gain a concrete display consumer or be removed from a future schema. |
 | Collection field `id`, `name`, and `label` | IDs and names are both storage/reference keys in different paths; labels are display text. Reward schedules use IDs while holdings use names. Consolidating storage on IDs would reduce rename logic and prompt surface. |
-| One-stat growth `increments` | Runtime chooses a stat and amount from 1 through 5; authored increments apply to All selected stats. Avoid suggesting that increments tune One stat growth. A simpler contract could make increments conditional on All. |
+| Stat growth amounts | Runtime chooses one stat and an amount from 1 through 5 for One stat, or independent amounts from 0 through 3 for each selected stat for All selected stats. The generation contract selects candidates only; it contains no fixed increments. |
 | Numeric pool defaults encoded as strings | `6/10` is compact but requires repeated parsing and mixes a resource value with its capacity. Explicit numeric starting value/capacity would be clearer if the runtime and editor are changed together. |
 | Profile `memory` policy and dedicated memories | Both can express remembered information. Clarify whether memory policy is needed for custom manually edited prose when structured character memories already exist. |
 

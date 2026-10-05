@@ -50,10 +50,7 @@
         "statGrowth": "all",
         "statIds": [
           "vigor"
-        ],
-        "increments": {
-          "vigor": 2
-        }
+        ]
       }
     }
   ],
@@ -285,18 +282,14 @@
       "statGrowth": "all",
       "statIds": [
         "energy"
-      ],
-      "increments": {
-        "energy": 2
-      }
+      ]
     },
     "npc": {
       "enabled": false,
       "xpFieldId": "",
       "levelFieldId": "",
       "statGrowth": "none",
-      "statIds": [],
-      "increments": {}
+      "statIds": []
     }
   },
   "memories": {

@@ -188,7 +188,7 @@ test('strict validation rejects semantic corruption before normalization can rep
         d => { d.stats.player[2].defaultValue = '20/10'; },
         d => { d.npcTemplates[0].statIds.push('missing'); },
         d => { d.stats.npc[1].updatePolicy = 'turn'; },
-        d => { d.progression.player.increments.energy = 0; },
+        d => { d.progression.player.increments = { energy: 2 }; },
         d => { d.progression.player.statIds = ['xp']; },
         d => { d.collections[0].targets = ['template:missing']; },
         d => { d.collections[0].fields[1].isPrimary = true; },
@@ -276,7 +276,7 @@ test('saved fixture drives normal progression, bounded growth, and scheduled tar
     const level = definition.stats.player.find(f => f.id === progression.levelFieldId);
     assert.deepEqual(progressXp(xp.defaultValue, '250/100', level.defaultValue), { xp: '50/100', level: '3', levelsGained: 2 });
     const energy = definition.stats.player.find(f => f.id === progression.statIds[0]);
-    assert.equal(boostStat(energy.defaultValue, undefined, progression.increments.energy, { growMaximum: true }), '8/12');
+    assert.equal(boostStat(energy.defaultValue, undefined, 2, { growMaximum: true }), '8/12');
     const col = definition.collections[0];
     assert.equal(scheduledCollectionRewards(col, [2, 3]).length, 2);
     assert.equal(collectionRewardAppliesTo(col, 'npc', 'creature'), true);
