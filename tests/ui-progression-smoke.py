@@ -18,19 +18,19 @@ with browser_session() as browser:
         const result={};
         try {
           const stats=[{id:'earned',name:'Experience',type:'number',defaultValue:'0/10'},
-            {id:'rank',name:'Rank',type:'number',defaultValue:'1'},
-            {id:'health',name:'Health',type:'number',defaultValue:'6/10'}];
+            {id:'rank',name:'Rank',type:'number',defaultValue:'1',locked:true,carryOver:false},
+            {id:'health',name:'Health',type:'number',defaultValue:'6/10',locked:true}];
           const template={id:'hero',statIds:['earned','rank','health'],progression:{enabled:true,xpFieldId:'earned',levelFieldId:'rank',statGrowth:'all',statIds:['health'],increments:{health:2}}};
           settings.statusTracker={playerStats:structuredClone(stats),npcStats:structuredClone(stats),npcTemplates:[template],progression:{player:structuredClone(template.progression)}};
           const render=(owner)=>{host.replaceChildren(buildProgressionEditor({template:owner,onSave:()=>{},onRefresh:()=>render(owner)}));};
           render();
           result.playerFields=[...host.querySelectorAll('select')].length===3;
-          result.playerGrowth=!host.querySelector('input[type=number]') && host.textContent.includes('0–3');
+          result.playerGrowth=!host.querySelector('input[type=number]') && host.textContent.includes('0–3') && [...host.querySelectorAll('input[type=checkbox]')].some(input=>input.checked && input.parentElement.textContent.includes('Health'));
           result.narrowLayout=host.scrollWidth<=host.clientWidth+2;
           render(template);
           const growth=host.querySelector('[aria-label="Stat growth"]'); growth.value='none'; growth.dispatchEvent(new Event('change'));
           result.npcPolicy=template.progression.statGrowth==='none' && !host.querySelector('input[type=number]');
-          result.npcLevelPersists=settings.statusTracker.npcStats.find(s=>s.id==='rank').updatePolicy==='advancement';
+          result.npcCarryoverIndependent=settings.statusTracker.npcStats.find(s=>s.id==='rank').carryOver===false;
           const enable=host.querySelector('[aria-label="Enable level progression"]'); enable.checked=false; enable.dispatchEvent(new Event('change'));
           result.disabledControls=!host.querySelector('[aria-label="Stat growth"]') && !!host.querySelector('[aria-label="XP field"]');
         } catch(error) {result.error=error.stack;}

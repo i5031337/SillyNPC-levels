@@ -113,7 +113,7 @@ export function buildSystemManager(onRefresh) {
                         .map(stat => stat.name);
                     const confirmed = await Popup.show.confirm('Export World Characters',
                         `${payload.characters.length} characters from reusable cards and assigned chats. `
-                        + `Advancement and locked fields carried: ${innate.join(', ') || 'none'}. `
+                        + `Carryover fields carried: ${innate.join(', ') || 'none'}. `
                         + 'Turn stats, conditions and inventory reset on import. Export this file?');
                     if (!confirmed) return;
                     offerDownload(payload,

@@ -255,7 +255,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             // Apply the uncontroversial part now so the tracker stays current while the
             // rest waits.
             applyUpdate(buildUpdateFromChanges(auto, currentState, trackerSettings),
-                { partOfMessage: true, allowAdvancementChanges: true, admitCharacters: true });
+                { partOfMessage: true, progressionResolved: true, admitCharacters: true });
         }
 
         // Written even when nothing changed, so a quiet message is distinguishable from

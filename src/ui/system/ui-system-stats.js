@@ -1,3 +1,4 @@
+import { isPoolStat } from '../../tracker/numeric-stat-bounds.js';
 import { attachRangeValidation } from './ui-system-range.js';
 import { ensureNpcStatIds } from './ui-npc-templates.js';
 import { liveSystemContext } from './ui-system-context.js';
@@ -54,8 +55,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
     wrap.appendChild(bulk.bar);
 
     stats.forEach((stat, index) => {
-        const advancement = stat.updatePolicy === 'advancement'
-            || (!stat.updatePolicy && stat.persistence === 'innate');
+        const pool = isPoolStat(stat);
         const row = document.createElement('div');
         row.className = 'sillynpc-alias-row';
         row.style.marginBottom = '12px';
@@ -79,10 +79,10 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
                 ${isNumericStat(stat) ? `
                 <small class="sillynpc-field-note">Min:</small>
                 <input type="text" class="text_pole stat-min" value="${escapeHtml(stat.min ?? '')}" placeholder="0" title="Lowest current value. The tracker enforces this bound; use a negative number for ranges like -100..100." style="width:45px; font-size:var(--sillynpc-text-md); height:24px;">
-                <small class="sillynpc-field-note" title="${advancement
-                    ? 'Fixed upper bound for this Advancement rating. Level growth cannot raise it.'
-                    : 'Hard ceiling for level growth. Leave blank to let a Turn pool grow beyond its default capacity.'}">${advancement ? 'Max:' : 'Capacity limit:'}</small>
-                <input type="text" class="text_pole stat-max" value="${escapeHtml(stat.maxStatValue || '')}" placeholder="Max" title="${advancement
+                <small class="sillynpc-field-note" title="${!pool
+                    ? 'Fixed upper bound for this rating. Level growth cannot raise it.'
+                    : 'Hard ceiling for pool capacity growth. Leave blank to allow capacity growth.'}">${!pool ? 'Max:' : 'Capacity limit:'}</small>
+                <input type="text" class="text_pole stat-max" value="${escapeHtml(stat.maxStatValue || '')}" placeholder="Max" title="${!pool
                     ? 'Fixed upper bound. A rating such as 1 to 5 stays within this range.'
                     : 'Optional hard capacity limit. Set the starting pool in Default, for example 6/10. Leave this limit blank for expandable capacity.'}" style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
                 ` : `
@@ -129,7 +129,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
                     <small>Name</small>
                 </label>
                 <label class="sillynpc-check-group" style="margin-left:6px;"
-                       title="Immutable during play. The tracker may initialize a blank NPC field once, then ignores later story changes. Direct edits remain available to correct mistakes.">
+                       title="Prevent story reader changes after initialization. Level-up increases and direct edits remain available.">
                     <input type="checkbox" class="stat-locked" ${stat.locked ? 'checked' : ''}>
                     <small>Locked</small>
                 </label>
@@ -190,7 +190,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
             saveSettings();
             updateHUD();
         });
-        row.querySelector('.stat-default').addEventListener('input', (e) => { stat.defaultValue = e.target.value; saveSettings(); });
+        row.querySelector('.stat-default').addEventListener('change', (e) => { stat.defaultValue = e.target.value; saveSettings(); onRefresh(); });
         row.querySelector('.stat-format').addEventListener('input', (e) => { stat.format = e.target.value; saveSettings(); });
         row.querySelector('.stat-purpose').addEventListener('input', (e) => { stat.purpose = e.target.value; saveSettings(); });
         // Optional chaining because the row only carries the controls its type uses:
@@ -289,7 +289,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
     addBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Add New Field`;
     addBtn.addEventListener('click', () => {
         const newStat = { name: 'New Stat', defaultValue: '', format: '{{value}}', visible: true,
-            type: 'text', min: '', updatePolicy: 'turn' };
+            type: 'text', min: '', locked: false, carryOver: false };
         if (settingsKey === 'playerStats') newStat.advanceOnLevel = false;
         newStat.maxStatValue = '';
         stats.push(newStat);

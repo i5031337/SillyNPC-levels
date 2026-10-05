@@ -9,8 +9,10 @@ export function configuredNumericMaximum(def) {
     return Number.isFinite(maximum) ? maximum : null;
 }
 
-const isAdvancement = def => def?.updatePolicy === 'advancement'
-    || (def?.updatePolicy !== 'turn' && def?.persistence === 'innate');
+/** A slash reading defines a pool; plain numbers are ratings with fixed bounds. */
+export function isPoolStat(def, value = def?.defaultValue) {
+    return def?.type === 'bar' || READING.test(String(value ?? '')) && String(value).includes('/');
+}
 
 /** Numeric bounds apply to the current reading; a pool carries its own live cap. */
 export function constrainNumericStat(def, incoming, existing) {
@@ -21,7 +23,7 @@ export function constrainNumericStat(def, incoming, existing) {
     const minimum = String(def.min ?? '').trim() === '' ? null : Number(def.min);
     const min = Number.isFinite(minimum) ? minimum : null;
     const held = String(existing ?? '').match(READING);
-    const fixed = isAdvancement(def) ? configuredNumericMaximum(def)
+    const fixed = !isPoolStat(def) && !isPoolStat(def, existing) ? configuredNumericMaximum(def)
         ?? (held?.[2] === undefined ? null : Number(held[2])) : null;
     const maximum = fixed ?? (match[2] === undefined
         ? (held?.[2] === undefined ? configuredNumericMaximum(def) : Number(held[2]))

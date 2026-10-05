@@ -48,8 +48,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/level-grants.mjs`, `tests/level-grant-review.mjs` | Actor-specific grant generation, bounds, dependencies, and atomic review acceptance. |
 | `tests/level-reading-retry.mjs`, `tests/inline-level-review.mjs` | Missing-choice retries, freshness, and inline reading replacement. |
 | `tests/collection-preview-purity.mjs` | Verify that previews never create library entries or mutate tombstones. |
+| `tests/ui-pool-readings.py` | Individual NPC pool/Level initialization, updates over plain saved values, live capacity, and tracker rendering. |
 | `tests/ui-level-rewards.py`, `tests/ui-progression-smoke.py` | Unsaved live Firefox fixtures for rewards, review dependencies, and Player/NPC progression controls. |
 | `tests/collection-rewards.mjs` | Reward field validation, schedules, intervals, targets, duplicate prevention, and rename stability. |
+| `tests/stat-settings-simplification.mjs` | Independent reader locking, carryover, growth, and premise schema contract. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
 | `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
 | `tests/ui_webdriver.py` | Shared Firefox session and guaranteed driver cleanup. |
@@ -124,7 +126,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/numeric-stat-bounds.js` | Enforce numeric minimums and pool ceilings. |
 | `src/tracker/stat-prompt-definitions.js` | Format stat purposes and rules for reader and inline prompts. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
-| `src/tracker/stat-update-policy.js` | Turn and advancement update policy for stats. |
+| `src/tracker/stat-update-policy.js` | Reader locking and migration of retired stat policies. |
 | `src/tracker/status-history.js` | Raw status block preservation and chat overhead measurement. |
 | `src/tracker/status-logic.js` | Player and NPC state, model updates, cast, items, and Systems. |
 | `src/tracker/status-stat-values.js` | Stat value merging and model update sanitization. |

@@ -4,7 +4,7 @@ import { npcStatsFor } from '../../core/npc-templates.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
-import { isTurnStat } from '../stat-update-policy.js';
+import { isReaderStat } from '../stat-update-policy.js';
 
 /**
  * A JSON schema describing exactly the stats and collections this user has configured.
@@ -20,10 +20,10 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     // Takes the stat definitions rather than their names, so a field that says how it
     // should be written can pass that on. A free-text field used to arrive as nothing but
     // a name and `{ type: 'string' }`, which is how one grew into a running log.
-    const stringMap = (stats) => ({
+    const stringMap = (stats, initializeNpc = false) => ({
         type: 'object',
         properties: Object.fromEntries((stats || [])
-            .filter(stat => stat?.name && isTurnStat(stat))
+            .filter(stat => stat?.name && (initializeNpc || isReaderStat(stat)))
             .map(stat => [
                 stat.name,
                 stat.hint?.trim()
@@ -72,7 +72,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const playerProgression = progressionFields(trackerSettings, { isPlayer: true });
     // The array schema is a union across templates; per-actor sanitization reserves
     // enabled owners' Level/XP while disabled templates retain ordinary writable fields.
-    const npcStatDefs = (trackerSettings.npcStats || []).filter(isTurnStat);
+    const npcStatDefs = trackerSettings.npcStats || [];
     const deltaMap = (keys) => ({
         type: 'object',
         properties: Object.fromEntries(keys.map(key => [key, { type: 'number' }])),
@@ -115,7 +115,7 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                         name: { type: 'string' },
                         offstage: { type: 'boolean', description: 'True only for a known NPC who remains outside the scene but has an evidenced update.' },
                         ...(npcTemplates().length ? { npcTemplateId: { type: 'string' } } : {}),
-                        stats: stringMap(npcStatDefs),
+                        stats: stringMap(npcStatDefs, true),
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),
                     },

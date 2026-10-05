@@ -19,7 +19,7 @@ export function progressXp(previousXp, incomingXp, previousLevel) {
     };
 }
 
-/** Turn pools grow capacity; Advancement ratings remain within their fixed upper bound. */
+/** Pools grow capacity; plain ratings remain within their fixed upper bound. */
 export function boostStat(previousValue, proposedValue, amount,
     { growMaximum = false, fixedMaximum = null } = {}) {
     const [currentText] = String(proposedValue ?? previousValue ?? '').split('/');

@@ -1,7 +1,7 @@
 /** Canonical, actor-independent progression configuration. IDs survive field renames. */
 const numericValue = value => /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(value ?? ''));
 export function progressionStatEligible(stat, config = {}) {
-    return Boolean(stat && !stat.retired && !stat.locked
+    return Boolean(stat && !stat.retired
         && ![config.xpFieldId, config.levelFieldId].includes(stat.id)
         && !['xp', 'level', 'level bonus'].includes(String(stat.name).toLowerCase())
         && (stat.type === 'number' || stat.type === 'bar' || numericValue(stat.defaultValue)));
@@ -51,9 +51,5 @@ export function normalizeTrackerProgression(tracker, system) {
     for (const template of tracker.npcTemplates || []) {
         template.progression = normalizeProgressionConfig(template.progression, tracker.npcStats, { statIds: template.statIds });
         if (!template.progression.enabled) continue;
-        const level = tracker.npcStats.find(stat => stat.id === template.progression.levelFieldId);
-        if (level) level.updatePolicy = 'advancement';
-        const field = system?.stats?.npc?.find(stat => stat.id === template.progression.levelFieldId);
-        if (field) field.updatePolicy = 'advancement';
     }
 }

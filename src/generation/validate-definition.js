@@ -55,7 +55,6 @@ export function validateFields(fields, path, errors, kind = 'stat') {
         if (/level bonus/i.test(field.name)) errors.push(`${p}.name: Level Bonus is not a narrative stat`);
         if (field.maxLength !== undefined && field.maxLength !== '' && (!Number.isSafeInteger(Number(field.maxLength)) || Number(field.maxLength) < 1)) errors.push(`${p}.maxLength: expected a positive integer or blank`);
         if (field.format?.match(/{{.*?}}/g)?.some(token => !['{{name}}', '{{value}}', '{{max}}'].includes(token))) errors.push(`${p}.format: unsupported placeholder`);
-        if (field.persistence === 'innate' && field.updatePolicy !== 'advancement') errors.push(`${p}.persistence: conflicts with Turn policy`);
         if (field.color && !/^#[0-9a-f]{6}$/i.test(field.color)) errors.push(`${p}.color: expected a hex color`);
     });
 }
@@ -66,7 +65,7 @@ export function validateProgression(config, stats, path, errors, selections, npc
     const xp = fields.find(field => field.id === config.xpFieldId);
     const level = fields.find(field => field.id === config.levelFieldId);
     for (const [label, field] of [['XP', xp], ['Level', level]]) {
-        if (!field || field.retired || field.locked || field.type !== 'number') errors.push(`${path}: ${label} requires a selected usable numeric field`);
+        if (!field || field.retired || (label === 'XP' && field.locked) || field.type !== 'number') errors.push(`${path}: ${label} requires a selected usable numeric field`);
     }
     const xpValue = xp && numberParts(xp.defaultValue);
     const levelValue = level && numberParts(level.defaultValue);
@@ -74,7 +73,6 @@ export function validateProgression(config, stats, path, errors, selections, npc
         || xpValue[0] < 0 || xpValue[0] >= xpValue[1] || !Number.isSafeInteger(xpValue[0])) errors.push(`${path}: XP field ${config.xpFieldId} defaultValue ${JSON.stringify(xp?.defaultValue)} needs an integer remainder/capacity string such as "0/100"`);
     if (xp && (!xpValue || String(xp.maxStatValue) !== String(xpValue[1]))) errors.push(`${path}: XP field ${config.xpFieldId} maxStatValue ${JSON.stringify(xp.maxStatValue)} must match its fixed capacity ("0/100" requires "100")`);
     if (!levelValue || levelValue.length !== 1 || !Number.isSafeInteger(levelValue[0]) || levelValue[0] < 1) errors.push(`${path}: starting Level must be an integer of at least one`);
-    if (npc && level?.updatePolicy !== 'advancement') errors.push(`${path}: NPC Level requires Advancement policy`);
     refs(config.statIds, fields, `${path}.statIds`, errors);
     if (config.statGrowth !== 'none' && !config.statIds.length) errors.push(`${path}.statIds: choose growth candidates`);
     for (const id of config.statIds) {

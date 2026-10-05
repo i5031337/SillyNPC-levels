@@ -141,12 +141,12 @@ NPC fields:
 For each present NPC, fill blank configured stats with plausible individual values. Follow each stat's purpose and rules. Update filled stats only when the story changes them. Initialize blank locked NPC stats once.
 {{/npcFields}}
 {{#xpProgression}}
-Experience: award once per concrete accomplishment for the player and enabled NPC templates. Report earned XP as a positive delta under "player.deltas" or that character’s "deltas", using the configured XP field. The extension handles Level, excess XP, stat growth, and collection reward review. Never write Level or level-up growth directly. Disabled templates use ordinary stat rules.
+Experience: award once per concrete accomplishment for the player and enabled NPC templates. Report earned XP as a positive delta under "player.deltas" or that character’s "deltas", using the configured XP field. The extension handles Level, excess XP, stat growth, and collection reward review. Initialize a blank NPC Level once from the story; otherwise never write Level or level-up growth directly. Disabled templates use ordinary stat rules.
 {{/xpProgression}}
 
 ### COSTS
 Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
-Keep pool values such as "8/10" in that form. Keep maxima fixed during ordinary updates. Configured level growth may increase Turn pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Advancement ratings keep their configured range. Keep plain numbers as numbers.
+Initialize new NPC pools with individual capacities, even when they differ from the default: "5/5" stays "5/5", and a bare initial 8 means "8/8". Keep pool values such as "8/10" in that form. Keep established maxima fixed during ordinary updates. Configured level growth may increase pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Plain numeric ratings keep their configured range. Keep plain numbers as numbers.
 
 {{#schemas}}
 ### COLLECTIONS

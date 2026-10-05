@@ -3,7 +3,6 @@ import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../src/core/np
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 import { progressXp } from '../src/tracker/progression.js';
 import { expandNumericDeltas } from '../src/tracker/extractor/status-extractor-deltas.js';
 
@@ -11,7 +10,7 @@ test('reader deltas become absolute values without changing ceilings or innate s
     const settings = {
         globalStats: [{ name: 'Heat' }],
         playerStats: [{ name: 'HP' }, { name: 'XP', type: 'number', defaultValue: '0/100' }, { name: 'Level', type: 'number', defaultValue: '1' }],
-        npcStats: [{ name: 'Energy' }, { name: 'Power', persistence: 'innate' }],
+        npcStats: [{ name: 'Energy' }, { name: 'Power', locked: true }],
     };
     const state = {
         global: { Heat: '2' },
@@ -69,7 +68,7 @@ const source = readFileSync(new URL('../src/tracker/status-apply-update.js', imp
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
 const loadBind = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'saveSettings',
-    'canTrackerSetNpcStat', 'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp', 'progressionFields',
+    'getAllCharacters', 'LOG_PREFIX', 'debugLog', 'progressXp', 'progressionFields',
     `${source}\nreturn bind;`);
 
 function fixture({ openChat = true } = {}) {
@@ -97,7 +96,6 @@ function fixture({ openChat = true } = {}) {
         { emit: (...args) => calls.emitted.push(args) },
         () => settings,
         () => { calls.settings++; },
-        canTrackerSetNpcStat,
         () => [card],
         '[test]',
         () => {},
@@ -258,7 +256,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
 
 test('configured player and enabled NPC fields roll over identically without mutating dry-run cards', () => {
     const { deps, card, initial, settings } = fixture();
-    const fields = [{ id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', updatePolicy: 'advancement' }];
+    const fields = [{ id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', locked: true }];
     settings.statusTracker.playerStats = fields;
     settings.statusTracker.npcStats = fields;
     settings.statusTracker.progression = { player: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank' } };
@@ -280,7 +278,7 @@ test('configured player and enabled NPC fields roll over identically without mut
     const manual = deps.applyUpdate(update, { dryRun: true, verbatim: true });
     assert.equal(manual.player.stats.Experience, '310/100');
     assert.equal(manual.player.stats.Rank, '2');
-    const initialization = deps.applyUpdate(update, { dryRun: true, allowAdvancementChanges: true });
+    const initialization = deps.applyUpdate(update, { dryRun: true, progressionResolved: true });
     assert.equal(initialization.characters[0].stats.Experience, '200/100');
     assert.equal(initialization.characters[0].stats.Rank, '3');
     settings.statusTracker.npcTemplates[0].progression.enabled = false;
@@ -291,8 +289,8 @@ test('configured player and enabled NPC fields roll over identically without mut
 
 test('enabled NPC XP accepts positive deltas; disabled templates keep ordinary stat behavior', () => {
     const settings = { globalStats: [], playerStats: [], npcStats: [
-        { id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100', updatePolicy: 'advancement' },
-        { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', updatePolicy: 'advancement' },
+        { id: 'earned', name: 'Experience', type: 'number', defaultValue: '0/100' },
+        { id: 'rank', name: 'Rank', type: 'number', defaultValue: '1', locked: true },
     ], npcTemplates: [{ id: 'fighter', statIds: ['earned', 'rank'],
         progression: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank' } }] };
     const state = { characters: [{ name: 'Mira', npcTemplateId: 'fighter', stats: { Experience: '90/100', Rank: '1' } }] };

@@ -4,8 +4,8 @@ import { prepareGrantReview, selectReviewRows, materializeGrantRows } from '../s
 
 const settings = {
     playerStats: [{ id: 'xp', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'lv', name: 'Rank', type: 'number', defaultValue: '1' },
-        { id: 'hp', name: 'Health', type: 'bar', updatePolicy: 'turn', defaultValue: '10/10' },
-        { id: 'str', name: 'Strength', type: 'number', updatePolicy: 'advancement', maxStatValue: '10' }],
+        { id: 'hp', name: 'Health', type: 'bar', defaultValue: '10/10' },
+        { id: 'str', name: 'Strength', type: 'number', locked: true, maxStatValue: '10' }],
     progression: { player: { enabled: true, xpFieldId: 'xp', levelFieldId: 'lv', statGrowth: 'all', statIds: ['hp', 'str'] } },
 };
 const transition = { transitionId: 't', scope: 'player', actor: null, actorId: 'player:player', xpName: 'Experience', levelName: 'Rank', oldLevel: 1, newLevel: 2, xpAfter: '5/100' };

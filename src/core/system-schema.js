@@ -1,3 +1,4 @@
+import { statBehavior } from '../tracker/stat-update-policy.js';
 import { normalizeProgressionConfig } from './progression-config.js';
 import { normalizeCollectionRewards } from './collection-rewards.js';
 import { ensureCollectionIdentifier } from './collection-fields.js';
@@ -8,7 +9,7 @@ import { normalizeHudLayoutId } from './constants-base.js';
 
 export const SYSTEM_SCHEMA_VERSION = 1;
 const PROFILE_POLICIES = new Set(['anchored', 'replaceable', 'memory']);
-const STAT_POLICIES = new Set(['turn', 'advancement']);
+
 const IDENTIFIER = /^[a-z][a-z0-9_-]*$/;
 
 const object = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -51,13 +52,12 @@ function profileFields(source) {
         .map(value => profileField(value, used));
 }
 
-function statFields(source, scope) {
+function statFields(source, scope, xpIds = []) {
     const used = new Set();
     return list(source).filter(value => value && typeof value === 'object').map(value => {
         const stat = object(value);
         const id = uniqueId(stat.id || stat.name || stat.label, used);
         const name = string(stat.name, string(stat.label, id));
-        const isProgression = scope === 'player' && ['level', 'level bonus'].includes(name.toLowerCase());
         return {
             id, name,
             type: stat.type === 'number' || stat.type === 'bar' ? 'number' : 'text',
@@ -68,14 +68,11 @@ function statFields(source, scope) {
             options: stat.type === 'number' || stat.type === 'bar' ? []
                 : list(stat.options).map(value => String(value).trim()).filter(Boolean),
             maxLength: String(stat.maxLength ?? ''),
-            locked: stat.locked === true,
+            ...statBehavior(stat, scope, xpIds.includes(stat.id) ? stat.id : undefined),
             visible: stat.visible !== false,
             guidance: string(stat.guidance, string(stat.hint)),
             purpose: string(stat.purpose),
-            updatePolicy: STAT_POLICIES.has(stat.updatePolicy) ? stat.updatePolicy
-                : isProgression || (scope === 'npc' && stat.persistence === 'innate') ? 'advancement' : 'turn',
             advanceOnLevel: scope === 'player' && stat.advanceOnLevel === true,
-            persistence: scope === 'npc' && stat.persistence === 'innate' ? 'innate' : 'turn',
             isPrimary: stat.isPrimary === true,
             color: string(stat.color),
             retired: stat.retired === true,
@@ -145,7 +142,7 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
     }));
     const playerProfile = profileFields(modern ? profiles.player : legacyProfile(PROFILE_FIELDS));
     const npcProfile = profileFields(modern ? profiles.npc : legacyProfile(NPC_LORE_FIELDS));
-    const npcStats = statFields(modern ? stats.npc : tracker.npcStats ?? defaultTrackerSettings.npcStats, 'npc');
+    const npcStats = statFields(modern ? stats.npc : tracker.npcStats ?? defaultTrackerSettings.npcStats, 'npc', list(input.npcTemplates).map(template => template?.progression?.xpFieldId));
     const templateIds = new Set();
     const templates = Array.isArray(input.npcTemplates) ? input.npcTemplates.map(value => {
         const template = object(value);
@@ -160,7 +157,7 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
         profileIds: npcProfile.filter(field => !field.retired).map(field => field.id),
         statIds: npcStats.map(field => field.id), progression: normalizeProgressionConfig({}, npcStats) }];
     const worldStats = statFields(modern ? stats.world : tracker.globalStats ?? defaultTrackerSettings.globalStats, 'world');
-    const playerStats = statFields(modern ? stats.player : tracker.playerStats ?? defaultTrackerSettings.playerStats, 'player');
+    const playerStats = statFields(modern ? stats.player : tracker.playerStats ?? defaultTrackerSettings.playerStats, 'player', [input.progression?.player?.xpFieldId ?? tracker.progression?.player?.xpFieldId]);
     const hud = modern ? object(input.hud) : tracker;
     const systemName = string(name, string(input.name, string(metadata.name, 'System')));
     return {

@@ -1,10 +1,8 @@
 import { progressionFields } from './progression-fields.js';
 import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { getSettings } from '../core/settings.js';
-import { canTrackerSetNpcStat } from './stat-persistence.js';
-import { isTurnStat } from './stat-update-policy.js';
 import { splitValue, ceilingFromValue } from '../core/utils.js';
-import { configuredNumericMaximum, keepNumericMaximum } from './numeric-stat-bounds.js';
+import { configuredNumericMaximum, keepNumericMaximum, isPoolStat } from './numeric-stat-bounds.js';
 
 export function bind(deps) {
 
@@ -65,7 +63,7 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
         world: names(trackerSettings.globalStats),
         player: names(trackerSettings.playerStats),
         characters: (trackerSettings.npcStats || [])
-            .filter(stat => stat?.name && (stat.locked || !isTurnStat(stat)))
+            .filter(stat => stat?.name && stat.locked)
             .map(stat => stat.name),
     };
 }
@@ -76,9 +74,10 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * Only for replies from a model - the tracker's reader and the inline block. Your own edits
  * never come through here, so typing "120/150" on the sheet still sets a ceiling.
  *
- * - An advancement-only stat is never changed by a turn reply. A locked NPC stat may be
- *   initialized while blank, then only you can change it.
- * - A reader cannot invent a ceiling. For a pool, the existing maximum is retained;
+ * - Blank NPC fields may be initialized, including locked fields and Level.
+ *   Configured level growth and direct edits may change locked fields later.
+ * - New NPC pools take their individual maximum from the initial reading.
+ *   Ordinary reader updates retain the existing maximum;
  *   a configured starting maximum also bounds values saved as plain numbers.
  *
  * @param {object} update Changed in place, and returned.
@@ -92,7 +91,11 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
             const fragment = key.replace(/_(?:current|cur|now|value|val|maximum|max|total|cap)$/i, '');
-            if (progression.enabled && fragment.toLowerCase() === progression.levelName?.toLowerCase()) {
+            const levelField = progression.enabled && fragment.toLowerCase() === progression.levelName?.toLowerCase();
+            const levelHeld = stored?.[deps.findMatchingStatKey(stored || {}, fragment) || fragment];
+            const levelCardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, fragment) || fragment];
+            if (levelField && (!npc || key.toLowerCase() !== progression.levelName.toLowerCase()
+                || String(levelHeld ?? '').trim() || String(levelCardHeld ?? '').trim())) {
                 delete stats[key]; continue;
             }
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
@@ -103,15 +106,11 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 continue;
             }
             if (!def) continue;
-            if (progression.enabled && def.name === progression.levelName) { delete stats[key]; continue; }
-            const earnedXp = progression.enabled && def.name === progression.xpName && !def.locked;
-            if (!isTurnStat(def) && !earnedXp) { delete stats[key]; continue; }
+            if (levelField && (!Number.isSafeInteger(Number(stats[key])) || Number(stats[key]) < 1)) {
+                delete stats[key]; continue;
+            }
             const held = stored?.[deps.findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, key) || key];
-            if (npc && !canTrackerSetNpcStat(def) && !earnedXp) {
-                delete stats[key];
-                continue;
-            }
             if (def.locked) {
                 // A locked NPC stat may be seeded once, but a value already on its
                 // card must also protect it while the character is off stage.
@@ -123,8 +122,15 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
             const incoming = String(stats[key] ?? '');
             if (isNumericStat(def)) {
                 const storedValue = String(held ?? '').trim() ? held : cardHeld;
-                const fixedCap = !isTurnStat(def) ? configuredNumericMaximum(def) : null;
-                const plainReading = String(storedValue ?? '').trim() && ceilingFromValue(storedValue) === null;
+                const initializing = npc && !String(held ?? '').trim() && !String(cardHeld ?? '').trim();
+                if (initializing && isPoolStat(def) && def.name !== progression.xpName) {
+                    // A bare initial pool reading means a full pool of that size.
+                    const reading = incoming.trim();
+                    stats[key] = /^-?\d+(?:\.\d+)?$/.test(reading) ? `${reading}/${reading}` : incoming;
+                    continue;
+                }
+                const fixedCap = !isPoolStat(def) && !isPoolStat(def, storedValue) ? configuredNumericMaximum(def) : null;
+                const plainReading = !isPoolStat(def) && String(storedValue ?? '').trim() && ceilingFromValue(storedValue) === null;
                 const liveCap = plainReading ? '' : fixedCap ?? promptCeiling(def, storedValue);
                 stats[key] = keepNumericMaximum(incoming, liveCap);
             }
@@ -154,8 +160,11 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
 /** The actor's live maximum, or the configured starting maximum without a pool. */
 function promptCeiling(statDef, storedValue) {
     const held = storedValue !== undefined && storedValue !== null && String(storedValue).trim() !== '';
-    if (!held) return resolveMaxValue(statDef);
-    if (ceilingFromValue(storedValue) === null) return resolveMaxValue(statDef);
+    if (!held || ceilingFromValue(storedValue) === null) {
+        // The default pool denominator seeds capacity; maxStatValue only limits growth.
+        const startingCap = ceilingFromValue(statDef?.defaultValue);
+        return startingCap === null ? resolveMaxValue(statDef) : String(startingCap);
+    }
     return String(splitValue(storedValue).max).trim();
 }
 
@@ -193,7 +202,7 @@ function isNumericStat(statDef) {
 /** The configured NPC fields, included in both tracker prompts for new arrivals. */
 function describeNpcStatFields(trackerSettings) {
     return (trackerSettings?.npcStats || [])
-        .filter(stat => stat?.name && isTurnStat(stat))
+        .filter(stat => stat?.name)
         .map(stat => {
             const details = [isNumericStat(stat) ? 'number' : 'text'];
             if (String(stat.purpose ?? '').trim()) details.push(`purpose: ${stat.purpose.trim()}`);
@@ -206,7 +215,7 @@ function describeNpcStatFields(trackerSettings) {
             }
             if (String(stat.defaultValue ?? '').trim()) details.push(`default ${stat.defaultValue}`);
             if (stat.locked) {
-                details.push('immutable after its first value; never change it during play');
+                details.push('reader may initialize once; later reader changes are blocked');
             }
             return `- ${stat.name}: ${details.join('; ')}`;
         })
@@ -276,9 +285,6 @@ function clampToCeiling(value) {
 
 function getInitialStatValue(defaultValue, maxStatValue, statDef = null) {
     let value = defaultValue || '';
-    if (maxStatValue && value && !String(value).includes('/') && isTurnStat(statDef)) {
-        value = `${value}/${maxStatValue}`;
-    }
     return value;
 }
 

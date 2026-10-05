@@ -22,7 +22,7 @@ Each enabled owner configuration selects:
 
 - XP field and Level field, both included in that owner's stat selection.
 - Stat growth policy: None, One stat, or All selected stats.
-- Eligible numeric stats. Exclude XP, Level, retired/locked fields, and nonnumeric values.
+- Eligible numeric stats. Exclude XP, Level, retired fields, and nonnumeric values.
 - For All selected stats, the reader chooses an independent integer increase of
   0–3 for each selected stat at each crossed level, informed by the story. Zero
   means no growth; positive increases remain optional review proposals.
@@ -83,9 +83,9 @@ reward, allow an explicit no-reward result rather than forcing duplicates.
 ### Bounds, pools, and multiple levels
 
 - Plain ratings increase within their configured fixed maximum.
-- Turn pools increase current and capacity by the growth amount, preserving existing
+- Numeric pools increase current and capacity by the growth amount, preserving existing
   depletion. For example, 6/10 with +1 becomes 7/11, not a full heal.
-- Explicit maxima remain hard ceilings for Turn pool growth; blank maxima allow
+- Explicit maxima remain hard ceilings for pool growth; blank maxima allow
   capacity expansion. Configured limits are preserved.
 - No automatic revival, cleansing, refilling, or full healing.
 - All selected stats chooses independent 0–3 increases per stat per crossed level,
@@ -132,7 +132,7 @@ Cover:
   XP, positive deltas versus absolute review values, configured renamed fields.
 - Different NPC templates with different/disabled progression and overlapping
   collection targets; All NPCs plus a template never grants twice.
-- None, One stat, and All selected stats; locked/retired/nonnumeric fields, fixed
+- None, One stat, and All selected stats; locked growth candidates and retired/nonnumeric exclusions, fixed
   bounds, depleted pools, simultaneous story changes, and multi-level gains.
 - Scheduled thresholds, guided intervals/no-reward/malformed replies, custom primary
   fields, collection numeric ranges, existing items, duplicate proposals, static fields.

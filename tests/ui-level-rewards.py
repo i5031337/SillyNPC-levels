@@ -25,10 +25,10 @@ with browser_session() as browser:
           live = loadStateFromMetadata(); savedLive = structuredClone(live);
           chat = SillyTavern.getContext().chat; savedChat = chat.slice();
           const stats = [
-            { id: 'xp', name: 'Experience', type: 'number', updatePolicy: 'turn', defaultValue: '0/100' },
-            { id: 'level', name: 'Rank', type: 'number', updatePolicy: 'advancement', defaultValue: '1' },
-            { id: 'health', name: 'Health', type: 'bar', updatePolicy: 'turn', defaultValue: '10/10' },
-            { id: 'power', name: 'Power', type: 'number', updatePolicy: 'advancement', defaultValue: '3', maxStatValue: '10' }
+            { id: 'xp', name: 'Experience', type: 'number', defaultValue: '0/100' },
+            { id: 'level', name: 'Rank', type: 'number', locked: true, defaultValue: '1' },
+            { id: 'health', name: 'Health', type: 'bar', defaultValue: '10/10' },
+            { id: 'power', name: 'Power', type: 'number', locked: true, defaultValue: '3', maxStatValue: '10' }
           ];
           const progression = { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'all',
             statIds: ['health', 'power'], increments: { health: 1, power: 1 } };

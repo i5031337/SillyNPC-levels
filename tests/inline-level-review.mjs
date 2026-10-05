@@ -55,7 +55,7 @@ test('inline reading records automatic transition and keeps grants pending; rend
     await settle();
     assert.equal(h.calls.selections, 1);
     assert.equal(h.calls.applied.length, 1);
-    assert.equal(h.calls.applied[0].options.allowAdvancementChanges, true);
+    assert.equal(h.calls.applied[0].options.progressionResolved, true);
     assert.equal(h.calls.pending[0].grant.id, 'reward');
     assert.equal(h.calls.records[0].label, 'XP');
     assert.equal(h.message.reading.sourceText, h.message.mes);

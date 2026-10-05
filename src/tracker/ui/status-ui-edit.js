@@ -50,7 +50,7 @@ export function attachInlineEditListeners(container, { state: drawnState = null,
             // had fixed in 0.5.1 and this surface still carried.
             // verbatim: what was typed is the whole value. See mergeStatValue - without it
             // an existing "120/120" puts its ceiling back on a typed "120".
-            applyUpdate(updateObj, { label: 'Manual edit', verbatim: true, allowAdvancementChanges: true });
+            applyUpdate(updateObj, { label: 'Manual edit', verbatim: true, progressionResolved: true });
         });
         el.addEventListener('keydown', (e) => {
             e.stopPropagation();

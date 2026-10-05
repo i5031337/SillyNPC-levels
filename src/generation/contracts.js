@@ -14,11 +14,11 @@ export const progressionSchema = object({ enabled: bool, xpFieldId: text, levelF
 export const profileSchema = object({ id, label: text, guidance: text,
     policy: enumeration(['anchored', 'replaceable', 'memory']), placeholder: text, multiline: bool, retired: bool },
 ['id', 'label', 'guidance', 'policy']);
-export const statSchema = object({ id, name: text, type: enumeration(['number', 'text']), defaultValue: scalar,
-    purpose: text, guidance: text, updatePolicy: enumeration(['turn', 'advancement']), format: text,
+export const statSchema = object({ id, name: text, type: enumeration(['number', 'text']), defaultValue: { ...scalar, description: 'Numeric pools use a current/maximum string such as 10/10. This is a starting default; each NPC may initialize its own capacity. Plain numbers define ratings.' },
+    purpose: text, guidance: text, format: text,
     min: text, maxStatValue: text, options: array(text), maxLength: text, locked: bool, visible: bool,
-    isPrimary: bool, color: text, retired: bool, advanceOnLevel: bool, persistence: enumeration(['turn', 'innate']) },
-['id', 'name', 'type', 'defaultValue', 'purpose', 'updatePolicy']);
+    isPrimary: bool, color: text, retired: bool, advanceOnLevel: bool, carryOver: bool },
+['id', 'name', 'type', 'defaultValue', 'purpose', 'locked']);
 export const fieldSchema = object({ id, name: text, label: text, type: enumeration(['text', 'number', 'boolean']),
     defaultValue: scalar, guidance: text, min: text, maxStatValue: text, options: array(text),
     isPrimary: bool, isStatic: bool, isMultiline: bool, retired: bool },

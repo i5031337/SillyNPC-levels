@@ -1,7 +1,7 @@
 import { progressionFields } from './progression-fields.js';
 import { collectionAppliesTo, collectionTargetLabel } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
-import { isTurnStat } from './stat-update-policy.js';
+import { isReaderStat } from './stat-update-policy.js';
 import { describeStatDefinitions } from './stat-prompt-definitions.js';
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../../script.js';
 import { applyMacros } from '../prompts/macros.js';
@@ -65,7 +65,7 @@ function getStatusExample() {
 
     const player = {};
     const playerProgression = progressionFields(settings, { isPlayer: true });
-    const playerStat = first(settings.playerStats.filter(stat => isTurnStat(stat)
+    const playerStat = first(settings.playerStats.filter(stat => isReaderStat(stat)
         && (!playerProgression.enabled || stat.name !== playerProgression.levelName)));
     if (playerProgression.enabled && playerStat === playerProgression.xpName) player.deltas = { [playerStat]: 1 };
     else if (playerStat) player.stats = { [playerStat]: '<new value>' };
@@ -85,7 +85,7 @@ function getStatusExample() {
 
     const character = { name: first(state?.characters) || '<someone present>' };
     const npcProgression = progressionFields(settings, { actor: state?.characters?.[0] });
-    const npcStat = first(settings.npcStats.filter(stat => isTurnStat(stat)
+    const npcStat = first(settings.npcStats.filter(stat => isReaderStat(stat)
         && (!npcProgression.enabled || stat.name !== npcProgression.levelName)));
     if (npcProgression.enabled && npcStat === npcProgression.xpName) character.deltas = { [npcStat]: 1 };
     else if (npcStat) character.stats = { [npcStat]: '<new value>' };

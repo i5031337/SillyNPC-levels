@@ -1,7 +1,6 @@
 import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { eventSource } from '../../../../../events.js';
 import { getSettings, saveSettings } from '../core/settings.js';
-import { canTrackerSetNpcStat } from './stat-persistence.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { progressXp } from './progression.js';
@@ -46,7 +45,7 @@ export function bind(deps) {
         return collected;
     }
 
-    function applyPlayerUpdate(state, player, settings, { verbatim, allowReplace, allowAdvancementChanges, dryRun }) {
+    function applyPlayerUpdate(state, player, settings, { verbatim, allowReplace, progressionResolved, dryRun }) {
         debugLog('Applying player update:', player);
         const validKeys = new Set(settings.playerStats.map(s => s.name.toLowerCase()));
         const collectionIds = new Set(settings.collections.map(c => c.id.toLowerCase()));
@@ -69,7 +68,7 @@ export function bind(deps) {
 
         const { xpName, levelName, enabled } = progressionFields(settings, { isPlayer: true });
         let xpProgress = null;
-        if (enabled && !verbatim && !allowAdvancementChanges && groups.has(xpName)) {
+        if (enabled && !verbatim && !progressionResolved && groups.has(xpName)) {
             const group = groups.get(xpName);
             const raw = group.whole ?? group.current;
             if (raw !== undefined) {
@@ -121,7 +120,7 @@ export function bind(deps) {
     }
 
     function applyCharacterStats(charData, updChar, matchedChar, settings, validKeys, collectionIds,
-        { verbatim, allowAdvancementChanges, dryRun, skipProgression = false }) {
+        { verbatim, progressionResolved, dryRun, skipProgression = false }) {
         const sourceStats = updChar.stats || updChar;
         const groups = deps.groupIncomingStats(
             sourceStats,
@@ -138,7 +137,7 @@ export function bind(deps) {
         );
         const { xpName, levelName, enabled } = progressionFields(settings, { actor: charData });
         const xpGroup = groups.get(xpName);
-        const xpProgress = enabled && !verbatim && !allowAdvancementChanges && !skipProgression && xpGroup
+        const xpProgress = enabled && !verbatim && !progressionResolved && !skipProgression && xpGroup
             ? progressXp(charData.stats[xpName], xpGroup.whole ?? xpGroup.current, charData.stats[levelName]) : null;
         if (xpProgress) {
             groups.set(xpName, { whole: xpProgress.xp });
@@ -147,8 +146,6 @@ export function bind(deps) {
         let cardChanged = false;
         for (const [canonicalKey, group] of groups) {
             const statDef = settings.npcStats.find(s => s.name.toLowerCase() === canonicalKey.toLowerCase());
-            if (!allowAdvancementChanges && !canTrackerSetNpcStat(statDef)
-                && !(xpProgress && [xpName, levelName].includes(canonicalKey))) continue;
             const merged = deps.combineStatValue(charData.stats[canonicalKey], group, statDef, { verbatim });
             charData.stats[canonicalKey] = deps.constrainToDefinition(statDef, merged, charData.stats[canonicalKey]);
 
@@ -164,7 +161,7 @@ export function bind(deps) {
 
     function applyCharacterUpdate(state, updChar, context) {
         const { settings, lookup, validKeys, collectionIds,
-            admitCharacters, dryRun, allowReplace, allowAdvancementChanges, verbatim, offstageSkipped } = context;
+            admitCharacters, dryRun, allowReplace, progressionResolved, verbatim, offstageSkipped } = context;
         if (!updChar.name) return false;
         const canonicalName = deps.resolveCanonicalName(updChar.name);
         if (!deps.mayJoinScene(canonicalName)
@@ -188,7 +185,7 @@ export function bind(deps) {
                 return false;
             }
             const detached = deps.updateCardOffstage(matchedChar, updChar, state, settings,
-                { dryRun, allowReplace, allowAdvancementChanges, verbatim });
+                { dryRun, allowReplace, progressionResolved, verbatim });
             // The review diff needs a row; the real card update leaves the cast untouched.
             if (dryRun && detached) state.characters.push(detached);
             return false;
@@ -215,7 +212,7 @@ export function bind(deps) {
         }
         const actorKeys = new Set(actorSettings.npcStats.map(stat => stat.name.toLowerCase()));
         let cardChanged = applyCharacterStats(charData, updChar, matchedChar, actorSettings, actorKeys,
-            collectionIds, { verbatim, allowAdvancementChanges, dryRun, skipProgression: assigned });
+            collectionIds, { verbatim, progressionResolved, dryRun, skipProgression: assigned });
         cardChanged ||= assigned && !!matchedChar && !dryRun;
         const collections = collectCollections(updChar, collectionIds, `character update for ${updChar.name}`);
         Object.keys(collections).forEach(id => {
@@ -242,7 +239,7 @@ export function bind(deps) {
 
     function applyUpdate(update, options = {}) {
         const { dryRun = false, label = 'AI update', admitCharacters = false, allowReplace = false,
-            partOfMessage = false, verbatim = false, allowAdvancementChanges = false } = options;
+            partOfMessage = false, verbatim = false, progressionResolved = false } = options;
         // Card writes occur before the state save, so reject a missing chat before either.
         if (!dryRun && !deps.hasOpenChat()) {
             console.warn(LOG_PREFIX, 'Refused to apply a tracker update with no chat open.');
@@ -255,10 +252,10 @@ export function bind(deps) {
         const settings = getSettings().statusTracker;
         applyGlobalUpdate(state, update, settings, verbatim);
 
-        if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace, allowAdvancementChanges, dryRun });
+        if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace, progressionResolved, dryRun });
         if (update.characters && Array.isArray(update.characters)) {
             applyCharacters(state, update.characters, settings, {
-                admitCharacters, dryRun, allowReplace, allowAdvancementChanges,
+                admitCharacters, dryRun, allowReplace, progressionResolved,
                 verbatim, offstageSkipped,
             });
         }

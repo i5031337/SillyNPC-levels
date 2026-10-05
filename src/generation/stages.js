@@ -8,7 +8,7 @@ export function buildStages(plan) {
     for (const kind of ['profiles', 'stats']) for (const scope of Object.keys(plan[kind])) {
         const planned = plan[kind][scope]; if (!planned.length) continue;
         const owners = kind === 'stats' ? progressionOwners(plan, scope) : [];
-        const fields = array(kind === 'profiles' ? profileSchema : without(statSchema, ['persistence', 'advanceOnLevel', 'isPrimary']));
+        const fields = array(kind === 'profiles' ? profileSchema : without(statSchema, ['advanceOnLevel', 'isPrimary', ...(scope === 'npc' ? [] : ['carryOver'])]));
         add({ id: `${kind}.${scope}`, label: `Defining ${scope} ${kind}${owners.length ? ' and progression' : ''}`, schema: catalogSchema(fields, owners),
             expected: planned, owners, fields: value => catalogFields(value, owners), dependencies: [],
             get: d => owners.length ? { fields: d[kind][scope], progression: Object.fromEntries(owners.map(owner => [owner.id,

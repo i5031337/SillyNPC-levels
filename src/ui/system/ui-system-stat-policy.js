@@ -1,27 +1,15 @@
-/** Stat update policy also determines whether an NPC value travels. */
-export function statPolicyMarkup(stat, scope, escapeHtml) {
-    if (scope === 'globalStats') return '';
-    const name = escapeHtml(stat.name);
-    const policy = stat.updatePolicy === 'advancement' ? 'advancement'
-        : (!stat.updatePolicy && stat.persistence === 'innate' ? 'advancement' : 'turn');
-    const policyHelp = scope === 'npcStats'
-        ? 'Turn fields can change after a story message and reset in a new adventure. Only Turn maxima can grow on level-up. Advancement fields travel with the character and keep a fixed range.'
-        : 'Turn fields can change after a story message, and level growth can raise a Turn maximum. Advancement ratings change through a level-up bonus or manual edit but keep their fixed range.';
-    return `
-        <select class="text_pole stat-update-policy"
-                title="${policyHelp}"
-                aria-label="${name} update policy"
-                style="width:120px; font-size:var(--sillynpc-text-md); height:24px;">
-            <option value="turn" ${policy === 'turn' ? 'selected' : ''}>Turn</option>
-            <option value="advancement" ${policy === 'advancement' ? 'selected' : ''}>Advancement</option>
-        </select>
-    `;
+/** NPC carryover is independent of reader locking and progression. */
+export function statPolicyMarkup(stat, scope) {
+    if (scope !== 'npcStats') return '';
+    return `<label class="sillynpc-check-group" title="Keep this NPC stat when moving the character to a new adventure. Otherwise use the destination default.">
+        <input type="checkbox" class="stat-carry-over" ${stat.carryOver ? 'checked' : ''}>
+        <small>Carry between adventures</small>
+    </label>`;
 }
 
-export function bindStatPolicy(row, stat, saveSettings, onRefresh) {
-    row.querySelector('.stat-update-policy')?.addEventListener('change', (event) => {
-        stat.updatePolicy = event.target.value;
+export function bindStatPolicy(row, stat, saveSettings) {
+    row.querySelector('.stat-carry-over')?.addEventListener('change', (event) => {
+        stat.carryOver = event.target.checked;
         saveSettings();
-        onRefresh();
     });
 }

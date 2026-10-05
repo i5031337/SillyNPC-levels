@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats,
-    canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
-import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
+import { normaliseNpcPersistence, splitNpcStats, initialiseNpcStats } from '../src/tracker/stat-persistence.js';
+import { normaliseStatUpdatePolicies, isReaderStat } from '../src/tracker/stat-update-policy.js';
 import { progressionStatEligible } from '../src/core/progression-config.js';
 import { prepareGrantReview } from '../src/tracker/level-grant-review.js';
 
-test('canonical growth eligibility excludes locked, retired and progression fields', () => {
+test('canonical growth eligibility allows locked and excludes retired and progression fields', () => {
     const rating = { id: 'power', name: 'Power', type: 'number', updatePolicy: 'advancement' };
     const config = { xpFieldId: 'earned', levelFieldId: 'rank' };
     assert.equal(progressionStatEligible(rating, config), true);
-    assert.equal(progressionStatEligible({ ...rating, locked: true }, config), false);
+    assert.equal(progressionStatEligible({ ...rating, locked: true }, config), true);
     assert.equal(progressionStatEligible({ ...rating, retired: true }, config), false);
     assert.equal(progressionStatEligible({ ...rating, id: 'rank' }, config), false);
 });
@@ -21,8 +20,8 @@ test('legacy transfer settings are retired without changing stored values', () =
     const values = { HP: '2/10', Wisdom: '8' };
     normaliseStatUpdatePolicies({ npcStats: definitions });
     normaliseNpcPersistence(definitions);
-    assert.equal(definitions[0].updatePolicy, 'turn');
-    assert.equal(definitions[1].updatePolicy, 'advancement');
+    assert.equal(definitions[0].carryOver, false);
+    assert.equal(definitions[1].carryOver, true);
     assert.equal(definitions[0].persistence, undefined);
     assert.equal(definitions[1].persistenceReview, undefined);
     assert.deepEqual(values, { HP: '2/10', Wisdom: '8' });
@@ -34,6 +33,7 @@ test('transfer carries advancement and locked fields and resets turn fields', ()
         { name: 'Wisdom', updatePolicy: 'advancement', defaultValue: '3' },
         { name: 'Level', updatePolicy: 'turn', locked: true, defaultValue: '1' },
     ];
+    normaliseStatUpdatePolicies({ npcStats: destination });
     const mixedLegacyValues = { hp: '2/10', WISDOM: '8', Level: '7', Unknown: 'secret' };
     assert.deepEqual(splitNpcStats(mixedLegacyValues, destination), {
         innate: { Wisdom: '8', Level: '7' }, variable: { HP: '2/10' },
@@ -48,12 +48,11 @@ test('legacy NPC policy remains editable after migration', () => {
     const variable = { name: 'HP', persistence: 'variable' };
     normaliseStatUpdatePolicies({ npcStats: [innate, variable], playerStats: [] });
     normaliseNpcPersistence([innate, variable]);
-    assert.equal(innate.updatePolicy, 'advancement');
-    assert.equal(canTrackerSetNpcStat(innate, '', undefined), false);
-    assert.equal(canTrackerSetNpcStat(innate, '6', undefined), false);
-    assert.equal(canTrackerSetNpcStat(variable, '2/10', '2/10'), true);
-    innate.updatePolicy = 'turn';
-    assert.equal(canTrackerSetNpcStat(innate, '6', '6'), true);
+    assert.equal(innate.locked, true);
+    assert.equal(isReaderStat(innate), false);
+    assert.equal(isReaderStat(variable), true);
+    innate.locked = false;
+    assert.equal(isReaderStat(innate), true);
 });
 
 test('existing numeric player fields keep level-up eligibility separately from turn policy', () => {
@@ -64,11 +63,11 @@ test('existing numeric player fields keep level-up eligibility separately from t
         { name: 'Level Bonus', defaultValue: '' },
     ], npcStats: [] };
     normaliseStatUpdatePolicies(tracker);
-    assert.equal(tracker.playerStats[0].updatePolicy, 'turn');
+    assert.equal(tracker.playerStats[0].locked, false);
     assert.equal(progressionStatEligible(tracker.playerStats[0]), true);
     assert.equal(progressionStatEligible(tracker.playerStats[1]), false);
-    assert.equal(tracker.playerStats[2].updatePolicy, 'advancement');
-    assert.equal(tracker.playerStats[3].updatePolicy, 'advancement');
+    assert.equal(tracker.playerStats[2].updatePolicy, undefined);
+    assert.equal(tracker.playerStats[3].updatePolicy, undefined);
 });
 
 test('structured growth grants wait for review while earned XP and Level apply', () => {
@@ -92,6 +91,8 @@ test('NPC Advancement experience, level, and earned ratings survive a new advent
         { id: 'power', name: 'Power', updatePolicy: 'advancement', defaultValue: '3' },
         { id: 'health', name: 'Health', updatePolicy: 'turn', defaultValue: '10/10' },
     ];
+    normaliseStatUpdatePolicies({ npcStats: definitions, npcTemplates: [{ progression: { xpFieldId: 'earned' } }] });
+    assert.equal(definitions[0].locked, false);
     const earned = { Experience: '17/100', Rank: '4', Power: '6', Health: '2/12' };
     const transferred = initialiseNpcStats(earned, definitions);
     assert.deepEqual(transferred, { Experience: '17/100', Rank: '4', Power: '6', Health: '10/10' });

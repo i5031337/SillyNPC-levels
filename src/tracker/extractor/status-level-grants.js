@@ -6,8 +6,7 @@ import { collectionRewardAppliesTo, scheduledCollectionRewards, guidedRewardLeve
     normalizeCollectionRewards, validateRewardEntry, hasRewardDuplicate, rewardIdentifier } from '../../core/collection-rewards.js';
 
 const key = value => String(value ?? '').toLowerCase();
-const turnStat = def => def.updatePolicy === 'turn'
-    || (def.updatePolicy !== 'advancement' && def.persistence !== 'innate');
+
 const numeric = value => /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(value ?? ''));
 
 function matchingCard(name, cards = []) {
@@ -83,11 +82,11 @@ function eligibleStats(transition) {
 
 function statRow(transition, def, level, gain, note = '') {
     const before = String(transition.current[def.name]);
-    // An explicit Turn maximum limits expandable capacity; its default pool cap does not.
+    // An explicit pool maximum limits expandable capacity; its default pool cap does not.
     const explicitMax = String(def.maxStatValue ?? '').trim();
-    const fixedMaximum = turnStat(def) ? (explicitMax ? Number(explicitMax) : null)
+    const fixedMaximum = before.includes('/') ? (explicitMax ? Number(explicitMax) : null)
         : configuredNumericMaximum(def);
-    const bounds = { growMaximum: turnStat(def), fixedMaximum };
+    const bounds = { growMaximum: before.includes('/'), fixedMaximum };
     const after = boostStat(before, undefined, gain, bounds);
     if (after === null || after === before) return null;
     return { scope: transition.scope, actor: transition.actor, label: def.name, kind: 'stat',

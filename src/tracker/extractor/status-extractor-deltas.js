@@ -9,7 +9,7 @@ function readable(value) {
 }
 
 function eligible(def, value, { xpName = null, levelName = null, enabled } = {}) {
-    return Boolean(def?.name && !def.locked && (isTurnStat(def) || def.name === xpName)
+    return Boolean(def?.name && !def.locked
         && (!enabled || def.name !== levelName) && def.name.toLowerCase() !== 'level bonus'
         && (enabled === false || def.name.toLowerCase() !== 'level') && readable(value));
 }
@@ -109,4 +109,3 @@ export function expandNumericDeltas(update, state, settings, { cards = [] } = {}
     }
     return update;
 }
-import { isTurnStat } from '../stat-update-policy.js';

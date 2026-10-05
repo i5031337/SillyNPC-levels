@@ -72,7 +72,7 @@ SillyNPC operates across two core modules:
 ### Character & World Management
 * **Roster Categories:** Organize characters into distinct worlds, factions, or scenes — and limit a chat to only the categories it needs.
 * **Chat-Owned NPCs:** New characters created in a chat belong to that chat, survive persona changes, and do not appear in unrelated chats. Legacy world cards remain available as reusable sources; **Use in this chat** copies one, while **New profile in this chat** starts a blank NPC with the same name. New chat NPCs only link existing lorebook entries when you explicitly choose Sync.
-* **Portable Character Files:** Export identity, profile, linked lore text, and NPC stats marked Advancement or Locked. Turn stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
+* **Portable Character Files:** Export identity, profile, linked lore text, and NPC stats marked Carry between adventures. Other stats, conditions, and inventory start from the destination System's defaults on import. Portrait image files are omitted from character exports.
 * **Export World Characters:** Under **Systems → Manager**, export reusable world cards and NPCs from every chat assigned to a Saved System, including chats that are closed and Systems that are not active. The existing full System export is still available separately.
 * **Integrated Generation:** Generates lorebook entries and uses SillyTavern's Image Generation extension for portraits, with its configured provider.
 
@@ -140,9 +140,11 @@ Reload SillyTavern.
 
 ### NPC stats and character transfers
 
-In **Systems → Builder → NPC**, choose **Turn** or **Advancement**. Turn fields may change as the story unfolds and start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Advancement fields travel with the character, are hidden from turn extraction, and can be edited manually. Locked fields also travel with the character. Existing Innate fields without an update policy become Advancement; their stored values are preserved.
+In **Systems → Builder → Player/NPC**, **Locked** prevents story reader changes after initialization. The reader may seed blank locked NPC fields once; direct edits and configured level-up increases remain available. A blank NPC Level may be initialized once, even when Locked; afterward progression manages it automatically. Keep XP unlocked so the reader can report earned XP.
 
-In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. The progression controls select XP and Level fields, a growth policy, and eligible numeric stats; NPC progression is configured per template. A Turn field such as HP may also be eligible for level-up growth, so current resource changes and maximum growth can share one field.
+In the NPC editor, **Carry between adventures** independently controls whether a stat travels with the character. Unchecked stats start from the destination System's defaults on import or when instantiated from a reusable world card. Existing Advancement fields migrate to Locked and retain NPC carryover; configured XP stays reader-writable. Stored character values are preserved.
+
+The progression controls select XP and Level fields, a growth policy, and eligible numeric stats; NPC progression is configured per template. Locked stats can be selected for growth. Numeric defaults such as `6/10` define resource pools whose current value and capacity grow together, preserving depletion. A new NPC may initialize its own pool capacity: `5/5` stays `5/5`, and a bare initial `8` becomes `8/8`. Ordinary reader updates preserve that established capacity. Plain defaults such as `3` define ratings with a fixed maximum. Pool capacity limits are optional and independent of locking or carryover.
 
 Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. A field's ID stays stable when its label changes. Fill and manual lore generation can seed empty fields; manual edits and field regeneration can revise them. The tracker leaves profile and memory fields alone. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
 

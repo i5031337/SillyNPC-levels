@@ -1,4 +1,4 @@
-/** Retire the old transfer setting after update policy has been inferred from it. */
+/** Retire the old transfer setting after carryover has been migrated. */
 export function normaliseNpcPersistence(definitions) {
     if (!Array.isArray(definitions)) return;
     for (const stat of definitions) {
@@ -8,9 +8,9 @@ export function normaliseNpcPersistence(definitions) {
     }
 }
 
-/** Advancement and locked values belong to the character across adventures. */
+/** Carryover is independent of reader locking and level growth. */
 export function carriesNpcStat(stat) {
-    return Boolean(stat && (stat.locked || !isTurnStat(stat)));
+    return stat?.carryOver === true;
 }
 
 /** Split by definitions, never by the names of values found on a card. */
@@ -38,9 +38,3 @@ export function initialiseNpcStats(values, definitions) {
     }
     return { ...result, ...splitNpcStats(values, definitions).innate };
 }
-
-/** Manual edits bypass this; turn updates can touch only turn-managed fields. */
-export function canTrackerSetNpcStat(definition) {
-    return isTurnStat(definition);
-}
-import { isTurnStat } from './stat-update-policy.js';

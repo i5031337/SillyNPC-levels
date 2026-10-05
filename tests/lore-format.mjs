@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { numericDeltaNames, configuredXpName } from '../src/tracker/extractor/status-extractor-deltas.js';
-import { isTurnStat } from '../src/tracker/stat-update-policy.js';
+import { isReaderStat } from '../src/tracker/stat-update-policy.js';
 import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src/core/constants-profile.js';
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../src/lore/lore-format.js';
 import { DEFAULT_LORE_PROMPT } from '../src/prompts/default-prompt-texts.js';
@@ -248,10 +248,10 @@ test('tracker schema excludes lore fields and retains tracked stats', () => {
     const npc = { name: 'Mira', aiProfileFields: ['appearance'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['appearance'] };
     const build = new Function('npcTemplates', 'getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
-        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'progressionFields', 'npcStatsFor',
+        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isReaderStat', 'progressionFields', 'npcStatsFor',
         `${source}\nreturn buildExtractionSchema;`)(
         npcTemplates, () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
-        numericDeltaNames, configuredXpName, isTurnStat, progressionFields, npcStatsFor,
+        numericDeltaNames, configuredXpName, isReaderStat, progressionFields, npcStatsFor,
     );
     const schema = build({ globalStats: [], playerStats: [], npcStats: [], collections: [] });
     assert.equal(schema.properties.characters.items.properties.profile, undefined);

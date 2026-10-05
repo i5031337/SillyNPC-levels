@@ -47,8 +47,7 @@ export function renderOverridesSection(char, container) {
         // Parse currentValue (e.g. "50/100" or "50")
         const currentValue = char.statusOverrides?.[stat.name] || '';
         const fixedNumeric = (stat.type === 'number' || stat.type === 'bar')
-            && (stat.updatePolicy === 'advancement'
-                || (!stat.updatePolicy && stat.persistence === 'innate'));
+            && !String(currentValue || stat.defaultValue || '').includes('/');
         let valPart = currentValue;
         let maxPart = '';
         if (typeof currentValue === 'string' && currentValue.includes('/')) {

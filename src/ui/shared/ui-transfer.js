@@ -35,7 +35,7 @@ export async function exportCharacterFile(chars) {
         const carried = values.reduce((n, entry) => n + Object.keys(entry.innate).length, 0);
         const reset = values.reduce((n, entry) => n + Object.keys(entry.variable).length, 0);
         const preview = `Export ${list.length} character${list.length === 1 ? '' : 's'}? `
-            + `Advancement and locked fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
+            + `Carryover fields travel: ${innateNames.join(', ') || 'none'} (${carried} stored values). `
             + `Turn fields start from the destination defaults: ${variableNames.join(', ') || 'none'} `
             + `(${reset} current values stay here). Inventory and conditions also stay here.`;
         if (!await Popup.show.confirm('Character export preview', preview)) return;

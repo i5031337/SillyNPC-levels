@@ -2,7 +2,7 @@ import { collectionAppliesTo, collectionTargetLabel } from '../../core/collectio
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
-import { isTurnStat } from '../stat-update-policy.js';
+import { isReaderStat } from '../stat-update-policy.js';
 import { statsInSystem, getPlayerCard, findCardForName } from '../status-logic.js';
 import { describeReaderStats } from '../stat-prompt-definitions.js';
 
@@ -179,7 +179,7 @@ export function describeCurrentState(state, trackerSettings, { includeAdvancemen
         const kept = statsInSystem(values, listKey, actor);
         if (includeAdvancement) return kept;
         const hidden = new Set((trackerSettings[listKey] || [])
-            .filter(def => !isTurnStat(def)).map(def => def.name?.toLowerCase()));
+            .filter(def => !isReaderStat(def)).map(def => def.name?.toLowerCase()));
         for (const key of Object.keys(kept)) {
             if (hidden.has(key.toLowerCase())) delete kept[key];
         }

@@ -73,7 +73,7 @@ export function queueInlineReading(update, messageId, mesEl, fingerprint) {
         pending.push(...grants.rows.filter(row => !isItemDecided(row)));
         prepareGrantReview(auto, pending, grants.transitions);
         if (auto.length) applyUpdate(buildUpdateFromChanges(auto, before, tracker, getAllCharacters()),
-            { partOfMessage: true, allowAdvancementChanges: true, admitCharacters: true });
+            { partOfMessage: true, progressionResolved: true, admitCharacters: true });
         recordAppliedChanges(messageId, auto);
         grants.reading.sourceText = message.mes;
         saveLevelReading(message, grants.reading);

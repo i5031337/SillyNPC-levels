@@ -115,11 +115,10 @@ export function materializeGrantRows(rows, state, settings, cards = [], { applie
             if (config.statGrowth === 'none' || !progressionStatEligible(definition, config)
                 || !config.statIds.includes(definition.id)) { rejected.push(row); continue; }
             const before = actor.stats?.[row.label];
-            const turn = definition.updatePolicy !== 'advancement' && definition.persistence !== 'innate';
             const pool = String(before ?? '').includes('/');
             const bounds = {
-                growMaximum: turn && pool,
-                fixedMaximum: turn && pool ? (String(definition.maxStatValue ?? '').trim()
+                growMaximum: pool,
+                fixedMaximum: pool ? (String(definition.maxStatValue ?? '').trim()
                     ? Number(definition.maxStatValue) : null) : configuredNumericMaximum(definition),
             };
             const after = boostStat(before, before, grant.gain, bounds);

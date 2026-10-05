@@ -7,12 +7,12 @@ import { boostStat } from '../src/tracker/progression.js';
 const stats = [
     { id: 'xp', name: 'Experience', type: 'bar', defaultValue: '0/10' },
     { id: 'level', name: 'Rank', type: 'number', defaultValue: '1' },
-    { id: 'hp', name: 'Vitality', type: 'bar', defaultValue: '10/10', updatePolicy: 'turn' },
-    { id: 'power', name: 'Power', type: 'number', defaultValue: '1', maxStatValue: 5, updatePolicy: 'advancement' },
+    { id: 'hp', name: 'Vitality', type: 'bar', defaultValue: '10/10',  },
+    { id: 'power', name: 'Power', type: 'number', defaultValue: '1', maxStatValue: 5, locked: true },
     { id: 'locked', name: 'Locked', type: 'number', locked: true },
 ];
 const config = { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'all',
-    statIds: ['hp', 'power', 'locked'], increments: { hp: 2, power: 1 } };
+    statIds: ['hp', 'power'], increments: { hp: 2, power: 1 } };
 const sheet = { Experience: '8/10', Rank: '1', Vitality: '6/10', Power: '4', Locked: '2' };
 const tracker = () => ({ playerStats: structuredClone(stats), npcStats: structuredClone(stats),
     progression: { player: structuredClone(config) },

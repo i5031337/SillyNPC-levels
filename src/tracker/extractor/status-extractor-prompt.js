@@ -8,7 +8,7 @@ import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
 import { describeAbsentButNamed } from './status-extractor-prompt-offstage.js';
 import { describeNumericDeltas, numericDeltaNames, progressionXpName } from './status-extractor-deltas.js';
-import { isTurnStat } from '../stat-update-policy.js';
+import { isReaderStat } from '../stat-update-policy.js';
 
 /**
  * Extra notes for the reader, from whoever registered one.
@@ -162,7 +162,7 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 export function buildNewNpcExample(trackerSettings = {}) {
     const template = npcTemplates()[0];
     const stats = Object.fromEntries((template ? npcStatsFor({ npcTemplateId: template.id }, trackerSettings) : trackerSettings.npcStats || [])
-        .filter(stat => stat?.name && isTurnStat(stat))
+        .filter(stat => stat?.name && isReaderStat(stat))
         .map(stat => [stat.name, describeReaderStats({ npcStats: [stat] }, { initializeNpc: true })
             .replace(`- NPC.${stat.name}: `, '')]));
     const collections = Object.fromEntries((trackerSettings.collections || [])
@@ -197,7 +197,7 @@ function buildChangedExample(state, trackerSettings) {
     const cast = (state?.characters || []).filter(c => c?.name);
     const npc = cast[0];
     const npcStat = npc && numericDeltaNames(trackerSettings.npcStats, npc.stats)[0];
-    const firstTurnStat = list => (list || []).find(stat => stat?.name && isTurnStat(stat) && !stat.locked
+    const firstTurnStat = list => (list || []).find(stat => stat?.name && isReaderStat(stat) && !stat.locked
         && !['xp', 'level', 'level bonus'].includes(stat.name.toLowerCase()))?.name;
     const collectionFor = target => (trackerSettings.collections || [])
         .find(c => c?.id && (collectionAppliesTo(c, target, target === 'npc' ? npc || {} : undefined)));

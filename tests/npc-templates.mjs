@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { normalizeSystemDefinition } from '../src/core/system-schema.js';
 import { setProfileSettingsProvider, profileFieldsForCard } from '../src/core/profile-fields.js';
 import { activeNpcSystem, npcStatsFor, npcTemplateFor, proposedNpcTemplate, describeNpcTemplates } from '../src/core/npc-templates.js';
-import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 
 function fixture() {
     const definition = normalizeSystemDefinition({ schemaVersion: 1, name: 'Adventure',
@@ -58,10 +57,10 @@ function applyFixture(settings) {
         saveStateToMetadata: state => { saves.push(state); deps.committedState = state; },
     };
     new Function('npcStatsFor', 'proposedNpcTemplate', 'eventSource', 'getSettings',
-        'saveSettings', 'getAllCharacters', 'debugLog', 'canTrackerSetNpcStat', 'progressionFields', 'progressXp',
+        'saveSettings', 'getAllCharacters', 'debugLog', 'progressionFields', 'progressXp',
         `${source('../src/tracker/status-apply-update.js')}\nreturn bind;`)(
         npcStatsFor, proposedNpcTemplate, { emit() {} }, () => settings, () => {},
-        () => [card], () => {}, canTrackerSetNpcStat, progressionFields, progressXp)(deps);
+        () => [card], () => {}, progressionFields, progressXp)(deps);
     return { deps, card, initial, saves };
 }
 

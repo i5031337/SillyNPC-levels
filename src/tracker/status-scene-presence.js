@@ -108,7 +108,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
 
 /** Update an offstage card without changing scene presence; dry runs return a detached actor. */
 function updateCardOffstage(card, updChar, state, settings,
-    { dryRun = false, allowReplace = false, allowAdvancementChanges = false, verbatim = false } = {}) {
+    { dryRun = false, allowReplace = false, progressionResolved = false, verbatim = false } = {}) {
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
@@ -122,7 +122,7 @@ function updateCardOffstage(card, updChar, state, settings,
     const collectionIdsForStats = new Set((settings.collections || []).map(c => c.id.toLowerCase()));
     deps.applyCharacterStats(actor, updChar, null, { ...settings, npcStats: statDefs },
         new Set(statDefs.map(stat => stat.name.toLowerCase())), collectionIdsForStats,
-        { dryRun: true, allowAdvancementChanges, verbatim, skipProgression: selected?.id !== card.npcTemplateId });
+        { dryRun: true, progressionResolved, verbatim, skipProgression: selected?.id !== card.npcTemplateId });
 
     const collectionIds = new Set((settings.collections || []).map(c => c.id.toLowerCase()));
     const collectionsToProcess = { ...(updChar.collections || {}) };

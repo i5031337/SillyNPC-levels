@@ -208,17 +208,19 @@ with browser_session() as browser:
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
         return {rows: rows.length,
+          obsoletePolicies: rows.filter(row => row.querySelector('.stat-update-policy')).length,
           purpose: rows.filter(row => row.querySelector('.stat-purpose')).length,
           numericOptions: rows.filter(row => row.querySelector('.stat-type')?.value === 'number'
             && row.querySelector('.stat-options')).length,
           wrongMaxLabels: rows.filter(row => {
-            const policy = row.querySelector('.stat-update-policy')?.value;
-            if (!policy || row.querySelector('.stat-type')?.value !== 'number') return false;
+            if (row.querySelector('.stat-type')?.value !== 'number') return false;
+            const pool = row.querySelector('.stat-default')?.value.includes('/');
             const label = [...row.querySelectorAll('small')].map(el => el.textContent.trim())
               .find(text => text === 'Max:' || text === 'Capacity limit:');
-            return label !== (policy === 'advancement' ? 'Max:' : 'Capacity limit:');
+            return label !== (pool ? 'Capacity limit:' : 'Max:');
           }).length};""")
     assert result['rows'] > 0 and result['purpose'] == result['rows'], result
+    assert result['obsoletePolicies'] == 0
     assert result['numericOptions'] == 0 and result['wrongMaxLabels'] == 0, result
     execute("""const input = document.querySelector('#sillynpc-settings-search input');
         input.value = 'Speech Block Dividers'; input.dispatchEvent(new Event('input', {bubbles: true}));""")

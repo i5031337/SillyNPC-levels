@@ -17,7 +17,7 @@ export function responseFor(stage, registry) {
     if (kind === 'profiles') section = registry.profiles[scope].map(f => ({ id: f.id, label: f.name, guidance: f.purpose, policy: 'anchored' }));
     if (kind === 'stats') section = registry.stats[scope].map(f => ({ id: f.id, name: f.name, purpose: f.purpose,
         type: f.id === 'location' ? 'text' : 'number', defaultValue: f.id === 'location' ? '' : f.id === 'xp' ? '0/100' : f.id === 'level' ? '1' : '6/10',
-        updatePolicy: f.id === 'level' ? 'advancement' : 'turn', min: f.id === 'location' ? '' : '0', maxStatValue: f.id === 'xp' ? '100' : '' }));
+        locked: f.id === 'level', ...(scope === 'npc' ? { carryOver: ['xp', 'level'].includes(f.id) } : {}), min: f.id === 'location' ? '' : '0', maxStatValue: f.id === 'xp' ? '100' : '' }));
     if (kind === 'stats') {
         const owners = scope === 'player' ? [{ id: 'player', progression: registry.playerProgression }]
             : scope === 'npc' ? registry.npcTemplates : [];

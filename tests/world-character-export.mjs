@@ -19,9 +19,9 @@ const exportSource = hostIndependentSource('../src/characters/world-character-ex
 test('inactive System exports shared cards and chat NPCs using its own rules', async () => {
     const activeDefinition = { npcTemplates: [{ id: 'active' }], legacyNpcTemplateId: 'active' };
     const selectedDefinition = { npcTemplates: [{ id: 'scout' }], legacyNpcTemplateId: 'scout',
-        stats: { npc: [{ name: 'Rank', type: 'number', updatePolicy: 'advancement' }] } };
+        stats: { npc: [{ name: 'Rank', type: 'number', locked: true, carryOver: true }] } };
     const settings = { activeSystem: 'Active', statusTracker: {
-        npcStats: [{ name: 'Other', updatePolicy: 'advancement' }],
+        npcStats: [{ name: 'Other', locked: true }],
         presets: { Active: { definition: activeDefinition }, Inactive: { definition: selectedDefinition } },
     } };
     const cards = [{ id: 'shared', name: 'Mira', statusOverrides: { Rank: '3', Other: '9' } }];
