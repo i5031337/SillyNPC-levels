@@ -99,18 +99,18 @@ test('old raw prompt overrides are dropped while other settings normalize', () =
         'defaultSettings', 'resolveImageFolder', 'saveSettings',
         `${baseSource}\nreturn normaliseBaseSettings;`)(
             { square: {} }, 'square',
-            { loreCharBudget: 100, loreMaxTokens: 100, imgGenContextMessages: 0 },
+            { loreCharBudget: 100, loreMaxTokens: 100, imgGenPromptPrefix: 'Solo, profile picture' },
             value => value, () => {},
         );
     const settings = { statusTracker: { extractionPrompt: 'custom', systemRules: 'custom' },
         dialogueFormatPrompt: 'custom', narratorRulesPrompt: 'custom',
         generationPrompt: 'custom', imgGenPrompt: 'custom', imgGenNegativePrompt: 'custom',
-        promptTexts: { reader: 'custom' }, imageBackend: 'gemini' };
+        promptTexts: { reader: 'custom' }, imageBackend: 'gemini', imgGenContextMessages: 10 };
 
     normalizeBase(settings);
 
     for (const key of ['dialogueFormatPrompt', 'narratorRulesPrompt', 'generationPrompt',
-        'imgGenPrompt', 'imgGenNegativePrompt', 'promptTexts', 'imageBackend']) {
+        'imgGenPrompt', 'imgGenNegativePrompt', 'imgGenContextMessages', 'promptTexts', 'imageBackend']) {
         assert.equal(key in settings, false);
     }
     assert.equal('extractionPrompt' in settings.statusTracker, false);

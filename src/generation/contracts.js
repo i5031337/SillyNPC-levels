@@ -12,7 +12,7 @@ const scalar = { type: ['string', 'number', 'boolean'] };
 export const progressionSchema = object({ enabled: bool, xpFieldId: text, levelFieldId: text,
     statGrowth: enumeration(['none', 'one', 'all']), statIds: array(id) });
 export const profileSchema = object({ id, label: text, guidance: text,
-    policy: enumeration(['anchored', 'replaceable', 'memory']), placeholder: text, multiline: bool, retired: bool },
+    policy: enumeration(['anchored', 'replaceable', 'memory']), placeholder: text, multiline: bool, includeInImagePrompt: bool, retired: bool },
 ['id', 'label', 'guidance', 'policy']);
 export const statSchema = object({ id, name: text, type: enumeration(['number', 'text']), defaultValue: { ...scalar, description: 'Numeric pools use a current/maximum string such as 10/10. This is a starting default; each NPC may initialize its own capacity. Plain numbers define ratings.' },
     purpose: text, guidance: text, format: text,

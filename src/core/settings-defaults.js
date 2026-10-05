@@ -66,7 +66,7 @@ export const defaultSettings = {
     banScanDepth: 50,
     /** Colour a speaker who has no card, from their name. */
     autoColorUnknownSpeakers: true,
-    /** Draw a portrait when automatic Fill creates an NPC without one. */
+    /** Draw a missing portrait after empty-card Fill or reader-generated NPC profiles. */
     autoPortraitOnFill: true,
     hideSpeakerNames: false,
     caseInsensitive: true,
@@ -167,7 +167,8 @@ export const defaultSettings = {
     // What each generator has cost so far. Kept out of a System on purpose: a system is
     // a world and its rules, and rolling one back should not rewrite what you spent.
     usage: {},
-    imgGenContextMessages: 10,
+    /** Composition instructions placed before the character's image description. Empty disables. */
+    imgGenPromptPrefix: 'Solo, profile picture',
     /** Folder name under user/images/ for generated portraits. */
     imageSaveRoute: 'sillynpc',
     /**

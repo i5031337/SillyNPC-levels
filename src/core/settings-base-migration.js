@@ -30,11 +30,15 @@ export function normaliseBaseSettings(settings) {
     }
 
     for (const key of ['dialogueFormatPrompt', 'narratorRulesPrompt', 'generationPrompt',
-        'imgGenPrompt', 'imgGenNegativePrompt', 'promptTexts']) delete settings[key];
+        'imgGenPrompt', 'imgGenNegativePrompt', 'imgGenContextMessages', 'promptTexts']) delete settings[key];
     for (const key of ['extractionPrompt', 'systemRules']) delete settings.statusTracker[key];
     // Old exports may contain the removed direct Gemini backend settings.
     for (const key of ['imageBackend', 'geminiImageModel', 'imageProfileId', 'imgGenReferencePreamble']) {
         delete settings[key];
+    }
+
+    if (typeof settings.imgGenPromptPrefix !== 'string') {
+        settings.imgGenPromptPrefix = defaultSettings.imgGenPromptPrefix;
     }
 
     if (!Object.hasOwn(PORTRAIT_SHAPES, settings.portraitShape)) {
@@ -44,24 +48,12 @@ export function normaliseBaseSettings(settings) {
     // The token and character limits are free-entry numbers now, with no slider to keep
     // them sane, so a blank or half-typed field can reach here as '' or NaN. Repair on
     // read rather than blocking entry, so the user can clear the box and retype.
-    // Zero means something for one of these and nothing for the others: 0 recent messages
-    // is the "Lore Only" image setting, but a 0-token reply budget or a 0-character excerpt
-    // is just a broken request. Number('') is 0, so a cleared box lands here too and has to
-    // be told apart from a deliberate zero.
+    // A zero-token reply budget or character excerpt cannot produce usable lore.
     for (const key of ['loreCharBudget', 'loreMaxTokens']) {
         const value = Number(settings[key]);
         if (!Number.isFinite(value) || value <= 0) settings[key] = defaultSettings[key];
         else settings[key] = Math.floor(value);
     }
-    {
-        const value = Number(settings.imgGenContextMessages);
-        if (!Number.isFinite(value) || value < 0 || String(settings.imgGenContextMessages).trim() === '') {
-            settings.imgGenContextMessages = defaultSettings.imgGenContextMessages;
-        } else {
-            settings.imgGenContextMessages = Math.floor(value);
-        }
-    }
-
     if (typeof settings.popupWidth !== 'number' || settings.popupWidth < 20) settings.popupWidth = 80;
     if (typeof settings.popupHeight !== 'number' || settings.popupHeight < 20) settings.popupHeight = 80;
 

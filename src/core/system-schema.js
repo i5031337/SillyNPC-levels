@@ -42,6 +42,8 @@ function profileField(source, used) {
         policy: PROFILE_POLICIES.has(field.policy) ? field.policy : inferred,
         placeholder: string(field.placeholder),
         multiline: field.multiline === true,
+        includeInImagePrompt: typeof field.includeInImagePrompt === 'boolean'
+            ? field.includeInImagePrompt : ['age', 'appearance'].includes(id),
         retired: field.retired === true,
     };
 }

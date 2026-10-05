@@ -278,6 +278,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/shared/ui-stats.js` | Stats view. |
 | `src/ui/system/ui-npc-templates.js` | Edit reusable NPC templates and shared field selections. |
 | `src/ui/characters/ui-npc-template.js` | Choose or correct a character’s NPC template. |
+| `tests/image-prompt.mjs`, `tests/image-description.mjs` | Portrait prompt preview/editing, selected profile fields, and image collection inputs. |
+| `tests/ui-image-generation.py` | Unsaved live portrait prompt and profile image checkbox checks, without image requests. |
 | `tests/npc-templates.mjs` | Template normalization, assignment, validation, review, and scene return tests. |
 | `src/ui/system/ui-system-builder.js` | Public entry point for system schema editor. |
 | `src/ui/system/ui-system-profiles.js` | Player and NPC profile field controls in System Builder. |

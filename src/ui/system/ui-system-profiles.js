@@ -85,7 +85,17 @@ function rowFor(field, fields, onRefresh, context) {
     checkbox.checked = field.multiline === true;
     checkbox.addEventListener('change', () => { field.multiline = checkbox.checked; saveSettings(); });
     multiline.append(checkbox, ' Multiline editor');
-    row.append(header, guidance, policy, placeholder, multiline);
+    const imageLabel = document.createElement('label');
+    const imageCheckbox = document.createElement('input');
+    imageCheckbox.type = 'checkbox';
+    imageCheckbox.className = 'profile-image-prompt';
+    imageCheckbox.checked = field.includeInImagePrompt === true;
+    imageCheckbox.addEventListener('change', () => {
+        field.includeInImagePrompt = imageCheckbox.checked;
+        saveSettings();
+    });
+    imageLabel.append(imageCheckbox, ' Include in image prompt');
+    row.append(header, guidance, policy, placeholder, multiline, imageLabel);
     return row;
 }
 

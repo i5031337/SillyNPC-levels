@@ -3,7 +3,7 @@ import { triggerReprocess } from '../../chat/reprocess.js';
 import { getRequestHeaders } from '../../../../../../../script.js';
 import { saveSettings } from '../../core/settings.js';
 import { LOG_PREFIX } from '../../core/constants.js';
-import { generateCharacterImageLogic } from '../../api/api.js';
+import { buildCharacterImagePrompt, generateCharacterImageLogic } from '../../api/api.js';
 
 /**
  * Removes a generated image from disk.
@@ -22,12 +22,36 @@ async function deleteGeneratedImage(path) {
     }
 }
 
-/** Ask before spending an image generation request. */
-async function askGenerationMode(char) {
-    return Popup.show.confirm(
-        `Generate an image for "${char.name || 'this character'}"?`,
-        'SillyTavern Image Generation draws from the prompt. Reference images are not supported by its /imagine command.',
-    );
+/** Review and edit the exact prompt before spending an image request. */
+async function askGenerationPrompt(char) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sillynpc-gen-popup';
+    const heading = document.createElement('h3');
+    heading.textContent = `Generate an image for "${char.name || 'this character'}"`;
+    const label = document.createElement('label');
+    label.textContent = 'Image prompt';
+    const prompt = document.createElement('textarea');
+    prompt.className = 'text_pole sillynpc-image-prompt';
+    prompt.rows = 12;
+    prompt.style.width = '100%';
+    prompt.setAttribute('aria-label', 'Image prompt');
+    prompt.value = await buildCharacterImagePrompt(char);
+    label.append(prompt);
+    const note = document.createElement('p');
+    note.className = 'notes';
+    note.textContent = 'Edit the prompt for this request. SillyTavern Image Generation uses its configured provider and the standard portrait negative prompt; reference images are not supported by /imagine.';
+    wrap.append(heading, label, note);
+    const result = await new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
+        okButton: 'Generate', cancelButton: 'Cancel',
+        onClosing: popup => {
+            if (popup.result === POPUP_RESULT.AFFIRMATIVE && !prompt.value.trim()) {
+                toastr.warning('Enter an image prompt first.', 'SillyNPC');
+                return false;
+            }
+            return true;
+        },
+    }).show();
+    return result === POPUP_RESULT.AFFIRMATIVE ? prompt.value : null;
 }
 
 /**
@@ -70,12 +94,12 @@ async function askResultAction(url) {
 }
 
 export async function generateCharacterImage(char, { onSave } = {}) {
-    if (!await askGenerationMode(char)) return;
-
     let imageUrl;
     try {
+        const prompt = await askGenerationPrompt(char);
+        if (prompt === null) return;
         toastr.info('Requesting image generation...', 'SillyNPC');
-        imageUrl = await generateCharacterImageLogic(char);
+        imageUrl = await generateCharacterImageLogic(char, { prompt });
     } catch (err) {
         toastr.error(`Generation failed: ${err.message}`, 'SillyNPC');
         return;

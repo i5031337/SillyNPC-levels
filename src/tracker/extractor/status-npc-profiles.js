@@ -8,6 +8,7 @@ import { findCardForName, loadStateFromMetadata, mayJoinScene, resolveCanonicalN
 import { generateLoreContent } from '../../api/api-lore-generate.js';
 import { parseGeneratedProfileFields } from '../../lore/lore-format.js';
 import { syncProfileToLore } from '../../lore/lore-sync.js';
+import { generateCharacterImageLogic } from '../../api/api-image-generate.js';
 import { triggerReprocess } from '../../chat/reprocess.js';
 
 /** Generate once for newly discovered, admitted NPCs. Cards keep failed attempts editable. */
@@ -58,6 +59,26 @@ export async function generateNewNpcProfiles(names, isCurrent) {
             if (!canSave()) break;
             result.generated++;
             triggerReprocess();
+            if (getSettings().autoPortraitOnFill !== false && !card.imageUrl) {
+                try {
+                    const imageUrl = await generateCharacterImageLogic(card);
+                    // Preserve a portrait selected manually while the request was running.
+                    if (!canSave()) break;
+                    if (getSettings().autoPortraitOnFill === false) continue;
+                    card.images ||= [];
+                    if (!card.images.includes(imageUrl)) card.images.push(imageUrl);
+                    if (!card.imageUrl) card.imageUrl = imageUrl;
+                    saveSettings();
+                    triggerReprocess();
+                } catch (error) {
+                    if (!canSave()) break;
+                    console.warn(LOG_PREFIX, `Could not generate ${name}'s portrait`, error);
+                    if (typeof toastr !== 'undefined') toastr.warning(
+                        `${name}'s profile was saved, but portrait generation failed: ${error.message || error}. Retry from the character sheet.`,
+                        'SillyNPC',
+                    );
+                }
+            }
         } catch (error) {
             if (!canSave()) break;
             result.failed++;

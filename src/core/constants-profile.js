@@ -2,6 +2,7 @@ const CHARACTER_FIELD_DEFS = [
     {
         id: 'age',
         label: 'Age',
+        includeInImagePrompt: true,
         player: true,
         placeholder: 'Age or age range',
         hint: 'Age or approximate age.',
@@ -9,6 +10,7 @@ const CHARACTER_FIELD_DEFS = [
     {
         id: 'appearance',
         label: 'Appearance',
+        includeInImagePrompt: true,
         player: true,
         placeholder: 'Build, face, hair, distinguishing features',
         hint: 'Physical details that make them recognizable.',

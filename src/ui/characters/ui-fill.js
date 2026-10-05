@@ -150,7 +150,7 @@ export async function fillCharacter(char, { onSave, preset } = {}) {
         if (chosen.image) {
             toastr.info('Drawing a portrait...', 'SillyNPC');
             const imageUrl = await retryStage('Portrait',
-                () => generateCharacterImageLogic(char, { includeScene: false }), Boolean);
+                () => generateCharacterImageLogic(char), Boolean);
             if (!imageUrl) return;
             if (!Array.isArray(char.images)) char.images = [];
             if (!char.images.includes(imageUrl)) char.images.push(imageUrl);

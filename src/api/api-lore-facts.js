@@ -124,11 +124,11 @@ export function describeTrackedFacts(char, except = null) {
     return lines.join('\n');
 }
 
-export function fillImagePrompt(template, { name, lore, items, context } = {}) {
-    const own = { name, lore, items, context };
+export function fillImagePrompt(template, { name, lore, items } = {}) {
+    const own = { name, lore, items };
     let out = modernisePlaceholders(template, Object.keys(own));
 
-    for (const [key, value] of Object.entries({ lore, items, context })) {
+    for (const [key, value] of Object.entries({ lore, items })) {
         if (value) continue;
         out = out.replace(new RegExp(`^[ \\t]*\\{\\{${key}\\}\\}[ \\t]*(?:\\r?\\n|$)`, 'gmi'), '');
         out = out.replace(new RegExp(`(?:[^\\n:]*:[^\\S\\n]*)?\\{\\{${key}\\}\\}`, 'gi'), '');
@@ -139,7 +139,6 @@ export function fillImagePrompt(template, { name, lore, items, context } = {}) {
         name: name || 'a character',
         lore: lore || '',
         items: items || '',
-        context: context || '',
     }).trim();
 }
 

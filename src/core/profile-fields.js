@@ -19,6 +19,8 @@ export function resolveProfileFieldsFromSystem(system, scope) {
         hint: field.guidance ?? field.hint ?? '',
         placeholder: field.placeholder || '',
         multiline: field.multiline === true,
+        includeInImagePrompt: typeof field.includeInImagePrompt === 'boolean'
+            ? field.includeInImagePrompt : ['age', 'appearance'].includes(field.id),
         policy: field.policy || (['appearance', 'personality', 'speech'].includes(field.id) ? 'anchored' : 'replaceable'),
     }));
 }

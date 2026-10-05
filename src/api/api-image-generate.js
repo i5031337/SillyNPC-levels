@@ -1,4 +1,3 @@
-import { chat } from '../../../../../../script.js';
 import { loadWorldInfo } from '../../../../../world-info.js';
 import { executeSlashCommandsOnChatInput } from '../../../../../slash-commands.js';
 import { debugLog, PORTRAIT_SHAPES, DEFAULT_PORTRAIT_SHAPE } from '../core/constants.js';
@@ -15,8 +14,8 @@ export function resolvePortraitShape() {
     return PORTRAIT_SHAPES[getSettings().portraitShape] || PORTRAIT_SHAPES[DEFAULT_PORTRAIT_SHAPE];
 }
 
-/** Build a character's prompt, then ask SillyTavern's Image Generation extension to draw it. */
-export async function generateCharacterImageLogic(char, { includeScene = true } = {}) {
+/** Assemble the character prompt for preview or generation. */
+export async function buildCharacterImagePrompt(char) {
     let loreContext = '';
     if (char.lorebook) {
         const worldData = await loadWorldInfo(char.lorebook.world);
@@ -25,17 +24,21 @@ export async function generateCharacterImageLogic(char, { includeScene = true } 
         if (entry) loreContext = entry.content || '';
     }
 
-    const msgCount = Number(getSettings().imgGenContextMessages) || 0;
-    const recentMessages = includeScene && msgCount > 0
-        ? chat.slice(-msgCount).map(m => `[${m.is_user ? 'User' : (m.name || 'Narrator')}] ${m.mes}`).join('\n')
-        : '';
-    const fullPrompt = fillImagePrompt(resolveImagePrompt(), {
+    const prefix = String(getSettings().imgGenPromptPrefix ?? '').trim();
+    const template = [prefix, resolveImagePrompt()].filter(Boolean).join('\n');
+    const fullPrompt = fillImagePrompt(template, {
         name: char.name,
         lore: characterImageDescription(char, loreContext),
         items: describeCarriedItems(char),
-        context: recentMessages,
     });
     debugLog('Image prompt', fullPrompt);
+    return fullPrompt;
+}
+
+/** Generate from the current character description or an explicitly edited prompt. */
+export async function generateCharacterImageLogic(char, { prompt } = {}) {
+    const fullPrompt = prompt ?? await buildCharacterImagePrompt(char);
+    if (!String(fullPrompt).trim()) throw new Error('Enter an image prompt first.');
     return generateImage(fullPrompt, { owner: char });
 }
 

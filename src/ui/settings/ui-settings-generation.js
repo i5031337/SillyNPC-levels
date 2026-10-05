@@ -8,7 +8,6 @@ export function renderGenerationSettingsView(view) {
         if (!view) return;
         view.replaceChildren();
         renderLoreSettings(view);
-        renderUnknownSpeakerSettings(view);
         renderImageGenerationSettings(view, () => renderGenerationSettingsView(view));
 }
 
@@ -75,20 +74,4 @@ function renderLoreSettings(view) {
     view.append(buildLastLoreConnectionNote());
     view.append(buildSettingNumber({ key: 'loreMaxTokens', advanced: true, label: 'Lore Reply Budget',
         suffix: 'tokens', help: 'Maximum tokens the lore writer may reply with.' }));
-}
-
-function renderUnknownSpeakerSettings(view) {
-    const autoFillTitle = document.createElement('h3');
-    autoFillTitle.className = 'sillynpc-section-title';
-    autoFillTitle.textContent = 'Automatic NPC Fill';
-    view.append(autoFillTitle);
-    const autoFillNote = document.createElement('p');
-    autoFillNote.className = 'notes';
-    autoFillNote.textContent = 'Creating an NPC from an unknown speaker writes missing description and lore fields together, then draws a portrait if enabled. Completed parts are kept if you retry.';
-    view.append(autoFillNote);
-    view.append(buildSettingToggle({
-        key: 'autoPortraitOnFill',
-        label: 'Draw Portrait Automatically',
-        help: 'Draw and assign a portrait after automatic Fill when the NPC has none. Uses the generated age, appearance, and personality with your selected image source, which may be billed separately.',
-    }));
 }

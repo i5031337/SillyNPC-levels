@@ -11,7 +11,7 @@ export function addProfileField(fields, label) {
     let id = base;
     for (let number = 2; used.has(id); number++) id = `${base}-${number}`;
     const field = { id, label: name, guidance: '', policy: 'replaceable',
-        placeholder: '', multiline: false, retired: false };
+        placeholder: '', multiline: false, includeInImagePrompt: ['age', 'appearance'].includes(id), retired: false };
     fields.push(field);
     return field;
 }
