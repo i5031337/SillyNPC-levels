@@ -196,7 +196,7 @@ function getProfileBase(messageId) {
     return stored.profiles ? structuredClone(stored.profiles) : null;
 }
 
-/** Records all turn-owned writes, including goals, presence and profile memories. */
+/** Records all turn-owned writes, including presence and profile memories. */
 function recordTurnEffects(messageId) {
     const base = swipeBaseRecord();
     const message = getContext()?.chat?.[Number(messageId)];

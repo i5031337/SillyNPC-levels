@@ -39,7 +39,6 @@ test('fresh chat and persona values start at System defaults, without old global
     assert.deepEqual(chatA.player.collections, { inventory: [] });
     chatA.player.stats.HP = '2';
     chatA.player.collections.inventory.push({ name: 'chat A ring' });
-    chatA.player.goals = { short: 'Leave' };
     chatA.player.memories = [{ text: 'A secret' }];
     const chatB = { player: { name: 'Rhea', personaKey: 'Rhea.png', ...deps.createChatPlayerSeed() } };
     assert.equal(chatB.player.stats.HP, '10');
@@ -54,7 +53,6 @@ test('fresh chat and persona values start at System defaults, without old global
     deps.activatePersona(chatA, 'Rhea.png', 'Rhea');
     assert.equal(chatA.player.stats.HP, '2');
     assert.deepEqual(chatA.player.collections.inventory, [{ name: 'chat A ring' }]);
-    assert.deepEqual(chatA.player.goals, { short: 'Leave' });
     assert.deepEqual(chatA.player.memories, [{ text: 'A secret' }]);
 });
 

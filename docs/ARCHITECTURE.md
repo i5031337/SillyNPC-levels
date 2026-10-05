@@ -12,7 +12,7 @@ is no build step. [FILE_MAP.md](FILE_MAP.md) locates the implementation.
 | Reusable character cards and item library | Extension settings |
 | NPC instances, cast selection, active System, tracker state | Chat metadata |
 | Player identity, profile, portrait, lore link | Persona record in extension settings |
-| Player stats, collections, goals, memories | Chat and selected persona |
+| Player stats, collections, memories | Chat and selected persona |
 | Reader proposals, accepted rows, reply-specific reward choices | Message extras and swipe records |
 
 A chat selects its System before its first player message. Started chats keep that
@@ -20,26 +20,23 @@ System. Changing persona does not change the chat's NPC ownership. Player values
 remain separate for each persona in the chat.
 
 System exports contain a normalized `schemaVersion: 1` rules definition, including
-profile catalogs, stat catalogs, NPC templates, collections, progression, goals,
+profile catalogs, stat catalogs, NPC templates, collections, progression,
 memories, and HUD selections. Local presets also carry projected flat configuration
 for runtime consumers. Imports of older Systems keep rules and discard embedded
 world characters, persona records, and item libraries. Whole-settings backups and
 character-transfer files are separate formats with different import behavior.
 
-## Profiles, goals, and memories
+## Profiles and memories
 
 System profile fields have stable IDs and editable labels, guidance, and policy.
 Retirement hides a field without discarding its stored prose. Fill and lore generation
 seed empty fields; manual edits and explicit regeneration can revise them. The turn
-reader currently updates tracked stats, collections, and sourced goals; it does not
+reader currently updates tracked stats and collections; it does not
 update profile fields or append memories. Optional new-NPC profile generation is a
 separate request, disabled by default, which preserves existing cards and edits.
 
 Memory lists are manually editable and bounded by the System's configured active
-limit, default 50, with older entries archived. Goals have configured player/NPC
-fields and sourced set, replacement, and completion proposals. The former Threads
-panel, scanning, ranking, injection, and replay paths are removed. Stored old thread
-fields do not have a current archive view.
+limit, default 50, with older entries archived.
 
 ## Current-turn consistency and review
 
@@ -57,6 +54,16 @@ The Player tab and HUD show the same current state. The HUD opens the menu's Pla
 tab. Portrait generation uses SillyTavern Image Generation's `/imagine` provider.
 Maintained prompts use the active System's schema; the general raw-prompt editor is
 removed, while extraction diagnostics remain available.
+
+Collection history scans pass rolling inventory through chronological chunks. Returned
+collection arrays replace prior arrays; omissions retain prior inventory. A failed
+pass stops the scan without publishing partial proposals. Oversized transcript
+messages stop the scan before any model request; the character budget covers the
+transcript, with prompt and inventory overhead added separately. Scans always use review.
+
+Selected reader and scan connection failures show a warning before falling back to
+the main chat API. Time is an ordinary editable world field; there is no automatic
+elapsed-time regeneration.
 
 ## Verification
 

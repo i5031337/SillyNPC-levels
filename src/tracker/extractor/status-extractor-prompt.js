@@ -3,7 +3,6 @@ import { describeNpcTemplates, npcTemplates, npcStatsFor } from '../../core/npc-
 import { promptText } from '../../prompts/prompt-texts.js';
 import { getContext } from '../../../../../../st-context.js';
 import { debugLog } from '../../core/constants.js';
-import { goalFields, goalValue } from '../goals.js';
 import { describeReaderStats } from '../stat-prompt-definitions.js';
 import { strangerValues } from './status-extractor-schema.js';
 import { describeCollections, buildDeltaExample, describeCurrentState, describeLimits } from './status-extractor-prompt-state.js';
@@ -88,7 +87,6 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
      * - KNOWN, BUT NOT IN THE SCENE sits beside the state because it is state.
      * - The collections' fields come before the example, so they read as part of what is
      *   known. Without them a new item arrived with only the field the example showed.
-     * - Goal requests are grounded in the latest message by quoted evidence.
      */
     return {
         state: describeCurrentState(state, trackerSettings) || '(empty)',
@@ -109,21 +107,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
         earlier: leadUp.join('\n---\n'),
         message: messageText,
         reasons: trackerSettings.extractionReasons === false ? '' : 'on',
-        goals: describeGoalFields(state),
     };
-}
-
-function describeGoalFields(state) {
-    const lines = [];
-    const add = (actor, scope, name) => {
-        for (const field of goalFields(scope)) {
-            const current = goalValue(actor, field.id);
-            lines.push(`- ${name}.${field.id}: ${current || '(empty)'}${field.guidance ? ` — ${field.guidance}` : ''}`);
-        }
-    };
-    add(state?.player, 'player', state?.player?.name || 'Player');
-    for (const actor of state?.characters || []) add(actor, 'npc', actor.name);
-    return lines.join('\n');
 }
 
 export function buildUserPrompt(state, messageText, trackerSettings, leadUp = [], options = {}) {

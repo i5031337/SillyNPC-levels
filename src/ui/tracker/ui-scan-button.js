@@ -44,6 +44,10 @@ async function onScanClicked() {
     if (button?.classList.contains('sillynpc-scanning')) return;
 
     const estimate = estimateScan();
+    if (estimate.error) {
+        toastr.error(estimate.error, 'SillyNPC');
+        return;
+    }
     if (!estimate.messages) {
         toastr.info('Nothing in this chat to scan yet.', 'SillyNPC');
         return;
@@ -101,7 +105,7 @@ async function onScanClicked() {
 async function confirmScan({ messages, approxTokens, truncated, eligible, passes }) {
     const lines = [
         `Read ${messages} of ${eligible} message${eligible === 1 ? '' : 's'} `
-            + `(roughly ${approxTokens.toLocaleString()} tokens) and propose what each `
+            + `(roughly ${approxTokens.toLocaleString()} transcript tokens, plus instructions and inventory) and propose what each `
             + 'character should be carrying and know.',
         '',
         passes > 1

@@ -117,28 +117,6 @@ export function buildProfilesEditor(scope, onRefresh, context = liveSystemContex
     label.addEventListener('keydown', event => { if (event.key === 'Enter') addField(); });
     add.append(label, button('Add field', 'Add a profile field', addField));
     wrap.appendChild(add);
-    const goalOptions = scope === 'player'
-        ? [['playerShortTerm', 'Player short-term goal'], ['playerLongTerm', 'Player long-term goal']]
-        : [['npcShortTerm', 'NPC short-term goal']];
-    const goals = document.createElement('fieldset');
-    goals.className = 'sillynpc-system-goal-options';
-    const goalTitle = document.createElement('legend');
-    goalTitle.textContent = 'Current goals';
-    goals.append(goalTitle);
-    for (const [key, title] of goalOptions) {
-        const row = document.createElement('label');
-        const toggle = document.createElement('input');
-        toggle.type = 'checkbox';
-        toggle.checked = definition.goals?.[key] !== false;
-        toggle.addEventListener('change', () => {
-            definition.goals ??= {};
-            definition.goals[key] = toggle.checked;
-            saveSettings();
-        });
-        row.append(toggle, ` ${title}`);
-        goals.append(row);
-    }
-    wrap.append(goals);
     if (scope === 'npc') {
         const limitLabel = document.createElement('label');
         limitLabel.textContent = 'Memory entries per character: ';

@@ -7,7 +7,6 @@ import { openLightbox } from './ui-portrait.js';
 import { syncProfileToLore, readLoreValues } from '../../lore/lore-sync.js';
 import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
 import { renderMemorySection } from './ui-memories.js';
-import { goalActorFor, goalLines } from '../../tracker/goals.js';
 import { readNpcMemories, writeNpcMemories } from '../../tracker/npc-memories.js';
 
 /** The character profile reads from the card, linked lore, and live tracker state. */
@@ -401,17 +400,6 @@ export async function renderProfileView(char, container) {
         limit: getSettings().statusTracker?.presets?.[getSettings().activeSystem]
             ?.definition?.memories?.maxEntriesPerCharacter,
     });
-    const goals = goalLines(goalActorFor(loadStateFromMetadata(), char.name, char.id), 'npc')
-        .filter(field => field.value.trim());
-    if (goals.length) {
-        const section = document.createElement('section');
-        section.className = 'sillynpc-cv-narrative';
-        const heading = document.createElement('h3');
-        heading.textContent = 'Goals';
-        section.append(heading, ...goals.map(field => block(field.label, field.value)));
-        right.append(section);
-    }
-
     // Tracker values: whatever is true now. A character on stage has live numbers and the
     // card's are what they last walked in with, so showing the card's would be stale.
     const { stats, collections } = liveFactsFor(char);

@@ -4,11 +4,7 @@ import { getLibraryCharacters } from '../characters/character-repository.js';
 import { escapeRegExp } from '../core/utils.js';
 
 export function bind(deps) {
-const STAT_SCOPES = {
-    globalStats: { ruleScope: 'global' },
-    playerStats: { ruleScope: 'player' },
-    npcStats: { ruleScope: 'characters' },
-};
+const STAT_SCOPES = ['globalStats', 'playerStats', 'npcStats'];
 
 /** Moves one key of an object, keeping its position. @returns {boolean} whether it moved */
 function moveKey(holder, oldName, newName) {
@@ -48,15 +44,14 @@ function statsInSystem(stored, listKey, actor) {
     return out;
 }
 
-/** Rename held stat values and scoped rules; update unambiguous display references. */
+/** Rename held stat values; update unambiguous display references. */
 function renameStat(listKey, oldName, newName) {
-    const empty = { values: 0, references: 0, templateUpdated: false, cssMentions: false };
-    if (!STAT_SCOPES[listKey] || !oldName || !newName || oldName === newName) return empty;
+    const empty = { values: 0, templateUpdated: false, cssMentions: false };
+    if (!STAT_SCOPES.includes(listKey) || !oldName || !newName || oldName === newName) return empty;
 
     const settings = getSettings();
     const tracker = settings.statusTracker;
     let values = 0;
-    let references = 0;
 
     const state = deps.committedState || deps.loadStateFromMetadata();
 
@@ -83,17 +78,7 @@ function renameStat(listKey, oldName, newName) {
         }
     }
 
-    // A rule names both the stat it changes and the stat it reads to decide whether to.
-    const ruleScope = STAT_SCOPES[listKey].ruleScope;
-    for (const rule of tracker.timeRules || []) {
-        const scope = rule.scope === 'global' ? 'global'
-            : rule.scope === 'characters' ? 'characters' : 'player';
-        if (scope !== ruleScope) continue;
-        if (rule.stat === oldName) { rule.stat = newName; references += 1; }
-        if (rule.conditionStat === oldName) { rule.conditionStat = newName; references += 1; }
-    }
-
-    const otherLists = Object.keys(STAT_SCOPES).filter(k => k !== listKey);
+    const otherLists = STAT_SCOPES.filter(k => k !== listKey);
     const stillUsedElsewhere = otherLists.some(key =>
         (tracker[key] || []).some(s => s?.name === oldName));
 
@@ -133,7 +118,7 @@ function renameStat(listKey, oldName, newName) {
 
     if (state) deps.saveStateToMetadata(state);
     saveSettings();
-    return { values, references, templateUpdated, cssMentions };
+    return { values, templateUpdated, cssMentions };
 }
 
 

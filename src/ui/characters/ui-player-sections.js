@@ -7,7 +7,6 @@ import { buildPortraitBlock, openLightbox } from './ui-portrait.js';
 import { renderLorebookSection } from '../story/ui-lorebook-section.js';
 import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
 import { renderMemorySection } from './ui-memories.js';
-import { renderGoalEditor } from '../story/ui-goals.js';
 import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { renderCollectionUI, choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
@@ -92,10 +91,6 @@ export function renderTabExtras(dom) {
             limit: getSettings().statusTracker?.presets?.[getSettings().activeSystem]
                 ?.definition?.memories?.maxEntriesPerCharacter,
         });
-        const state = loadStateFromMetadata();
-        const goals = renderGoalEditor(state.player, 'player', state,
-            () => refreshPlayerSheet(dom));
-        if (goals) readOnly.append(goals);
     }
 
     const form = dom.querySelector('.sillynpc-sheet-content .sillynpc-sheet-profile-form');

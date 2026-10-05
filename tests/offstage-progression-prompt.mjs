@@ -26,7 +26,7 @@ const card = { name: 'Mira', npcTemplateId: 'fighter', statusOverrides: {
 test('schema offers known offstage Advancement experience deltas and explicit absent-actor flag', () => {
     const build = load('../src/tracker/extractor/status-extractor-schema.js', {
         progressionFields, npcStatsFor, collectionAppliesTo, numericDeltaNames, configuredXpName, isTurnStat,
-        npcTemplates: () => [], goalFields: () => [],
+        npcTemplates: () => [],
     }, 'buildExtractionSchema');
     const schema = build(tracker, { state: { characters: [] }, cards: [card] });
     const actor = schema.properties.characters.items.properties;

@@ -5,7 +5,6 @@ import { extensionName, LOG_PREFIX } from '../../core/constants.js';
 import { getSettings } from '../../core/settings.js';
 import { reprocessAllMessages, chatRenderSignature } from '../../chat/chat.js';
 import { resetLorebookState } from '../story/ui-lorebook-section.js';
-import { renderGoalsView } from '../story/ui-goals.js';
 import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderGenerationSettingsView } from '../settings/ui-settings-tabs.js';
 import { renderStatsView } from '../shared/ui-stats.js';
 import { renderStatusView } from '../tracker/ui-tracker-settings.js';
@@ -304,8 +303,6 @@ function settingsTabs() {
           render: v => renderAppearanceView(v, reprocessAllMessages, updateManageTheme) },
         { id: 'writing', label: 'Story / Writing Rules', container: 'sillynpc-writing-view',
           render: v => renderWritingRulesView(v, reprocessAllMessages) },
-        { id: 'goals', label: 'Story / Goals', container: 'sillynpc-goals-view',
-          render: v => renderGoalsView(v) },
         { id: 'status', label: 'Status / Tracker', container: 'sillynpc-status-view',
           render: v => renderStatusView(v) },
         { id: 'hud', label: 'Status / HUD', container: 'sillynpc-hud-view',

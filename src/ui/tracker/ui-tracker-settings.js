@@ -3,7 +3,7 @@ import { triggerReprocess } from '../../chat/chat.js';
 import { updateHUD } from '../hud/ui-hud.js';
 import { renderTrackerDisplayAndReading } from './ui-tracker-display-reading.js';
 import { renderTrackerScanAndReview } from './ui-tracker-scan-review.js';
-import { renderTrackerCastAndRecovery } from './ui-tracker-cast-recovery.js';
+import { renderTrackerTools } from './ui-tracker-tools.js';
 import { foldSettings } from '../settings/ui-settings-details.js';
 import { refreshReadButton } from './ui-read-button.js';
 import { refreshScanButton } from './ui-scan-button.js';
@@ -75,7 +75,7 @@ export function renderStatusView(container) {
     const view = { container, settings, onApply, onDisplay, onChange, section };
     renderTrackerDisplayAndReading(view);
     renderTrackerScanAndReview(view);
-    renderTrackerCastAndRecovery(view);
+    renderTrackerTools(view);
 
     foldSettings(container, 'Customize display', [
         'statusTracker.showGlobalStats', 'statusTracker.showPlayerStats',

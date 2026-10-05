@@ -227,7 +227,7 @@ function createSystem(name) {
     captureActiveSystem();
 
     // Reset by the same rule the capture uses, so a new system starts from the defaults in
-    // everything it owns. Resetting a named handful meant time rules, prompts and review
+    // everything it owns. Resetting a named handful meant prompts and review
     // thresholds quietly carried over from whichever system you happened to be in.
     const defaults = structuredClone(defaultSettings);
     assignExcept(st, defaults.statusTracker, SYSTEM_EXCLUDED_TRACKER);
@@ -277,7 +277,6 @@ function saveSystemPreset(name, description = '', author = 'User') {
         progression: st.progression || previous?.definition?.progression || liveDefinition.progression,
         legacyNpcTemplateId: previous ? previous.definition?.legacyNpcTemplateId : liveDefinition.legacyNpcTemplateId,
         memories: previous?.definition?.memories || liveDefinition.memories,
-        goals: previous?.definition?.goals || liveDefinition.goals,
         hud: { ...liveDefinition.hud,
             playerStatIds: liveDefinition.stats.player.filter(stat => stat.isPrimary).map(stat => stat.id),
             npcStatIds: previous?.definition?.hud?.npcStatIds ?? liveDefinition.hud.npcStatIds,

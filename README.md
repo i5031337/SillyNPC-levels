@@ -60,12 +60,10 @@ SillyNPC operates across two core modules:
 * **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define. In **Systems → Collections**, select any combination of the player, all NPCs, and named NPC templates (for example, clothing for the player and humans, or moves for Pokémon).
 * **Dedicated Extraction Pass:** Processes state updates in a background pass to keep tracker logic from polluting the primary prompt context.
 * **Review Controls:** Valid reader changes apply automatically by default. You can switch to review modes that hold risky changes or all changes for approval.
-* **Interactive Sheets:** Edit the selected persona's profile, stats, items, memories, and goals on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.
+* **Interactive Sheets:** Edit the selected persona's profile, stats, items, and memories on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.
 
-### Goals & Memories
-* **Current Goals:** The reader may propose sourced changes to the player's short and long-term goals and NPC short-term goals. Edit them in **Goals** or on the character sheet; System Builder chooses which goal fields exist.
+### Memories
 * **Character Memories:** Edit memory fields and entries on character sheets. Existing sourced memories remain readable, with older entries in an archive.
-* **Archived Threads:** The **Goals** tab keeps old Threads records readable. They no longer change or enter prompts.
 
 ### Floating HUD
 * **Four Meter Styles:** Bars, segmented bars, rings around the portrait, or text only.
@@ -152,7 +150,7 @@ In **Systems → Manager → Generate from premise**, describe a game and option
 
 Review the summary and use **Edit draft** to adjust rules through the normal Builder controls. **Save as new System** requires a valid draft and a distinct name. Generation, editing, and saving do not activate the System or reset an adventure; select it deliberately when starting a new adventure. Cancellation stops subsequent steps and ignores late responses; a host API that cannot cancel its current request may finish that request in the background. Usage appears under **System Generation**. Local-model quality still needs evaluation on the chosen model and quantization.
 
-A chat chooses its System before play starts and keeps it after the first player message. Systems define reusable rules and fields; the current cast and player state belong to the chat. The selected persona's identity, profile, and portrait carry across chats, while stats, items, goals, and memories are kept per chat and persona.
+A chat chooses its System before play starts and keeps it after the first player message. Systems define reusable rules and fields; the current cast and player state belong to the chat. The selected persona's identity, profile, and portrait carry across chats, while stats, items, and memories are kept per chat and persona.
 
 **Export selected** on the Characters page previews which fields travel. Character files use version 2; older character files still import, with their mixed stat values classified by the destination System. Linked lore travels as text and can be recreated in the destination lorebook. Portrait paths are local to one installation, so exported files contain no portraits. **Export World Characters** retains each source chat and NPC ID in the file, allowing same-name NPCs from different chats to remain separate on import.
 
@@ -167,13 +165,12 @@ Advanced settings and fine-tuning parameters remain hidden until **Show Every Se
 | Tab | Contents |
 | :--- | :--- |
 | **Characters** | Character cards, profiles, portraits, and roster categories |
-| **Player** | The selected persona's profile, portrait, stats, items, memories, goals, and level; also opens from the HUD |
+| **Player** | The selected persona's profile, portrait, stats, items, memories, and level; also opens from the HUD |
 | **Appearance** | Themes, speech dividers, spacing, avatar shapes, and fallback faces |
 | **Writing Rules** | Dialogue format, narrator rules, ban list, and how replies are parsed |
-| **Goals** | Current player and NPC goals |
-| **Tracker** | Extraction passes, review settings, time rules, and history scans |
+| **Tracker** | Extraction passes, review settings, and history scans |
 | **HUD** | Floating on-screen widget configuration and display modes |
-| **Systems** | Reusable rules, player and NPC profile fields, update policies, goals, and stat definitions |
+| **Systems** | Reusable rules, player and NPC profile fields, update policies, and stat definitions |
 | **Generation** | Automated lorebook creation and portrait generation settings |
 | **Stats** | Token analytics and cost tracking for background LLM passes |
 | **Advanced** | Master switches, console logging, and UI sizing |
@@ -201,7 +198,7 @@ window.SILLYNPC_DEBUG = true;
 | `index.js`, `src/entry/` | Extension startup and SillyTavern event handlers |
 | `src/core/`, `src/prompts/` | Settings, constants, helpers, and prompt rules |
 | `src/chat/`, `src/characters/`, `src/lore/`, `src/story/` | Message decoration, character ownership, lore, and story history |
-| `src/tracker/` | Current tracker state, extraction, review, goals, memories, and XP |
+| `src/tracker/` | Current tracker state, extraction, review, memories, and XP |
 | `src/ui/` | Settings, character sheets, HUD, and other views |
 | `src/api/` | Lore and portrait generation and storage |
 | `style.css`, `styles/*.css` | Ordered theme and interface styling |

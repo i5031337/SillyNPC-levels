@@ -76,7 +76,7 @@ function harness(mode = 'extract') {
             message.extra.sillynpc_applied = (message.extra.sillynpc_applied || []).concat(rows);
             base.applied = { state: applyTurnValues(base.state, diffTurnValues(base.beforeApply.state, live)), profiles: {} };
         },
-        applyTimeRules: () => ({ rows: [] }), setStrangerKinds: () => false,
+        setStrangerKinds: () => false,
         triggerReprocess: () => {}, buildExtractionSchema: () => ({}), strangersToClassify: () => [],
         buildUserPrompt: state => { prompted = structuredClone(state); return ''; }, collectLeadUp: () => '',
         requestExtraction: async () => { await onRequest(); return structuredClone(response); },
@@ -85,7 +85,7 @@ function harness(mode = 'extract') {
         saveLevelReading: () => {}, retryLevelReading: async () => ({ applied: false }),
         validateReviewedTransitions: () => ({ invalid: new Set() }),
         prepareGrantReview: () => {}, LEVEL_READING_KEY: 'sillynpc_level_reading',
-        getCurrentPersonaKey: () => 'hero', applyGoalsFromReply: () => [],
+        getCurrentPersonaKey: () => 'hero',
         generateNewNpcProfiles: async () => ({ generated: 0, failed: 0 }),
         startExtractionReport: () => message, finishExtractionReport: (id, msg, report) => { msg.report = report; },
         extractionSwipe: () => 0, renderExtractionReport: () => {},

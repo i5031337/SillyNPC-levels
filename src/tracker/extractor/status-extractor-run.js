@@ -6,14 +6,12 @@ import { loadStateFromMetadata, getCurrentPersonaKey, rememberSwipeBase, refresh
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from '../status-diff.js';
 import { setPendingChanges, isItemDecided } from '../status-review.js';
 import { recordAppliedChanges } from '../snapshots/status-snapshots.js';
-import { applyTimeRules } from '../status-rules.js';
 import { setStrangerKinds } from '../../characters/default-portraits.js';
 import { triggerReprocess } from '../../chat/reprocess.js';
 import { buildExtractionSchema, strangersToClassify } from './status-extractor-schema.js';
 import { buildUserPrompt, collectLeadUp } from './status-extractor-prompt.js';
 import { requestExtraction, coerceToUpdate } from './status-extractor-request.js';
 import { expandNumericDeltas } from './status-extractor-deltas.js';
-import { applyGoalsFromReply } from './status-extractor-replies.js';
 import { prepareGrantReview, validateReviewedTransitions } from '../level-grant-review.js';
 import { prepareLevelReading, saveLevelReading, retryLevelReading, LEVEL_READING_KEY } from './status-level-reading.js';
 import { startExtractionReport, finishExtractionReport, extractionSwipe } from './status-extraction-report.js';
@@ -260,17 +258,10 @@ export async function extractStateFromMessage(messageText, messageId, options = 
                 { partOfMessage: true, allowAdvancementChanges: true, admitCharacters: true });
         }
 
-        // Now that the message's own update has landed, the clock has moved - so what
-        // elapsed time implies can be worked out. This is arithmetic on a timestamp the
-        // narrator wrote, not a reading of the prose, so it applies rather than being
-        // proposed, and lands as its own undo step.
-        const timed = applyTimeRules(messageId);
-        const goalChanges = applyGoalsFromReply(parsed, messageId, String(messageText));
-
         // Written even when nothing changed, so a quiet message is distinguishable from
         // a message older than the record. Costs no prompt tokens: extra is not read
         // back into the context.
-        const applied = (pending.length === 0 ? changes : auto).concat(timed.rows);
+        const applied = pending.length === 0 ? changes : auto;
         recordAppliedChanges(messageId, applied);
 
         saveLevelReading(reportMessage, grants.reading);
@@ -280,7 +271,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         }
 
         extractedMessages.add(key);
-        const appliedCount = auto.length + timed.rows.length + goalChanges.length;
+        const appliedCount = auto.length;
         const parts = [
             `${appliedCount} applied`,
             `${pending.length} awaiting review`,

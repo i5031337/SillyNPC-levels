@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { canTrackerSetNpcStat } from '../src/tracker/stat-persistence.js';
 import { progressXp } from '../src/tracker/progression.js';
 import { expandNumericDeltas } from '../src/tracker/extractor/status-extractor-deltas.js';
-import { archiveNpcGoals } from '../src/tracker/goals.js';
 
 test('reader deltas become absolute values without changing ceilings or innate stats', () => {
     const settings = {
@@ -207,7 +206,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     const source = readFileSync(new URL('../src/tracker/status-scene-presence.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replace('export function bind', 'function bind');
-    const bindPresence = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'archiveNpcGoals',
+    const bindPresence = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'getAllCharacters', 'debugLog',
         `${source}\nreturn bind;`);
     const settings = { statusTracker: {
         npcStats: [{ name: 'HP', defaultValue: '' }],
@@ -223,7 +222,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
         resolveMaxValue: () => '',
         saveStateToMetadata(state) { saved.push(structuredClone(state)); this.committedState = state; },
     };
-    bindPresence(npcStatsFor, npcTemplateFor, proposedNpcTemplate, { emit() {} }, () => settings, () => [], () => {}, archiveNpcGoals)(deps);
+    bindPresence(npcStatsFor, npcTemplateFor, proposedNpcTemplate, { emit() {} }, () => settings, () => [], () => {})(deps);
 
     deps.reconcileScenePresence(['Other'], '4');
     deps.reconcileScenePresence(['Mira', 'Rejected'], '4', { authoritative: true });

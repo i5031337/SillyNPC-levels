@@ -55,7 +55,7 @@ test('tracker display controls redraw immediately without reprocessing chat or r
     const render = load('tracker/ui-tracker-settings.js', [
         'document', 'getSettings', 'saveSettings', 'triggerReprocess', 'updateHUD',
         'redrawStatusBoxes', 'renderTrackerDisplayAndReading', 'renderTrackerScanAndReview',
-        'renderTrackerCastAndRecovery', 'foldSettings',
+        'renderTrackerTools', 'foldSettings',
     ], [document, () => ({ statusTracker: {} }), () => counts.save++,
         () => counts.reprocess++, () => counts.hud++, () => counts.redraw++,
         display, () => {}, () => {}, () => {},

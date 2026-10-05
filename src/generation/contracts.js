@@ -32,7 +32,6 @@ export const collectionSchema = object({ id, name: text, targets: array(text, 8)
     includeInImagePrompt: bool, retired: bool, fields: array(fieldSchema), levelUpRewards: rewardSchema },
 ['id', 'name', 'targets', 'guidance', 'fields']);
 export const presentationSchema = object({ memories: object({ maxEntriesPerCharacter: { type: 'integer', minimum: 1, maximum: 500 } }),
-    goals: object({ npcShortTerm: bool, playerShortTerm: bool, playerLongTerm: bool }),
     hud: object({ layout: enumeration(['plate', 'underline', 'pips', 'splitring']), showWorld: bool,
         showNpcPortraits: bool, playerStatIds: array(id), npcStatIds: array(id), worldStatIds: array(id) }) });
 export const definitionSchema = object({ schemaVersion: { type: 'integer', enum: [1] }, id, name: text,

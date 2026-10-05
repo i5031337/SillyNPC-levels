@@ -93,3 +93,13 @@ test('duplicate legacy names receive distinct IDs without mutating input', () =>
     assert.deepEqual(system.stats.player.map(field => field.id), ['willpower-focus', 'willpower-focus-2']);
     assert.deepEqual(source, before);
 });
+
+test('System normalization ignores removed goal switches while retaining profile objectives', () => {
+    const input = { schemaVersion: SYSTEM_SCHEMA_VERSION, name: 'Objectives in profiles',
+        profiles: { player: [{ id: 'wants', label: 'Wants', policy: 'replaceable' }], npc: [] },
+        goals: { npcShortTerm: true, playerShortTerm: true, playerLongTerm: true } };
+    const normalized = normalizeSystemDefinition(input);
+    assert.equal(Object.hasOwn(normalized, 'goals'), false);
+    assert.equal(normalized.profiles.player[0].id, 'wants');
+    assert.equal(input.goals.playerLongTerm, true);
+});

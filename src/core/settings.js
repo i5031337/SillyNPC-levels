@@ -5,10 +5,8 @@ import { IMAGE_PROMPT } from './constants.js';
 import { defaultSettings } from './settings-defaults.js';
 import { normalizeSettings } from './settings-migration.js';
 import { setProfileSettingsProvider } from './profile-fields.js';
-import { setGoalSettingsProvider } from '../tracker/goals.js';
 export { defaultSettings, normalizeSettings };
 setProfileSettingsProvider(getSettings);
-setGoalSettingsProvider(getSettings);
 export { normaliseStatDefs } from './settings-migration.js';
 
 export function initSettings() {

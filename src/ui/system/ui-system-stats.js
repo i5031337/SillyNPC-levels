@@ -96,7 +96,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
                        placeholder="—" title="Blank for no limit. Anything longer is cut back to a word boundary and marked."
                        style="width:50px; font-size:var(--sillynpc-text-md); height:24px;">
                 `}
-                <select class="text_pole stat-type" title="What this stat holds. A Number is a quantity, so it can have a minimum, a maximum and time rules; write its value as 53/53 to get a meter, or as 53 for a plain number. Text is anything else." style="width:80px; font-size:var(--sillynpc-text-md); height:24px;">
+                <select class="text_pole stat-type" title="What this stat holds. A Number is a quantity, so it can have a minimum and a maximum; write its value as 53/53 to get a meter, or as 53 for a plain number. Text is anything else." style="width:80px; font-size:var(--sillynpc-text-md); height:24px;">
                     <option value="text" ${!isNumericStat(stat) ? 'selected' : ''}>Text</option>
                     <option value="number" ${isNumericStat(stat) ? 'selected' : ''}>Number</option>
                 </select>
@@ -148,8 +148,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
         `;
         
         const statNameInput = row.querySelector('.stat-name');
-        statNameInput.title = 'Renaming this carries its stored values, the scene binding, '
-            + 'any time rule that names it, and the display template.';
+        statNameInput.title = 'Renaming this carries its stored values and the display template.';
         // Committed when you leave the box rather than on every keystroke: renaming per
         // letter would migrate every stored value once per character typed, and an emptied
         // box would briefly name the stat "".
@@ -173,7 +172,6 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
 
             const parts = [];
             if (carried.values) parts.push(`${carried.values} stored value${carried.values === 1 ? '' : 's'}`);
-            if (carried.references) parts.push(`${carried.references} reference${carried.references === 1 ? '' : 's'}`);
             if (carried.templateUpdated) parts.push('the display template');
             if (parts.length) {
                 toastr.success(`Renamed to "${newName}" and carried ${parts.join(', ')} across.`, 'SillyNPC');

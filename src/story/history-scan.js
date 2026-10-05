@@ -1,4 +1,5 @@
 import { collectionAppliesTo } from '../core/collection-targets.js';
+import { getAllCharacters } from '../characters/character-repository.js';
 import { npcTemplates } from '../core/npc-templates.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { getContext } from '../../../../../st-context.js';
@@ -8,26 +9,6 @@ import { loadStateFromMetadata, applyUpdate } from '../tracker/status-logic.js';
 import { requestExtraction, coerceToUpdate, describeCollections } from '../tracker/extractor/status-extractor.js';
 import { computeStateDiff, partitionChanges } from '../tracker/status-diff.js';
 import { setPendingChanges, isItemDecided, getItemRules, DISMISSED_KEY, PLAYER_ACTOR } from '../tracker/status-review.js';
-
-/**
- * Bringing collections up to date from the story so far.
- *
- * The per-message extractor only ever sees one message, so an item picked up fifty
- * messages ago and never mentioned since is invisible to it. This reads the history in
- * one pass and proposes what each character should be holding.
- *
- * The difficulty is not finding items - it is *not* finding the ones that are gone. A
- * naive pass returns everything ever mentioned, which quietly resurrects every sword
- * sold and every potion drunk. Three separate guards keep that from happening:
- *
- *  - the prompt asks for the state at the END of the history, and says outright that
- *    anything acquired and later lost must not be listed;
- *  - the dismissal list is sent along, and named as items that must never be proposed;
- *  - every row still goes through the review panel, so nothing lands unseen.
- *
- * The request goes through the tracker's own connection profile, so the story model is
- * not involved and its context is untouched.
- */
 
 /**
  * A filled-in example of the exact reply wanted, in the ids and fields actually
@@ -80,8 +61,7 @@ function describeCurrentCollections(state) {
         const parts = [];
         for (const [colId, items] of Object.entries(collections || {})) {
             if (!collectionAppliesTo(getSettings().statusTracker.collections?.find(col => col.id === colId), scope, actor)) continue;
-            const names = (items || []).map(i => i?.name).filter(Boolean);
-            if (names.length) parts.push(`  ${colId}: ${names.join(', ')}`);
+            if (Array.isArray(items)) parts.push(`  ${colId}: ${JSON.stringify(items)}`);
         }
         if (parts.length) lines.push(`${who}:`, ...parts);
     };
@@ -183,13 +163,15 @@ export function collectHistoryChunks(trackerSettings) {
         const who = message.is_user ? 'Player' : (message.name || 'Narrator');
         const line = `[${who}] ${message.mes.trim()}`;
 
-        if (chars + line.length > budget) {
+        if (line.length > budget) {
+            throw new Error(`Message ${chat.length - wanted.length + i + 1} needs ${line.length.toLocaleString()} transcript characters including its speaker label, exceeding the ${budget.toLocaleString()} character budget. No requests were made. Raise "Transcript Per Pass" or edit the message before scanning. Prompt instructions and inventory use additional space beyond this transcript budget.`);
+        }
+        if (chars + (parts.length ? 2 : 0) + line.length > budget) {
             flush();
             if (chunks.length >= maxChunks) break;
         }
-        // A single message longer than the whole budget still has to go somewhere.
+        chars += (parts.length ? 2 : 0) + line.length;
         parts.push(line);
-        chars += line.length;
     }
     flush();
 
@@ -198,7 +180,10 @@ export function collectHistoryChunks(trackerSettings) {
 
 /** What a scan will cost before one is sent, for the confirmation. */
 export function estimateScan(trackerSettings = getSettings().statusTracker) {
-    const { used, chars, truncated, eligible, chunks } = collectHistory(trackerSettings);
+    let history;
+    try { history = collectHistory(trackerSettings); }
+    catch (error) { return { error: error.message }; }
+    const { used, chars, truncated, eligible, chunks } = history;
     return {
         messages: used, chars, approxTokens: Math.round(chars / 4),
         truncated, eligible, passes: chunks,
@@ -235,17 +220,25 @@ export async function scanHistoryForCollections(onProgress) {
         return { ok: false, reason: 'No collections are configured to fill.' };
     }
 
-    const chunks = collectHistoryChunks(trackerSettings);
+    let chunks;
+    try { chunks = collectHistoryChunks(trackerSettings); }
+    catch (error) { return { ok: false, reason: error.message }; }
     if (!chunks.length) return { ok: false, reason: 'Nothing readable in the history.' };
 
-    const state = loadStateFromMetadata();
+    const state = structuredClone(loadStateFromMetadata());
+    // Offstage cards also own inventories; include them in the prompt and comparison,
+    // without joining the scene or saving anything.
+    for (const card of getAllCharacters()) {
+        if (!card.name || state.characters.some(actor => actor.name.toLowerCase() === card.name.toLowerCase())) continue;
+        state.characters.push({ name: card.name, npcTemplateId: card.npcTemplateId,
+            collections: structuredClone(card.statusCollections || {}) });
+    }
+    const rolling = structuredClone(state);
     const merged = { player: { collections: {} }, characters: [] };
-    const failures = [];
+
     let messages = 0;
 
-    // A long story does not fit one request, so it is read in passes and the findings
-    // are pooled. Oldest first, so a later pass describing the same character overwrites
-    // an earlier one - the end of the story is what the collections should reflect.
+    // Each chronological pass corrects the inventory produced by the previous pass.
     for (const [index, chunk] of chunks.entries()) {
         onProgress?.({ chunk: index + 1, of: chunks.length });
         debugLog(`Scanning pass ${index + 1}/${chunks.length}: ${chunk.used} messages, ${chunk.chars} chars`);
@@ -253,7 +246,7 @@ export async function scanHistoryForCollections(onProgress) {
         let raw;
         try {
             raw = await requestExtraction(
-                buildScanPrompt(state, trackerSettings, chunk), null,
+                buildScanPrompt(rolling, trackerSettings, chunk), null,
                 {
                     ...trackerSettings,
                     // A scan lists whole inventories at once; the per-message budget cut
@@ -265,33 +258,22 @@ export async function scanHistoryForCollections(onProgress) {
                 promptText('scanSystem'), { usageKind: 'scan' });
         } catch (err) {
             console.error(LOG_PREFIX, `History scan pass ${index + 1} failed.`, err);
-            failures.push(String(err?.message || err));
-            continue;
+            return failedPass(index, chunks.length, String(err?.message || err));
         }
 
         const parsed = coerceToUpdate(raw);
         if (!parsed) {
-            failures.push(looksTruncated(raw) ? 'a reply ran out of room' : 'a reply was not JSON');
-            continue;
+            return failedPass(index, chunks.length, looksTruncated(raw) ? 'a reply ran out of room' : 'a reply was not JSON');
         }
 
         const update = stripStats(parsed);
-        if (!hasAnyCollection(update)) {
-            failures.push(describeShapeFailure(parsed, trackerSettings));
-            continue;
+        if (!hasUsableCollections(update)) {
+            return failedPass(index, chunks.length, describeShapeFailure(parsed, trackerSettings));
         }
 
-        mergeFindings(merged, update);
+        mergeFindings(merged, update, trackerSettings);
+        mergeFindings(rolling, update, trackerSettings);
         messages += chunk.used;
-    }
-
-    if (!hasAnyCollection(merged)) {
-        console.warn(LOG_PREFIX, 'History scan found nothing usable.', failures);
-        return {
-            ok: false,
-            reason: failures[0] || 'The scan found nothing it could read.',
-            failures: failures.length,
-        };
     }
 
     // A scan is about the whole cast, not the current scene, so it may reach characters
@@ -313,7 +295,7 @@ export async function scanHistoryForCollections(onProgress) {
         .filter(row => !isItemDecided(row));
 
     const result = {
-        ok: true, messages, passes: chunks.length, failures: failures.length,
+        ok: true, messages, passes: chunks.length, failures: 0,
         skipped: [...new Set(skipped)],
     };
     if (!changes.length) return { ...result, pending: 0 };
@@ -325,38 +307,37 @@ export async function scanHistoryForCollections(onProgress) {
     return { ...result, pending: pending.length };
 }
 
-/**
- * Pools one pass's findings into the running total.
- *
- * Later passes cover later parts of the story, so where they disagree about an item the
- * later one wins; where they simply saw different things, both are kept. A pass that
- * never mentions a character says nothing about them rather than denying them.
- */
-function mergeFindings(merged, update) {
+function failedPass(index, passes, reason) {
+    return { ok: false, failures: 1, passes,
+        reason: `History scan stopped at pass ${index + 1} of ${passes}: ${reason}. No inventory changes were proposed. Retry the complete scan after resolving the failure.` };
+}
+
+/** Explicit arrays replace; omitted collections and actors keep their rolling state. */
+function mergeFindings(merged, update, trackerSettings = {}) {
     const mergeCollections = (into, from) => {
         for (const [colId, items] of Object.entries(from || {})) {
             if (!Array.isArray(items)) continue;
-            const existing = into[colId] || [];
-            const byName = new Map(existing.map(i => [String(i?.name ?? '').toLowerCase(), i]));
+            const definition = trackerSettings.collections?.find(col => col.id === colId);
+            const primary = definition?.fields?.find(field => field.isPrimary)?.name || 'name';
+            const byName = new Map();
             for (const item of items) {
-                const key = String(item?.name ?? '').trim().toLowerCase();
-                if (!key) continue;
-                byName.set(key, { ...byName.get(key), ...item });
+                const key = String(item?.[primary] ?? item?.name ?? '').trim().toLowerCase();
+                if (key) byName.set(key, { ...byName.get(key), ...item });
             }
             into[colId] = [...byName.values()];
         }
     };
-
+    merged.player ||= { collections: {} };
+    merged.player.collections ||= {};
     mergeCollections(merged.player.collections, update.player?.collections);
-
     for (const character of update.characters || []) {
         if (!character?.name) continue;
-        let entry = merged.characters.find(
-            c => c.name.toLowerCase() === String(character.name).toLowerCase());
+        let entry = merged.characters.find(c => c.name.toLowerCase() === String(character.name).toLowerCase());
         if (!entry) {
             entry = { name: character.name, collections: {} };
             merged.characters.push(entry);
         }
+        entry.collections ||= {};
         if (character.npcTemplateId) entry.npcTemplateId = character.npcTemplateId;
         mergeCollections(entry.collections, character.collections);
     }
@@ -379,10 +360,13 @@ export function looksTruncated(raw) {
     return text.split(first).length > 3;
 }
 
-/** Did anything usable survive the strip? */
-function hasAnyCollection(update) {
-    if (Object.keys(update.player?.collections || {}).length) return true;
-    return (update.characters || []).some(c => Object.keys(c.collections || {}).length);
+/** Empty containers are a valid unchanged pass; malformed collection values are not. */
+function hasUsableCollections(update) {
+    const containers = [update.player?.collections, ...(update.characters || []).map(actor => actor.collections)]
+        .filter(Boolean);
+    return (containers.length > 0 || Array.isArray(update.characters))
+        && containers.every(collections => typeof collections === 'object' && !Array.isArray(collections)
+            && Object.values(collections).every(Array.isArray));
 }
 
 /**

@@ -15,7 +15,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/lore/` | Lorebook entries and synchronization. |
 | `src/story/` | Story beats, mentions, and collection scans. |
 | `src/prompts/` | Built-in prompt templates, formatting rules, and prompt placement. |
-| `src/tracker/` | Current state, progression, goals, memories, updates, and review; `extractor/`, `snapshots/`, and `ui/` hold focused parts. |
+| `src/tracker/` | Current state, progression, memories, updates, and review; `extractor/`, `snapshots/`, and `ui/` hold focused parts. |
 | `src/ui/` | Management, HUD, settings, character, collection, system, tracker, API, and story views. |
 
 ## Project files
@@ -41,6 +41,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/chat-npc-sources.mjs` | Chat NPC source routing tests. |
 | `tests/fill-preset.mjs` | Automatic fill stage tests. |
 | `tests/lore-entry-store.mjs` | Concurrent lore creation, ownership, and entry reuse tests. |
+| `tests/ui-audit-followup.py` | Unsaved live checks for editable Time and scan overflow before requests. |
+| `tests/status-extractor-request.mjs` | Mocked reader/scan routing and visible fallback warnings. |
 | `tests/profile-lore-storage.mjs` | Player lore persistence and tracker-only scene context tests. |
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/level-grants.mjs`, `tests/level-grant-review.mjs` | Actor-specific grant generation, bounds, dependencies, and atomic review acceptance. |
@@ -52,7 +54,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
 | `tests/ui_webdriver.py` | Shared Firefox session and guaranteed driver cleanup. |
 | `tests/history-scan.mjs` | Preserve NPC template assignments through scan filtering and multi-pass merging. |
-| `tests/status-clock.mjs` | Clock parsing and elapsed time behavior. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
@@ -61,7 +62,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/player-chat-ownership.mjs` | Persona identity and chat-local player state boundaries. |
 | `tests/profile-memories.mjs` | Profile memory list normalization and capacity behavior. |
 | `tests/profile-memories-ui.mjs`, `tests/npc-memories.mjs` | Player/NPC memory display and persistence behavior. |
-| `tests/goals.mjs`, `tests/goal-proposals.mjs` | Chat goals and sourced reader proposals. |
 | `tests/turn-delta.mjs` | Current turn change reversal and rebase behavior. |
 | `tests/status-dependencies.mjs` | Shared status dependency provider contract test. |
 | `tests/ui-chat-boundaries.mjs` | Chat-switch confirmation guards and bulk deletion selection snapshots. |
@@ -125,13 +125,11 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/stat-prompt-definitions.js` | Format stat purposes and rules for reader and inline prompts. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
 | `src/tracker/stat-update-policy.js` | Turn and advancement update policy for stats. |
-| `src/tracker/status-clock.js` | Story clock parsing and elapsed time. |
-| `src/tracker/status-rules.js` | Time-based stat rules. |
 | `src/tracker/status-history.js` | Raw status block preservation and chat overhead measurement. |
 | `src/tracker/status-logic.js` | Player and NPC state, model updates, cast, items, and Systems. |
 | `src/tracker/status-stat-values.js` | Stat value merging and model update sanitization. |
 | `src/tracker/status-stat-schema.js` | Stat definition lookup and schema helpers. |
-| `src/tracker/status-persona-state.js` | Reusable persona identity/profile and chat-local player stats, collections, goals, and memories. |
+| `src/tracker/status-persona-state.js` | Reusable persona identity/profile and chat-local player stats, collections, and memories. |
 | `src/tracker/status-chat-session.js` | Chat persona/system session lifecycle. |
 | `src/tracker/status-state-storage.js` | Load and save status metadata, including one-step undo. |
 | `src/tracker/status-status-summary.js` | Format status summaries. |
@@ -144,8 +142,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/status-collection-updates.js` | Add, remove, and update tracked items. |
 | `src/tracker/status-collection-schema.js` | Rename collection fields and stat schema references. |
 | `src/tracker/status-system-presets.js` | Active System, reusable definitions, chat locking, and System import. |
-| `src/tracker/goals.js` | Configured player/NPC goal fields, changes, and offstage goal retention. |
-| `src/tracker/goal-proposals.js` | Validate and apply sourced goal proposals from the reader. |
 | `src/tracker/npc-memories.js` | Store NPC memories in chat-owned or reusable character records. |
 | `src/tracker/status-diff.js` | Public entry point for state difference and review helpers. |
 | `src/tracker/status-diff-compare.js` | Compare stats and collections across states. |
@@ -171,7 +167,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/extractor/status-extractor-prompt-state.js` | Describe current state, collections, and limits for prompts. |
 | `src/tracker/extractor/status-extractor-prompt-offstage.js` | Describe locked and offstage characters for prompts. |
 | `src/tracker/extractor/status-extractor-request.js` | Send and normalize model extraction responses. |
-| `src/tracker/extractor/status-extractor-replies.js` | Apply configured, sourced goal changes from extraction. |
 | `src/tracker/extractor/status-extractor-run.js` | Per-message extraction lifecycle and cache invalidation. |
 | `src/tracker/extractor/status-level-reading.js` | Swipe-specific choice cache, decision retention, and missing-reward retries. |
 | `src/tracker/extractor/status-inline-grants.js` | Inline XP delta conversion, review, and replacement-reading orchestration. |
@@ -219,7 +214,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/chat/chat-listing.js` | List chat headers. |
 | `src/chat/chat-npc-sources.js` | Identify chat-owned NPC sources and their images. |
 | `src/story/history-scan.js` | Scan existing chat for collection state. |
-| `src/story/quote-evidence.js` | Verify quoted proposal evidence against message text. |
 | `src/story/history-notes.js` | Read and remove historical world notes. |
 | `src/characters/world-character-export.js` | Export world character records. |
 
@@ -307,15 +301,13 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-system-manager.js` | Reusable System manager, import, export, and selection. |
 | `src/ui/shared/ui-template-tidy.js` | Prompt template cleanup UI. |
 | `src/ui/shared/ui-theme.js` | Apply themes and portrait/speech display options. |
-| `src/ui/story/ui-goals.js` | Current goals editor. |
 | `src/ui/tracker/ui-tracker-settings.js` | Tracker settings entry point. |
 | `src/ui/tracker/ui-tracker-display-reading.js` | Display and extraction reader controls. |
 | `src/ui/tracker/ui-tracker-scan-review.js` | History scan and change review controls. |
-| `src/ui/tracker/ui-tracker-cast-recovery.js` | Cast, time, context, recovery, and dashboard controls. |
+| `src/ui/tracker/ui-tracker-tools.js` | Context, cleanup, and dashboard controls. |
 | `src/ui/tracker/ui-tracker-context.js` | Tracker context report. |
 | `src/ui/tracker/ui-tracker-history.js` | History-note fields, current tracker placement, and chat cleanup. |
 | `src/ui/tracker/ui-tracker-popups.js` | Advanced tracker and dashboard popups. |
-| `src/ui/tracker/ui-tracker-time.js` | Time rule settings. |
 | `src/ui/shared/ui-transfer.js` | Import/export dialogs. |
 | `src/ui/manage/ui-manage-state.js` | Management popup state and navigation. |
 | `src/ui/manage/ui-manage-grid.js` | Character grid assembly and filtering. |
@@ -341,7 +333,6 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `styles/11-character-sheets.css` | Character sheets and related settings views. |
 | `styles/12-picture-tags.css` | Picture tag editor and gallery. |
 | `styles/13-system-profiles.css` | System profile field Builder controls. |
-| `styles/14-goals.css` | Goals editor and HUD presentation. |
 | `styles/14-memories.css` | Character memory editor and archive presentation. |
 | `styles/15-setting-help.css` | Settings help icons and popover styling. |
 

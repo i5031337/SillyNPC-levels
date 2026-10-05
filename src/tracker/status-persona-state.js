@@ -91,7 +91,7 @@ function personaDescription(avatarFilename) {
  * loud, because the player's facts live at state.player rather than in the scene cast.
  *
  * Kept in persona storage so the reusable identity follows the persona. Current stats,
- * inventory, goals, and memories are stored with the chat instead.
+ * inventory and memories are stored with the chat instead.
  *
  * @returns {object} The stored record, live: mutate it and call saveSettings().
  */
@@ -207,7 +207,6 @@ function createChatPlayerSeed() {
     return {
         stats,
         collections,
-        goals: {},
         memories: [],
     };
 }
@@ -222,7 +221,6 @@ function migrateLegacyPlayer(key, name = key) {
         ...fresh,
         stats: structuredClone(legacy.stats || fresh.stats),
         collections: structuredClone(legacy.collections || fresh.collections),
-        goals: structuredClone(legacy.goals || fresh.goals),
         memories: structuredClone(legacy.memories || fresh.memories),
     };
 }

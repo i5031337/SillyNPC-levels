@@ -30,7 +30,7 @@ A complete draft should cover:
 - Optional scheduled or guided collection rewards, with scheduled entries authored
   against the collection's real fields and levels. Scheduled definitions remain rules,
   rather than items inserted into holdings or the Item Library.
-- Memory and goal settings, HUD field selections, and practical reader guidance.
+- Memory settings, HUD field selections, and practical reader guidance.
 
 Progression may be disabled when it does not suit the premise. A complete System
 does not need every feature enabled. Prefer a small usable ruleset over dozens of
@@ -106,7 +106,7 @@ between them.
    requested. Do not generate separate copies of shared NPC fields per template.
 5. **Define rewards and presentation.** Generate optional collection rewards only after
    their collections and applicable progression are valid. Supply ordinary editable
-   memory/goal/HUD defaults in code, selecting visible active stats for the HUD;
+   memory/HUD defaults in code, selecting visible active stats for the HUD;
    presentation needs no model call. Reader guidance stays in generated fields and rules.
 6. **Assemble in code.** Combine accepted sections into the existing System definition,
    collect assumptions, and run complete strict validation, canonical normalization,

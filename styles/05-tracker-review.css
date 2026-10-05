@@ -166,38 +166,6 @@
 
 /* ─── Advanced settings block ─────────────────────────────────────────── */
 
-/* ─── Time rules ───────────────────────────────────────────────────────── */
-/* One rule reads as a sentence across the row: stat, by N, every M minutes, while X
-   is Y. Wraps rather than scrolls, since the tail of a rule is the part worth seeing. */
-
-.sillynpc-time-rule {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding: 6px 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--sillynpc-border), transparent 60%);
-}
-
-.sillynpc-time-rule:last-child { border-bottom: none; }
-
-.sillynpc-time-rule select,
-.sillynpc-time-rule input[type="text"],
-.sillynpc-time-rule input[type="number"] {
-    height: 26px;
-    font-size: var(--sillynpc-text-md);
-    padding: 2px 6px;
-}
-
-.sillynpc-time-rule-label {
-    opacity: 0.6;
-    flex-shrink: 0;
-}
-
-.sillynpc-time-rule .delete-btn {
-    margin-left: auto;
-}
-
 /* ─── History scan button ──────────────────────────────────────────────── */
 /* Lives in #leftSendForm beside SillyTavern's own options button, so it has to match
    that button's size and weight rather than the extension's own controls. */

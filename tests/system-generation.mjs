@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SystemGenerationRun } from '../src/generation/generate-system.js';
+import { definitionSchema, presentationSchema } from '../src/generation/contracts.js';
 import { allocatePlan } from '../src/generation/plan.js';
 import { validateDefinition, finalizeDefinition } from '../src/generation/validate-definition.js';
 import { parseResponse } from '../src/generation/validate-shape.js';
@@ -282,4 +283,13 @@ test('saved fixture drives normal progression, bounded growth, and scheduled tar
     assert.equal(collectionRewardAppliesTo(col, 'npc', 'creature'), true);
     assert.equal(collectionRewardAppliesTo(col, 'npc', 'other'), false);
     assert.deepEqual(finalizeDefinition(JSON.parse(JSON.stringify(definition))).definition, definition);
+});
+
+test('generated definitions omit removed goal configuration and reject unsupported switches', async () => {
+    assert.equal(Object.hasOwn(definitionSchema.properties, 'goals'), false);
+    assert.equal(Object.hasOwn(presentationSchema.properties, 'goals'), false);
+    const { definition } = await runWith(reply).generate();
+    assert.equal(Object.hasOwn(definition, 'goals'), false);
+    assert.ok(validateDefinition({ ...definition, goals: { playerShortTerm: true } })
+        .some(error => error.includes('goals')));
 });

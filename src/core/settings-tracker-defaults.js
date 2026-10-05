@@ -142,29 +142,6 @@ export const defaultTrackerSettings = {
          */
         scanProfileId: '',
         /**
-         * Which world stat is the clock. The narrator already keeps one - the tracker
-         * simply never read it.
-         */
-        clockStat: 'Time',
-        /**
-         * Most a single message may pay out, in minutes.
-         *
-         * A misread timestamp or a wild time skip would otherwise refill or drain
-         * everything at once. A day is generous for a normal turn and still bounds the
-         * damage; the limit is named in the change record when it bites.
-         */
-        clockMaxElapsedMinutes: 1440,
-        /**
-         * What elapsed time does on its own.
-         *
-         * { id, enabled, scope: 'player'|'characters'|'global', stat,
-         *   amount, perMinutes, conditionStat, conditionValue }
-         *
-         * Arithmetic, not a reading of the prose, so it applies without review and is
-         * recorded like any other change.
-         */
-        timeRules: [],
-        /**
          * Send a JSON schema with the extraction request.
          *
          * Off by default because it is actively harmful on some backends: a Gemini

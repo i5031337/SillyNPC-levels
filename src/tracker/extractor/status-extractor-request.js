@@ -60,7 +60,12 @@ export async function requestExtraction(userPrompt, schema, trackerSettings, sys
             recordUsage(usageKind, { prompt: systemPrompt + userPrompt, reply: describeAnswer(answer) });
             return answer;
         } catch (err) {
-            console.warn(LOG_PREFIX, 'Extraction profile unavailable, falling back to the main API:', err);
+            console.warn(LOG_PREFIX, 'Selected extraction connection failed, falling back to the main API:', err);
+            if (typeof toastr !== 'undefined') toastr.warning(
+                `The selected ${usageKind === 'scan' ? 'history scan' : 'reader'} connection failed. `
+                + 'Retrying with the main API (the same connection as chat).',
+                'SillyNPC',
+            );
         }
     }
 

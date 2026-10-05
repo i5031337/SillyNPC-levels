@@ -61,8 +61,9 @@ export function renderTrackerScanAndReview({ container, settings, onApply, onCha
         min: 10000,
         max: 200000,
         step: 10000,
-        help: 'How much text one pass carries. Smaller means more passes over the same '
-            + 'story, not less of it read.',
+        help: 'Maximum transcript characters per pass, including speaker labels. Instructions '
+            + 'and inventory need additional space. A message exceeding this limit stops '
+            + 'the scan before requests; raise the limit or edit that message.',
         onChange: onApply
     }));
 

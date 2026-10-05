@@ -22,7 +22,6 @@ export const readerPromptTexts = [
             earlier: 'The messages before this one, when you send any.',
             message: 'The message being read.',
             reasons: 'Switch: on when "Ask for reasons" is on.',
-            goals: 'Configured player and NPC goals, with current values and guidance.',
         },
         text: `Read the latest message and report its changes and the full scene cast. "characters" contains NPCs present in the scene, never the player; put all player changes under "player". Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
 
@@ -89,12 +88,6 @@ Report each collection change shown in the latest message:
 ### LATEST MESSAGE
 {{message}}
 
-{{#goals}}
-### GOAL CHANGES
-Configured fields and current goals:
-{{goals}}
-Only report an explicit, meaningful change in the latest message. Under the relevant actor's "goals", use a configured field key and an object with "action" ("set" for an empty field, "replace" for a changed goal, or "complete" for one finished or abandoned), "text" (new goal for set/replace; empty for complete), and "quote" (exact supporting words from the latest message). A goal is an actual objective the character pursues, not every promise, secret, invitation, or plot detail. Do not repeat unchanged goals.
-{{/goals}}
 ### REPLY FORMAT
 Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
 "characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present and no known offstage NPC changes, use "characters": []. Known absent NPC updates must carry "offstage": true; all other entries describe the complete present cast.

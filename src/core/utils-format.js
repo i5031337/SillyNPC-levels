@@ -267,9 +267,8 @@ export function computeStatBar({ rawValue, min, max }) {
     const impliedMax = ceilingFromValue(rawValue);
 
     /* Two shapes that carry digits without being quantities.
-       A clock has a colon. A date has two separators, which is the same test status-clock
-       makes before it will hand anything to Date.parse - and it has to cover the dash form
-       as well as the slash, because "2012-01-14" carries no slash at all and would
+       A clock has a colon. A date has two separators, including both the dash form
+       and the slash, because "2012-01-14" carries no slash at all and would
        otherwise be read as a bare 2012 with an invented ceiling. Two separators is what
        keeps "-40" and "8-10" out of it. */
     const clocklike = String(currentText).includes(':');

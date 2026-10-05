@@ -3,7 +3,6 @@ import { eventSource } from '../../../../../events.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { debugLog } from '../core/constants.js';
-import { archiveNpcGoals } from './goals.js';
 
 export function bind(deps) {
 function reconcileScenePresence(names, messageId, options = {}) {
@@ -89,8 +88,6 @@ function reconcileScenePresence(names, messageId, options = {}) {
         return (presence.tick - ch.lastSeenTick) < grace;
     });
     if (survivors.length !== state.characters.length) {
-        state.characters.filter(ch => !survivors.includes(ch))
-            .forEach(ch => archiveNpcGoals(state, ch));
         debugLog('Scene presence: dropping',
             state.characters.filter(ch => !survivors.includes(ch)).map(ch => ch.name));
         state.characters = survivors;
@@ -167,12 +164,6 @@ function buildCharacterState(charName, state, trackerSettings) {
     const remembered = state.npcTemplateAssignments?.[matchedChar?.id || charName.toLowerCase()];
     const selected = npcTemplateFor(remembered ? { npcTemplateId: remembered } : matchedChar);
     if (selected) charData.npcTemplateId = selected.id;
-    const savedGoals = state.npcGoals?.[matchedChar?.id] || state.npcGoals?.[charName.toLowerCase()];
-    if (savedGoals) {
-        charData.goals = structuredClone(savedGoals.goals || {});
-        charData.goalSources = structuredClone(savedGoals.goalSources || {});
-    }
-
     npcStatsFor(charData, trackerSettings).forEach(stat => {
         let value = stat.defaultValue || '';
         const override = matchedChar?.statusOverrides?.[stat.name];
@@ -230,8 +221,6 @@ function removeActiveCharacter(charName) {
     const state = JSON.parse(JSON.stringify(deps.committedState || deps.loadStateFromMetadata()));
     const initialLen = state.characters.length;
     
-    state.characters.filter(c => c.name.toLowerCase() === charName.toLowerCase())
-        .forEach(c => archiveNpcGoals(state, c));
     state.characters = state.characters.filter(c => c.name.toLowerCase() !== charName.toLowerCase());
     
     if (state.characters.length !== initialLen) {

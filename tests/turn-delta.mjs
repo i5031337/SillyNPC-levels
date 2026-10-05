@@ -5,13 +5,13 @@ import { diffTurnValues, applyTurnValues, turnEffectStatus } from '../src/tracke
 test('switching replies carries only the chosen reply plus later manual corrections', () => {
     const base = {
         global: { Time: 'noon' },
-        player: { stats: { HP: '100/100' }, goals: {}, memories: [] },
-        characters: [{ name: 'Ada', stats: { HP: '20/20' }, goals: {} }],
+        player: { stats: { HP: '100/100' }, memories: [] },
+        characters: [{ name: 'Ada', stats: { HP: '20/20' } }],
         npcMemories: {},
     };
     const first = structuredClone(base);
     first.player.stats.HP = '90/100';
-    first.player.goals.shortTerm = 'Find the key';
+    first.player.collections = { inventory: [{ name: 'Key' }] };
     first.npcMemories.ada = [{ text: 'Lost a key', source: '7' }];
     const firstDelta = diffTurnValues(base, first);
     const manual = structuredClone(first);
@@ -20,11 +20,11 @@ test('switching replies carries only the chosen reply plus later manual correcti
     const corrections = diffTurnValues(first, manual);
     const second = structuredClone(base);
     second.global.Time = 'evening';
-    second.player.goals.shortTerm = 'Reach camp';
+    second.player.collections = { inventory: [{ name: 'Map' }] };
     const switched = applyTurnValues(applyTurnValues(base, diffTurnValues(base, second)), corrections);
     assert.equal(switched.player.stats.HP, '95/100');
     assert.equal(switched.characters[0].stats.HP, '18/20');
-    assert.equal(switched.player.goals.shortTerm, 'Reach camp');
+    assert.deepEqual(switched.player.collections.inventory, [{ name: 'Map' }]);
     assert.equal(switched.global.Time, 'evening');
     assert.deepEqual(switched.npcMemories, {});
     assert.deepEqual(applyTurnValues(base, firstDelta), first);

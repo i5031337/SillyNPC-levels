@@ -176,11 +176,6 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
         collections: collections(modern ? input.collections : tracker.collections ?? defaultTrackerSettings.collections),
         progression: progression(modern ? input.progression : tracker.progression, playerStats, npcStats),
         memories: { maxEntriesPerCharacter: memoryLimit(input.memories?.maxEntriesPerCharacter) },
-        goals: {
-            npcShortTerm: input.goals?.npcShortTerm !== false,
-            playerShortTerm: input.goals?.playerShortTerm !== false,
-            playerLongTerm: input.goals?.playerLongTerm !== false,
-        },
         hud: {
             layout: normalizeHudLayoutId(string(hud.layout, string(hud.hudLayout, 'plate'))),
             showWorld: hud.showWorld === undefined ? hud.showGlobalStats !== false : hud.showWorld === true,

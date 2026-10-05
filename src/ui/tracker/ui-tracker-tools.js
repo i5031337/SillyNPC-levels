@@ -1,12 +1,7 @@
-import { buildTimeRulesSection } from './ui-tracker-time.js';
 import { buildContextReport } from './ui-tracker-context.js';
 import { openAdvancedSettingsPopup, openDashboardPopup } from './ui-tracker-popups.js';
 
-export function renderTrackerCastAndRecovery({ container, onApply, onChange }) {
-    /* -- Time rules -------------------------------------------------------- */
-
-    container.appendChild(buildTimeRulesSection(onApply));
-
+export function renderTrackerTools({ container, onChange }) {
     /* -- Chat size --------------------------------------------------------- */
 
     container.appendChild(buildContextReport(onChange));

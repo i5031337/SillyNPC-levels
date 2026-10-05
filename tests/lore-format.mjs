@@ -241,29 +241,25 @@ test('lore reply accepts plain labels and a fenced YAML wrapper', () => {
     assert.equal(parseLoreReply('Unrelated prose').followedSections, false);
 });
 
-test('tracker schema excludes lore fields and retains goals and stats', () => {
+test('tracker schema excludes lore fields and retains tracked stats', () => {
     const source = readFileSync(new URL('../src/tracker/extractor/status-extractor-schema.js', import.meta.url), 'utf8')
         .replace(/^import .*;\n/gm, '')
         .replaceAll('export function ', 'function ');
     const npc = { name: 'Mira', aiProfileFields: ['appearance'] };
     const player = { name: 'Hero', isPlayer: true, aiProfileFields: ['appearance'] };
     const build = new Function('npcTemplates', 'getAllCharacters', 'getPlayerCard', 'resolveProfileFields',
-        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'progressionFields', 'npcStatsFor', 'goalFields',
+        'anyProfileFieldUnlocked', 'numericDeltaNames', 'configuredXpName', 'isTurnStat', 'progressionFields', 'npcStatsFor',
         `${source}\nreturn buildExtractionSchema;`)(
         npcTemplates, () => [npc], () => player, resolveProfileFields, anyProfileFieldUnlocked,
-        numericDeltaNames, configuredXpName, isTurnStat, progressionFields, npcStatsFor, scope => scope === 'player'
-            ? [{ id: 'shortTerm', label: 'Short-term goal' }, { id: 'longTerm', label: 'Long-term goal' }]
-            : [{ id: 'shortTerm', label: 'Short-term goal' }],
+        numericDeltaNames, configuredXpName, isTurnStat, progressionFields, npcStatsFor,
     );
     const schema = build({ globalStats: [], playerStats: [], npcStats: [], collections: [] });
     assert.equal(schema.properties.characters.items.properties.profile, undefined);
     assert.equal(schema.properties.characters.items.properties.memories, undefined);
     assert.equal(schema.properties.player.properties.profile, undefined);
     assert.equal(schema.properties.player.properties.memories, undefined);
-    assert.ok(schema.properties.player.properties.goals.properties.longTerm);
-    assert.ok(schema.properties.characters.items.properties.goals.properties.shortTerm);
-    assert.equal(schema.properties.characters.items.properties.goals.properties.longTerm, undefined);
-    assert.equal(schema.properties.threads, undefined);
+    assert.equal(schema.properties.player.properties.goals, undefined);
+    assert.equal(schema.properties.characters.items.properties.goals, undefined);
 
     const withDeltas = build({
         globalStats: [], playerStats: [{ name: 'HP' }], npcStats: [], collections: [],

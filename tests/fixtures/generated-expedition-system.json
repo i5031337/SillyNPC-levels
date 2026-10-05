@@ -295,11 +295,6 @@
   "memories": {
     "maxEntriesPerCharacter": 50
   },
-  "goals": {
-    "npcShortTerm": true,
-    "playerShortTerm": true,
-    "playerLongTerm": true
-  },
   "hud": {
     "layout": "plate",
     "showWorld": true,

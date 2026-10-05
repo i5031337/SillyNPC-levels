@@ -334,9 +334,7 @@
     text-align: left;
 }
 
-/* Prose introducing a tab or one of its halves: left, and the width it is given, for the
-   same reason the Threads blurb is - a centred paragraph inherited from SillyTavern's own
-   .popup reads as a block pinned at one width. */
+/* Prose introducing a tab or one of its halves: left aligned at the available width. */
 .sillynpc-tab-intro {
     width: 100%;
     max-width: 100ch;

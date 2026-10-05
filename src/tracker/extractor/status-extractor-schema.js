@@ -5,7 +5,6 @@ import { npcTemplates } from '../../core/npc-templates.js';
 import { poolTags, strangerKind } from '../../characters/default-portraits.js';
 import { numericDeltaNames, configuredXpName } from './status-extractor-deltas.js';
 import { isTurnStat } from '../stat-update-policy.js';
-import { goalFields } from '../goals.js';
 
 /**
  * A JSON schema describing exactly the stats and collections this user has configured.
@@ -87,15 +86,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
     const playerCollections = collectionProps('player');
     const npcCollections = collectionProps('npc');
 
-    const goalProps = scope => {
-        const fields = goalFields(scope);
-        return fields.length ? { type: 'object', properties: Object.fromEntries(fields.map(field => [
-            field.id, { type: 'object', required: ['action', 'text', 'quote'], properties: {
-                action: { type: 'string' }, text: { type: 'string' }, quote: { type: 'string' },
-            } },
-        ])) } : null;
-    };
-
     return {
         type: 'object',
         // Required at the top level so a model cannot satisfy the schema with "{}",
@@ -114,7 +104,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                         && (!playerProgression.enabled || stat.name !== playerProgression.levelName))),
                     ...(playerDeltas.length ? { deltas: deltaMap(playerDeltas) } : {}),
                     ...(playerCollections ? { collections: playerCollections } : {}),
-                    ...(goalProps('player') ? { goals: goalProps('player') } : {}),
                 },
             },
             characters: {
@@ -129,7 +118,6 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                         stats: stringMap(npcStatDefs),
                         ...(npcDeltas.length ? { deltas: deltaMap(npcDeltas) } : {}),
                         ...(npcCollections ? { collections: npcCollections } : {}),
-                        ...(goalProps('npc') ? { goals: goalProps('npc') } : {}),
                     },
                 },
             },
