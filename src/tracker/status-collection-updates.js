@@ -3,6 +3,24 @@ import { getSettings } from '../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 
 export function bind(deps) {
+// The reader drains preview diagnostics around its dry run; ordinary writes do not queue them.
+const warnings = [];
+function takeCollectionWarnings() {
+    return [...new Set(warnings.splice(0))];
+}
+function warnSkipped(actor, collectionId, reason, dryRun) {
+    const message = `Collection "${collectionId}" for ${actor.name || 'unnamed actor'} skipped: ${reason}`;
+    if (dryRun) warnings.push(message);
+    debugLog(message);
+}
+function itemIdentifier(actor, collectionId, itemData, primary, dryRun) {
+    const value = itemData?.[primary] ?? itemData?.name;
+    if (value === undefined || value === null || !String(value).trim()) {
+        warnSkipped(actor, collectionId, `entry requires primary field "${primary}".`, dryRun);
+        return undefined;
+    }
+    return value;
+}
 function normaliseItem(itemData, fields, previous = null) {
     const out = {};
     for (const fieldDef of fields || []) {
@@ -30,6 +48,7 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
     
     // Validate collection exists
     if (!colDef) {
+        warnSkipped(actor, collectionId, `unknown collection ID. Expected one of: ${settings.collections.map(col => `"${col.id}"`).join(', ') || '(none configured)'}.`, dryRun);
         console.warn(LOG_PREFIX, `Attempted to update non-existent collection: ${collectionId}`);
         return;
     }
@@ -39,7 +58,7 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
     // Validate target
     const isPlayer = actor.name === deps.getCurrentPersonaName(); // Simple check for player
     if (!collectionAppliesTo(colDef, isPlayer ? 'player' : 'npc', actor)) {
-        debugLog(`Blocked collection update: ${collectionId} does not apply to ${actor.name}.`);
+        warnSkipped(actor, collectionId, `does not apply to ${isPlayer ? 'the player' : `NPC template "${actor.npcTemplateId || '(unassigned)'}"`}. Check the collection's targets.`, dryRun);
         return;
     }
 
@@ -73,10 +92,8 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
         const primaryField = validFields.find(f => f.isPrimary) || { name: 'name' };
 
         update.forEach(itemData => {
-            if (!itemData || typeof itemData !== 'object') return;
-            
-            const itemName = itemData[primaryField.name] || itemData.name;
-            if (!String(itemName ?? '').trim()) return;
+            const itemName = itemIdentifier(actor, actualCollectionId, itemData, primaryField.name, dryRun);
+            if (itemName === undefined) return;
 
             // Skip if recently deleted (tombstone)
             const lowerName = String(itemName).toLowerCase();
@@ -121,7 +138,8 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
     if (Array.isArray(update.add)) {
             for (const itemData of update.add) {
                 const primaryField = colDef.fields.find(f => f.isPrimary) || { name: 'name' };
-                const itemName = itemData[primaryField.name] || itemData.name;
+                const itemName = itemIdentifier(actor, actualCollectionId, itemData, primaryField.name, dryRun);
+                if (itemName === undefined) continue;
                 const lowerName = String(itemName).toLowerCase();
                 const state = deps.committedState || deps.loadStateFromMetadata();
                 
@@ -142,8 +160,8 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
     if (Array.isArray(update.update)) {
         const primary = colDef.fields.find(field => field.isPrimary)?.name || 'name';
         for (const upd of update.update) {
-            const itemName = upd[primary] ?? upd.name;
-            if (itemName !== undefined && itemName !== null) updateItem(actor, actualCollectionId, itemName, upd);
+            const itemName = itemIdentifier(actor, actualCollectionId, upd, primary, dryRun);
+            if (itemName !== undefined) updateItem(actor, actualCollectionId, itemName, upd);
         }
     }
 }
@@ -160,8 +178,8 @@ function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
     if (!colDef) return;
 
     const primaryField = colDef.fields.find(f => f.isPrimary) || { name: 'name' };
-    const itemName = itemData[primaryField.name] !== undefined ? itemData[primaryField.name] : itemData.name;
-    if (itemName === undefined || itemName === null) return;
+    const itemName = itemIdentifier(actor, collectionId, itemData, primaryField.name, dryRun);
+    if (itemName === undefined) return;
 
     // Clear from recently_deleted if it was there
     const lowerName = String(itemName).toLowerCase();
@@ -231,7 +249,7 @@ function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
  * Removes an item from an actor's collection by name.
  */
 function removeItem(actor, collectionId, itemName, isManual = false) {
-    if (!actor.collections || !actor.collections[collectionId] || !itemName) return;
+    if (!actor.collections || !actor.collections[collectionId] || itemName === undefined || itemName === null) return;
     
     const settings = getSettings().statusTracker;
     const colDef = settings.collections.find(c => c.id === collectionId);
@@ -254,7 +272,7 @@ function removeItem(actor, collectionId, itemName, isManual = false) {
  * Updates an item in an actor's collection.
  */
 function updateItem(actor, collectionId, itemName, updates) {
-    if (!actor.collections || !actor.collections[collectionId] || !itemName) return;
+    if (!actor.collections || !actor.collections[collectionId] || itemName === undefined || itemName === null) return;
     
     const settings = getSettings().statusTracker;
     const colDef = settings.collections.find(c => c.id === collectionId);
@@ -291,6 +309,7 @@ function updateItem(actor, collectionId, itemName, updates) {
  */
 
 Object.defineProperties(deps, {
+    takeCollectionWarnings: { enumerable: true, configurable: true, get: () => takeCollectionWarnings },
     applyCollectionUpdate: { enumerable: true, configurable: true, get: () => applyCollectionUpdate },
     addItem: { enumerable: true, configurable: true, get: () => addItem },
     removeItem: { enumerable: true, configurable: true, get: () => removeItem },

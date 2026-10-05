@@ -96,11 +96,14 @@ export function buildDeltaExample(trackerSettings) {
 
     const col = cols[0];
     const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
+    const identifier = col.fields?.find(f => f.name === primary);
+    const primaryValue = identifier?.type === 'number' ? '<exact numeric identifier>'
+        : identifier?.type === 'boolean' ? '<true or false identifier>' : '<exact name>';
 
     const item = {};
     for (const field of col.fields || [{ name: 'name' }]) {
         if (field.name === primary) {
-            item[field.name] = '<exact name>';
+            item[field.name] = primaryValue;
         } else if (field.type === 'number') {
             item[field.name] = '<number, or omit if the message does not say>';
         } else if (field.type === 'boolean') {
@@ -112,13 +115,13 @@ export function buildDeltaExample(trackerSettings) {
 
     /* All three verbs. The example is the only place the reply's shape is shown in the
        user's own names, so a verb missing from it is a verb the reader does not use. */
-    const changed = { [primary]: '<exact name>', ...Object.fromEntries(
+    const changed = { [primary]: primaryValue, ...Object.fromEntries(
         Object.entries(item).filter(([key]) => key !== primary).slice(0, 1)
             .map(([key]) => [key, '<its new value>'])) };
     const shape = {
         [col.id]: {
             add: [item],
-            remove: ['<exact name of something lost>'],
+            remove: [primaryValue],
             ...(Object.keys(changed).length > 1 ? { update: [changed] } : {}),
         },
     };

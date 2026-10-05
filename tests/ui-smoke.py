@@ -156,6 +156,17 @@ with browser_session() as browser:
             settings.showRawTrackerOutput = true;
             renderExtractionReport(message, 0);
             result.reportRestored = !!message.querySelector('.sillynpc-reader-report details');
+            const warning = 'Collection "missing" skipped: expected "moves". <img src=x onerror=alert(1)>';
+            chat[0].extra.sillynpc_reader_report.warnings = [warning];
+            settings.showRawTrackerOutput = false;
+            renderExtractionReport(message, 0);
+            const warningBox = message.querySelector('.sillynpc-reader-warnings');
+            result.collectionWarningsVisible = warningBox?.textContent.includes(warning)
+              && !warningBox.querySelector('img')
+              && !message.querySelector('.sillynpc-reader-content');
+            delete chat[0].extra.sillynpc_reader_report.warnings;
+            renderExtractionReport(message, 0);
+            result.collectionWarningsCleared = !message.querySelector('.sillynpc-reader-report');
             result.manualOption = !!panel.querySelector('option[value="manual"]');
             result.buttons = document.querySelectorAll('#sillynpc-read-button').length;
             result.accessible = document.querySelector('#sillynpc-read-button')?.getAttribute('aria-label');
@@ -191,6 +202,7 @@ with browser_session() as browser:
     assert all(manual_result.get(key) for key in [
         'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
         'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored',
+        'collectionWarningsVisible', 'collectionWarningsCleared',
         'rewardsInitiallyCollapsed', 'rewardsEnabled', 'rewardsActualFields',
         'rewardsIdentifierValidation', 'rewardsRangeValidation', 'rewardsValidSchedule',
         'rewardsNarrowLayout', 'rewardsGuidedControls', 'rewardsIntervalValidation',

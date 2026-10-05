@@ -52,9 +52,9 @@ export function renderExtractionReport(mesEl, messageId) {
     previous?.remove();
     const showOutput = getSettings().statusTracker.showRawTrackerOutput !== false;
     const rewardFailures = getContext()?.chat?.[Number(messageId)]?.extra?.sillynpc_level_reading?.failures?.length;
-    if (!showOutput && !rewardFailures) return;
     const report = getExtractionReport(messageId);
     if (!report) return;
+    if (!showOutput && !rewardFailures && !report.warnings?.length) return;
 
     const panel = document.createElement('div');
     panel.className = `sillynpc-reader-report sillynpc-theme-${getSettings().menuStyle || 'default'}`;
@@ -73,6 +73,19 @@ export function renderExtractionReport(mesEl, messageId) {
             ? `Tracker reading failed · ${report.summary}`
             : `Tracker reading complete · ${report.summary}`;
         details.appendChild(summary);
+        if (report.warnings?.length) {
+            const warnings = document.createElement('div');
+            warnings.className = 'sillynpc-review-loose-notes sillynpc-reader-warnings';
+            const heading = document.createElement('strong');
+            heading.textContent = 'Skipped collection changes';
+            warnings.appendChild(heading);
+            for (const warning of report.warnings) {
+                const line = document.createElement('div');
+                line.textContent = warning;
+                warnings.appendChild(line);
+            }
+            details.appendChild(warnings);
+        }
         const content = document.createElement('div');
         content.className = 'sillynpc-reader-content';
         if (report.output && typeof report.output === 'object') {

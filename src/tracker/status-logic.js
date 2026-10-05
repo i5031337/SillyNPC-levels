@@ -87,6 +87,7 @@ export const parseMessageForUpdates = deps.parseMessageForUpdates;
 export const splitStatKeyPart = deps.splitStatKeyPart;
 export const allowedValues = deps.allowedValues;
 export const takeRefusedValues = deps.takeRefusedValues;
+export const takeCollectionWarnings = deps.takeCollectionWarnings;
 export const constrainToOptions = deps.constrainToOptions;
 export const capToLength = deps.capToLength;
 export const constrainToDefinition = deps.constrainToDefinition;

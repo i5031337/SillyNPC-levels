@@ -31,6 +31,7 @@ export const readerPromptTexts = [
 
 ### COLLECTIONS AND THEIR FIELDS
 {{collections}}
+Use the quoted collection ID as the JSON key under "collections", never its display label. Use exact field spelling and capitalization. Include the configured primary field in every "add" and "update" entry, using its declared type; "remove" lists those same identifiers. A separate item "name" is unnecessary unless it is the configured primary field.
 {{/collections}}
 {{#newNpcReply}}
 

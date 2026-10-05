@@ -2,7 +2,7 @@ import { getAllCharacters } from '../../characters/character-repository.js';
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings } from '../../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../../core/constants.js';
-import { loadStateFromMetadata, getCurrentPersonaKey, rememberSwipeBase, refreshTurnBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues } from '../status-logic.js';
+import { loadStateFromMetadata, getCurrentPersonaKey, rememberSwipeBase, refreshTurnBase, sanitizeModelUpdate, reconcileScenePresence, applyUpdate, takeRefusedValues, takeCollectionWarnings } from '../status-logic.js';
 import { computeStateDiff, partitionChanges, buildUpdateFromChanges, attachReasons } from '../status-diff.js';
 import { setPendingChanges, isItemDecided } from '../status-review.js';
 import { recordAppliedChanges } from '../snapshots/status-snapshots.js';
@@ -223,7 +223,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         /* Anything refused before this run belongs to an older one; the dry run below sees
            this whole reply, so what it turns down is this message's. */
         takeRefusedValues();
+        takeCollectionWarnings();
         const wouldBe = applyUpdate(parsed, { dryRun: true, admitCharacters: true });
+        warnings.push(...takeCollectionWarnings());
         const refused = takeRefusedValues().map(({ field, wanted, allowed, kept }) =>
             `${field}: "${wanted}" is not one of ${allowed.join(', ')} - kept "${kept}"`);
         if (refused.length) debugLog('Values refused by their allowed lists', refused);
@@ -276,10 +278,10 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             `${appliedCount} applied`,
             `${pending.length} awaiting review`,
         ];
-        parts.push(...warnings);
+        if (warnings.length) parts.push(`${warnings.length} collection warning${warnings.length === 1 ? '' : 's'}`);
         if (grants.failures.length) parts.push(`${grants.failures.length} level-up choices failed; retry rewards`);
         if (blocked) parts.push(`${blocked} blocked by standing decisions`);
-        report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput };
+        report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput, warnings };
         // Save the reading before the additional lore requests, so changing chats or
         // replies during profile generation cannot lose applied rows or review proposals.
         const profiles = await generateNewNpcProfiles(

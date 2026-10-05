@@ -44,6 +44,8 @@ function harness(mode = 'extract') {
     let pending = [{ old: true }];
     let response = { player: { stats: {}, deltas: { XP: 20 } } };
     let onRequest = () => {};
+    let previewWarnings = [];
+    let collectionWarnings = [];
     let prompted;
     const deps = {
         getContext: () => context, swipeBaseRecord: () => base,
@@ -62,12 +64,13 @@ function harness(mode = 'extract') {
         refreshTurnBase: () => { base.beforeApply = { state: structuredClone(live), profiles: {} }; },
         sanitizeModelUpdate: () => {}, reconcileScenePresence: () => {},
         applyUpdate: (parsed, options) => {
+            if (options?.dryRun) collectionWarnings.push(...previewWarnings);
             const result = structuredClone(live);
             Object.assign(result.player.stats, parsed.player?.stats || {});
             if (!options?.dryRun) live = result;
             return result;
         },
-        takeRefusedValues: () => [], computeStateDiff: (before, after) =>
+        takeCollectionWarnings: () => collectionWarnings.splice(0), takeRefusedValues: () => [], computeStateDiff: (before, after) =>
             before.player.stats.XP === after.player.stats.XP ? [] : [{ label: 'XP', after: after.player.stats.XP }],
         partitionChanges: changes => ({ auto: changes, pending: [] }),
         buildUpdateFromChanges: () => ({}), attachReasons: () => [],
@@ -94,8 +97,23 @@ function harness(mode = 'extract') {
     });
     return { run: (options = { regenerate: true }) => extraction.extractStateFromMessage(message.mes, 0, options),
         live: () => live, pending: () => pending, prompted: () => prompted, message, context, base,
-        setResponse: value => { response = value; }, onRequest: fn => { onRequest = fn; } };
+        setResponse: value => { response = value; }, onRequest: fn => { onRequest = fn; },
+        setWarnings: value => { previewWarnings = value; } };
 }
+test('reader reports skipped collection proposals even with no review rows and clears them on regeneration', async () => {
+    const h = harness();
+    h.setResponse({ player: {} });
+    const warning = 'Collection "moves" for Player skipped: entry requires primary field "move".';
+    h.setWarnings([warning]);
+    assert.equal((await h.run()).applied, true);
+    assert.deepEqual(h.pending(), []);
+    assert.deepEqual(h.message.report.warnings, [warning]);
+    assert.match(h.message.report.summary, /1 collection warning/);
+    h.setWarnings([]);
+    await h.run();
+    assert.deepEqual(h.message.report.warnings, []);
+    assert.doesNotMatch(h.message.report.summary, /collection warning/);
+});
 test('regeneration replaces XP and applied rows, clears old proposals and keeps manual edits', async () => {
     const h = harness();
     assert.equal((await h.run()).applied, true);
