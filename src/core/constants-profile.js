@@ -50,7 +50,7 @@ export function hintFor(field) {
 }
 
 export function isStaticField(field) {
-    return field?.isStatic !== false && (field?.type !== 'number' || !!field?.isPrimary);
+    return !!field?.isPrimary || (field?.isStatic !== false && field?.type !== 'number');
 }
 
 export function anyProfileFieldUnlocked(characters) {

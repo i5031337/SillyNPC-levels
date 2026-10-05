@@ -43,15 +43,15 @@ function createFieldControls(col, field, fIdx) {
             <option value="number" ${field.type === 'number' ? 'selected' : ''}>Num</option>
             <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Bool</option>
         </select>
-        ${fIdx === 0 ? '<small class="sillynpc-collection-identifier" title="The first field always identifies each entry and cannot be moved or deleted.">Identifier</small>' : ''}
+        ${fIdx === 0 ? '<small class="sillynpc-collection-identifier" title="The first field always identifies each entry, is always Static, and cannot be moved or deleted.">Identifier</small>' : ''}
         ${field.type === 'text' ? `
         <label class="sillynpc-check-group-tight" title="Edit this field in a box you can write several lines in, rather than on one line. Text fields only.&#10;&#10;Ticked together with Static, it also means the field is prose belonging to the item rather than to whoever is holding it - see Static.">
             <input type="checkbox" class="f-multiline" ${field.isMultiline ? 'checked' : ''}>
             <small class="sillynpc-row-hint">Multi</small>
         </label>
         ` : ''}
-        ${field.type !== 'number' || field.isPrimary ? `
-        <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody.&#10;&#10;The tracker's reader is shown the value every message - it has to know what a thing is to judge what a message did with it - but it cannot change one: the Library's value is written back over whatever it returns. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers ignore this and are always per-holder, unless the number is the identifier.">
+        ${!field.isPrimary && field.type !== 'number' ? `
+        <label class="sillynpc-check-group-tight" title="This field belongs to the item, not to whoever is holding it. Its value is kept once in the Item Library and copied onto every copy of that item, so the same thing reads the same way on everybody.&#10;&#10;The tracker's reader is shown the value every message - it has to know what a thing is to judge what a message did with it - but it cannot change one: the Library's value is written back over whatever it returns. Untick this to have the reader keep the field up to date per holder instead.&#10;&#10;Numbers are always per-holder. The identifier is always Static.">
             <input type="checkbox" class="f-static" ${field.isStatic !== false ? 'checked' : ''}>
             <small class="sillynpc-row-hint">Static</small>
         </label>
@@ -137,8 +137,8 @@ function wireFieldProperties(fRow, col, field, fieldsList, onRefresh, context) {
         if (field.type === 'number') delete field.options;
         if (field.type !== 'text') field.isMultiline = false;
 
-        // Default isStatic logic: numbers are dynamic by default, others static
-        field.isStatic = field.type !== 'number';
+        // Identifiers stay static for every type; other numbers are personal.
+        field.isStatic = field.isPrimary || field.type !== 'number';
 
         saveSettings();
         renderCollectionFields(col, fieldsList, onRefresh, context);

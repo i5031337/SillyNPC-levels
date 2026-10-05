@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { isStaticField } from '../src/core/constants-profile.js';
 import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,6 +34,23 @@ test('missing and duplicate Primary flags are repaired deterministically and nor
     assert.equal(normalize([]).fields[0].name, 'name');
     assert.equal(normalize([{ name: 'hp', type: 'number' }]).fields[0].name, 'hp');
     assert.equal(normalize([{ name: 'quantity' }, { name: 'name' }]).fields[0].name, 'name');
+});
+
+test('identifiers are always static, including imported personal identifiers of every type', () => {
+    for (const type of ['text', 'number', 'boolean']) {
+        const field = { name: 'key', type, isPrimary: true, isStatic: false };
+        assert.equal(isStaticField(field), true);
+        const col = normalize([field, { name: 'personal', type, isStatic: false }]);
+        assert.equal(col.fields[0].isStatic, true);
+        assert.equal(isStaticField(col.fields[1]), false);
+        assert.deepEqual(normalize(col.fields), col);
+        const raw = { fields: [field] };
+        assert.equal(ensureCollectionIdentifier(raw), true);
+        assert.equal(field.isStatic, true);
+        assert.equal(ensureCollectionIdentifier(raw), false);
+    }
+    assert.equal(isStaticField({ type: 'number', isStatic: true }), false);
+    assert.equal(isStaticField({ type: 'text', isStatic: true }), true);
 });
 
 test('reorder and delete operations cannot replace the identifier, even after every other field is removed', () => {

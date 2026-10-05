@@ -20,6 +20,10 @@ export function ensureCollectionIdentifier(collection) {
             changed = true;
         }
     });
+    if (fields[0].isStatic !== true) {
+        fields[0].isStatic = true;
+        changed = true;
+    }
     return changed;
 }
 

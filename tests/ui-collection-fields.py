@@ -20,9 +20,16 @@ with browser_session() as browser:
           moduleUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
           const { renderCollectionFields } = await import(moduleUrl);
           const col = { id: 'fixture-moves', fields: [
-            { name: 'pp', type: 'number' }, { name: 'move', type: 'text', isPrimary: true },
+            { name: 'pp', type: 'number' }, { name: 'move', type: 'text', isPrimary: true, isStatic: false },
             { name: 'description', type: 'text' }] };
-          renderCollectionFields(col, host, () => {});
+          renderCollectionFields(col, host, () => {}, { saveSettings() {} });
+          let identifierAlwaysStatic = true;
+          for (const value of ['number', 'boolean', 'text']) {
+            const select = host.firstElementChild.querySelector('.f-type');
+            select.value = value; select.dispatchEvent(new Event('change'));
+            identifierAlwaysStatic &&= col.fields[0].isStatic === true
+                && !host.firstElementChild.querySelector('.f-static');
+          }
           const numeric = host.children[1];
           const numericOptionsHidden = !numeric.querySelector('.f-options');
           const numericControlsHidden = !numeric.querySelector('.f-multiline') && !numeric.querySelector('.f-static');
@@ -71,7 +78,7 @@ with browser_session() as browser:
           const inputBounds = [pp.min, pp.max]; items.remove();
           const first = host.firstElementChild;
           const initial = {
-            numericControlsHidden, wrapsWithoutOverflow, rangeErrorShown, rangeErrorCleared,
+            identifierAlwaysStatic, numericControlsHidden, wrapsWithoutOverflow, rangeErrorShown, rangeErrorCleared,
             numericOptionsHidden, savedRange, textChoicesShown, rangeRestored, rangeRoundtrip, manualMaximum, manualMinimum, inputBounds,
             keys: col.fields.map(field => field.name),
             toggles: host.querySelectorAll('.f-primary').length,
@@ -99,6 +106,7 @@ with browser_session() as browser:
         time.sleep(0.1)
     execute("document.querySelector('#sillynpc-template-smoke')?.remove(); document.body.removeAttribute('data-npc-template-smoke')")
     assert result and 'error' not in result, result
+    assert result['identifierAlwaysStatic'], result
     assert result['numericControlsHidden'] and result['wrapsWithoutOverflow'], result
     assert result['rangeErrorShown'] and result['rangeErrorCleared'], result
     assert result['numericOptionsHidden'] and result['textChoicesShown'] and result['rangeRestored'] and result['rangeRoundtrip'], result

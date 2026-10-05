@@ -50,6 +50,7 @@ export function validateFields(fields, path, errors, kind = 'stat') {
             if (typeof field.defaultValue !== 'string') errors.push(`${p}.defaultValue: expected text`);
             if (field.options?.length && field.defaultValue !== '' && !field.options.includes(field.defaultValue)) errors.push(`${p}.defaultValue: not an allowed option`);
         }
+        if (kind === 'collection' && field.isPrimary && field.isStatic !== true) errors.push(`${p}.isStatic: identifiers must be static`);
         if (kind === 'collection' && field.type === 'number' && !field.isPrimary && field.isStatic) errors.push(`${p}.isStatic: numeric values must be personal`);
         if (kind !== 'stat') return;
         if (/level bonus/i.test(field.name)) errors.push(`${p}.name: Level Bonus is not a narrative stat`);

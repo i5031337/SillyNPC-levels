@@ -21,7 +21,7 @@ export const statSchema = object({ id, name: text, type: enumeration(['number', 
 ['id', 'name', 'type', 'defaultValue', 'purpose', 'locked']);
 export const fieldSchema = object({ id, name: text, label: text, type: enumeration(['text', 'number', 'boolean']),
     defaultValue: scalar, guidance: text, min: text, maxStatValue: text, options: array(text),
-    isPrimary: bool, isStatic: bool, isMultiline: bool, retired: bool },
+    isPrimary: bool, isStatic: { ...bool, description: 'Always true for the identifier (isPrimary); other numeric fields must be false. Other fields may be shared static or personal.' }, isMultiline: bool, retired: bool },
 ['id', 'name', 'label', 'type', 'defaultValue', 'isPrimary', 'isStatic']);
 export const rewardSchema = object({ enabled: bool, mode: enumeration(['scheduled', 'guided']), guidance: text,
     interval: { type: 'integer', minimum: 1 }, schedule: array(object({ id,

@@ -28,7 +28,7 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
                 <li><b>Collections:</b> one entry per item, skill or piece of clothing.
                     An inventory collection might have a name, quantity and description. Enable Level-up rewards
                     to propose scheduled or story-guided entries for the collection’s existing targets.</li>
-                <li><b>Identifier:</b> the first field always identifies each entry, usually by name.
+                <li><b>Identifier:</b> the first field always identifies each entry, usually by name, and is always Static.
                     The reader must include this value when adding an entry; an entry without an identifier is skipped.</li>
                 <li><b>Static:</b> static text is shared through the Item Library for the same item across holders.
                     Untick Static for text that should change per holder, such as equipped status.</li>

@@ -34,7 +34,7 @@ export function responseFor(stage, registry) {
         const c = registry.collections.find(c => c.id === scope);
         section = { id: c.id, name: c.name, targets: c.targets, guidance: c.purpose, fields: c.fields.map((f, index) => ({
             id: f.id, name: f.id, label: f.name, type: index ? 'number' : 'text', defaultValue: index ? 1 : '',
-            isPrimary: !index, isStatic: !index, ...(index ? { min: '1', maxStatValue: '3' } : {}) })) };
+            isPrimary: index === 0, isStatic: index === 0, ...(index ? { min: '1', maxStatValue: '3' } : {}) })) };
     }
     if (kind === 'rewards') section = { enabled: true, mode: 'scheduled', guidance: 'Learn at training milestones.', interval: 1,
         schedule: [{ id: 'reward-2', level: 2, entry: { name: 'Quick Strike', power: 2 } }, { id: 'reward-3', level: 3, entry: { name: 'Guard', power: 1 } }] };

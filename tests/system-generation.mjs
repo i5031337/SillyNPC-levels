@@ -193,6 +193,7 @@ test('strict validation rejects semantic corruption before normalization can rep
         d => { d.progression.player.statIds = ['xp']; },
         d => { d.collections[0].targets = ['template:missing']; },
         d => { d.collections[0].fields[1].isPrimary = true; },
+        d => { d.collections[0].fields[0].isStatic = false; },
         d => { d.collections[0].levelUpRewards.schedule[0].entry.power = 4; },
         d => { d.collections[0].levelUpRewards.schedule[0].entry.unknown = 'bad'; },
         d => { d.hud.playerStatIds = ['missing']; },
