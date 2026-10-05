@@ -230,7 +230,7 @@ export function renderManageView() {
         button.setAttribute('aria-controls', `sillynpc-panel-${active ? manageState.activeTab : first.dataset.tab}`);
         button.tabIndex = active ? 0 : -1;
     }
-    const singlePage = section === 'appearance' || section === 'more';
+    const singlePage = section === 'systems' || section === 'appearance' || section === 'more';
     const subtabs = manageState.manageRoot.querySelector('.sillynpc-subtabs');
     subtabs.hidden = singlePage;
     subtabs.style.display = singlePage ? 'none' : '';
@@ -317,7 +317,7 @@ function settingsTabs() {
           render: v => renderStatusView(v) },
         { id: 'hud', label: 'Status / HUD', container: 'sillynpc-hud-view',
           render: v => renderHudView(v) },
-        { id: 'systems', label: 'Status / Systems', container: 'sillynpc-systems-view',
+        { id: 'systems', label: 'System', container: 'sillynpc-systems-view',
           render: v => renderSystemsView(v) },
         { id: 'generation', label: 'Story / Generation', container: 'sillynpc-generation-settings-view',
           render: v => renderGenerationSettingsView(v) },

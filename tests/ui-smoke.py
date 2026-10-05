@@ -234,7 +234,15 @@ try:
         'rewardsNarrowLayout', 'rewardsGuidedControls', 'rewardsIntervalValidation',
         'rewardsValidInterval', 'rewardsDisabled',
     ]), manual_result
-    execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
+    execute("document.querySelector('.sillynpc-section[data-section=systems]').click()")
+    system_nav = execute("""return {
+        section: document.querySelector('.sillynpc-section.active')?.textContent.trim(),
+        page: document.querySelector('.sillynpc-tab.active')?.dataset.tab,
+        subtabsHidden: document.querySelector('.sillynpc-subtabs')?.hidden,
+        panelLabel: document.querySelector('[data-panel=systems]')?.getAttribute('aria-labelledby'),
+        builderVisible: !!document.querySelector('.sillynpc-system-builder')};""")
+    assert system_nav == {'section': 'System', 'page': 'systems', 'subtabsHidden': True,
+                          'panelLabel': 'sillynpc-section-systems', 'builderVisible': True}, system_nav
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
         return {rows: rows.length,
@@ -270,7 +278,7 @@ try:
         return {overflow: tabs.scrollWidth > tabs.clientWidth + 2,
           visiblePages: [...document.querySelectorAll('.sillynpc-subtabs .sillynpc-tab')]
             .filter(tab => !tab.hidden).length};""")
-    assert narrow == {'overflow': False, 'visiblePages': 4}, narrow
+    assert narrow == {'overflow': False, 'visiblePages': 3}, narrow
     print('SillyNPC live UI passed:', json.dumps(result))
 finally:
     if session:
