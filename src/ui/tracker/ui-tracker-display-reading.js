@@ -104,7 +104,7 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
                 + 'card in this chat and writes its configured profile fields to lore. '
                 + 'Uses the lore generation connection and context settings, with one extra '
                 + 'request per new NPC. Unsupported details may stay blank. Existing cards '
-                + 'are left as they are. Draw Portrait Automatically under Generation → Image Generation controls image requests.',
+                + 'are left as they are. Draw Portrait Automatically under Images controls image requests.',
             onChange: onApply,
         }));
     }

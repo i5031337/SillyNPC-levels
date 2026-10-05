@@ -10,7 +10,7 @@ with browser_session() as browser:
           const root = ${JSON.stringify(new URL('.', entry.src).href)};
           const { buildCharacterImagePrompt } = await import(root + 'src/api/api-image-generate.js');
           const { generateCharacterImage } = await import(root + 'src/ui/api/ui-api-image.js');
-          const { renderGenerationSettingsView } = await import(root + 'src/ui/settings/ui-settings-generation.js');
+          const { renderImageSettingsView } = await import(root + 'src/ui/settings/ui-settings-generation.js');
           const { renderTrackerDisplayAndReading } = await import(root + 'src/ui/tracker/ui-tracker-display-reading.js');
           const { getSettings } = await import(root + 'src/core/settings.js');
           const { buildProfilesEditor } = await import(root + 'src/ui/system/ui-system-profiles.js');
@@ -20,7 +20,7 @@ with browser_session() as browser:
           let saves = 0;
           try {
             const imageSettings = document.createElement('div');
-            renderGenerationSettingsView(imageSettings);
+            renderImageSettingsView(imageSettings);
             result.noAutomaticFillHeading = ![...imageSettings.querySelectorAll('h3')].some(el => el.textContent === 'Automatic NPC Fill');
             const portraitToggle = imageSettings.querySelector('[data-setting=autoPortraitOnFill]');
             let heading = portraitToggle?.previousElementSibling;

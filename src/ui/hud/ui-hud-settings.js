@@ -6,7 +6,7 @@ import { HUD_LAYOUTS, hudLayoutFor } from '../../core/constants.js';
 import { foldSettings } from '../settings/ui-settings-details.js';
 
 /**
- * The floating HUD's settings tab.
+ * The floating HUD's settings section under Appearance.
  *
  * Split out of status-settings.js, which had grown to 2283 lines rendering four tabs.
  * Nothing here draws the chat - only the HUD it configures.
@@ -17,7 +17,7 @@ import { foldSettings } from '../settings/ui-settings-details.js';
  *
  * It began as one toggle inside the tracker settings and grew to a dozen controls -
  * meter style, meter size, portrait side, shape and border - which left the tracker's
- * own Display section buried underneath them. Its own tab, beside Tracker.
+ * own Display section buried underneath them. These controls now follow the chat styling settings.
  *
  * @param {HTMLElement} container
  */

@@ -6,7 +6,6 @@ import { renderImageStorageSettings } from './ui-settings-generation-storage.js'
 export function renderImageGenerationSettings(view, rerender) {
     const title = document.createElement('h3');
     title.className = 'sillynpc-section-title';
-    title.style.marginTop = '20px';
     title.textContent = 'Image Generation';
     view.append(title, buildBackendDestinationNote());
 

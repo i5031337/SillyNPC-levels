@@ -269,7 +269,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/settings/ui-settings-writing.js` | Writing rule settings. |
 | `src/ui/settings/ui-settings-advanced.js` | Advanced settings. |
 | `src/ui/settings/ui-settings-defaults.js` | Default behavior settings. |
-| `src/ui/settings/ui-settings-generation.js` | Generation settings. |
+| `src/ui/settings/ui-settings-generation.js` | Separate Lorebook and Images settings views. |
 | `src/ui/settings/ui-settings-generation-helpers.js` | Shared helpers for generation settings. |
 | `src/ui/settings/ui-settings-generation-image.js` | Portrait shape and prompt controls for SillyTavern Image Generation. |
 | `src/ui/settings/ui-settings-generation-storage.js` | Portrait folder, image discovery, and orphan cleanup controls. |

@@ -72,7 +72,7 @@
 
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 
-/* The section rail becomes two short rows above the content on narrow screens. */
+/* The section rail sits above the content on narrow screens. */
 @media (max-width: 768px) {
     .sillynpc-manage-layout {
         flex-direction: column;
@@ -99,26 +99,14 @@
     }
 
     .sillynpc-subtabs {
-        padding-top: 4px;
+        margin: var(--sillynpc-space-sm) var(--sillynpc-space-md) 0;
     }
 
-    .sillynpc-tabs .sillynpc-section,
-    .sillynpc-tabs .sillynpc-tab {
+    .sillynpc-tabs .sillynpc-section {
         flex: 0 1 auto;
         width: auto;
         white-space: nowrap;
         padding: 5px 9px;
-    }
-
-    .sillynpc-tabs .sillynpc-tab {
-        border-left: none;
-        border-bottom: 2px solid transparent;
-        border-radius: var(--sillynpc-radius-sm);
-    }
-
-    .sillynpc-tabs .sillynpc-tab.active {
-        border-left-color: transparent;
-        border-bottom-color: var(--sillynpc-accent);
     }
 
     .sillynpc-tab-panel {

@@ -1,3 +1,4 @@
+import { renderHudView } from '../hud/ui-hud-settings.js';
 import { getSettings } from '../../core/settings.js';
 import { buildSettingSelect, buildSettingToggle, buildSettingSlider, updateAllExtensionThemes, applyPortraitFraming, applySpeechPadding } from '../shared/ui-shared.js';
 import { SILLYNPC_THEMES } from '../../core/constants.js';
@@ -153,4 +154,9 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
     const fallbackDetails = customize('Fallback portraits', opened);
     renderDefaultView(fallbackDetails, rerender);
     view.append(fallbackDetails);
+
+    const addedView = document.createElement('div');
+    addedView.id = 'sillynpc-hud-view';
+    view.append(addedView);
+    renderHudView(addedView);
 }

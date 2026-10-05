@@ -120,16 +120,44 @@
     height: 100%;
 }
 
-.sillynpc-sections,
-.sillynpc-subtabs {
+.sillynpc-sections {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
+.sillynpc-manage-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
 .sillynpc-subtabs {
-    padding-top: var(--sillynpc-space-sm);
-    border-top: 1px solid var(--sillynpc-border);
+    display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: 2px;
+    margin: var(--sillynpc-space-md) var(--sillynpc-space-lg) 0;
+    border-bottom: 1px solid var(--sillynpc-border);
+}
+
+.sillynpc-subtabs .sillynpc-tab {
+    width: auto;
+    padding: var(--sillynpc-space-sm) var(--sillynpc-space-md);
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--sillynpc-radius-sm) var(--sillynpc-radius-sm) 0 0;
+    color: var(--sillynpc-fg-secondary);
+    opacity: 1;
+}
+
+.sillynpc-subtabs .sillynpc-tab.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--sillynpc-accent);
+    color: var(--sillynpc-accent-text, var(--sillynpc-accent));
+    background: transparent;
 }
 
 .sillynpc-section {
@@ -159,12 +187,12 @@
 }
 
 .sillynpc-tabs .sillynpc-section:focus-visible,
-.sillynpc-tabs .sillynpc-tab:focus-visible {
+.sillynpc-subtabs .sillynpc-tab:focus-visible {
     outline: 2px solid var(--sillynpc-accent);
     outline-offset: -2px;
 }
 
-.sillynpc-tabs [hidden] { display: none; }
+.sillynpc-manage [hidden] { display: none; }
 
 .sillynpc-tab {
     appearance: none;

@@ -1,3 +1,4 @@
+import { renderStatsView } from '../shared/ui-stats.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { getSettings } from '../../core/settings.js';
 import { buildSettingToggle, buildSettingSlider } from '../shared/ui-shared.js';
@@ -87,4 +88,9 @@ export function renderAdvancedView(view, handlers = {}) {
             + 'Open the console with F12.',
         onChange: () => setDebugLogging(getSettings().debugLogging),
     }));
+
+    const addedView = document.createElement('div');
+    addedView.id = 'sillynpc-stats-view';
+    view.append(addedView);
+    renderStatsView(addedView);
 }

@@ -4,17 +4,18 @@ import { buildConnectionProfilePicker } from './ui-connection-profiles.js';
 import { buildLastLoreConnectionNote, updateExcerptReadout, buildWorldInfoScannerSettings } from './ui-settings-generation-helpers.js';
 import { renderImageGenerationSettings } from './ui-settings-generation-image.js';
 
-export function renderGenerationSettingsView(view) {
-        if (!view) return;
-        view.replaceChildren();
-        renderLoreSettings(view);
-        renderImageGenerationSettings(view, () => renderGenerationSettingsView(view));
+export function renderImageSettingsView(view) {
+    if (!view) return;
+    view.replaceChildren();
+    renderImageGenerationSettings(view, () => renderImageSettingsView(view));
 }
 
-function renderLoreSettings(view) {
+export function renderLoreSettingsView(view) {
+    if (!view) return;
+    view.replaceChildren();
     const title = document.createElement('h3');
     title.className = 'sillynpc-section-title';
-    title.textContent = 'Lorebook & AI';
+    title.textContent = 'Lorebook';
     view.appendChild(title);
 
     view.append(buildWorldInfoScannerSettings());

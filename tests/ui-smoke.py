@@ -8,8 +8,14 @@ with browser_session() as browser:
     execute = browser.execute
     execute("document.querySelector('#sillynpc-open-manage').click()")
     time.sleep(0.5)
+    assert execute("return !document.querySelector('.sillynpc-tabs .sillynpc-subtabs')")
+    execute("document.querySelector('.sillynpc-subtabs [data-tab=player]').click()")
+    assert execute("return !!document.querySelector('#sillynpc-player-view').children.length")
+    execute("document.querySelector('.sillynpc-section[data-section=images]').click()")
+    assert execute("return !!document.querySelector('#sillynpc-image-settings-view').children.length")
+    execute("document.querySelector('.sillynpc-section[data-section=dialogue]').click()")
+    assert execute("return !!document.querySelector('#sillynpc-writing-view').children.length")
     execute("document.querySelector('.sillynpc-section[data-section=status]').click()")
-    execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Tracker').click()")
     cast_controls = execute("""const panel = document.querySelector('#sillynpc-status-view');
         return {section: [...panel.querySelectorAll('h3')].some(el =>
             el.textContent.trim() === 'Who Is In The Scene'),
@@ -214,7 +220,7 @@ with browser_session() as browser:
     execute("document.querySelector('.sillynpc-section[data-section=systems]').click()")
     system_nav = execute("""return {
         section: document.querySelector('.sillynpc-section.active')?.textContent.trim(),
-        page: document.querySelector('.sillynpc-tab.active')?.dataset.tab,
+        page: document.querySelector('.sillynpc-subtabs .sillynpc-tab.active:not([hidden])')?.dataset.tab || document.querySelector('.sillynpc-section.active')?.dataset.tab,
         subtabsHidden: document.querySelector('.sillynpc-subtabs')?.hidden,
         panelLabel: document.querySelector('[data-panel=systems]')?.getAttribute('aria-labelledby'),
         builderVisible: !!document.querySelector('.sillynpc-system-builder')};""")
@@ -243,19 +249,21 @@ with browser_session() as browser:
     search_result = execute("""return {
         section: document.querySelector('.sillynpc-section.active')?.dataset.section,
         detailsOpen: document.querySelector('[data-setting=dividerStyle]')?.closest('details')?.open,
-        activePage: document.querySelector('.sillynpc-tab.active')?.dataset.tab};""")
+        activePage: document.querySelector('.sillynpc-subtabs .sillynpc-tab.active:not([hidden])')?.dataset.tab || document.querySelector('.sillynpc-section.active')?.dataset.tab};""")
+    assert execute("return !!document.querySelector('#sillynpc-appearance-view #sillynpc-hud-view [data-setting]')")
     assert search_result == {'section': 'appearance', 'detailsOpen': True,
                              'activePage': 'appearance'}, search_result
     execute("document.querySelector('.sillynpc-section[data-section=more]').click()")
     more = execute("""return {
-        page: document.querySelector('.sillynpc-tab.active')?.dataset.tab,
+        page: document.querySelector('.sillynpc-subtabs .sillynpc-tab.active:not([hidden])')?.dataset.tab || document.querySelector('.sillynpc-section.active')?.dataset.tab,
         subtabsHidden: document.querySelector('.sillynpc-subtabs')?.hidden};""")
     assert more == {'page': 'advanced', 'subtabsHidden': True}, more
+    assert execute("return !!document.querySelector('#sillynpc-advanced-view #sillynpc-stats-view h3')")
     browser.resize(600, 900)
     execute("document.querySelector('.sillynpc-section[data-section=status]').click()")
     narrow = execute("""const tabs = document.querySelector('.sillynpc-tabs');
         return {overflow: tabs.scrollWidth > tabs.clientWidth + 2,
           visiblePages: [...document.querySelectorAll('.sillynpc-subtabs .sillynpc-tab')]
             .filter(tab => !tab.hidden).length};""")
-    assert narrow == {'overflow': False, 'visiblePages': 3}, narrow
+    assert narrow == {'overflow': False, 'visiblePages': 0}, narrow
     print('SillyNPC live UI passed:', json.dumps(result))

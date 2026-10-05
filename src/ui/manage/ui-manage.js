@@ -5,10 +5,8 @@ import { extensionName, LOG_PREFIX } from '../../core/constants.js';
 import { getSettings } from '../../core/settings.js';
 import { reprocessAllMessages, chatRenderSignature } from '../../chat/chat.js';
 import { resetLorebookState } from '../story/ui-lorebook-section.js';
-import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderGenerationSettingsView } from '../settings/ui-settings-tabs.js';
-import { renderStatsView } from '../shared/ui-stats.js';
+import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderImageSettingsView, renderLoreSettingsView } from '../settings/ui-settings-tabs.js';
 import { renderStatusView } from '../tracker/ui-tracker-settings.js';
-import { renderHudView } from '../hud/ui-hud-settings.js';
 import { buildSystemBuilder } from '../system/ui-system-builder.js';
 import { buildSystemManager } from '../system/ui-system-manager.js';
 import { updateExtensionTheme, repositionCloseButton, hideEmptySections } from '../shared/ui-shared.js';
@@ -129,8 +127,7 @@ function setupTabBar() {
     for (const section of root.querySelectorAll('.sillynpc-section')) {
         section.id = `sillynpc-section-${section.dataset.section}`;
         section.addEventListener('click', () => {
-            const first = root.querySelector(`.sillynpc-tab[data-section="${section.dataset.section}"]`);
-            if (first) switchTab(first.dataset.tab);
+            switchTab(section.dataset.tab || 'characters');
         });
     }
     for (const panel of root.querySelectorAll('.sillynpc-tab-panel')) {
@@ -213,16 +210,17 @@ export function renderManageView() {
 
     // Update tab button states
     const activeTab = manageState.manageRoot.querySelector(`.sillynpc-subtabs .sillynpc-tab[data-tab="${manageState.activeTab}"]`);
-    const section = activeTab?.dataset.section || 'cast';
+    const section = activeTab ? 'cast'
+        : manageState.manageRoot.querySelector(`.sillynpc-section[data-tab="${manageState.activeTab}"]`)?.dataset.section;
     for (const button of manageState.manageRoot.querySelectorAll('.sillynpc-section')) {
         const active = button.dataset.section === section;
-        const first = manageState.manageRoot.querySelector(`.sillynpc-tab[data-section="${button.dataset.section}"]`);
+        const firstTab = button.dataset.tab || 'characters';
         button.classList.toggle('active', active);
         button.setAttribute('aria-selected', String(active));
-        button.setAttribute('aria-controls', `sillynpc-panel-${active ? manageState.activeTab : first.dataset.tab}`);
+        button.setAttribute('aria-controls', `sillynpc-panel-${active ? manageState.activeTab : firstTab}`);
         button.tabIndex = active ? 0 : -1;
     }
-    const singlePage = section === 'systems' || section === 'appearance' || section === 'more';
+    const singlePage = section !== 'cast';
     const subtabs = manageState.manageRoot.querySelector('.sillynpc-subtabs');
     subtabs.hidden = singlePage;
     subtabs.style.display = singlePage ? 'none' : '';
@@ -230,7 +228,7 @@ export function renderManageView() {
     tabs.forEach(t => {
         const tName = t.getAttribute('data-tab');
         const active = tName === manageState.activeTab;
-        const visible = t.dataset.section === section;
+        const visible = section === 'cast';
         t.hidden = !visible;
         t.style.display = visible ? '' : 'none';
         t.classList.toggle('active', active);
@@ -299,21 +297,19 @@ export function renderManageView() {
  */
 function settingsTabs() {
     return [
-        { id: 'appearance', label: 'Appearance / Appearance', container: 'sillynpc-appearance-view',
+        { id: 'appearance', label: 'Appearance', container: 'sillynpc-appearance-view',
           render: v => renderAppearanceView(v, reprocessAllMessages, updateManageTheme) },
-        { id: 'writing', label: 'Story / Writing Rules', container: 'sillynpc-writing-view',
+        { id: 'writing', label: 'Dialogue', container: 'sillynpc-writing-view',
           render: v => renderWritingRulesView(v, reprocessAllMessages) },
-        { id: 'status', label: 'Status / Tracker', container: 'sillynpc-status-view',
+        { id: 'status', label: 'Tracker', container: 'sillynpc-status-view',
           render: v => renderStatusView(v) },
-        { id: 'hud', label: 'Status / HUD', container: 'sillynpc-hud-view',
-          render: v => renderHudView(v) },
         { id: 'systems', label: 'System', container: 'sillynpc-systems-view',
           render: v => renderSystemsView(v) },
-        { id: 'generation', label: 'Story / Generation', container: 'sillynpc-generation-settings-view',
-          render: v => renderGenerationSettingsView(v) },
-        { id: 'stats', label: 'Status / Stats', container: 'sillynpc-stats-view',
-          render: v => renderStatsView(v) },
-        { id: 'advanced', label: 'More / Advanced', container: 'sillynpc-advanced-view',
+        { id: 'lorebook', label: 'Lorebook', container: 'sillynpc-lorebook-settings-view',
+          render: v => renderLoreSettingsView(v) },
+        { id: 'images', label: 'Images', container: 'sillynpc-image-settings-view',
+          render: v => renderImageSettingsView(v) },
+        { id: 'advanced', label: 'Extension', container: 'sillynpc-advanced-view',
           render: v => renderAdvancedView(v, {
               applyPopupSize,
               onExport: () => exportData(),

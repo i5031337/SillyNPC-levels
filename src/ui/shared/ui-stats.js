@@ -159,7 +159,7 @@ function buildKindCard(kind) {
 }
 
 /**
- * The Stats tab.
+ * The Stats section under Extension.
  *
  * @param {HTMLElement} view
  */
