@@ -1,14 +1,6 @@
 import { getLibraryCharacters } from '../../characters/character-repository.js';
 
-/**
- * Finding a character among many.
- *
- * The Entry Library has had a filter since it was written; the grid beside it did not,
- * and past a certain number of cards finding one by eye stops working.
- *
- * Its own module rather than another hundred lines of ui-manage.js, and because the
- * matching and the hiding are worth testing without opening a popup to do it.
- */
+/** Filter library cards without rebuilding the grid while the user types. */
 
 /**
  * What the grid is filtered to.

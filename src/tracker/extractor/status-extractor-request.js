@@ -5,30 +5,25 @@ import { LOG_PREFIX, debugLog, SYSTEM_PROMPT } from '../../core/constants.js';
 import { describeConnection, extractJSON, safeJsonParse } from '../../core/utils.js';
 import { recordUsage } from '../../core/usage.js';
 
-/**
- * Runs the request, preferring a dedicated Connection Profile.
- *
- * @returns {Promise<string|object>} Model output. A backend given a json_schema may
- * return already-parsed data rather than text, so callers must handle both.
- */
-
 /** What a reply cost, whether it arrived as text or as already-parsed data. */
 function describeAnswer(answer) {
     if (typeof answer === 'string') return answer;
     try { return JSON.stringify(answer ?? ''); } catch { return ''; }
 }
-/**
- * The temperature to ask for, or null to send none.
- *
- * Empty means none: the setting has to be able to say "leave it alone", which is what the
- * extension did before it existed.
- */
+/** Optional reader temperature, constrained to the supported 0–2 range. */
 export function readerTemperature(trackerSettings) {
     const typed = String(trackerSettings?.extractionTemperature ?? '').trim();
     if (typed === '') return null;
     const numeric = Number(typed);
     return Number.isFinite(numeric) && numeric >= 0 && numeric <= 2 ? numeric : null;
 }
+
+/**
+ * Runs the request, preferring a dedicated Connection Profile.
+ *
+ * @returns {Promise<string|object>} Model output. A backend given a json_schema may
+ * return already-parsed data rather than text, so callers must handle both.
+ */
 
 export async function requestExtraction(userPrompt, schema, trackerSettings, systemPrompt = null, { usageKind = 'extraction' } = {}) {
     // History scans can supply a specialized prompt. Ordinary turns use the built-in.

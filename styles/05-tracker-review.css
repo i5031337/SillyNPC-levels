@@ -116,13 +116,7 @@
     opacity: 0.7;
 }
 
-/* The header buttons, at the top right of the tracker box.
-   Floated rather than absolutely positioned, so the text beside them wraps around them
-   instead of running underneath. The room for them used to be a fixed padding-right on
-   the header - 50px, which is about two buttons - and the row can carry four: undo
-   appears once there is history, and the cast control was added later. Any count that
-   outgrew the guess put the world stats under the icons. A float needs no guess, and
-   cannot go stale the next time a button is added. */
+/* Float the header buttons so world stats wrap around any number of controls. */
 .sillynpc-status-buttons-container {
     float: right !important;
     display: flex !important;
@@ -228,23 +222,6 @@
 @keyframes sillynpc-scan-pulse {
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.35; }
-}
-
-/* ─── Historical status box ────────────────────────────────────────────── */
-/* Under an older message the box shows that moment, not now. It has to be obviously
-   not-live, or a past number reads as a current one. */
-
-.sillynpc-status-historical {
-    opacity: 0.82;
-}
-
-.sillynpc-status-historical .sillynpc-status-box {
-    border-left: 3px solid color-mix(in srgb, var(--sillynpc-accent), transparent 45%);
-}
-
-/* Nothing recorded for the messages after this one, so the rewind could not complete. */
-.sillynpc-status-approximate .sillynpc-status-box {
-    border-left-style: dotted;
 }
 
 /* ─── Change Review Panel ──────────────────────────────────────────────── */
@@ -389,8 +366,7 @@ span.sillynpc-review-to {
 
 /* Opt-in, and quiet: blacklisting an item forever is a rarer decision than declining
    one, so it must not read as the obvious thing to click. */
-/* Where a row is going. Reads as part of the sentence rather than a form: an addition
-   and a move used to look identical, because neither named a collection. */
+/* Show the destination collection beside each addition or move. */
 .sillynpc-review-dest {
     display: flex;
     align-items: center;

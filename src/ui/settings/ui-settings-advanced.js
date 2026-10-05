@@ -88,13 +88,3 @@ export function renderAdvancedView(view, handlers = {}) {
         onChange: () => setDebugLogging(getSettings().debugLogging),
     }));
 }
-
-/**
- * The pool of faces for speakers who have none.
- *
- * Was one picture and a Browse button. One picture meant every stranger in the story wore
- * the same face, which is worse than no picture at all - it says these are all one person.
- *
- * @param {HTMLElement} view
- * @param {() => void} rerender
- */

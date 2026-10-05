@@ -1,9 +1,9 @@
 import { progressionFields } from './progression-fields.js';
 import { npcStatsFor, proposedNpcTemplate } from '../core/npc-templates.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
+import { getSettings } from '../core/settings.js';
+import { canTrackerSetNpcStat } from './stat-persistence.js';
 import { isTurnStat } from './stat-update-policy.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { splitValue, ceilingFromValue } from '../core/utils.js';
 import { configuredNumericMaximum, keepNumericMaximum } from './numeric-stat-bounds.js';
 
 export function bind(deps) {
@@ -25,35 +25,10 @@ function mergeStatValue(oldVal, newVal, options = {}) {
     const strOld = oldVal !== undefined && oldVal !== null ? String(oldVal) : '';
     const strNew = String(newVal);
     
-    /* Two ceilings can apply, and this is the order of precedence.
-     *
-     * It used to be expressed as an early return - "no configured maximum, so send the new
-     * value as it stands" - which put the second rule below a branch that could never reach
-     * it. So a stat with no maxStatValue lost the actor's own ceiling the moment the model
-     * reported a bare number, which is the usual shape for a model reporting a stat. That is
-     * the same failure clampToCeiling's own note describes: a character given a ceiling of
-     * 350 lost it silently a few messages later, and with nothing left to cap them their
-     * Energy climbed past 350 unopposed.
-     */
-
     // 1. The incoming value brought its own. "280/350" states a ceiling outright.
     if (strNew.includes('/')) return clampToCeiling(strNew.trim());
 
-    /* 2. The actor's own, which the stat definition may know nothing about: one character's
-     *    Energy caps at 350 while another's caps at 40, with nothing configured globally.
-     *
-     *    Only for a value being reported rather than written. A model answering "Energy: 80"
-     *    is reading the current half of 280/350 and says nothing about the ceiling, so
-     *    keeping it is the only honest reading. Somebody typing 80 into the field has
-     *    written the whole value, and a rule that helpfully appends "/350" to it means the
-     *    ceiling can be changed but never removed - which is exactly what it meant.
-     */
-    /* A number, or it is not a ceiling. A fill once wrote the words "current/maximum" into
-       a new character's Health - the model copied the shape it was shown instead of filling
-       it in - and from then on every value written to that field came back as
-       "Observe the party dynamics./maximum", because the word after the slash was being kept
-       as the ceiling. ceilingFromValue answers the same question for the prompts and the
-       meters, and says no to a date for the same reason. */
+    // Preserve a valid held pool ceiling for reader updates; manual edits replace it.
     const parts = strOld.split('/');
     if (!verbatim && parts.length === 2 && ceilingFromValue(strOld) !== null) {
         return clampToCeiling(`${strNew.trim()}/${parts[1].trim()}`);
@@ -209,19 +184,7 @@ function highestCeiling(characters, name) {
     return best;
 }
 
-/**
- * Does this stat hold a quantity?
- *
- * The field type used to be Text or Meter, which named the drawing rather than the
- * content - so a field could be "a meter" while holding a date, and switching it back to
- * Text left the HUD still drawing one. Number is what was meant: it says the value is a
- * quantity, and whether a meter is drawn follows from the value.
- *
- * 'bar' is the old spelling and is still read, because a system preset saved before the
- * rename carries it and is applied without passing through the settings migration.
- *
- * @param {{type?: string}} statDef
- */
+/** Numeric fields also accept the saved 'bar' type before normalization. */
 function isNumericStat(statDef) {
     const type = statDef?.type;
     return type === 'number' || type === 'bar';

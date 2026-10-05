@@ -211,7 +211,6 @@ export function renderProfileFields(char, container) {
         // the redo floating in the middle of nothing.
         labelRow.append(label, controls);
 
-
         row.append(labelRow, input);
         grid.append(row);
     }

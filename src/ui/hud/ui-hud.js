@@ -1,18 +1,11 @@
 import { eventSource } from '../../../../../../events.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
-import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, resolveMaxValue, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
 import { openPlayerSheet } from '../characters/ui-player-sheet.js';
-import {
-    allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR,
-    hudLayoutFor, allHudLayoutClasses,
-} from '../../core/constants.js';
-import { computeStatBar, splitValue, applyStatFormat, portraitRendition } from '../../core/utils.js';
-import { whyHidden, trapInlineDisplay, shortenStack } from '../shared/css-origin.js';
+import { trapInlineDisplay, shortenStack } from '../shared/css-origin.js';
 import { makeActivatable } from '../../core/utils.js';
 import { ensurePortraitImage } from './ui-hud-portrait.js';
 import { renderHUD } from './ui-hud-render.js';
 export { portraitSizeFor, ringOverhang, ringRadius } from './ui-hud-meters.js';
-
 
 let hudContainer = null;
 let isDragging = false;

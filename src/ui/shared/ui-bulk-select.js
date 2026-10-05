@@ -1,18 +1,6 @@
 import { Popup } from '../../../../../../popup.js';
 
-/**
- * The behaviour and the wording behind "delete several of these at once".
- *
- * Six lists in the extension can delete a row, and none of them could delete two - the
- * Entry Library, a character's collections, the player's, the character grid, and both
- * lists in System Builder. Long lists are exactly where that hurts.
- *
- * This owns the selection, the toolbar and the confirm, so all six behave and read alike.
- * It deliberately does not own the rows: those six are built three different ways - per
- * card in JavaScript, from an innerHTML template, and as a row of inputs per stat - and a
- * widget that insisted on drawing the checkboxes would have to fight each of them. Each
- * list draws its own box and asks isSelected(); what has to match is how it behaves.
- */
+/** Share selection, toolbar actions, and confirmation across lists that draw their own rows. */
 
 /**
  * @param {object} options
@@ -61,12 +49,7 @@ export function buildBulkBar({ noun, plural = `${noun}s`, verb = 'Delete', allId
     cancel.className = 'menu_button sillynpc-bulk-cancel';
     cancel.innerHTML = '<i class="fa-solid fa-xmark"></i> <span>Cancel</span>';
 
-    /* Other things a selection can be used for. A list that wants none - and five of the six
-       do - passes nothing and gets exactly the bar it had.
-
-       One or several: it took a single entry until a second was needed, and every caller
-       passing one object still works. An entry may carry `confirm`, returning the question
-       to ask; exporting needs none, rewriting a field on everybody selected does. */
+    // Extra actions may provide a confirmation question before running.
     const extras = (Array.isArray(extra) ? extra : [extra]).filter(Boolean);
     const extraBtns = extras.map((entry) => {
         const btn = document.createElement('button');
@@ -121,7 +104,8 @@ export function buildBulkBar({ noun, plural = `${noun}s`, verb = 'Delete', allId
         // question with no useful answer.
         if (chosen.size === 0) return;
 
-        const count = chosen.size;
+        const ids = [...chosen];
+        const count = ids.length;
         const counted = count === 1 ? noun : plural;
         const ok = await Popup.show.confirm(
             `${verb} ${count} ${counted}?`,
@@ -129,7 +113,7 @@ export function buildBulkBar({ noun, plural = `${noun}s`, verb = 'Delete', allId
         );
         if (!ok) return;
 
-        await onDelete([...chosen]);
+        await onDelete(ids);
         leave();
     });
 

@@ -62,13 +62,7 @@ export function onMessageForExtraction(messageId) {
     }
 }
 
-/**
- * The tracker follows the swipe, then the message is redrawn.
- *
- * The changes already applied describe the reply that was on screen a moment ago. Left
- * alone, the story continues from numbers that belong to a reply the user swiped away
- * from - silently, which is what made this worth fixing rather than living with.
- */
+/** Restore the selected swipe’s tracker state before redrawing the message. */
 export function onSwipe(messageId) {
     try {
         // Over-swiping keeps the outgoing text and extra until generation starts.
@@ -91,19 +85,8 @@ export function onSwipe(messageId) {
 }
 
 /**
- * The tracker follows a Regenerate, which is not a swipe.
- *
- * Regenerate deletes the newest reply and writes another in its place. SillyTavern says so
- * only by emitting MESSAGE_DELETED - MESSAGE_SWIPED comes from the swipe arrows alone - and
- * the payload there is the new chat length, which is identical whether the tail or the
- * middle was removed. So the generation type is what this reads instead: it is unambiguous,
- * and it arrives before the truncation, while the doomed message is still the last one.
- *
- * Two things have to happen, and neither used to. The changes that reply applied are undone,
- * or the replacement stacks on top of a reply nobody can see. And the guard that remembers
- * which messages have been read has to forget this index, because the replacement lands on
- * the same number and would otherwise be waved through as already extracted - which is why
- * the numbers did not merely drift after a Regenerate, they stopped moving entirely.
+ * Undo the latest reply before regeneration and allow its replacement to be extracted.
+ * GENERATION_STARTED identifies regeneration before MESSAGE_DELETED truncates the chat.
  */
 export function onRegenerateStarted(type, _data, dryRun) {
     if (dryRun || type !== 'regenerate') return;
@@ -115,8 +98,6 @@ export function onRegenerateStarted(type, _data, dryRun) {
         clearExtractionReport(messageId);
         const result = revertToBase(messageId);
         if (!result.reverted && result.reason === 'no base') {
-            // Same reasoning as the swipe path: never a silent disagreement between the
-            // tracker and the reply on screen.
             toastr.warning(
                 'The tracker could not undo the reply being regenerated, so it may not '
                 + 'match the new one.',
@@ -128,13 +109,9 @@ export function onRegenerateStarted(type, _data, dryRun) {
 }
 
 /**
- * Stale guard entries are dropped whenever messages go away.
- *
- * Message ids are positions, not identities, so anything from here on is a number that will
- * be handed to a different message later. Only the forgetting is safe to do here: the
- * payload cannot distinguish deleting the last message from deleting one in the middle, and
- * reverting the wrong one would discard state silently. See the regenerate handler above,
- * which knows exactly what it is undoing.
+ * Forget deleted extraction indexes and undo a removed tracked turn.
+ * MESSAGE_DELETED supplies the new chat length, so the turn id determines whether
+ * the tracked reply survived; a middle deletion requires manual review.
  */
 export function onMessageDeleted(newLength) {
     try {

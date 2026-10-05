@@ -1,7 +1,7 @@
 import { npcStatsFor } from '../core/npc-templates.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { getSettings, saveSettings } from '../core/settings.js';
+import { getLibraryCharacters } from '../characters/character-repository.js';
+import { escapeRegExp } from '../core/utils.js';
 
 export function bind(deps) {
 const STAT_SCOPES = {
@@ -32,52 +32,7 @@ function moveKey(holder, oldName, newName) {
     return true;
 }
 
-/**
- * Renames a stat, carrying its stored values and the settings that point at it.
- *
- * Stats are keyed by their name in five places, and the builder used to change only the
- * name in the schema. Everything else then failed to find the stat and filled it in at
- * its default - which is why renaming "HP" to "Health" showed 100 where 300/3000 had
- * been, and why the HUD stopped drawing it as a meter: a bare default has no ceiling, and
- * only a value with one can be a meter.
- *
- * Nothing deleted the old values. They stayed under the old key, unreachable, which is
- * the reason this can be repaired at all rather than only prevented.
- *
- * References are machine-written and are moved with the stat: the scene binding, and any
- * time rule whose scope points at this list. The display template is only rewritten when
- * the old name is unambiguous - if another stat list still has a stat by that name, a
- * {{HP}} in the template may well mean that one, and rewriting it would break a working
- * template to fix one that is not.
- *
- * @param {'globalStats'|'playerStats'|'npcStats'} listKey
- * @param {string} oldName
- * @param {string} newName
- * @returns {{ values: number, references: number, templateUpdated: boolean, cssMentions: boolean }}
- */
-/**
- * The stored values a stat list still recognises.
- *
- * The schema lives in settings and the values live in the chat's metadata, and deleting a
- * stat in System Builder only removes it from the first. Nothing removed the value, and
- * four separate places read the stored object directly rather than the schema - the tracker
- * box, the scene block sent to the story model, the reader's prompt, and the sheet's
- * history - so a deleted stat kept being drawn and kept being sent on every message. It
- * could never change, because applyUpdate filters incoming values against the schema and
- * rejects anything it does not know; it was simply inert and permanent.
- *
- * So the schema is what decides, at every point that reads. The stored values are left
- * alone deliberately rather than deleted: they cost nothing once nobody reads them, and
- * erasing them would take a stat's history with it the moment somebody deletes one by
- * mistake - or the moment a System Profile switch changes the schema under a chat.
- *
- * Case-insensitively, because a stored key and a configured name differ in case often
- * enough that findMatchingStatKey and the player sheet both already allow for it.
- *
- * @param {Record<string, any>} stored The stats as the chat holds them.
- * @param {'globalStats'|'playerStats'|'npcStats'} listKey
- * @returns {Record<string, any>} A copy holding only what the schema still declares.
- */
+/** Filter values through the active schema without deleting archived stat history. */
 function statsInSystem(stored, listKey, actor) {
     if (!stored || typeof stored !== 'object') return {};
     const declared = new Set(
@@ -93,6 +48,7 @@ function statsInSystem(stored, listKey, actor) {
     return out;
 }
 
+/** Rename held stat values and scoped rules; update unambiguous display references. */
 function renameStat(listKey, oldName, newName) {
     const empty = { values: 0, references: 0, templateUpdated: false, cssMentions: false };
     if (!STAT_SCOPES[listKey] || !oldName || !newName || oldName === newName) return empty;
@@ -181,24 +137,7 @@ function renameStat(listKey, oldName, newName) {
 }
 
 
-/**
- * Moves a stored value from one field name to another, everywhere it is kept.
- *
- * A rename in the builder used to be read as one field leaving and another arriving: the
- * old key was not in the schema any more, so the next write to that item filtered it out
- * and the value went with it. Silently, and item by item as each one happened to be
- * touched, which is the hardest kind of loss to notice.
- *
- * The key keeps its position in the object rather than being appended at the end. Nothing
- * reads items positionally, but a settings file where a rename shuffles every item is
- * harder to read and harder to diff.
- *
- * @param {string} collectionId
- * @param {string} oldName
- * @param {string} newName
- * @returns {number} How many items were changed - the caller says so, because a rename
- *   that moved nothing and a rename that moved forty items look identical otherwise.
- */
+/** Rename held collection fields while preserving key order and occupied destinations. */
 function renameCollectionField(collectionId, oldName, newName) {
     if (!collectionId || !oldName || !newName || oldName === newName) return 0;
 
@@ -265,20 +204,6 @@ function renameCollectionField(collectionId, oldName, newName) {
     saveSettings();
     return moved;
 }
-
-/**
- * What a system deliberately does NOT carry.
- *
- * Stated as an exclusion rather than a list of what to keep. A system used to capture
- * thirteen named keys, which meant every setting added afterwards was silently left
- * global - Time Rules, the clock, review thresholds, the lore and portrait prompts and
- * the lorebook selections all followed you from one ruleset into the next. An allow-list
- * falls behind by default; this way a new setting travels unless somebody decides it
- * should not.
- *
- * The line is your world versus your machine: everything about the fiction belongs to the
- * system, and the connections that do the work belong to you.
- */
 
 Object.defineProperties(deps, {
     statsInSystem: { enumerable: true, configurable: true, get: () => statsInSystem },

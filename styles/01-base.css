@@ -2,30 +2,11 @@
    Namespaced under .sillynpc / #sillynpc-* / .sillynpc-chat-* so styles
    don't bleed into the rest of SillyTavern. */
 
-/* ─── Global Font Fix ─────────────────────────────────────────────────── */
-* {
-    font-family: inherit;
-}
-
-/* Force FontAwesome for icons, ignoring generic global family */
-i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
-.fa, .fas, .fa-solid, .fa-regular, .fa-brands {
-    font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", sans-serif !important;
-}
-
 /* ─── Design Tokens ────────────────────────────────────────────────────── */
-/* FIX: Removed duplicate --sillynpc-border-color alias.
-   All rules now use --sillynpc-border consistently. */
 
 :root {
     /* Core Design Tokens (Native/Default fallback) */
-    /* --SmartThemeBodyColor is SillyTavern's *text* colour, not a background: on the
-       stock theme it is rgb(220,220,210), and on Celestial Macaron a salmon pink. Using
-       it here painted every unthemed panel in the user's text colour and then wrote text
-       on top of it. --SmartThemeBlurTintColor is the panel background.
-
-       --st-text-color was never a SillyTavern variable at all, so the foreground silently
-       resolved to #fff every time and the fallback was doing all the work. */
+    /* SillyTavern provides text through BodyColor and panel fill through BlurTintColor. */
     --sillynpc-bg-primary: var(--SmartThemeBlurTintColor, #222);
     --sillynpc-bg-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #fff) 14%, transparent);
     --sillynpc-fg-primary: var(--SmartThemeBodyColor, #fff);
@@ -45,31 +26,14 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     --sillynpc-font-size-base: 14px;
     --sillynpc-line-height: 1.5;
 
-    /* Type Scale
-     *
-     * Every size in the menus, the sheets and the tracker comes from these seven steps.
-     * Before them there were twenty-nine distinct values - 0.72em, 0.75em, 0.8em and 0.85em
-     * all meaning "small", chosen by eye in whatever file needed one - and the seams showed
-     * wherever two surfaces met.
-     *
-     * Relative, not absolute, so the whole scale follows --sillynpc-font-size-base and the
-     * reader's own Menu Text Size. Ten sizes used to be written in px and ignored both; the
-     * item cards, the sheet title and the stat cards did not grow when somebody asked for
-     * larger text.
-     *
-     * The floating HUD is deliberately not on this scale. It sizes itself in px inside a
-     * transform: scale(), so its numbers are geometry rather than typography and following
-     * a text setting would break its proportions.
-     *
-     * Decorative sizes - a 3em plus sign on an empty card, the letter on a fallback avatar -
-     * are icon geometry too, and are left where they are. */
+    /* Menu typography scales with the base size and Menu Text Size setting.
+       HUD dimensions and decorative icons use their own geometry. */
     --sillynpc-text-xs: 0.72em;
     --sillynpc-text-sm: 0.8em;
     --sillynpc-text-md: 0.875em;
     --sillynpc-text-base: 1em;
     --sillynpc-text-lg: 1.15em;
     --sillynpc-text-xl: 1.4em;
-    --sillynpc-text-2xl: 1.7em;
 
     /* Spacing Scale */
     --sillynpc-space-xs: 4px;
@@ -87,17 +51,11 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     --sillynpc-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     --sillynpc-backdrop: blur(10px);
     --sillynpc-glow: none;
-    --sillynpc-overlay: none;
 
     /* Z-index Scale — adjust these if SillyTavern conflicts arise */
     --sillynpc-z-tabs: 100;
     --sillynpc-z-overlay: 101;
-    /* Strictly between the chat and SillyTavern's chrome, so a menu the user opens can
-       cover the HUD. Measured at runtime rather than read from SillyTavern's stylesheet,
-       which disagrees: #sheld and #form_sheld resolve to 30, and the lowest chrome layer
-       is 1000 - every drawer panel, #left-nav-panel, #WorldInfo, #AdvancedFormatting -
-       rising through 3005 for the top bar to 29999 for the menus. An inline 10000 here
-       used to land above all but the last of them. */
+    /* Runtime measurement keeps the HUD above chat and below host menus. */
     --sillynpc-z-hud: 500;
     --sillynpc-z-modal: 300;
 }
@@ -121,10 +79,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
-/* The sheet never had a text size of its own - it took SillyTavern's - so the theme's
-   font-size-base has never reached it. Scaling `em` rather than naming a size keeps that
-   exactly as it was at 1, and still lets the menu's slider move it. Correcting it to the
-   theme's size would be a change nobody asked for, on every sheet, for everybody. */
+/* Scale the sheet relative to the host text size. */
 .sillynpc-player-sheet {
     font-size: calc(1em * var(--sillynpc-font-scale, 1));
 }
@@ -138,14 +93,10 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 }
 
 /* Targets the main popup window only when your extension is open inside it */
-/* FIX: Removed !important; these apply only inside the scoped :has() selector
-   so they don't need force to win specificity over generic popup rules. */
 #dialogue_popup:has(.sillynpc-manage) {
     background-color: transparent;
     border: none;
     box-shadow: none;
-    /* FIX: Was visibility:hidden (hides but keeps layout space + is still
-       interactable). Using display:none to fully remove from layout. */
     display: none;
 }
 
@@ -160,7 +111,6 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     padding: var(--sillynpc-space-md) var(--sillynpc-space-sm);
     margin-bottom: 0;
     flex-wrap: nowrap;
-    /* FIX: Was z-index:2000 !important — use token, no !important needed */
     z-index: var(--sillynpc-z-tabs);
     flex-shrink: 0;
     width: 176px;
@@ -308,14 +258,9 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
     border-color: var(--sillynpc-accent);
 }
 
-/* FIX: Removed !important from every property; the specificity of this
-   compound selector is already sufficient to win over generic .notes rules. */
 .sillynpc-setting .notes {
     margin-top: 0;
-    /* Was opacity: 0.6 with no colour, so every description was the body text faded
-       towards whatever it sat on - grey-on-cream on the light themes, a whisper on the
-       dark ones. Four themes were reported unreadable before it was clear this was one
-       fault and not four. A muted colour the theme names is legible by construction. */
+    /* A theme-defined muted colour keeps descriptions legible on light and dark panels. */
     color: var(--sillynpc-fg-secondary);
     text-align: left;
     display: block;
@@ -379,6 +324,7 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 .sillynpc-status-box input[type="text"],
 .sillynpc-status-box input[type="number"],
 .sillynpc-status-box .text_pole {
+    font-family: inherit;
     background-color: var(--sillynpc-bg-secondary);
     color: var(--sillynpc-fg-primary);
     border: 1px solid var(--sillynpc-border);
@@ -492,7 +438,6 @@ i.fa, i.fas, i.fa-solid, i.fa-regular, i.fa-brands,
 
 /* ─── Animations ───────────────────────────────────────────────────────── */
 
-/* FIX: Removed duplicate definition — this keyframe was declared twice. */
 @keyframes sillynpc-fade-in {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }

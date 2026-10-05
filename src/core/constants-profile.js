@@ -43,17 +43,8 @@ export function fieldsForCard(card) {
     return card?.isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS;
 }
 
-export function blankProfile(isPlayer = false) {
-    return Object.fromEntries((isPlayer ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => [field.id, '']));
-}
-
 export function hintFor(field) {
     return String(field?.hint ?? '');
-}
-
-export function aiMayEditProfileField(char, fieldId) {
-    const open = char?.aiProfileFields;
-    return Array.isArray(open) && open.includes(fieldId);
 }
 
 export function isStaticField(field) {

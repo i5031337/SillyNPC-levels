@@ -1,31 +1,11 @@
 """Read-only live progression editor fixtures; no settings are saved."""
 import json
-import socket
-import subprocess
 import time
-import urllib.request
-with socket.socket() as sock:
-    sock.bind(('127.0.0.1', 0))
-    port = sock.getsockname()[1]
-base = f'http://127.0.0.1:{port}'
-def request(method, path, data=None):
-    body = None if data is None else json.dumps(data).encode()
-    req = urllib.request.Request(base + path, body, {'Content-Type': 'application/json'}, method=method)
-    with urllib.request.urlopen(req, timeout=25) as response:
-        return json.load(response)['value']
-driver = subprocess.Popen(['geckodriver', '--port', str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-session = None
-try:
-    for _ in range(40):
-        try:
-            request('GET', '/status')
-            break
-        except Exception:
-            time.sleep(.25)
-    session = request('POST', '/session', {'capabilities': {'alwaysMatch': {'browserName': 'firefox', 'moz:firefoxOptions': {'args': ['-headless']}}}})['sessionId']
-    request('POST', f'/session/{session}/url', {'url': 'http://127.0.0.1:8000/'})
-    time.sleep(5)
-    execute = lambda script: request('POST', f'/session/{session}/execute/sync', {'script': script, 'args': []})
+from ui_webdriver import browser_session
+
+
+with browser_session() as browser:
+    execute = browser.execute
     execute("""
       const entry = [...document.scripts].find(s => s.src.includes('/SillyNPC-XP/index.js'));
       const script = document.createElement('script'); script.type='module'; script.id='progression-smoke';
@@ -69,8 +49,3 @@ try:
     execute("document.querySelector('#progression-smoke')?.remove();document.documentElement.removeAttribute('data-progression-smoke')")
     assert result and all(value is True for value in result.values()), result
     print(json.dumps(result))
-finally:
-    if session:
-        request('DELETE', f'/session/{session}')
-    driver.terminate()
-    driver.wait(timeout=10)

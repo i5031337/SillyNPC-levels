@@ -66,18 +66,6 @@ function readStat(rule, target, state) {
     return target.actor?.stats?.[rule.stat];
 }
 
-/**
- * The ceiling actually in play: the value's own denominator, and nothing else.
- *
- * It used to fall back to the configured maximum, which is a starting value - so a stat
- * whose ceiling had been cleared went on being clamped to a number nothing displayed and
- * nobody could change. Regeneration stopping at an invisible limit is the sort of thing
- * that reads as the rule being broken rather than as a setting still applying.
- */
-function ceilingFor(rule, live) {
-    return asNumber(splitValue(live).max);
-}
-
 /** The floor, if the schema names one. */
 function floorFor(rule, trackerSettings) {
     const schema = rule.scope === 'global' ? trackerSettings.globalStats
@@ -141,10 +129,7 @@ function measureElapsed(state, trackerSettings, messageId) {
 function evaluateTimeRules(state, messageId) {
     const trackerSettings = getSettings().statusTracker;
 
-    /* A rule whose stat has been deleted from the system is dead, and had to be said out
-       loud: readStat reaches into the stored state, where the deleted value is still
-       sitting, so the rule went on regenerating a number nobody could see and writing a
-       history entry for it every time the clock moved. */
+    // Ignore rules for stats no longer declared in the active system.
     const declaredIn = (scope) => new Set(
         (trackerSettings[scope === 'global' ? 'globalStats'
             : scope === 'characters' ? 'npcStats' : 'playerStats'] || [])
@@ -170,15 +155,7 @@ function evaluateTimeRules(state, messageId) {
                 .some(stat => stat.name === rule.stat)) continue;
             const carryKey = `${rule.id}|${target.name || rule.scope}`;
 
-            /* Before the time is banked, not after it is spent. Time spent outside the
-               condition is spent, not banked - otherwise a character who rests for a
-               minute is paid for the hour they spent fighting.
-
-               This used to sit below the tick calculation, where it could only be reached
-               once a whole interval had accumulated. Messages are almost always shorter
-               than an interval, so the usual path banked the elapsed time and moved on
-               without ever asking - and fifty minutes of fighting paid out on the first
-               ten minutes of rest. */
+            // Clear carry outside the condition so it cannot fund later regeneration.
             if (!conditionHolds(rule, target.actor, state)) {
                 carry[carryKey] = 0;
                 continue;
@@ -195,7 +172,7 @@ function evaluateTimeRules(state, messageId) {
             const before = asNumber(parts.current);
             if (before === null) continue;
 
-            const ceiling = ceilingFor(rule, live);
+            const ceiling = asNumber(parts.max);
             const floor = floorFor(rule, trackerSettings);
 
             let after = before + ticks * amount;

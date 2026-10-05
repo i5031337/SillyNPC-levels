@@ -76,7 +76,6 @@ export function renderTrackerDisplayAndReading({ container, settings, onApply, o
         onChange: onDisplay
     }));
 
-
     /* -- How stats are read ------------------------------------------------ */
 
     section('How Stats Are Read');

@@ -47,12 +47,11 @@ creates reusable rules, not a populated adventure.
 
 ## User workflow
 
-Add a Generate from premise action to Systems alongside the existing creation and
-import actions. The initial form needs a premise textarea, a suggested System name,
+Systems offers Generate from premise alongside creation and import actions. The initial form needs a premise textarea, a suggested System name,
 and optional constraints such as tone, complexity, important resources, or a desired
 progression style. Keep a single primary Generate button.
 
-Proposed default: use the existing reader connection selection, with a visible
+Use the existing reader connection selection by default, with a visible
 connection label and an optional override in the generation dialog. A connection
 preference belongs to user settings and must never enter a System export. Use the
 existing request and usage reporting mechanisms with response budgets per stage and
@@ -66,7 +65,7 @@ System or chat the user has since opened.
 
 Display a summary of the draft and its assumptions, including template targets,
 progression choices, and reward schedules. Provide access to the normal editor for
-inspection and adjustment. Proposed actions are Edit draft, Regenerate, Save as new
+inspection and adjustment. Available actions are Edit draft, Regenerate, Save as new
 System, and Cancel. Saving requires a valid draft and a distinct name; resolve a name
 collision explicitly instead of replacing another System.
 
@@ -188,26 +187,6 @@ labels, guidance, assumptions, and errors through safe text/escaping paths. Boun
 definition size and counts using shared import limits where available; establish small
 explicit limits where none exist. Avoid introducing a separate legacy schema.
 
-## Implementation sequence
-
-1. Audit System creation, import, validation, editor refresh, capture/export, and chat
-   locking. Add a pure generated-definition validator with reusable diagnostics rather
-   than embedding validation in the dialog.
-2. Add the manifest contract, deterministic ID allocation, stage-specific prompts,
-   and request adapter. Implement a sequential orchestrator with dependency tracking,
-   accepted section storage, stage progress, cancellation, request/response budgets,
-   section repair/retry, and deterministic assembly. Keep parsing, strict validation,
-   normalization, and orchestration in focused modules below 20 kB. Test these without
-   a live model using realistic staged responses.
-3. Implement an isolated draft editor context. Existing Builder controls currently edit
-   live tracker settings, so refactor their data/save callbacks as needed before reusing
-   them for a draft. Never temporarily replace live settings across an asynchronous
-   request merely to make the draft editor work.
-4. Add Generate from premise, progress, draft summary, editing, errors, and save-as-new
-   behavior. Reuse existing System save/import and activation boundaries.
-5. Verify the complete workflow, document it, and update `docs/FILE_MAP.md`. Include a
-   saved generated fixture exercising the progression and rewards implemented here.
-
 ## Verification and completion criteria
 
 Use focused Node tests, then run
@@ -244,14 +223,6 @@ and a correctly targeted reward schedule, edits a rule, and saves a separate Sys
 The existing adventure stays intact. After deliberate activation in a new adventure,
 the generated rules drive normal XP rollover and reviewable rewards through the same
 runtime as a manually authored System.
-
-## Continuing this work
-
-Read `AGENTS.md`, this plan, `docs/FILE_MAP.md`, and the implemented progression and
-reward modules. Inspect the working tree before editing. Preserve strict validation
-and the Builder's explicit live/draft context boundary when extending generation.
-Evaluate local-model quality separately from the mocked automated checks.
-
 
 ## Schema simplification candidates found during implementation
 

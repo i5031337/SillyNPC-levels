@@ -3,18 +3,11 @@ import { collectionAppliesTo, collectionTargetLabel } from '../core/collection-t
 import { promptText } from '../prompts/prompt-texts.js';
 import { isTurnStat } from './stat-update-policy.js';
 import { describeStatDefinitions } from './stat-prompt-definitions.js';
-import { 
-    setExtensionPrompt,
-    extension_prompt_types,
-    extension_prompt_roles,
-    getThumbnailUrl,
-    user_avatar,
-    getRequestHeaders
-} from '../../../../../../script.js';
+import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../../script.js';
 import { applyMacros } from '../prompts/macros.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
+import { getSettings } from '../core/settings.js';
 import { DEFAULT_INLINE_RULES } from '../core/settings-tracker-defaults.js';
-import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { debugLog } from '../core/constants.js';
 
 export function bind(deps) {
 /**

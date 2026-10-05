@@ -274,12 +274,7 @@
     }
 }
 
-/* ─── Player sheet: one page instead of a tab per collection ────────────────
-   The sheet used to be Attributes, a tab for each collection and Lore, which
-   made the same player look like two unrelated pages depending on whether you
-   opened them from the HUD or from the character grid. It carries the character
-   page's two tabs now, and everything that was behind the old ones is stacked
-   under Profile. */
+/* Player profile collections share one page, matching the character sheet layout. */
 .sillynpc-sheet-section {
     display: flex;
     flex-direction: column;

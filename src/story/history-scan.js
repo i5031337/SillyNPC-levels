@@ -357,6 +357,7 @@ function mergeFindings(merged, update) {
             entry = { name: character.name, collections: {} };
             merged.characters.push(entry);
         }
+        if (character.npcTemplateId) entry.npcTemplateId = character.npcTemplateId;
         mergeCollections(entry.collections, character.collections);
     }
 }
@@ -412,7 +413,10 @@ export function stripStats(parsed) {
     if (Array.isArray(parsed.characters)) {
         out.characters = parsed.characters
             .filter(c => c?.name && c.collections)
-            .map(c => ({ name: c.name, collections: c.collections }));
+            .map(c => ({ name: c.name, collections: c.collections,
+                ...(typeof c.npcTemplateId === 'string' && c.npcTemplateId
+                    ? { npcTemplateId: c.npcTemplateId } : {}),
+            }));
     }
     return out;
 }

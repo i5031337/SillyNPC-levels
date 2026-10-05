@@ -1,13 +1,7 @@
 import { LOG_PREFIX } from '../../core/constants.js';
 import { escapeHtml } from '../../core/utils.js';
 import { openLightbox } from '../characters/ui-portrait.js';
-import {
-    taggedFields,
-    getImageTag,
-    setImageTag,
-    tagsFromFilename,
-    valuesByField,
-} from '../../characters/image-tags.js';
+import { taggedFields, getImageTag, setImageTag, tagsFromFilename, valuesByField } from '../../characters/image-tags.js';
 import { folderFor, refreshCharacterImages } from '../../characters/character-images.js';
 import { buildChoiceSelect } from '../shared/ui-shared.js';
 

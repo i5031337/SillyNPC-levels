@@ -1,5 +1,5 @@
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { debugLog } from '../core/constants.js';
+import { splitValue } from '../core/utils.js';
 import { constrainNumericStat } from './numeric-stat-bounds.js';
 
 export function bind(deps) {

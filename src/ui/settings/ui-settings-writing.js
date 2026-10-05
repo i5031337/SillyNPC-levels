@@ -122,13 +122,3 @@ export function renderWritingRulesView(view, onReprocessMessages) {
         onChange: reprocess,
     }));
 }
-
-/**
- * The extension itself: whether it runs, how big its menu is, and how to see what it does.
- *
- * What is left of a tab called Settings once everything that belonged to a subject went to
- * that subject's tab. These four genuinely belong to no feature.
- *
- * @param {HTMLElement} view
- * @param {{ applyPopupSize: () => void, onExport: () => void, onImport: () => void }} handlers
- */

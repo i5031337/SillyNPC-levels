@@ -1,13 +1,4 @@
-import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
-import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
-import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
-import { eventSource } from '../../../../../../events.js';
-import { triggerReprocess } from '../../chat/chat.js';
-import { updateHUD } from '../hud/ui-hud.js';
-import { escapeHtml } from '../../core/utils.js';
-import { cleanChatHistory, measureChatOverhead, estimateTokens } from '../../tracker/status-history.js';
-import { buildConnectionProfilePicker } from '../settings/ui-connection-profiles.js';
+import { getSettings } from '../../core/settings.js';
 
 export function buildHistoryNoteFields(settings, onApply) {
     const wrap = document.createElement('div');
@@ -100,13 +91,3 @@ export function buildPlacementPicker(settings, onApply) {
 
     return wrap;
 }
-
-
-/**
- * Shows how much of the current chat is tracker data, and offers to remove it.
- *
- * The extension used to hide its status blocks in the DOM but leave them in the stored
- * message, so they were re-sent on every later turn. On a real 317-message chat that came
- * to 71% of the entire transcript. New messages are cleaned automatically; this recovers
- * what earlier ones left behind.
- */

@@ -1,6 +1,6 @@
 import { collectionAppliesTo } from '../core/collection-targets.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { getSettings } from '../core/settings.js';
+import { LOG_PREFIX, debugLog } from '../core/constants.js';
 
 export function bind(deps) {
 function normaliseItem(itemData, fields, previous = null) {

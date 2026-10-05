@@ -1,10 +1,4 @@
-/* ── HUD meters ────────────────────────────────────────────────────────────
-
-   The colours used to be keyed to the stat's *name* - .hud-bar.hp was red, .energy blue
-   - so marking any other stat as Primary produced a meter with no background at all. It
-   appeared, drew nothing, and read as "Primary does nothing". The colour is set inline
-   from the stat now; what remains here is shape.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* HUD meter shapes; stat colours are set inline by the renderer. */
 
 /* Ten notches filled from the left, for systems that count in pips rather than percent. */
 .sillynpc-hud-bar-wrap.segmented {

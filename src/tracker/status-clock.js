@@ -1,10 +1,7 @@
 /**
  * Reading the narrator's clock.
  *
- * The story already keeps time - "14 January 2012, 05:30 AM" becomes "06:15 AM" a
- * message later - and nothing ever read it. Turning that into elapsed minutes is what
- * lets the extension compute regeneration itself instead of asking a language model to
- * do date arithmetic it will get wrong on a swipe.
+ * Convert explicit story clocks into minutes for deterministic regeneration.
  *
  * Date.parse alone is not safe here. It reads "Day 3, 14:20" as March 2001 and "Day 4"
  * as April, so a single in-fiction day would measure as thirty-one and silently refill
@@ -45,7 +42,7 @@ function timeOfDayMinutes(text) {
         let hours = parseInt(withColon[1], 10);
         const minutes = parseInt(withColon[2], 10);
         const meridiem = withColon[3]?.toLowerCase();
-        if (hours > 23 || minutes > 59) return null;
+        if (minutes > 59 || (meridiem ? hours < 1 || hours > 12 : hours > 23)) return null;
         if (meridiem === 'pm' && hours < 12) hours += 12;
         if (meridiem === 'am' && hours === 12) hours = 0;
         return hours * 60 + minutes;
@@ -54,7 +51,7 @@ function timeOfDayMinutes(text) {
     const hourOnly = HOUR_ONLY_PATTERN.exec(text);
     if (hourOnly) {
         let hours = parseInt(hourOnly[1], 10);
-        if (hours > 12) return null;
+        if (hours < 1 || hours > 12) return null;
         const meridiem = hourOnly[2].toLowerCase();
         if (meridiem === 'pm' && hours < 12) hours += 12;
         if (meridiem === 'am' && hours === 12) hours = 0;
@@ -77,14 +74,17 @@ function timeOfDayMinutes(text) {
 export function parseClock(text) {
     const value = String(text ?? '').trim();
     if (!value) return null;
+    const time = timeOfDayMinutes(value);
+    if (time === null && (TIME_PATTERN.test(value) || HOUR_ONLY_PATTERN.test(value))) return null;
 
     // First, because Date.parse turns "Day 3" into a month.
     const day = DAY_PATTERN.exec(value);
     if (day) {
         const dayNumber = parseInt(day[1], 10);
+        if (dayNumber < 1) return null;
         // Day 1 is the first day, so it starts at zero.
-        const base = Math.max(0, dayNumber - 1) * DAY_MINUTES;
-        return { minutes: base + (timeOfDayMinutes(value) ?? 0), kind: 'day' };
+        const base = (dayNumber - 1) * DAY_MINUTES;
+        return { minutes: base + (time ?? 0), kind: 'day' };
     }
 
     // Only strings that actually carry a date, so prose cannot fall through to a
@@ -94,8 +94,7 @@ export function parseClock(text) {
         if (Number.isFinite(parsed)) return { minutes: Math.floor(parsed / 60000), kind: 'date' };
     }
 
-    const timeOnly = timeOfDayMinutes(value);
-    if (timeOnly !== null) return { minutes: timeOnly, kind: 'time' };
+    if (time !== null) return { minutes: time, kind: 'time' };
 
     // "Morning", "Before first bell", "Later that evening". Not a clock.
     return null;

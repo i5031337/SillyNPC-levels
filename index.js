@@ -55,23 +55,12 @@ async function addSettingsPanel() {
 jQuery(async () => {
     try {
         initSettings();
-        // Before the first request, so a saved choice is in force for it.
+        // Apply saved logging and portrait settings before startup work.
         setDebugLogging(getSettings().debugLogging);
-        // Before anything draws a portrait. The stylesheet falls back to `top` on its own,
-        // so this only matters for a saved choice other than the default.
         applyPortraitFraming();
         applySpeechPadding();
-        // Not awaited: a fallback portrait still held inside settings.json works exactly
-        // as it is, so nothing needs to wait for it to become a file on disk. Failures are
-        // logged and tried again next time.
+        // Portrait repairs run in the background; failures retry on the next load.
         repairDefaultImages().catch(err => console.warn(LOG_PREFIX, 'Portrait repair failed', err));
-        /* Every character's pictures into a folder of their own, once.
-         *
-         * Not awaited, for the same reason as the line above: a picture still in the flat
-         * folder is a picture that works, so nothing here needs to wait for it to move, and
-         * a failure costs only that it is tried again on the next load. Copy, confirm,
-         * re-point, delete - so an interruption never leaves a card pointing at a file that
-         * is not there. See migrateImagesToFolders. */
         migrateImagesToFolders()
             .then(({ moved, characters, failed }) => {
                 if (moved) {
@@ -92,32 +81,14 @@ jQuery(async () => {
             console.error(LOG_PREFIX, 'initHUD failed', hudErr);
         }
         setReprocessCallback(reprocessAllMessages);
-        /* A correction made by hand has to survive a swipe. Registered rather than
-           imported: the aligner lives in status-snapshots, which already imports
-           status-logic, and an edge back the other way would be a cycle. */
+        // Register the aligner to preserve manual corrections without a circular import.
         setSwipeBaseAligner(alignSwipeBaseToNow);
         await addSettingsPanel();
         wireAvatarClicks();
-        /* A preset carries its own prompt list, so loading one throws away the entry
-           the dialogue prompt is placed by - not the setting that asks for it.
-           Written again here, which puts them back at the foot of the new list.
-           Nothing happens for a block that is not managed there. */
+        // Presets replace the prompt list, so restore managed prompts and refresh the HUD.
         eventSource.on(event_types.OAI_PRESET_CHANGED_AFTER, () => {
-            /* Redrawn first, and in a try of its own.
-             *
-             * Reported as the HUD's portrait disappearing on a preset change and staying
-             * gone until the page was reloaded. Nothing else asks the HUD to draw again -
-             * none of the events that do, a message or a chat change or a settings
-             * control, fires when a preset is swapped - so whatever leaves the picture
-             * unusable, the recovery inside updateHUD never gets a turn.
-             *
-             * It was added below the prompt call that follows, which was the mistake: the
-             * catch around them exists because they are expected to fail sometimes, and
-             * putting the redraw behind them let a failure in the prompt work silently
-             * take the HUD with it. Two unrelated jobs, two failure paths. */
+            // Keep portrait refresh independent of prompt failures.
             try {
-                // Rebuilt rather than merely redrawn - see forgetPortrait for which of the
-                // remaining explanations that covers, and which it does not.
                 forgetPortrait();
                 updateHUD();
             } catch (err) {
@@ -131,15 +102,10 @@ jQuery(async () => {
             }
         });
 
-        // Logged beside SillyNPC's own request lines, so "what does the chat use" and
-        // "what does the extension use" can be compared at a glance instead of by reading
-        // secrets.json. Dry runs are skipped: SillyTavern fires several per message while
-        // measuring the prompt, and they would bury the real one.
+        // Skip prompt-measurement dry runs when logging the active connection.
         eventSource.on(event_types.GENERATION_STARTED, (_type, _options, dryRun) => {
             if (dryRun) return;
             debugLog(describeChatConnection());
-            // Here rather than in the tracker's own handler: that one returns early when
-            // the tracker is off, and the chat is still decorated then.
             try {
                 // Clear an old prompt-list copy of the retired duplicate rule.
                 placeWritingPrompt('sillynpc-narrator-rules', '');
@@ -154,14 +120,7 @@ jQuery(async () => {
         eventSource.on(event_types.GENERATION_ENDED, restorePlayerDialogueSetting);
         eventSource.on(event_types.GENERATION_STOPPED, restorePlayerDialogueSetting);
 
-        /* Fires while SillyTavern assembles the story prompt, and - contrary to what this
-           comment used to say - in time to change it. getWorldInfoPrompt, which emits
-           this, is awaited at script.js:4576; doChatInject, which reads our IN_CHAT
-           blocks, runs at 4686.
-
-           So the scene block is written again here, now that we know whose entries fired.
-           A character whose lore reached the prompt without their tracked state
-           is one the narrator has to invent the moment it gives them a line. */
+        // Refresh the scene prompt after lore activation, before host chat injection.
         eventSource.on(event_types.WORLD_INFO_ACTIVATED, (entries) => {
             try {
                 noteActivatedLore(entries);
@@ -175,32 +134,18 @@ jQuery(async () => {
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, onMessageForExtraction);
         eventSource.on(event_types.USER_MESSAGE_RENDERED, onMessageRendered);
         eventSource.on(event_types.MESSAGE_UPDATED, onMessageRendered);
-        // Swiping between replies that already exist rewrites the message in place and
-        // emits nothing else - no generation runs, so CHARACTER_MESSAGE_RENDERED never
-        // fires. The new text arrived undecorated and stayed that way until something
-        // else redrew the chat.
+        // Existing swipes need decoration without a new generation event.
         eventSource.on(event_types.MESSAGE_SWIPED, onSwipe);
 
         // Before it is drawn, and again after, since a streamed reply skips the first.
         eventSource.on(event_types.MESSAGE_RECEIVED, (id) => dropCopiedWorldNote(id, false));
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (id) => dropCopiedWorldNote(id, true));
-        /* Regenerate is not a swipe, and says so through neither of the events above.
-
-           makeFirst rather than on, and it matters. status-logic listens to the same event
-           to build the scene block it injects, and it registered first, so it ran first:
-           the prompt for the regenerated reply was built from the state the *discarded*
-           reply had left behind. Restoring state first lets the next story prompt use
-           only the selected reply's committed values.
-
-           Ordering is the only lever here, since both listen to the same event, so it is
-           declared out loud instead of resting on which line of this function runs first. */
+        // Restore the selected reply's state before the tracker builds the generation prompt.
         eventSource.makeFirst(event_types.GENERATION_STARTED, onRegenerateStarted);
         eventSource.on(event_types.MESSAGE_DELETED, onMessageDeleted);
         eventSource.on(event_types.MESSAGE_EDITED, onMessageEdited);
         eventSource.on(event_types.MORE_MESSAGES_LOADED, () => {
-            // The signature describes the settings, not the DOM, and these two change
-            // which messages exist without changing a setting - so they have to say
-            // so, or a redraw that has learned to decline will decline this one.
+            // Loading history changes the DOM without changing the render signature.
             invalidateChatRender();
             reprocessAllMessages();
         });
@@ -211,9 +156,7 @@ jQuery(async () => {
         eventSource.on(event_types.CHAT_CHANGED, resetExtractionState);
         eventSource.on(event_types.CHAT_CHANGED, syncActiveProfileLore);
         eventSource.on(event_types.PERSONA_CHANGED, syncActiveProfileLore);
-        // Entries written before they carried a heading are named here, once, rather than
-        // waiting to be regenerated by hand. It writes only where something differs, so a
-        // chat switch with nothing to fix touches no files.
+        // Repair missing lorebook headings only when necessary.
         eventSource.on(event_types.CHAT_CHANGED, () => {
             repairEntryIdentities().catch(err =>
                 console.error(LOG_PREFIX, 'Naming lorebook entries failed', err));
@@ -262,11 +205,7 @@ jQuery(async () => {
         eventSource.on('sillynpc-status-updated', () => {
             try {
                 updateHUD();
-                // The tracker state moved, which changes the tracker boxes and nothing
-                // else. This called reprocessAllMessages(), so every extracted message -
-                // that is, every message - redrew the speaker decoration, the portraits
-                // and the avatars over the whole chat as well. redrawStatusBoxes exists
-                // for exactly this case and says so in its own comment.
+                // Refresh tracker boxes without redecorating the full chat.
                 redrawStatusBoxes();
             } catch (err) {
                 console.error(LOG_PREFIX, 'sillynpc-status-updated refresh failed', err);

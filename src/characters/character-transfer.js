@@ -1,4 +1,4 @@
-import { npcTemplateFor, npcStatsFor } from '../core/npc-templates.js';
+import { activeNpcSystem, npcTemplateFor, npcStatsFor } from '../core/npc-templates.js';
 import { getSettings, saveSettings, normalizeSettings } from '../core/settings.js';
 import { createCharacter, instantiateWorldCharacter } from './characters.js';
 import { adoptImageForCharacter, createLoreEntry, saveLoreContent } from '../api/api.js';
@@ -9,27 +9,8 @@ import { blankActiveProfile, profileStrings } from '../core/profile-fields.js';
 import { splitNpcStats, initialiseNpcStats } from '../tracker/stat-persistence.js';
 import { getAllCharacters, isChatCharacter } from './character-repository.js';
 
-/**
- * Sending one character to somebody else, and taking one in.
- *
- * Separate from the whole-settings export in settings.js, which is a backup: it replaces
- * everything you have with everything in the file. This is the other job - one character
- * out of a collection, into somebody else's collection, alongside what is already there.
- *
- * The difference that shapes the format is that the file has to survive leaving this
- * machine. Two things a character record holds are meaningless anywhere else:
- *
- *   - the lorebook link is { world, uid } - an index into a book the recipient has no
- *     copy of. The entry's own words travel instead.
- *   - portraits are paths into /user/images, naming files the recipient does not have.
- *     They used to be inlined as data URIs and written back to disk on the way in, which
- *     worked and was unusable: a character's list is every picture ever generated for
- *     them, so twenty-eight characters carrying sixty-nine files made a hundred-megabyte
- *     JSON file before base64 added its third. The file is words now, and the picture is
- *     the recipient's to supply.
- *
- * A file written by an older version still carries its portraits, and still gets them
- * back. Nothing in the reader assumes they are absent.
+/** Transfer portable character prose, lore, and innate stats between installations.
+ * Portraits are supplied by the recipient; older files with embedded portraits still import.
  */
 
 export const TRANSFER_FORMAT = 'sillynpc-characters';
@@ -63,7 +44,10 @@ async function readLoreEntry(char) {
  * @param {object} char
  * @returns {Promise<object>} The record.
  */
-export async function serialiseCharacter(char, { npcStats = getSettings().statusTracker?.npcStats } = {}) {
+export async function serialiseCharacter(char, {
+    npcStats = getSettings().statusTracker?.npcStats,
+    system = activeNpcSystem(),
+} = {}) {
     // A different System may have retired a field; exports must keep its prose.
     const profile = profileStrings(char.profile);
 
@@ -74,19 +58,9 @@ export async function serialiseCharacter(char, { npcStats = getSettings().status
         imageFit: String(char.imageFit || ''),
         aliases: Array.isArray(char.aliases) ? structuredClone(char.aliases) : [],
         profile,
-        npcTemplateId: npcTemplateFor(char)?.id || char.npcTemplateId || '',
+        npcTemplateId: npcTemplateFor(char, system)?.id || char.npcTemplateId || '',
         // Keep the version 2 field name so existing character files remain readable.
         innateStats: splitNpcStats(char.statusOverrides, npcStats).innate,
-        // No portraits. They used to be inlined as data URIs, which was the right instinct -
-        // a stored portrait is a path into /user/images and names a file the recipient does
-        // not have - and the wrong size by two orders of magnitude. A character's images list
-        // is every picture ever generated for them, not the one in use, so a collection of
-        // twenty-eight characters carrying sixty-nine files came to a hundred megabytes, and
-        // base64 adds a third on top of that. A JSON file nobody can open or send is not a
-        // transfer format.
-        //
-        // So the file is words, and the picture is the recipient's to supply. Anything
-        // exported before this still imports with its portraits: see restoreImages.
         lore: await readLoreEntry(char),
     };
 }

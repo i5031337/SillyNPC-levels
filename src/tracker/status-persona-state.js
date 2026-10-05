@@ -1,16 +1,9 @@
 import { collectionAppliesTo } from '../core/collection-targets.js';
-import { 
-    setExtensionPrompt,
-    extension_prompt_types,
-    extension_prompt_roles,
-    getThumbnailUrl,
-    user_avatar,
-    getRequestHeaders
-} from '../../../../../../script.js';
+import { user_avatar } from '../../../../../../script.js';
 import { getContext } from '../../../../../st-context.js';
 import { power_user } from '../../../../../power-user.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { getSettings, saveSettings } from '../core/settings.js';
+import { debugLog } from '../core/constants.js';
 import { resolveProfileFields } from '../core/profile-fields.js';
 
 export function bind(deps) {

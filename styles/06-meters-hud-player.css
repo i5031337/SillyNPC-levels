@@ -116,14 +116,12 @@
 }
 
 .sillynpc-status-dashboard {
-    color: var(--st-text-color);
+    color: var(--sillynpc-fg-primary);
 }
 
 /* ─── HUD Widget ───────────────────────────────────────────────────────── */
 
-/* Its gap, padding and radius are set in HUD proportions further down, and were also set
-   here where they never applied - so editing them here did nothing at all. Declared once,
-   where the reasoning for the numbers is. */
+/* Gap, padding and radius are defined in HUD proportions. */
 .sillynpc-hud-container {
     position: fixed;
     z-index: var(--sillynpc-z-hud);
@@ -169,20 +167,8 @@
  *
  * `top` is the fallback rather than the JavaScript default, so the right framing holds
  * before any of it runs. Portrait Framing overrides it by setting the variable. */
-/* The picture inside the frame.
- *
- * It used to be the frame's own background-image. Every other portrait in the extension is
- * an <img> - the chat avatars, the character cards, the tracker rows - and those were the
- * ones that looked right; this was the only background-image and the only one that came out
- * coarse, at every HUD scale.
- *
- * It rounds itself rather than being clipped by the frame: the plate layout draws corner
- * marks just outside the portrait's edges, and overflow: hidden on the frame would cut them
- * off. border-radius: inherit follows the frame, including when portrait-square sets it
- * to 0.
- *
- * pointer-events: none so the frame keeps the drag, the click that opens the sheet, and
- * the keyboard activation - the picture must not become a second target for any of them. */
+/* The image rounds itself so the frame can display corner marks outside its edges.
+   Pointer events stay on the frame for dragging and sheet activation. */
 .sillynpc-hud-portrait-img {
     width: 100%;
     height: 100%;
@@ -268,10 +254,7 @@
 .sillynpc-player-sheet {
     display: flex;
     flex-direction: column;
-    /* Fills the dialog, the way .sillynpc-manage does. It used to be a fixed
-       1200x700 inside a dialog sized to the popup-width setting, so on a wide
-       screen the sheet sat in the left of it looking off-centre - and the width
-       and height settings did nothing here at all. */
+    /* Fill the dialog configured by the popup size settings. */
     width: 100%;
     height: 100%;
     /* A flex item will not shrink below its own content unless it is told it may, and
@@ -329,14 +312,9 @@
     min-height: 0;
 }
 
-/* The portrait and its controls. The lorebook entry used to sit here too, and a linked
-   entry is several paragraphs: in a fixed column with nothing to scroll it flattened the
-   portrait on the way past. It has a tab of its own now. */
+/* Scroll the portrait and its controls independently of the sheet content. */
 .sillynpc-sheet-sidebar {
-    /* Was a flat 240px that could not shrink, which on a 360px phone left the text a
-       third of the width behind a portrait taking the rest - the "it blocks the text"
-       report. The cap is what it always was on a full-size dialog; the floor is the
-       point below which the picture stops being worth its space. */
+    /* Retain a usable portrait width while leaving room for narrow-screen text. */
     flex: 0 0 clamp(130px, 28%, 240px);
     display: flex;
     flex-direction: column;

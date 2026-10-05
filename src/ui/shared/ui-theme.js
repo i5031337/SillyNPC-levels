@@ -159,18 +159,3 @@ export function repositionCloseButton(popupInstance, visualContent) {
         + 'right: var(--sillynpc-space-md); cursor: pointer; '
         + 'z-index: var(--sillynpc-z-modal); margin: 0;';
 }
-/**
- * The entries a choice dropdown offers, in order.
- *
- * A stored value that is no longer on the list gets an entry of its own, marked, and stays
- * selected. Narrowing a list in the builder must not silently rewrite characters nobody
- * was looking at, and a dropdown that simply omits the value would look like nothing is
- * chosen while the sheet says otherwise.
- *
- * The blank entry is always there: empty means "use the default" on a card, and a value
- * you cannot take back is worse than one you can.
- *
- * @param {string[]} options
- * @param {string} current
- * @returns {{ value: string, label: string, selected: boolean }[]}
- */

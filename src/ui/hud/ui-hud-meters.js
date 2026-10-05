@@ -1,13 +1,6 @@
-import { eventSource } from '../../../../../../events.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, resolveMaxValue, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
-import {
-    allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR,
-    hudLayoutFor, allHudLayoutClasses,
-} from '../../core/constants.js';
-import { computeStatBar, splitValue, applyStatFormat, portraitRendition } from '../../core/utils.js';
-import { whyHidden, trapInlineDisplay, shortenStack } from '../shared/css-origin.js';
-import { makeActivatable } from '../../core/utils.js';
+import { resolveMaxValue } from '../../tracker/status-logic.js';
+import { allHudLayoutClasses } from '../../core/constants.js';
+import { splitValue, applyStatFormat, portraitRendition } from '../../core/utils.js';
 
 export function portraitSizeFor(meterCount, style) {
     const ROW = 22;   // one meter row plus its gap
@@ -82,7 +75,6 @@ export function applyHudProportions(container, meterCount, layout) {
     const size = portraitSizeFor(meterCount, layout.meters);
     container.style.setProperty('--sillynpc-hud-portrait-size', `${size}px`);
 }
-
 
 /**
  * The colour a primary stat's meter is drawn in.
@@ -360,12 +352,3 @@ export function applyHudAppearance(container, settings) {
         container.style.removeProperty('--sillynpc-hud-portrait-border');
     }
 }
-
-/**
- * Pins the HUD where it currently looks, leaving its corner anchor for left/top.
- *
- * Taken from the visible box, so switching from a corner to a position does not move it.
- * placeHud turns screen pixels into the left/top the zoomed element needs.
- *
- * @param {DOMRect} rect Where it looks right now.
- */

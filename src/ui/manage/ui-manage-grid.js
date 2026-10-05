@@ -2,16 +2,7 @@ import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { resolveProfileFields } from '../../core/profile-fields.js';
 import { getLibraryCharacters } from '../../characters/character-repository.js';
-import {
-    deleteCharacter,
-    findCharacter,
-    moveCharacterToCategory,
-    getAllCategories,
-    createCategory,
-    getChatCast,
-    setChatCast,
-    UNCATEGORISED,
-} from '../../characters/characters.js';
+import { deleteCharacter, findCharacter, moveCharacterToCategory, getAllCategories, createCategory, getChatCast, setChatCast, UNCATEGORISED } from '../../characters/characters.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { syncAllLorebooks } from '../../lore/lorebook.js';
 import { fillProfile } from '../../characters/character-fill.js';
@@ -19,7 +10,6 @@ import { hasOpenChat } from '../../tracker/status-logic.js';
 import { buildBulkBar } from '../shared/ui-bulk-select.js';
 import { exportCharacterFile, importCharacterFile } from '../shared/ui-transfer.js';
 import { buildGridFilterRow } from '../characters/ui-grid-filter.js';
-
 import { manageState } from './ui-manage-state.js';
 import { buildCategoryHeading, buildCard, buildAddCard } from './ui-manage-cards.js';
 
@@ -335,19 +325,3 @@ export function ensureGridBulk(refreshGrid) {
     });
     return manageState.gridBulk;
 }
-
-/**
- * The category heading being dragged, if one is.
- *
- * Separate from manageState.draggedCharId rather than one "what is being dragged": a heading is both
- * a drop target for a card and a draggable thing itself, and the two must not be mistaken
- * for each other - dropping a heading on a heading reorders, dropping a card on one files
- * the character.
- */
-
-/**
- * One category's heading: its name, what can be done to it, and where cards land.
- *
- * @param {string} cat
- * @returns {HTMLElement}
- */

@@ -36,14 +36,9 @@
         repeating-linear-gradient(90deg, rgba(120, 90, 50, 0.05) 0 1px, transparent 1px 3px),
         repeating-linear-gradient(0deg, rgba(120, 90, 50, 0.04) 0 1px, transparent 1px 4px),
         linear-gradient(160deg, #efdfbc 0%, #e3cda1 55%, #d8bf90 100%);
-    /* Aged at the edges, where a real sheet is handled most. */
-    box-shadow:
-        inset 0 0 44px rgba(110, 78, 40, 0.34),
-        inset 0 0 8px rgba(90, 60, 30, 0.20),
-        var(--sillynpc-shadow);
     border: 1px solid var(--sillynpc-border);
     color: var(--sillynpc-fg-primary);
-    font-family: var(--sillynpc-font-serif);
+    font-family: var(--sillynpc-font-family);
     box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
     border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
 }
@@ -51,7 +46,7 @@
 .sillynpc-theme-tabletop-parchment .sillynpc-manage *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
 .sillynpc-theme-tabletop-parchment.sillynpc-hud-container *:not(.fa-solid):not(.fa-regular):not(.fa-brands),
 .sillynpc-theme-tabletop-parchment .sillynpc-status-box *:not(.fa-solid):not(.fa-regular):not(.fa-brands) {
-    font-family: var(--sillynpc-font-serif);
+    font-family: var(--sillynpc-font-family);
 }
 
 .sillynpc-theme-tabletop-parchment .sillynpc-setting {
@@ -144,12 +139,9 @@
         linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.14) 50%),
         linear-gradient(90deg, rgba(255, 0, 0, 0.012), rgba(0, 255, 0, 0.006), rgba(0, 0, 255, 0.012));
     background-blend-mode: normal;
-    opacity: 0.55;
     pointer-events: none;
-    /* FIX: Was z-index:2001 magic number — use token */
     z-index: var(--sillynpc-z-overlay);
     background-size: 100% 3px, 4px 100%;
-    pointer-events: none;
     opacity: 0.15;
 }
 
@@ -174,7 +166,6 @@
 
 .sillynpc-theme-analog-horror .sillynpc-section-title {
     color: var(--sillynpc-accent-text, var(--sillynpc-accent));
-    /* Was chromatic aberration on a 2s loop, which made every heading swim. */
     text-shadow: 1px 0 rgba(255, 0, 0, 0.25), -1px 0 rgba(0, 255, 255, 0.18);
     border-bottom: 1px solid var(--sillynpc-accent);
 }
@@ -232,7 +223,6 @@
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
     font-family: var(--sillynpc-font-serif);
-    /* FIX: Was transition:all — narrowed to specific properties */
     transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
                 color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
                 border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -251,7 +241,6 @@
 }
 
 .sillynpc-theme-rosewater .sillynpc-setting {
-    /* FIX: Was transition:all */
     transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
                 transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1),
@@ -285,7 +274,7 @@
 }
 
 /* ─── Chat Injection ───────────────────────────────────────────────────── */
-/* FIX: This block injects into SillyTavern's .mes_text which has its own
+/* This block injects into SillyTavern's .mes_text which has its own
    aggressive styles. !important is justified here — it's the one place we
    genuinely need to override a 3rd-party host stylesheet we can't modify. */
 

@@ -13,7 +13,6 @@
 
 import { activeNpcSystem, npcTemplateFor } from '../core/npc-templates.js';
 import { splitValue } from '../core/utils.js';
-import { debugLog } from '../core/constants.js';
 
 export { splitValue };
 

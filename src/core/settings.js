@@ -18,27 +18,8 @@ export function initSettings() {
     normalizeSettings(extension_settings.sillynpc);
 }
 
-/**
- * The portrait template to send.
- *
- * An empty stored template uses the maintained Image Generation prompt.
- * @returns {string}
- */
+/** The maintained portrait generation template. */
 export function resolveImagePrompt() {
-    return recommendedImagePrompt();
-}
-
-/**
- * The suggested portrait template, ignoring anything customised.
- *
- * Separate from resolveImagePrompt on purpose: that one answers "what do I send", and
- * a customised template rightly wins there. This answers "what would you suggest", which
- * is what a Restore button needs - asking the other question hands someone back the very
- * text they were trying to replace.
- *
- * @returns {string}
- */
-export function recommendedImagePrompt() {
     return IMAGE_PROMPT;
 }
 

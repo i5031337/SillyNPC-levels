@@ -1,13 +1,6 @@
-import { eventSource } from '../../../../../../events.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, resolveMaxValue, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
-import {
-    allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR,
-    hudLayoutFor, allHudLayoutClasses,
-} from '../../core/constants.js';
-import { computeStatBar, splitValue, applyStatFormat, portraitRendition } from '../../core/utils.js';
-import { whyHidden, trapInlineDisplay, shortenStack } from '../shared/css-origin.js';
-import { makeActivatable } from '../../core/utils.js';
+import { BUILT_IN_DEFAULT_AVATAR } from '../../core/constants.js';
+import { portraitRendition } from '../../core/utils.js';
+import { whyHidden } from '../shared/css-origin.js';
 
 /**
  * The portrait's <img>, made if it is not there.
@@ -116,20 +109,3 @@ export function recordFaceState(portrait, face, src) {
         delete portrait.dataset.faceWhy;
     }
 }
-
-/**
- * Throws away what the portrait thinks it is showing, so the next draw rebuilds it.
- *
- * One of the remaining explanations for the picture vanishing on a preset change is a
- * rendition that decoded to something unusable: portraitRendition caches by
- * `source@step`, so once a bad one is in there every later draw is handed the same bad
- * value, and only reloading the page - which drops the module and its cache - brings the
- * picture back. That matches the report exactly, and it is the only one of the candidates
- * with a remedy that does not depend on knowing which candidate it is.
- *
- * Clearing dataset.sillynpcSource makes the next updateHUD assign the full picture again rather
- * than deciding nothing has changed.
- *
- * If the frame's data-face still reads `ok:<width>` after this, the rendition was never
- * the problem and this line is doing nothing. See recordFaceState.
- */

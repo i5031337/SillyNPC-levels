@@ -144,7 +144,7 @@ Reload SillyTavern.
 
 In **Systems → Builder → NPC**, choose **Turn** or **Advancement**. Turn fields may change as the story unfolds and start from the destination System's defaults when a character is imported or instantiated from a reusable world card. Advancement fields travel with the character, are hidden from turn extraction, and can be edited manually. Locked fields also travel with the character. Existing Innate fields without an update policy become Advancement; their stored values are preserved.
 
-In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. **Level bonus** independently chooses which numeric fields may be raised after a level-up. A Turn field such as HP may also be eligible for a level bonus, so current resource changes and maximum growth can share one field.
+In **Systems → Builder → Player**, the same Turn/Advancement choice controls turn extraction. The progression controls select XP and Level fields, a growth policy, and eligible numeric stats; NPC progression is configured per template. A Turn field such as HP may also be eligible for level-up growth, so current resource changes and maximum growth can share one field.
 
 Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. A field's ID stays stable when its label changes. Fill and manual lore generation can seed empty fields; manual edits and field regeneration can revise them. The tracker leaves profile and memory fields alone. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
 
@@ -170,7 +170,7 @@ Advanced settings and fine-tuning parameters remain hidden until **Show Every Se
 | **Player** | The selected persona's profile, portrait, stats, items, memories, goals, and level; also opens from the HUD |
 | **Appearance** | Themes, speech dividers, spacing, avatar shapes, and fallback faces |
 | **Writing Rules** | Dialogue format, narrator rules, ban list, and how replies are parsed |
-| **Goals** | Current player and NPC goals, plus readable archived Threads from older chats |
+| **Goals** | Current player and NPC goals |
 | **Tracker** | Extraction passes, review settings, time rules, and history scans |
 | **HUD** | Floating on-screen widget configuration and display modes |
 | **Systems** | Reusable rules, player and NPC profile fields, update policies, goals, and stat definitions |

@@ -102,10 +102,6 @@ export async function fillSources(char) {
 /**
  * The ask, generated from the field list so a field cannot exist without being asked for.
  */
-// Exported for the tests. The exclusion that keeps a field being rewritten out of what
-// the model is shown lives in the wiring here, not in the helpers it calls - so a test that
-// exercises those directly passes whatever this does, which is how two mutations of exactly
-// that wiring went unnoticed.
 export function buildProfilePrompt(char, wanted, sources) {
     const values = { name: char.name };
 
@@ -114,9 +110,6 @@ export function buildProfilePrompt(char, wanted, sources) {
     // by some distance, and the subject may be a passing mention.
     const persona = getPersonaData();
     if (persona?.name && persona.name !== char.name) {
-        /* The exception matters as much as the rule. Without it the warmth field, which
-           asks how this character behaves toward the reader, reads as forbidden and comes
-           back blank - two instructions cancelling each other with nothing to show for it. */
         values.persona = persona.name;
     }
 
@@ -125,22 +118,8 @@ export function buildProfilePrompt(char, wanted, sources) {
     const known = describeProfile(char, rewriting);
     values.known = known;
 
-    /* The story first, and said to be the better source.
-
-       A lorebook entry is written to steer a scene, so it is often broad where a profile
-       wants the particular - and it may itself have been written from a chat this
-       character was barely in. What they were seen doing beats what an entry says about
-       them, so the story leads and the entry backs it up.
-
-       The story is here at all only when they are in it. See fillSources. */
+    // Recent story is sent only when this character is mentioned; lore supports it.
     if (sources.story) {
-        /* It used to call itself the best source and say "describe them from what they do
-           here", which fought the system prompt's "a profile outlives the scene it was
-           written from" - and won, being later and more specific. A character filled in
-           after a bad night kept that night permanently, because Fill never overwrites.
-           The story is still first, which is the point: an entry is written to steer a
-           scene and is often broad where a profile wants the particular. What changed is
-           what to take from it. */
         values.story = sources.story;
     }
 

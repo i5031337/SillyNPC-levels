@@ -380,10 +380,3 @@ export function buildSettingNumber(options) {
     appendSettingHelp(wrap, help);
     return wrap;
 }
-
-/**
- * Renders a collection for a given actor (Player or NPC).
- * @param {string} tabId The collection ID
- * @param {Object} actor The actor object (state.player or a character from state.characters)
- * @param {Object} settings The status tracker settings
- */

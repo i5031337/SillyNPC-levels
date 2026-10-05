@@ -1,6 +1,5 @@
 import { Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
 import { buildBulkCheckbox } from '../shared/ui-bulk-select.js';
 import { loadStateFromMetadata, saveStateToMetadata, updateMasterItem, renameMasterItem, deleteMasterItem } from '../../tracker/status-logic.js';
 import { getItemRules, clearItemRule, PLAYER_ACTOR } from '../../tracker/status-review.js';

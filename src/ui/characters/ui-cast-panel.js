@@ -2,13 +2,7 @@ import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { escapeHtml } from '../../core/utils.js';
 import { updateExtensionTheme } from '../shared/ui-shared.js';
 import { triggerReprocess } from '../../chat/reprocess.js';
-import {
-    loadStateFromMetadata,
-    getCastDecisions,
-    setCastDecision,
-    CAST_PERSONA,
-    CAST_EXCLUDED,
-} from '../../tracker/status-logic.js';
+import { loadStateFromMetadata, getCastDecisions, setCastDecision, CAST_PERSONA, CAST_EXCLUDED } from '../../tracker/status-logic.js';
 
 /**
  * Who the tracker should treat as a character, and who it should stop admitting.

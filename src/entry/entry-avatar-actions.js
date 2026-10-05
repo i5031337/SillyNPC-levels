@@ -54,12 +54,14 @@ export function wireAvatarClicks() {
                 if (choosing.has(key)) return;
                 choosing.add(key);
                 try {
+                    const metadata = getContext()?.chatMetadata;
                     const prompt = document.createElement('p');
                     prompt.textContent = `Create a new profile for "${char.name}" in this chat? `
                         + 'The reusable profile will stay available in other chats.';
                     const choice = await new Popup(prompt, POPUP_TYPE.CONFIRM, '', {
                         okButton: 'Create new profile', cancelButton: 'Edit reusable profile',
                     }).show();
+                    if (getContext()?.chatMetadata !== metadata) return;
                     if (choice === POPUP_RESULT.CANCELLED) return;
                     if (choice !== POPUP_RESULT.AFFIRMATIVE) {
                         await openManagePopup({ tab: 'characters', charId });
@@ -121,6 +123,7 @@ export function wireAvatarClicks() {
  * @returns {Promise<{ aliasOf: string|null }|null>} Null when dismissed.
  */
 async function askAboutUnknownSpeaker(speakerName) {
+    const metadata = getContext()?.chatMetadata;
     const existing = getAllCharacters().filter(c => c.name);
 
     const wrap = document.createElement('div');
@@ -157,7 +160,8 @@ async function askAboutUnknownSpeaker(speakerName) {
     const result = await new Popup(wrap, POPUP_TYPE.CONFIRM, '', {
         okButton: 'OK', cancelButton: 'Cancel',
     }).show();
-    if (result !== POPUP_RESULT.AFFIRMATIVE) return null;
+    if (result !== POPUP_RESULT.AFFIRMATIVE
+        || getContext()?.chatMetadata !== metadata) return null;
 
     return { aliasOf: select.value || null };
 }

@@ -67,6 +67,30 @@ test('old HUD visibility migration runs once, preserving later choices', () => {
     assert.equal(stat.isPrimary, true);
 });
 
+test('old NPC stat definitions migrate before defaults are filled', () => {
+    const { normalize } = migration();
+    const stats = [{ name: 'Trust', type: 'bar' }];
+    const settings = { characters: [], statusTracker: { characterStats: stats } };
+    normalize(settings);
+    assert.equal(settings.statusTracker.npcStats, stats);
+    assert.equal(stats[0].type, 'number');
+    assert.equal(stats[0].visible, true);
+    assert.equal('characterStats' in settings.statusTracker, false);
+    normalize(settings);
+    assert.equal(settings.statusTracker.npcStats, stats);
+});
+
+test('current NPC definitions win when an export also carries the old key', () => {
+    const { normalize } = migration();
+    const stats = [{ name: 'Trust', type: 'text' }];
+    const settings = { characters: [], statusTracker: {
+        npcStats: stats, characterStats: [{ name: 'Retired' }],
+    } };
+    normalize(settings);
+    assert.equal(settings.statusTracker.npcStats, stats);
+    assert.equal('characterStats' in settings.statusTracker, false);
+});
+
 test('old raw prompt overrides are dropped while other settings normalize', () => {
     const baseSource = readFileSync(new URL('../src/core/settings-base-migration.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')

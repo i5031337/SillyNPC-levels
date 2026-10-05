@@ -316,5 +316,3 @@ export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
         btn.dataset.listenerAttached = 'true';
     });
 }
-
-/** The framings that are valid CSS in the position this lands in. */

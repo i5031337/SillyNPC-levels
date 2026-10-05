@@ -1,16 +1,13 @@
 import { npcStatsFor } from '../../core/npc-templates.js';
 import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
 import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
-import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
+import { buildSettingTextArea, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
 import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
 import { constrainNumericStat } from '../../tracker/numeric-stat-bounds.js';
 import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
 import { eventSource } from '../../../../../../events.js';
 import { triggerReprocess } from '../../chat/chat.js';
-import { updateHUD } from '../hud/ui-hud.js';
 import { escapeHtml } from '../../core/utils.js';
-import { cleanChatHistory, measureChatOverhead, estimateTokens } from '../../tracker/status-history.js';
-import { buildConnectionProfilePicker } from '../settings/ui-connection-profiles.js';
 
 export async function openAdvancedSettingsPopup() {
     const container = document.createElement('div');

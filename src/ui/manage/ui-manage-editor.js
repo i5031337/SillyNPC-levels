@@ -14,12 +14,10 @@ import { fillCharacter } from '../characters/ui-fill.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { readLoreValues } from '../../lore/lore-sync.js';
 import { exportCharacterFile } from '../shared/ui-transfer.js';
-
 import { manageState } from './ui-manage-state.js';
 import { renderPictureTagsSection } from './ui-manage-pictures.js';
 import { renderCollectionsSection, renderCategorySelect } from './ui-manage-collections.js';
 import { renderOverridesSection, buildAliasRow } from './ui-manage-overrides.js';
-
 
 /**
  * The tabs, in their own class.
@@ -339,15 +337,3 @@ export function renderEditor(showGrid) {
 
     renderEditForm(char, editView, sticky, title, refreshEditor);
 }
-
-/**
- * What each of this character's pictures means.
- *
- * Drawn only when something has asked for pictures to be tagged. SillyNPC has no use for
- * a tag of its own, so with nothing registered this is not an empty section with a promise
- * in it - it is not there at all, and the character page looks exactly as it did.
- *
- * A grid rather than a control on the portrait carousel. The carousel shows one picture at
- * a time, which is right for choosing the one in use and wrong for saying what a dozen of
- * them are for - and it is shared with the player sheet, which has no tags.
- */

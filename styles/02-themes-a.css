@@ -14,18 +14,10 @@
 }
 
 /* ─── Themes ───────────────────────────────────────────────────────────── */
-/* FIX: All themes now use a single consistent naming convention:
-   a modifier class on the root element (.sillynpc-theme-*).
-   The old mixed approach (some using .theme-*, others .sillynpc-theme-*)
-   has been unified. All theme child rules use .sillynpc-theme-* as the
-   parent selector throughout. */
 
 /* ── 1. Default (Seamless Native) ─────────────────────────────────────── */
 
-/* The pink panel and the invisible descriptions were one bug. --SmartThemeBodyColor is
-   SillyTavern's *text* colour - a salmon pink on Celestial Macaron - and this painted the
-   panel with it, then wrote text on top. --SmartThemeBlurTintColor is the background.
-   With the roles the right way round, "seamless" finally follows the user's ST theme. */
+/* Follow SillyTavern’s panel and text colours. */
 .sillynpc-manage.sillynpc-theme-default,
 .sillynpc-review-panel.sillynpc-theme-default,
 .sillynpc-reader-report.sillynpc-theme-default,
@@ -225,10 +217,6 @@
     --sillynpc-bg-secondary: #f8f8f8;
     --sillynpc-fg-primary: #222222;
     --sillynpc-fg-secondary: #3f3f3f;
-    /* Light ground: the shared success and danger score under 2.5 here. These clear
-       4.5 against both this theme's surfaces. */
-    --sillynpc-success: #1b5e20;
-    --sillynpc-danger: #b3261e;
     --sillynpc-warning: #8a5300;
     --sillynpc-accent: #000000;
     --sillynpc-border: #000000;
@@ -318,7 +306,6 @@
     background: var(--sillynpc-bg-secondary);
     backdrop-filter: var(--sillynpc-backdrop);
     border: 1px solid var(--sillynpc-border);
-    /* FIX: Was transition:all — narrowed to specific properties */
     transition: background 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
                 transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
                 box-shadow 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),

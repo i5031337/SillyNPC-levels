@@ -4,20 +4,11 @@ import { debugLog } from '../../core/constants.js';
 import { eventSource } from '../../../../../../events.js';
 import { getSettings } from '../../core/settings.js';
 import { escapeHtml } from '../../core/utils.js';
-import { buildPortraitBlock, openLightbox } from './ui-portrait.js';
-import { renderLorebookSection, resetLorebookState } from '../story/ui-lorebook-section.js';
-import { buildProfileBlocks, renderProfileFields } from './ui-profile.js';
-import { readLoreEntry } from '../../characters/character-fill.js';
+import { resetLorebookState } from '../story/ui-lorebook-section.js';
 import { fillCharacter } from './ui-fill.js';
-import { renderCollectionUI, attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
+import { attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
 import { buildBulkBar, spliceIndexes } from '../shared/ui-bulk-select.js';
-import { choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
-import { 
-    loadStateFromMetadata,
-    applyUpdate,
-    getPersonaData,
-    getPlayerCard
-} from '../../tracker/status-logic.js';
+import { loadStateFromMetadata, applyUpdate, getPersonaData, getPlayerCard } from '../../tracker/status-logic.js';
 
 /** 'profile' | 'edit' - the same two the character page has, for the same reason. */
 export let currentTab = 'profile';

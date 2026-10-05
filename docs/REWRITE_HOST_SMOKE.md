@@ -1,4 +1,4 @@
-# Rewrite host smoke checks
+# Host smoke checks
 
 Run these checks in a live SillyTavern session with this extension enabled. Node tests cannot cover SillyTavern popup, event, generation, or rendering behavior. Record the chat, persona, extension revision, and result for each run. Use a disposable chat for actions that generate or modify messages.
 
@@ -20,11 +20,11 @@ The user initially found rare XP awards, overlapping text in Underlines, a track
 | Portrait provider | Configure SillyTavern Image Generation, generate a portrait, then choose Use or Discard. | `/imagine` returns an image through the host provider and the chosen action updates or leaves the card accordingly. | User verified |
 | NPC edit and lore | Edit a profile field, save, sync lore, then reopen both. | The edited value remains on the card and linked lore entry. | User verified |
 | Turn extraction and review | Generate a reply with a clear stat or item change and run the reader. | Proposed changes and reasons are visible; accepting a proposal updates the correct actor once. | User verified |
-| XP and level | Generate an accomplishment that awards XP across a level boundary. | The reader's positive XP delta advances the stored remainder and level once; level bonus is retained. | Level-up mechanics pending |
+| XP and level | Generate an accomplishment that awards XP across a level boundary. | The reader's positive XP delta advances the stored remainder and level once; dependent stat growth and collection rewards appear for review. | Level-up mechanics pending |
 | Chat and persona scope | Switch to a different chat and persona, then return. | Cast and live tracker state follow the chat; player identity follows the selected persona. | User verified |
 | Latest reply changes | Swipe, regenerate, and edit the latest reply. | Review and tracked state correspond to the selected reply; no stale reply changes accumulate. | User verified |
 
-## Phase 1 player sheet checks
+## Player sheet checks
 
 | Case | Host action | Expected result | Result |
 | --- | --- | --- | --- |
@@ -36,11 +36,13 @@ The user initially found rare XP awards, overlapping text in Underlines, a track
 | Scope refresh | Keep the menu open while changing chat or persona if SillyTavern permits it; otherwise close, switch, and reopen. | The sheet shows the current chat's player values and the selected persona's identity. | User verified |
 | Keyboard and narrow view | Reach the Player tab and its main actions by keyboard; repeat at a narrow viewport. | Controls are operable and the sheet remains readable. | User verified |
 
-For Phase 1, test with at least two personas and two chats, including one existing chat with saved XP and a portrait. Inspect the browser console for extension errors after each action. If the menu cannot remain open during a chat or persona switch, record that host constraint and use the close/switch/reopen path.
+For the Player sheet, test with at least two personas and two chats, including one existing chat with saved XP and a portrait. Inspect the browser console for extension errors after each action. If the menu cannot remain open during a chat or persona switch, record that host constraint and use the close/switch/reopen path.
 
-To exercise the remaining level-up case without a long play session, use a disposable chat and manually set the player's XP remainder to one below its displayed cap. Then generate a clearly earned minor accomplishment and inspect the reader report, stored remainder, level, bonus, Player sheet, and HUD. The failed-bonus retry case still needs a deliberately unusable bonus response.
+To exercise the remaining level-up case without a long play session, use a disposable chat and manually set the player's XP remainder to one below its displayed cap. Then generate a clearly earned minor accomplishment and inspect the reader report, stored remainder, level, reward proposals, Player sheet, and HUD. The reward-retry case needs a deliberately unusable reward selection response. The
+progression/reward flow has changed since the dated user report; verify its current
+behavior separately with `tests/ui-level-rewards.py` and `tests/ui-progression-smoke.py`.
 
-## Phase 7 follow-up checks
+## Regression follow-up checks
 
 | Case | Host action | Expected result | Result |
 | --- | --- | --- | --- |
@@ -51,6 +53,6 @@ To exercise the remaining level-up case without a long play session, use a dispo
 | Small XP award | Generate a minor accomplishment, then one that crosses a level boundary. Inspect the raw reader response if XP also appears under `player.stats`. | The reader awards a scaled amount once from `player.deltas.XP`; a stray raw XP value cannot reset the total. | Minor awards user verified; boundary and rollover pending |
 | Collection names with commas | Show two tracked items, one with comma-separated adjectives in its name. | Each item has a visible boundary in the tracker summary. | User verified |
 | Failed tracker reply | Make the reader return invalid JSON for the latest prose reply, then use **Retry tracker reading** under that reply. | The failed output is visible; retry runs the same message again and applies a valid answer once. | User verified |
-| Failed level bonus | Cross an XP threshold and make the bonus call return invalid JSON, then retry from the failed tracker report. | XP and level stay at their previous values until a valid bonus arrives; the report shows the invalid bonus reply; retry applies XP, level, and bonus once. | Level-up mechanics pending |
+| Failed reward selection | Cross an XP threshold and make a One stat or guided reward selection return invalid JSON, then retry the missing rewards. | The XP transition follows its review policy independently; valid choices remain cached. Retry proposes only missing grants and does not award XP again. | Current progression/reward mechanics need a manual gameplay check |
 | Failed Fill step | Make Description & Lore or Tracker fields return an unusable response, choose **Retry**, then finish Fill. | Only the failed step runs again, completed parts stay saved, and the card finishes without duplicated items. | User verified |
 | Partial NPC lore | Fill a new NPC whose sources support a Role and History but no Ties. | The lore writer may omit Ties; the entry saves, Role and History reach the card, and Ties remains empty. | User verified |

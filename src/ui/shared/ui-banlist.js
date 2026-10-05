@@ -2,9 +2,7 @@ import { POPUP_TYPE, POPUP_RESULT, Popup } from '../../../../../../popup.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { updateExtensionTheme } from './ui-shared.js';
-import {
-    banMode, bannedPhrases, scanForBanCandidates, addBannedPhrases, addNotPeople,
-} from '../../prompts/banlist.js';
+import { banMode, bannedPhrases, scanForBanCandidates, addBannedPhrases, addNotPeople } from '../../prompts/banlist.js';
 
 /**
  * The ban list panel: what is banned, how it is being enforced, and a way to find more.

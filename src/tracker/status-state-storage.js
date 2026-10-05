@@ -1,11 +1,8 @@
 import { npcStatsFor, npcTemplateFor } from '../core/npc-templates.js';
-import { 
-    eventSource, 
-    event_types, 
-} from '../../../../../events.js';
+import { eventSource } from '../../../../../events.js';
 import { getContext } from '../../../../../st-context.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { getSettings } from '../core/settings.js';
+import { LOG_PREFIX, debugLog } from '../core/constants.js';
 
 export function bind(deps) {
 function loadStateFromMetadata() {
@@ -20,7 +17,7 @@ function loadStateFromMetadata() {
         if (metadata && metadata[deps.STATE_KEY]) {
             stateToReturn = metadata[deps.STATE_KEY];
             
-            // Ensure legacy states have expected structure
+            // Fill missing state containers.
             if (!stateToReturn.global) stateToReturn.global = {};
             if (!stateToReturn.characters) stateToReturn.characters = [];
             
@@ -47,15 +44,7 @@ function loadStateFromMetadata() {
         deps.stateOrigin.set(stateToReturn, deps.committedChatId);
     }
 
-    /* Fills in stats the system declares and repairs their casing. It deliberately does NOT
-       remove a stored value whose stat has been deleted: erasing on load would take a stat's
-       history with it the moment somebody deletes one by mistake, and a System Profile
-       switch changes the schema under a chat without meaning to throw anything away.
-
-       A deleted stat is instead ignored wherever anything reads - the tracker box and both
-       prompts go through statsInSystem - so the value simply stops being seen. This comment
-       used to promise validation that was never written, which is how a deleted stat came to
-       be drawn and sent on every message while being unable to change. */
+    // Fill declared stats and repair casing; retain undeclared values for archived history.
     const settings = getSettings().statusTracker;
 
     // Ensure missing global stats from settings are added
@@ -197,22 +186,7 @@ function loadStateFromMetadata() {
     return stateToReturn;
 }
 
-/**
- * Saves the current status to chat metadata
- */
-/**
- * Commits a state to chat metadata, recording the state it replaces so it can be undone.
- *
- * History used to store the state that had just been written, which is the wrong
- * direction: restoring it would be a no-op. It now stores the *outgoing* state, so
- * popping an entry moves you back one step.
- *
- * @param {StatusState} state
- * @param {{ recordHistory?: boolean, label?: string }} [options]
- *   Pass recordHistory:false for writes that should not become undo points - schema
- *   repairs during load, and the undo operation itself (which would otherwise
- *   immediately re-record what it just reverted).
- */
+/** Commit chat state, saving the outgoing state as an undo point unless disabled. */
 function saveStateToMetadata(state, options = {}) {
     const { recordHistory = true, label = 'Change', partOfMessage = false } = options;
     const metadata = deps.getMetadata();

@@ -1,25 +1,10 @@
 import { Popup } from '../../../../../../popup.js';
 import { getChatCharacters, isChatCharacter } from '../../characters/character-repository.js';
-import {
-    createCharacter,
-    deleteCharacter,
-    reorderCharacters,
-    moveCharacterToCategory,
-    getAllCategories,
-    deleteCategory,
-    renameCategory,
-    moveCategory,
-    getChatCast,
-    setChatCast,
-    isCharacterInChat,
-    addCharacterToChat,
-    instantiateWorldCharacter,
-} from '../../characters/characters.js';
+import { createCharacter, deleteCharacter, reorderCharacters, moveCharacterToCategory, getAllCategories, deleteCategory, renameCategory, moveCategory, getChatCast, setChatCast, isCharacterInChat, addCharacterToChat, instantiateWorldCharacter } from '../../characters/characters.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { hasOpenChat } from '../../tracker/status-logic.js';
 import { buildBulkCheckbox } from '../shared/ui-bulk-select.js';
 import { makeActivatable } from '../../core/utils.js';
-
 import { manageState } from './ui-manage-state.js';
 
 export function buildCategoryHeading(cat, refreshGrid) {
@@ -312,13 +297,3 @@ export function buildAddCard(openEditor) {
 }
 
 /* ─── Editor View ────────────────────────────────────────────────────────── */
-
-/**
- * Which face of a character is showing: what is known, or the form that changes it.
- *
- * Reset to 'profile' every time a character is opened, so arriving somewhere always means
- * arriving at the readable page. Changing it does not persist: coming back to somebody
- * later is arriving again.
- *
- * @type {'profile'|'edit'|'pictures'}
- */

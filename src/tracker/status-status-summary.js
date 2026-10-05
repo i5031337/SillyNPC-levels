@@ -1,7 +1,6 @@
 import { collectionAppliesTo } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { extractJSON, safeJsonParse, splitValue, escapeRegExp, ceilingFromValue } from '../core/utils.js';
+import { getSettings } from '../core/settings.js';
 import { charactersFromActivatedLore } from '../lore/activated-lore.js';
 
 export function bind(deps) {

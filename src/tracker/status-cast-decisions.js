@@ -1,5 +1,5 @@
-import { setUserAvatar, getUserAvatar } from '../../../../../personas.js';
-import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
+import { getUserAvatar } from '../../../../../personas.js';
+import { getAllCharacters } from '../characters/character-repository.js';
 import { getIgnoredSpeakerLabels, normaliseSpeakerLabel } from '../story/speaker-labels.js';
 
 export function bind(deps) {

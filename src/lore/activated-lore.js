@@ -1,18 +1,6 @@
 import { getAllCharacters } from '../characters/character-repository.js';
 
-/**
- * Which lorebook entries SillyTavern fired for the turn being generated.
- *
- * Lived in status-extractor.js, where only the reader could reach it. The scene block needs
- * the same answer now - a character whose entry just fired is one the narrator may be about
- * to write in, and sending their lore without their stats or their profile is how the model
- * ends up inventing both - and status-logic.js cannot import status-extractor.js, because
- * status-extractor.js already imports status-logic.js.
- *
- * The same reasoning that moved the speaker labels, the reprocess handle and the mention
- * matcher out. Nothing here touches the DOM or the chat, so it can be imported from
- * anywhere.
- */
+/** Entries activated for the latest generation, shared by reader and scene prompts. */
 
 /** @type {Array<object>} */
 let activatedEntries = [];

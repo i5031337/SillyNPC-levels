@@ -1,13 +1,7 @@
-import { eventSource } from '../../../../../../events.js';
-import { getSettings, saveSettings } from '../../core/settings.js';
-import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, resolveMaxValue, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
-import {
-    allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR,
-    hudLayoutFor, allHudLayoutClasses,
-} from '../../core/constants.js';
-import { computeStatBar, splitValue, applyStatFormat, portraitRendition } from '../../core/utils.js';
-import { whyHidden, trapInlineDisplay, shortenStack } from '../shared/css-origin.js';
-import { makeActivatable } from '../../core/utils.js';
+import { getSettings } from '../../core/settings.js';
+import { loadStateFromMetadata, findMatchingStatKey, getPersonaData, getPlayerImageUrl, drawsMeter, hasOpenChat } from '../../tracker/status-logic.js';
+import { allThemeClasses, themeClassFor, BUILT_IN_DEFAULT_AVATAR, hudLayoutFor } from '../../core/constants.js';
+import { computeStatBar } from '../../core/utils.js';
 import { ensurePortraitImage, recordFaceState } from './ui-hud-portrait.js';
 import { portraitSizeFor, showPortraitAtSize, applyHudProportions, buildMeterRow, paintSplitRing, applyHudAppearance } from './ui-hud-meters.js';
 import { goalLines } from '../../tracker/goals.js';
@@ -163,7 +157,6 @@ export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom
         };
     });
 
-
     if (style === 'ring') {
         // The portrait size for this frame is decided below, so compute it here too
         // rather than reading a variable that has not been written yet.
@@ -220,27 +213,3 @@ export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom
      * layout change, and whenever the number of meters moves the frame. */
     if (face) showPortraitAtSize(face, src);
 }
-
-/**
- * Keeps the portrait and the meter column the same height.
- *
- * The portrait was a fixed 60px while the column grew with the number of meters, so the
- * two only lined up by coincidence - at two meters the column was about 36px and the HUD
- * looked lopsided. Sizing the portrait from the row count keeps it square with whatever
- * is beside it, however many meters there are.
- *
- * @param {HTMLElement} container
- * @param {number} meterCount
- * @param {string} style
- */
-/**
- * The portrait's pixel size for a given meter count and style.
- *
- * Shared, because the ring painter needs the same answer applyHudProportions writes to the
- * stylesheet: the rings are drawn around the portrait, so a disagreement puts them in the
- * wrong place rather than merely looking odd.
- *
- * @param {number} meterCount
- * @param {string} style
- * @returns {number}
- */

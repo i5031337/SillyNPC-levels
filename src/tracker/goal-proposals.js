@@ -1,4 +1,4 @@
-import { quoteInMessage } from '../core/profile-update-policy.js';
+import { quoteInMessage } from '../story/quote-evidence.js';
 
 /** Validate a reader goal change without mutating story state. */
 export function validGoalProposal(field, current, proposal, messageText) {

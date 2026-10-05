@@ -1,54 +1,15 @@
 # Player and NPC progression with collection rewards
 
-Status: implementation plan; no progression changes implemented by this document.
+Implemented progression resolves XP and Level by configured field IDs for the
+player and independently enabled NPC templates. Stat growth and collection rewards
+share the existing tracker review and latest-reply replacement paths.
 
-## Goal and agreed direction
+The background reader reports earned XP only as a positive delta. Extraction converts
+that delta to an absolute reading before progression stores the remainder and level.
+Manual edits and saved review rows can still carry absolute values. XP rollover
+supports several crossed levels in one update.
 
-Support level-ups for both the player and NPCs. Let collections hold earned items,
-spells, skills, abilities, or other discrete rewards instead of storing the latest
-narrative reward in a single text stat. Keep numeric stat growth available, with an
-option to increase several configured stats at every level.
-
-The feature must be general-purpose. Pokémon-style progression is an example of
-multi-stat growth, not a special NPC type or a requirement to reproduce Pokémon's
-species, nature, IV, EV, or experience formulas.
-
-The user has agreed to:
-
-- A Level-up rewards option on collections, honoring Player/All NPCs/template targets.
-- Optional guidance and predefined rewards with required levels.
-- Reward proposals through the existing tracker review flow, avoiding duplicates.
-- Retaining numeric stat increases alongside collection rewards.
-- NPC level-ups and a policy that gives most/all selected stats small increases.
-
-The defaults below are proposed implementation decisions, not additional user commitments.
-
-## Current implementation and constraints
-
-- `src/tracker/progression.js` provides pure `progressXp` and `boostStat` helpers.
-  XP rollover currently uses a fixed cap from the XP pool, carries excess XP, and
-  supports crossing several levels in one update.
-- `src/tracker/status-apply-update.js` rolls over player XP and advances player Level.
-  NPC stats currently pass through ordinary update/persistence rules without that rollover.
-- `src/tracker/extractor/status-extractor-replies.js` requests one player bonus from
-  the reader after a level-up. It can increase one eligible numeric stat or write
-  narrative text to the unlocked Level bonus stat. That stat's presence currently
-  gates bonus generation, including numeric bonuses.
-- `src/tracker/stat-update-policy.js` controls eligible stats and moves the optional
-  player bonus into review without delaying earned XP/Level.
-- `src/core/system-schema.js` already stores player progression field IDs and partial
-  NPC progression settings. Runtime progression still relies on names such as XP/Level.
-  Audit schema-to-runtime projection before extending this configuration.
-- Collections already support multiple targets, a pinned first-field identifier,
-  optional numeric ranges, holder-specific fields, and shared static library fields.
-- Reader XP is a positive delta; extraction expands it into an absolute reading.
-  Manual edits and saved review rows can contain absolute values. Preserve this boundary.
-- Turn pools can grow their maxima. Advancement ratings keep their configured range.
-  NPC Advancement fields travel with the character; Turn fields reset for a new adventure.
-- Preserve chat/persona ownership, dry-run purity, regeneration, exports, and old reviews.
-  No source file should exceed 20 kB. Use focused modules rather than expanding large files.
-
-## Proposed System configuration
+## System configuration
 
 ### Progression by owner
 
@@ -66,17 +27,16 @@ Each enabled owner configuration selects:
   0–3 for each selected stat at each crossed level, informed by the story. Zero
   means no growth; positive increases remain optional review proposals.
 
-Retain the current fixed XP-cap arithmetic for the first implementation. Variable
-experience curves and level caps can be separate work; do not conflate them with rewards.
+XP rollover uses a fixed cap. Variable experience curves and level caps are outside
+the current progression contract.
 
-One stat retains the current story-informed selection and small increase, within
-the existing allowed range. All selected stats asks the reader for each stat
+One stat chooses one eligible stat and an integer increase from 1 through 5. All selected stats asks the reader for each stat
 at every crossed level and caches valid choices, including zero, for retries. Collection rewards are independent of the stat growth policy:
 an owner may receive both stat growth and rewards, or rewards without stat growth.
 
 ### Collection rewards
 
-Add a collapsed reward section behind a Level-up rewards checkbox. Reuse the
+Collections expose a collapsed reward section behind a Level-up rewards checkbox. Reuse the
 collection's existing targets; do not add a second competing ownership selector.
 
 Support two explicit modes:
@@ -108,7 +68,7 @@ reward, allow an explicit no-reward result rather than forcing duplicates.
 4. Preview and apply use the same transition and arithmetic. A dry run must never
    modify NPC cards, library entries, settings, or chat metadata.
 5. Apply XP/Level through the existing review policy. Keep level-derived stat growth
-   and collection rewards in review, matching the existing optional bonus behavior.
+   and collection rewards in review.
    If XP/Level is itself held for review, its dependent grants must wait for that
    transition to be accepted. Rejected XP must never leave applied rewards behind.
 6. Review rows identify the recipient, crossed level, stat/collection, and reason.
@@ -125,8 +85,8 @@ reward, allow an explicit no-reward result rather than forcing duplicates.
 - Plain ratings increase within their configured fixed maximum.
 - Turn pools increase current and capacity by the growth amount, preserving existing
   depletion. For example, 6/10 with +1 becomes 7/11, not a full heal.
-- Respect existing fixed bounds and clarify their interaction with expandable Turn
-  pool capacities before implementation; do not silently remove configured limits.
+- Explicit maxima remain hard ceilings for Turn pool growth; blank maxima allow
+  capacity expansion. Configured limits are preserved.
 - No automatic revival, cleansing, refilling, or full healing.
 - All selected stats chooses independent 0–3 increases per stat per crossed level,
   subject to bounds. One stat chooses
@@ -157,61 +117,6 @@ Ignore attempts to reward another template or change locked fields. A malformed
 guided reply should produce a visible retryable reward failure; do not lose the XP
 transition or already validated deterministic proposals, and retry only missing grants.
 Apply actor/chat freshness checks after asynchronous selection, as the reader already does.
-
-## Implementation phases
-
-### 1. Configuration and shared progression primitives
-
-- Audit System normalization, projection, export/import, settings migration, NPC
-  template selection, and existing review/history storage.
-- Introduce one canonical progression configuration for player and templates and
-  optional collection reward definitions. Round-trip stable field IDs.
-- Add pure actor-independent transition and multi-stat growth helpers, keeping
-  `progressXp` semantics and shared numeric bounds.
-- Normalize old player bonus candidates to One stat behavior. Disable NPC progression
-  by default for existing templates; do not grant anything simply by loading settings.
-
-### 2. Player/NPC XP integration
-
-- Route player and NPC XP through the shared transition logic in preview/application.
-- Update extractor schemas, delta expansion, sanitization, and policy checks to allow
-  earned NPC XP for enabled templates, while reserving Level for progression.
-- Extend separate-reader and inline-story instructions consistently. Disabled templates
-  retain ordinary stat behavior without automatic rollover or grants.
-- Persist NPC levels and earned growth through the existing character ownership and
-  Advancement mechanisms; verify new-adventure/reset behavior does not erase earned
-  progression or copy it to an unrelated NPC.
-
-### 3. Stat growth policies
-
-- Add a compact progression editor to the Player and NPC template screens.
-- Extend One stat selection to NPCs and remove dependence on a Level bonus text field.
-- Implement reader-chosen All selected stats growth with independent 0–3 increases.
-- Replace player-only bonus review matching with actor-aware structured grant provenance.
-- Integrate grant dependencies, acceptance-time arithmetic, regeneration, and undo.
-
-### 4. Collection reward authoring and generation
-
-- Add the collapsed collection reward controls and field-driven schedule editor.
-- Implement scheduled grants first, then guided model selection using the same validated
-  collection entry contract. Batch independent actor/level choices where practical;
-  do not send one request per stat or schedule entry.
-- Enforce targets, identifiers, bounds, duplicate checks, and review dependencies.
-- Confirm accepted static fields follow normal Item Library rules and per-holder fields
-  remain personal to the recipient.
-
-### 5. Retire the old narrative reward path and finish
-
-- Stop creating or relying on the Level bonus text stat. Preserve existing stored
-  text as readable history/data; do not reinterpret it as invented structured items.
-- Keep old saved review rows readable through a small normalization boundary rather
-  than maintaining two active bonus-generation systems.
-- Update prompts, tooltips, the general Collections tip, and `docs/FILE_MAP.md`.
-- Keep numeric eligibility controls, but distinguish stat growth from collection rewards
-  with clear labels. Hide policy-specific inputs until needed.
-
-Each phase should land with focused tests and leave the extension usable. Do not
-enable incomplete reward modes in the editor.
 
 ## Verification and acceptance criteria
 
@@ -247,11 +152,3 @@ A complete demonstration should show a player and one enabled NPC crossing a lev
 another disabled NPC remaining unaffected, several selected stats gaining their
 configured small increases, and a correctly targeted collection reward awaiting
 review. Accepting, rejecting, and regenerating must behave predictably without duplicates.
-
-## Starting a fresh implementation session
-
-Read this plan, AGENTS.md, and `docs/FILE_MAP.md`, then inspect the current working
-tree before editing. Collection targeting, pinned identifiers, numeric ranges, and
-System UI improvements were already implemented before this plan; preserve them.
-Start with Phase 1 and audit the actual schema/runtime/review paths rather than
-assuming the existing partial NPC progression configuration is functional.

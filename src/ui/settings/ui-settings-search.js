@@ -1,18 +1,6 @@
 import { getSettings } from '../../core/settings.js';
 
-/**
- * Finding a setting without knowing which page it is on.
- *
- * Eighty-one of them across ten pages. Knowing what you want to change is the easy part;
- * remembering whether it lives under Tracker or Writing Rules is not, and reorganising the
- * menu - however much better the new arrangement is - moved every one of them at least
- * once.
- *
- * The index is built by drawing each page into a container that is never shown and reading
- * back what appeared, rather than from a list written by hand beside the real one. A hand
- * list is the same setting described twice, and the two disagree the first time anybody
- * adds a control without noticing there was a second place to add it.
- */
+/** Build the search index from rendered settings pages so labels stay in sync. */
 
 /** A control's own label, taken from the wrap that carries its key. */
 function labelWithin(wrap) {

@@ -4,12 +4,7 @@ import { getSettings, saveSettings } from '../../core/settings.js';
 import { getAllCategories, createCategory } from '../../characters/characters.js';
 import { escapeHtml } from '../../core/utils.js';
 import { loadStateFromMetadata } from '../../tracker/status-logic.js';
-import {
-    renderCollectionUI,
-    attachCollectionListeners,
-    resolveCollectionTarget,
-    persistCollectionEdit,
-} from '../shared/ui-shared.js';
+import { renderCollectionUI, attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
 import { buildBulkBar, spliceIndexes } from '../shared/ui-bulk-select.js';
 
 export function renderCollectionsSection(char, container) {
@@ -124,7 +119,6 @@ export function renderCollectionsSection(char, container) {
             refreshCollection();
         }, collectionBulk);
     };
-
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {

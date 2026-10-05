@@ -1,4 +1,4 @@
-import { getAllCharacters } from '../../characters/character-repository.js';
+
 import { queueInlineReading } from '../extractor/status-inline-grants.js';
 import { getSettings } from '../../core/settings.js';
 import { eventSource, event_types } from '../../../../../../events.js';
@@ -9,7 +9,6 @@ import { stripAndPersist } from '../status-history.js';
 import { hideStatusDataSurgically } from './status-ui-hidden.js';
 import { renderStatusTrackerBox } from './status-ui-box.js';
 import { insideTracker, isEditingInside } from './status-ui-guards.js';
-
 
 const processingMessages = new Set();
 

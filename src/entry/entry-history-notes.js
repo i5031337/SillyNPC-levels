@@ -53,4 +53,3 @@ export function dropCopiedWorldNote(messageId, redraw) {
         console.warn(LOG_PREFIX, 'Could not take the copied world note off the reply', err);
     }
 }
-

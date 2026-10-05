@@ -1,8 +1,8 @@
 import { normalizeTrackerProgression } from '../core/progression-config.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
+import { normaliseNpcPersistence } from './stat-persistence.js';
 import { normaliseStatUpdatePolicies } from './stat-update-policy.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { debugLog } from '../core/constants.js';
 import { normalizeSystemDefinition } from '../core/system-schema.js';
 
 export function bind(deps) {

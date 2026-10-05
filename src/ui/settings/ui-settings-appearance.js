@@ -154,14 +154,3 @@ export function renderAppearanceView(view, onReprocessMessages, updateExtensionT
     renderDefaultView(fallbackDetails, rerender);
     view.append(fallbackDetails);
 }
-
-/**
- * What the model is asked to write, and how what it writes is read back.
- *
- * A tab of its own because the dialogue format and ban list were scattered across two tabs, one of
- * which was called Settings and held the popup size as well.
- *
- * The reading half belongs with them rather than with the styling: "Not Speakers" and
- * lenient matching decide what counts as somebody talking, which is the same question the
- * dialogue format asks the model to make easy.
- */

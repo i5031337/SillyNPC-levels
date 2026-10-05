@@ -103,24 +103,14 @@ export function setPendingChanges(messageId, changes, looseNotes = [], refused =
     return true;
 }
 
-function clearPendingChanges(messageId) {
-    return setPendingChanges(messageId, null);
-}
-
 /**
  * Standing decisions about individual items, in two lists with opposite meanings.
  *
  * `dismissed` answers a row offering to *add* something: never propose this again.
  * `protected` answers a row offering to *remove* something: never propose losing this.
  *
- * One list used to serve both, which made ticking the box on a removal record the
- * opposite of what it read as - "this is gone for good" where the reader meant "stop
- * asking me to delete it". Items people still owned ended up unproposable.
- *
- * The existing tombstones (state.recently_deleted) decrement on every update and are
- * gone within a few messages. That is right for stopping the narrator re-adding
- * something you just dropped, and useless against a scan that reads three hundred
- * messages and finds the pickup again. These lists do not expire.
+ * These lists do not expire; recently_deleted tombstones only prevent immediate
+ * re-additions after dropping an item.
  */
 export const DISMISSED_KEY = 'dismissed';
 export const PROTECTED_KEY = 'protected';
@@ -147,16 +137,7 @@ function rowItemName(change) {
     return String(change?.item?.name ?? change?.label ?? '').trim().toLowerCase();
 }
 
-/**
- * One list, with the pre-scoping shape discarded.
- *
- * Before these lists were scoped per character, `dismissed` was
- * `{ [collectionId]: [names] }` - values are arrays where they are now objects, which
- * is how the old shape is recognised. It is dropped rather than migrated: every entry
- * was written through a single checkbox that recorded "never add this" whichever way
- * the row read, so there is no telling which were meant that way and which meant "never
- * remove this", and in practice most named things the character still owned.
- */
+/** Discard unscoped decisions whose intended add/remove meaning is unknown. */
 function ruleMap(state, key) {
     const root = state?.[key];
     if (!root || typeof root !== 'object') return {};

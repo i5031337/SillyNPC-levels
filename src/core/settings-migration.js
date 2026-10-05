@@ -32,43 +32,12 @@ function versionBelow(a, b) {
     return false;
 }
 
-/**
- * Were these settings last written before HUD and Tracker became two separate flags?
- *
- * 0.5.2 is where the split shipped, and it shipped the migration unguarded - so anyone who
- * has opened the extension since has already been through it. Running it again on them
- * would clear a HUD box they have ticked in the meantime, which is the bug this answers.
- *
- * settings.version still holds the version this file was last written under: normalizeSettings
- * stamps the current one at the end of its pass, well after this is read.
- *
- * @param {object} settings
- * @returns {boolean}
- */
+/** The HUD/Tracker visibility split must run only on settings predating 0.5.2. */
 function settingsPredateHudFlagSplit(settings) {
     return versionBelow(settings.version, '0.5.2');
 }
 
-/**
- * Brings a list of stat definitions up to the current shape.
- *
- * Type, and the lower bound, arrived when meters were introduced. hint and maxLength
- * joined them later, for the opposite kind of field: a free-text one had nothing said
- * about it at all, so the reader was shown a name and a long previous value and carried on
- * writing it. Both default to blank, which is no hint and no limit - what every field
- * already had.
- *
- * 'bar' becomes 'number'. The type used to name the drawing rather than the content, which
- * is why a field could be "a meter" while holding a date and why switching one back to Text
- * left the HUD still drawing a meter. What it always meant was "this holds a quantity";
- * whether a meter is drawn is now read from the value, where the ceiling is.
- *
- * Exported and called from two places, because a schema arrives by two doors: the settings
- * on load, and a saved system preset on switch. A migration that only covers one of them
- * silently misses every system somebody saved before it.
- *
- * @param {object[]} list Mutated in place. Missing or non-array is a no-op.
- */
+/** Normalize stat definitions in settings and saved presets, in place. */
 export function normaliseStatDefs(list) {
     if (!Array.isArray(list)) return;
     for (const stat of list) {
@@ -238,6 +207,11 @@ function normalizeTrackerSchema(settings) {
         delete settings.statusTracker.castMode;
         delete settings.statusTracker.castGraceMessages;
         delete settings.statusTracker.sceneBindingStat;
+        // Adopt the old name before defaults supply npcStats.
+        if (settings.statusTracker.characterStats && !settings.statusTracker.npcStats) {
+            settings.statusTracker.npcStats = settings.statusTracker.characterStats;
+        }
+        delete settings.statusTracker.characterStats;
         // Ensure all default status tracker settings exist
         for (const [key, value] of Object.entries(defaultSettings.statusTracker)) {
             if (settings.statusTracker[key] === undefined) {
@@ -245,11 +219,6 @@ function normalizeTrackerSchema(settings) {
             }
         }
         
-        // The legacy characterStats name must be moved before normalising NPC policy.
-        if (settings.statusTracker.characterStats && !settings.statusTracker.npcStats) {
-            settings.statusTracker.npcStats = settings.statusTracker.characterStats;
-            delete settings.statusTracker.characterStats;
-        }
         for (const listName of ['globalStats', 'npcStats', 'playerStats']) {
             normaliseStatDefs(settings.statusTracker[listName]);
         }
@@ -287,27 +256,8 @@ function normalizeTrackerSchema(settings) {
                 if (stat.maxStatValue === undefined) stat.maxStatValue = '';
             }
 
-            /* The two flags used to be one decision: the HUD drew a stat only when it was
-               Primary AND visible, and visible did nothing at all on a stat that was not
-               Primary. They are separate places now - HUD and Tracker - and the HUD no
-               longer consults visible.
-
-               So a stat that was Primary with visible off, which appeared nowhere, would
-               start appearing on the HUD. Clearing Primary keeps it where it was.
-
-               Once, and only for settings that predate the split. Everything else in this
-               pass is idempotent by shape - it turns a string into an object, or fills a
-               key that is absent - so running it on every load costs nothing. This one is
-               not: Primary with Tracker off is a perfectly ordinary choice afterwards, and
-               re-running turned it into a checkbox that would not stay ticked. Ticking HUD
-               on a stat whose Tracker was off survived until the next reload, then cleared
-               itself, which shipped in 0.5.2.
-
-               The version stamp at the end of this pass is what makes it once: after any
-               normalisation the stored version is the current one, so this never matches
-               again. A separate "already done" marker was tried alongside it and removed -
-               it could not fire in any case the version gate did not already cover, and a
-               guard that cannot fail is a guard nothing tests. */
+            // Before the split, Primary stats with visible off appeared nowhere.
+            // Clear Primary once so they do not unexpectedly appear on the HUD.
             if (settingsPredateHudFlagSplit(settings)) {
                 for (const stat of settings.statusTracker.playerStats) {
                     if (stat.isPrimary && stat.visible === false) stat.isPrimary = false;

@@ -1,12 +1,8 @@
 import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../core/npc-templates.js';
-import { 
-    eventSource, 
-    event_types, 
-} from '../../../../../events.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { normaliseNpcPersistence, canTrackerSetNpcStat } from './stat-persistence.js';
-import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { eventSource } from '../../../../../events.js';
+import { getSettings, saveSettings } from '../core/settings.js';
+import { getAllCharacters } from '../characters/character-repository.js';
+import { debugLog } from '../core/constants.js';
 import { archiveNpcGoals } from './goals.js';
 
 export function bind(deps) {
@@ -113,24 +109,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
     return true;
 }
 
-/**
- * Builds a fresh character state seeded from the NPC schema and any card overrides.
- * Shared by presence reconciliation and registerActiveCharacter.
- */
-/**
- * Brings a character's card up to date while they are elsewhere.
- *
- * The scene cast and the record of what a character owns used to be the same list, so
- * the only way to update someone was to put them in the room. This writes to the card
- * instead: buildCharacterState reads it back the moment they next appear, so nothing is
- * lost and nobody is teleported into a scene they are not in.
- *
- * @param {object} card The character card from settings.
- * @param {object} updChar The character's portion of the update.
- * @param {object} state Current state, read for defaults only.
- * @param {object} settings Tracker settings.
- * @param {{dryRun?: boolean}} options
- */
+/** Update an offstage card without changing scene presence; dry runs return a detached actor. */
 function updateCardOffstage(card, updChar, state, settings,
     { dryRun = false, allowReplace = false, allowAdvancementChanges = false, verbatim = false } = {}) {
     // A detached actor: built the same way the cast builds one, so it starts from what
@@ -176,6 +155,10 @@ function updateCardOffstage(card, updChar, state, settings,
     return actor;
 }
 
+/**
+ * Builds a fresh character state seeded from the NPC schema and any card overrides.
+ * Shared by presence reconciliation and registerActiveCharacter.
+ */
 function buildCharacterState(charName, state, trackerSettings) {
     const charData = { name: charName, npcTemplateId: '', stats: {}, collections: {} };
     const matchedChar = getAllCharacters()
@@ -197,12 +180,7 @@ function buildCharacterState(charName, state, trackerSettings) {
         charData.stats[stat.name] = deps.getInitialStatValue(value, deps.resolveMaxValue(stat), stat);
     });
 
-    // What they were carrying and knew last time they were on stage.
-    //
-    // The scene cast is the only place a character's collections used to live, and
-    // leaving the scene deleted the entry - so an NPC's spells and inventory survived
-    // exactly as long as they were in the room. Their card keeps them now, the same way
-    // it already keeps their stats.
+    // Restore the collections held on the card while this NPC was offstage.
     if (matchedChar?.statusCollections) {
         charData.collections = structuredClone(matchedChar.statusCollections);
     }
@@ -272,37 +250,6 @@ function removeActiveCharacter(charName) {
     }
     return false;
 }
-
-/**
- * Logic to handle collection updates (add, remove, update)
- * @param {ActorState} actor 
- * @param {string} collectionId 
- * @param {Object} update 
- */
-/**
- * An item with every configured field present, defaulted and of the right type.
- *
- * This lived inside the full-replace branch only, so an item arriving through the
- * normal delta path - which is every item the per-message extractor adds - kept
- * whatever the model sent and never gained the fields it did not mention. A new item
- * therefore turned up holding little more than a name, with a quantity of "3" stored
- * as text beside another stored as a number.
- *
- * Fields the message did not state are filled from the schema default rather than
- * guessed: a blank is an honest record that the story never said so.
- *
- * @param {object} itemData Raw item from a reply, or from the master database.
- * @param {Array<object>} fields The collection's configured fields.
- * @returns {object}
- */
-/**
- * One item, with every field the schema declares, typed and within its allowed values.
- *
- * `previous` is the item as it stands, when there is one. Without it a value already
- * stored off-list would be refused on every later write - narrowing a list in the builder
- * would then rewrite items nobody was editing, which is exactly what keeping the old value
- * is meant to prevent.
- */
 
 Object.defineProperties(deps, {
     reconcileScenePresence: { enumerable: true, configurable: true, get: () => reconcileScenePresence },

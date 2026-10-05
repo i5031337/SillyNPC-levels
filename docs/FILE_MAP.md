@@ -27,12 +27,12 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `manage.html` | Management popup markup. |
 | `README.md` | Installation, features, and usage documentation. |
 | `LICENSE` | Project license. |
-| `docs/chat-owned-npcs-plan.md` | Design notes for chat-owned NPCs. |
+| `docs/chat-owned-npcs-plan.md` | Chat ownership and portable character contract. |
 | `docs/FILE_MAP.md` | This source map. |
-| `docs/level-up-rewards-plan.md` | Design and acceptance criteria for player/NPC progression and collection rewards. |
+| `docs/ARCHITECTURE.md` | Current storage ownership, reader behavior, review, and verification boundaries. |
+| `docs/REWRITE_HOST_SMOKE.md` | Dated user-reported host results and remaining manual checks. |
+| `docs/level-up-rewards-plan.md` | Implemented progression/reward contract and verification criteria. |
 | `docs/system-generation-plan.md` | Implemented staged System generator design, verification criteria, and schema simplification candidates. |
-| `docs/PRODUCT_SPEC_DRAFT.md`, `docs/REWRITE_PLAN.md` | Product direction and staged rewrite plan. |
-| `docs/REWRITE_DECISIONS.md` | Resolved rewrite behavior choices. |
 | `img/SillyNPCLogo.jpg` | Extension logo. |
 | `img/charactersexmp.png`, `img/charcterexmp.png`, `img/chatexmp.png` | Character and chat screenshots in the README. |
 | `img/floathudbar.png`, `img/floathudcircle.png`, `img/playerexmp.png` | HUD and player screenshots in the README. |
@@ -50,6 +50,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/collection-rewards.mjs` | Reward field validation, schedules, intervals, targets, duplicate prevention, and rename stability. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
 | `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
+| `tests/ui_webdriver.py` | Shared Firefox session and guaranteed driver cleanup. |
+| `tests/history-scan.mjs` | Preserve NPC template assignments through scan filtering and multi-pass merging. |
+| `tests/status-clock.mjs` | Clock parsing and elapsed time behavior. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
@@ -58,10 +61,11 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/player-chat-ownership.mjs` | Persona identity and chat-local player state boundaries. |
 | `tests/profile-memories.mjs` | Profile memory list normalization and capacity behavior. |
 | `tests/profile-memories-ui.mjs`, `tests/npc-memories.mjs` | Player/NPC memory display and persistence behavior. |
-| `tests/profile-update-policy.mjs` | Anchored, replaceable, and memory update policy behavior. |
 | `tests/goals.mjs`, `tests/goal-proposals.mjs` | Chat goals and sourced reader proposals. |
 | `tests/turn-delta.mjs` | Current turn change reversal and rebase behavior. |
 | `tests/status-dependencies.mjs` | Shared status dependency provider contract test. |
+| `tests/ui-chat-boundaries.mjs` | Chat-switch confirmation guards and bulk deletion selection snapshots. |
+| `tests/world-character-export.mjs` | Inactive System export rules and reusable/chat NPC inclusion. |
 | `tests/ui-maintenance.mjs` | Lore generation and character editor routing tests. |
 
 ## Runtime and data
@@ -75,11 +79,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/entry/entry-history-notes.js` | Manage copied historical notes on messages. |
 | `src/core/constants.js` | Extension constants, themes, profile schema, and built-in writing/image prompts. |
 | `src/core/constants-base.js` | Base extension, theme, layout, and image constants. |
-| `src/core/constants-profile.js` | Legacy player and NPC profile fields and defaults. |
+| `src/core/constants-profile.js` | Built-in player and NPC profile fields and defaults. |
 | `src/core/npc-templates.js` | Resolve NPC templates and their selected stats and profile fields; compact reader assignment guidance. |
-| `src/core/profile-fields.js` | Resolve the active System's player and NPC fields, with legacy fallback. |
+| `src/core/profile-fields.js` | Resolve the active System's player and NPC fields, with built-in defaults. |
 | `src/core/profile-memories.js` | Normalize and edit bounded character memory lists. |
-| `src/core/profile-update-policy.js` | Enforce System profile update policies for turn reads. |
 | `src/core/constants-prompts.js` | Built-in status and image prompt constants. |
 | `src/core/settings.js` | Default settings, normalization, persistence, and settings transfer. |
 | `src/core/settings-defaults.js` | Default settings catalog. |
@@ -168,7 +171,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/extractor/status-extractor-prompt-state.js` | Describe current state, collections, and limits for prompts. |
 | `src/tracker/extractor/status-extractor-prompt-offstage.js` | Describe locked and offstage characters for prompts. |
 | `src/tracker/extractor/status-extractor-request.js` | Send and normalize model extraction responses. |
-| `src/tracker/extractor/status-extractor-replies.js` | Apply allowed profile, memory, and goal information from extraction. |
+| `src/tracker/extractor/status-extractor-replies.js` | Apply configured, sourced goal changes from extraction. |
 | `src/tracker/extractor/status-extractor-run.js` | Per-message extraction lifecycle and cache invalidation. |
 | `src/tracker/extractor/status-level-reading.js` | Swipe-specific choice cache, decision retention, and missing-reward retries. |
 | `src/tracker/extractor/status-inline-grants.js` | Inline XP delta conversion, review, and replacement-reading orchestration. |
@@ -216,6 +219,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/chat/chat-listing.js` | List chat headers. |
 | `src/chat/chat-npc-sources.js` | Identify chat-owned NPC sources and their images. |
 | `src/story/history-scan.js` | Scan existing chat for collection state. |
+| `src/story/quote-evidence.js` | Verify quoted proposal evidence against message text. |
 | `src/story/history-notes.js` | Read and remove historical world notes. |
 | `src/characters/world-character-export.js` | Export world character records. |
 
@@ -346,7 +350,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 `src/tracker/status-logic.js` binds the state providers by name, then freezes the shared
 registry. `tests/status-dependencies.mjs` checks that each dependency has one
 provider. The registry still resolves cross-module calls at runtime, so changes to
-initialization and shared state need care. `normalizeSettings` now sequences focused
+initialization and shared state need care. `normalizeSettings` sequences focused
 migration passes, `generateLoreEntry` separates dialog construction from its async
 actions, and `renderEditor` routes among smaller view builders. Their key behavior
 paths have regression tests under `tests/`.

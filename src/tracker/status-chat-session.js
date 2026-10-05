@@ -1,20 +1,13 @@
-import { 
-    setExtensionPrompt,
-    extension_prompt_types,
-    extension_prompt_roles,
-    getThumbnailUrl,
-    user_avatar,
-    getRequestHeaders
-} from '../../../../../../script.js';
+import { getThumbnailUrl } from '../../../../../../script.js';
 import { 
     eventSource, 
     event_types, 
 } from '../../../../../events.js';
 import { getContext } from '../../../../../st-context.js';
-import { setUserAvatar, getUserAvatar } from '../../../../../personas.js';
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { LOG_PREFIX, debugLog, isStaticField } from '../core/constants.js';
+import { setUserAvatar } from '../../../../../personas.js';
+import { getSettings, saveSettings } from '../core/settings.js';
+import { getAllCharacters } from '../characters/character-repository.js';
+import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { diffTurnValues, applyTurnValues } from './snapshots/status-turn-delta.js';
 
 export function bind(deps) {

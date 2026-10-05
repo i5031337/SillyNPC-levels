@@ -1,6 +1,6 @@
-import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
-import { getAllCharacters, getLibraryCharacters } from '../characters/character-repository.js';
-import { LOG_PREFIX, debugLog, PROFILE_FIELDS, isStaticField } from '../core/constants.js';
+import { getSettings, saveSettings } from '../core/settings.js';
+import { getLibraryCharacters } from '../characters/character-repository.js';
+import { debugLog, isStaticField } from '../core/constants.js';
 
 export function bind(deps) {
 function syncOverrideToActiveState(charName, statName, newValue) {

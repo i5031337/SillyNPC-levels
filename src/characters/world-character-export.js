@@ -15,10 +15,10 @@ export async function exportWorldCharacters(systemName) {
     const active = settings.activeSystem === systemName;
     const npcStats = structuredClone(active
         ? settings.statusTracker.npcStats
-        : (profile.config?.statusTracker?.npcStats || profile.config?.npcStats || []));
+        : (profile.definition?.stats?.npc || profile.config?.statusTracker?.npcStats || profile.config?.npcStats || []));
     normaliseStatUpdatePolicies({ npcStats });
     normaliseNpcPersistence(npcStats);
-    const worldCards = active ? getWorldCharacters() : (profile.world?.characters || []);
+    const worldCards = getWorldCharacters();
     const headers = await listChatHeaders();
 
     // The current chat may contain debounced edits that have not reached its file yet.
@@ -42,13 +42,13 @@ export async function exportWorldCharacters(systemName) {
     const characters = [];
     for (const char of worldCards) {
         characters.push({
-            ...await serialiseCharacter(char, { npcStats }),
+            ...await serialiseCharacter(char, { npcStats, system: profile.definition }),
             source: { kind: 'world', system: systemName, npcId: char.id },
         });
     }
     for (const { char, sourceChat } of chatNpcSources(headers, systemName)) {
         characters.push({
-            ...await serialiseCharacter(char, { npcStats }),
+            ...await serialiseCharacter(char, { npcStats, system: profile.definition }),
             source: { kind: 'chat', system: systemName, chat: sourceChat, npcId: char.id },
         });
     }

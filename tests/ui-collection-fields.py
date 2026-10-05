@@ -1,46 +1,11 @@
 """Read-only collection field check with fixture saves disabled; requires local SillyTavern."""
 import json
-import socket
-import subprocess
 import time
-import urllib.request
+from ui_webdriver import browser_session
 
 
-def free_port():
-    with socket.socket() as listener:
-        listener.bind(('127.0.0.1', 0))
-        return listener.getsockname()[1]
-
-
-port = free_port()
-base = f'http://127.0.0.1:{port}'
-
-
-def webdriver(method, path, data=None):
-    body = None if data is None else json.dumps(data).encode()
-    request = urllib.request.Request(base + path, body,
-                                     {'Content-Type': 'application/json'}, method=method)
-    with urllib.request.urlopen(request, timeout=25) as response:
-        return json.load(response)['value']
-
-
-driver = subprocess.Popen(['geckodriver', '--port', str(port)],
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-session = None
-try:
-    for _ in range(40):
-        try:
-            webdriver('GET', '/status')
-            break
-        except Exception:
-            time.sleep(0.25)
-    session = webdriver('POST', '/session', {'capabilities': {'alwaysMatch': {
-        'browserName': 'firefox', 'moz:firefoxOptions': {'args': ['-headless']},
-    }}})['sessionId']
-    webdriver('POST', f'/session/{session}/url', {'url': 'http://127.0.0.1:8000/'})
-    time.sleep(5)
-    execute = lambda script: webdriver('POST', f'/session/{session}/execute/sync',
-                                       {'script': script, 'args': []})
+with browser_session() as browser:
+    execute = browser.execute
     execute("""const entry = [...document.scripts].find(script => script.src.includes('/SillyNPC-XP/index.js'));
       const script = document.createElement('script'); script.type = 'module'; script.id = 'sillynpc-template-smoke';
       script.textContent = `
@@ -146,13 +111,3 @@ try:
     assert result['reordered'] == ['move', 'description', 'pp'], result
     assert result['finalKeys'] == ['move'] and result['finalPrimary'] and result['finalDeleteButtons'] == 0, result
     print('Collection identifier live UI passed:', json.dumps(result))
-
-finally:
-    if session:
-        try: webdriver('DELETE', f'/session/{session}')
-        except Exception: pass
-    try:
-        driver.terminate()
-    except PermissionError:
-        # Some sandbox runners own the driver; the WebDriver session is closed above.
-        pass

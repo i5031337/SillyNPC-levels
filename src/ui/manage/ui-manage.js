@@ -6,12 +6,7 @@ import { getSettings } from '../../core/settings.js';
 import { reprocessAllMessages, chatRenderSignature } from '../../chat/chat.js';
 import { resetLorebookState } from '../story/ui-lorebook-section.js';
 import { renderGoalsView } from '../story/ui-goals.js';
-import {
-    renderAppearanceView,
-    renderWritingRulesView,
-    renderAdvancedView,
-    renderGenerationSettingsView,
-} from '../settings/ui-settings-tabs.js';
+import { renderAppearanceView, renderWritingRulesView, renderAdvancedView, renderGenerationSettingsView } from '../settings/ui-settings-tabs.js';
 import { renderStatsView } from '../shared/ui-stats.js';
 import { renderStatusView } from '../tracker/ui-tracker-settings.js';
 import { renderHudView } from '../hud/ui-hud-settings.js';
@@ -19,7 +14,6 @@ import { buildSystemBuilder } from '../system/ui-system-builder.js';
 import { buildSystemManager } from '../system/ui-system-manager.js';
 import { updateExtensionTheme, repositionCloseButton, hideEmptySections } from '../shared/ui-shared.js';
 import { buildSettingsSearch, buildSettingsIndex } from '../settings/ui-settings-search.js';
-
 import { manageState } from './ui-manage-state.js';
 import { renderCardGrid } from './ui-manage-grid.js';
 import { renderEditor } from './ui-manage-editor.js';
@@ -40,7 +34,6 @@ eventSource.on('sillynpc-status-updated', () => {
         && (focused.matches('input, textarea, select, [contenteditable="true"]'))) return;
     renderManageView();
 });
-
 
 export async function openManagePopup({ tab = 'characters', charId = null } = {}) {
     if (manageState.managePopup && manageState.manageRoot) {
@@ -381,7 +374,6 @@ function renderSystemsView(view) {
     }
 }
 
-
 /* ─── Theme Helper ───────────────────────────────────────────────────────── */
 
 /**
@@ -392,11 +384,3 @@ function updateManageTheme(root, popupInstance = null) {
 }
 
 /* ─── Characters Tab ────────────────────────────────────────────────────── */
-
-/**
- * Links every character that has no lorebook entry yet.
- *
- * Auto-sync only ever ran when a character was created from a detected speaker, so
- * anyone added another way, or added before their entry existed, stayed unlinked with no
- * remedy but opening each card in turn.
- */

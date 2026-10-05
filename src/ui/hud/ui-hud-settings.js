@@ -55,7 +55,6 @@ export function renderHudView(container) {
         updateHUD();
     };
 
-
     container.append(buildSettingToggle({
         key: 'statusTracker.hudEnabled',
         label: 'Enable Floating HUD',

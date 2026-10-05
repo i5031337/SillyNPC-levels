@@ -1,13 +1,6 @@
-import { getSettings, saveSettings, defaultSettings } from '../../core/settings.js';
-import { tidyTemplateLabels } from '../shared/ui-template-tidy.js';
-import { buildSettingToggle, buildSettingTextArea, buildSettingSlider, buildSettingSelect, buildSettingNumber, updateExtensionTheme, repositionCloseButton } from '../shared/ui-shared.js';
-import { POPUP_TYPE, Popup } from '../../../../../../popup.js';
-import { eventSource } from '../../../../../../events.js';
-import { triggerReprocess } from '../../chat/chat.js';
-import { updateHUD } from '../hud/ui-hud.js';
-import { escapeHtml } from '../../core/utils.js';
+import { Popup } from '../../../../../../popup.js';
+import { getContext } from '../../../../../../st-context.js';
 import { cleanChatHistory, measureChatOverhead, estimateTokens } from '../../tracker/status-history.js';
-import { buildConnectionProfilePicker } from '../settings/ui-connection-profiles.js';
 
 export function buildContextReport(onChange) {
     const wrap = document.createElement('div');
@@ -24,6 +17,7 @@ export function buildContextReport(onChange) {
 
     const render = () => {
         body.replaceChildren();
+        const metadata = getContext()?.chatMetadata;
 
         let stats;
         try {
@@ -57,13 +51,14 @@ export function buildContextReport(onChange) {
         button.className = 'menu_button';
         button.innerHTML = '<i class="fa-solid fa-broom"></i> Remove tracker data from this chat';
         button.addEventListener('click', async () => {
+            if (getContext()?.chatMetadata !== metadata) { render(); return; }
             const ok = await Popup.show.confirm(
                 'Clean this chat?',
                 `This removes the tracker's own JSON from ${stats.blockMessages} message(s), `
                 + `recovering roughly ${blockTokens.toLocaleString()} tokens on every future request. `
                 + 'The story text is untouched, and the removed data is kept hidden on each '
                 + 'message so it can still be re-applied. Back up the chat first if you are unsure.');
-            if (!ok) return;
+            if (!ok || getContext()?.chatMetadata !== metadata) return;
 
             const result = cleanChatHistory();
             toastr.success(
@@ -79,19 +74,3 @@ export function buildContextReport(onChange) {
     render();
     return wrap;
 }
-
-/**
- * Connection Profile picker for the extraction request.
- *
- * Connection Manager is an extension and can be disabled, in which case
- * getSupportedProfiles() throws - so this degrades to an explanatory note rather than
- * breaking the settings panel. An empty selection means "use the main API".
- */
-/**
- * The Time Rules section.
- *
- * What elapsed time does on its own - Energy recovering while the party rests, a torch
- * burning down, hunger climbing. The extension computes these from the clock the
- * narrator already writes, so they are exact and cost nothing; the model is never asked
- * to do the arithmetic.
- */
