@@ -71,7 +71,7 @@ export function missingProfileFields(char) {
  * link had been made by hand.
  *
  * @param {object} char
- * @returns {Promise<{ story: string, lore: string, enough: boolean }>}
+ * @returns {Promise<{ story: string, lore: string, personaDescription: string, enough: boolean }>}
  */
 export async function fillSources(char) {
     // The linked entry, or one that matches by name and was never linked to.
@@ -92,10 +92,15 @@ export async function fillSources(char) {
         ? charactersMentionedIn(excerpt.text, [char]).length > 0
         : false;
 
+    const persona = char.isPlayer ? getPersonaData() : null;
+    const personaDescription = persona && (!char.personaKey || char.personaKey === persona.avatar)
+        ? String(persona.description || '').trim() : '';
+
     return {
         story: mentioned ? excerpt.text : '',
         lore,
-        enough: Boolean(mentioned || lore),
+        personaDescription,
+        enough: Boolean(mentioned || lore || personaDescription),
     };
 }
 
@@ -133,7 +138,11 @@ export function buildProfilePrompt(char, wanted, sources) {
         .join('\n');
 
     // One text, 'profileRequest' in prompt-texts.js.
-    return promptText('profileRequest', values);
+    let prompt = promptText('profileRequest', values);
+    if (char.isPlayer && sources.personaDescription) {
+        prompt += `\n\nSillyTavern persona description for ${char.name}:\n${sources.personaDescription}`;
+    }
+    return prompt;
 }
 
 /**

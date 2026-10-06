@@ -15,6 +15,7 @@ import { hintFor } from '../core/constants-profile.js';
 import { profileFieldsForCard } from '../core/profile-fields.js';
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../lore/lore-format.js';
 import { loreReplyWasTruncated, parseLoreReply } from '../lore/lore-reply.js';
+import { getPersonaData } from '../tracker/status-logic.js';
 
 /**
  * The slice of story the lore writer is shown.
@@ -208,6 +209,13 @@ export async function generateLoreContent(char, world, uid, options = {}) {
     // heading.
     if (worldFacts && !/\[WORLD\]|{{\s*world\s*}}/i.test(template)) {
         prompt += `\n\nFrom the setting's reference material:\n${worldFacts}`;
+    }
+
+    if (char.isPlayer) {
+        const persona = getPersonaData();
+        const description = (!char.personaKey || char.personaKey === persona.avatar)
+            ? String(persona.description || '').trim() : '';
+        if (description) prompt += `\n\nSillyTavern persona description for ${char.name}:\n${description}`;
     }
 
     const { text, truncated } = await requestLore(prompt);
