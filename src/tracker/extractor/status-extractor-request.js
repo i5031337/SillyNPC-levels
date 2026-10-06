@@ -4,6 +4,7 @@ import { applyMacros } from '../../prompts/macros.js';
 import { LOG_PREFIX, debugLog, SYSTEM_PROMPT } from '../../core/constants.js';
 import { describeConnection, extractJSON, safeJsonParse } from '../../core/utils.js';
 import { recordUsage } from '../../core/usage.js';
+import { customProfilePayload } from '../../api/connection-profile.js';
 
 /** What a reply cost, whether it arrived as text or as already-parsed data. */
 function describeAnswer(answer) {
@@ -51,9 +52,10 @@ export async function requestExtraction(userPrompt, schema, trackerSettings, sys
                     // silently. The system prompt pins the shape without it.
                     ...((schema && trackerSettings.extractionUseSchema) ? { json_schema: schema } : {}),
                     // Sent only when you set one. Nothing of the story preset comes with the
-                    // request (includePreset is off), so with no temperature here the model's
-                    // own default decides - usually 1.0, which is loose for reading facts.
+                    // request (includePreset is off). Without a reader or custom-profile
+                    // temperature, the model's own default decides.
                     ...(temperature === null ? {} : { temperature }),
+                    ...customProfilePayload(context, profileId),
                 },
             );
             const answer = typeof result === 'string' ? result : (result?.content ?? result ?? '');

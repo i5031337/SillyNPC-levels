@@ -1,6 +1,7 @@
 import { getContext } from '../../../../../st-context.js';
 import { extractMessageFromData } from '../../../../../../script.js';
 import { recordUsage } from '../core/usage.js';
+import { customProfilePayload } from '../api/connection-profile.js';
 /** Capture reader connection preferences once; never fall back to another connection. */
 export function generationRequestAdapter(tracker, profileId = tracker.extractionProfileId || '') {
     const useSchema = tracker.extractionUseSchema === true;
@@ -15,7 +16,7 @@ export function generationRequestAdapter(tracker, profileId = tracker.extraction
             const result = await context.ConnectionManagerRequestService.sendRequest(profileId,
                 [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], maxTokens,
                 { extractData: true, includePreset: false, signal }, { ...(useSchema ? { json_schema: schema } : {}),
-                    ...(temperature === null ? {} : { temperature }) });
+                    ...(temperature === null ? {} : { temperature }), ...customProfilePayload(context, profileId) });
             answer = typeof result === 'string' ? result : result?.content ?? result;
         } else {
             const raw = await context.generateRawData({ prompt: userPrompt, systemPrompt,

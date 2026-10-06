@@ -1,9 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { customProfilePayload, profileContext } from './helpers/connection-profile.mjs';
 const source = (await readFile(new URL('../src/generation/request.js', import.meta.url), 'utf8')).replace(/^import .*;$/gm, '').replace('export function', 'function');
-const build = (context, usage = () => {}) => new Function('getContext', 'recordUsage', 'extractMessageFromData', `${source}\nreturn generationRequestAdapter;`)(() => context, usage, raw => raw.choices[0].message.content);
+const build = (context, usage = () => {}) => new Function('getContext', 'recordUsage', 'extractMessageFromData', 'customProfilePayload', `${source}\nreturn generationRequestAdapter;`)(() => profileContext(context), usage, raw => raw.choices[0].message.content, customProfilePayload);
 const args = { systemPrompt: 'System', userPrompt: 'Premise', schema: { type: 'object' }, maxTokens: 3200, signal: new AbortController().signal };
+test('System generation forwards Additional Parameters from its captured connection preset', async () => {
+    let received;
+    const request = build({ ConnectionManagerRequestService: {
+        getProfile: id => { assert.equal(id, 'custom'); return { api: 'custom', preset: 'Model preset' }; },
+        sendRequest: async (...values) => { received = values; return { content: {} }; },
+    }, presets: { 'Model preset': { custom_include_body: 'max_tokens: 900', custom_exclude_body: '',
+            custom_include_headers: 'X-Model: {{model}}' } }, generateRawData: () => assert.fail('No fallback') })({ extractionProfileId: 'custom' });
+    await request(args);
+    assert.deepEqual(received[4], { custom_include_body: 'max_tokens: 900', custom_exclude_body: '',
+        custom_include_headers: 'X-Model: fixture-model' });
+    assert.equal(received[3].signal, args.signal);
+});
 test('selected profile receives schema, budget, signal and dedicated prompts; preferences are captured', async () => {
     let received, counted;
     const context = { ConnectionManagerRequestService: { sendRequest: async (...values) => { received = values; return { content: { section: {}, assumptions: [] } }; } }, generateRawData: () => { throw new Error('No fallback'); } };

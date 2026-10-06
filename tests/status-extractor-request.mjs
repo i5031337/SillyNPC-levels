@@ -1,21 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { customProfilePayload, profileContext } from './helpers/connection-profile.mjs';
 
 const source = (await readFile(new URL('../src/tracker/extractor/status-extractor-request.js', import.meta.url), 'utf8'))
     .replace(/^import .*;$/gm, '').replace(/export (async )?function/g, '$1function');
 function build(context) {
+    profileContext(context);
     const events = [], usage = [];
     const request = new Function('getContext', 'applyMacros', 'LOG_PREFIX', 'debugLog', 'SYSTEM_PROMPT',
-        'describeConnection', 'extractJSON', 'safeJsonParse', 'recordUsage', 'extractMessageFromData', 'toastr', 'console',
+        'describeConnection', 'extractJSON', 'safeJsonParse', 'recordUsage', 'extractMessageFromData', 'toastr', 'console', 'customProfilePayload',
         `${source}\nreturn requestExtraction;`)(
         () => context, value => value, '[SillyNPC]', () => {}, 'System', () => 'Connection',
         value => value, JSON.parse, (...args) => usage.push(args), raw => raw.choices[0].message.content,
-        { warning: (...args) => events.push(['warning', ...args]) }, { warn: () => {} });
+        { warning: (...args) => events.push(['warning', ...args]) }, { warn: () => {} }, customProfilePayload);
     return { request, events, usage };
 }
 const schema = { type: 'object' };
 const rawReply = { choices: [{ message: { content: '{"player":{}}' } }] };
+
+for (const usageKind of ['extraction', 'scan']) {
+    test(`${usageKind} forwards assigned preset YAML alongside reader temperature and schema`, async () => {
+        let received;
+        const { request } = build({ ConnectionManagerRequestService: {
+            getProfile: id => { assert.equal(id, 'custom'); return { api: 'custom', preset: 'Model preset' }; },
+            sendRequest: async (...args) => { received = args; return { content: { player: {} } }; },
+        }, presets: { 'Model preset': { custom_include_body: 'temperature: 0.9\nmax_tokens: 800',
+                custom_exclude_body: '- temperature', custom_include_headers: 'X-Model: {{model}}' } }, generateRawData: () => assert.fail('No fallback') });
+        await request('Prompt', schema, { extractionProfileId: 'custom', extractionTemperature: '0.2',
+            extractionUseSchema: true, extractionMaxTokens: 400 }, 'System', { usageKind });
+        assert.equal(received[2], 400);
+        assert.deepEqual(received[4], { temperature: 0.2, json_schema: schema,
+            custom_include_body: 'temperature: 0.9\nmax_tokens: 800', custom_exclude_body: '- temperature',
+            custom_include_headers: 'X-Model: fixture-model' });
+    });
+}
 
 test('main API without a selected profile does not warn', async () => {
     let calls = 0;
