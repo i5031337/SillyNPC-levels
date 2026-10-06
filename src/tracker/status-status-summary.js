@@ -94,17 +94,19 @@ function formatCompactStatus(state, fullDetail = false) {
     // The world, the player and each character, one line each. The heading and the sections
     // after these lines are the 'sceneBlock' text in prompt-texts.js.
     let output = '';
+    const represented = { globalStats: new Set(), playerStats: new Set(), npcStats: new Set() };
+    const statParts = (stats, scope, actor) => Object.entries(deps.statsInSystem(stats, scope, actor))
+        .filter(([, val]) => val !== undefined && val !== null && val !== '')
+        .map(([key, val]) => {
+            represented[scope].add(key.trim().toLowerCase());
+            return `${key}=${val}`;
+        });
     
     /* Through the schema, not the stored object. A stat deleted in System Builder leaves its
        value behind in the chat, and this block used to send it to the story model on every
        single message - for a stat that could no longer change and was no longer configured
        to exist. See statsInSystem. */
-    const globalParts = [];
-    for (const [key, val] of Object.entries(deps.statsInSystem(state.global, 'globalStats'))) {
-        if (val !== undefined && val !== null && val !== '') {
-            globalParts.push(`${key}=${val}`);
-        }
-    }
+    const globalParts = statParts(state.global, 'globalStats');
     if (globalParts.length > 0) {
         output += `Global: ${globalParts.join(', ')}\n`;
     }
@@ -112,12 +114,7 @@ function formatCompactStatus(state, fullDetail = false) {
     const settings = getSettings().statusTracker;
 
     if (state.player) {
-        const playerParts = [];
-        for (const [key, val] of Object.entries(deps.statsInSystem(state.player.stats, 'playerStats'))) {
-            if (val !== undefined && val !== null && val !== '') {
-                playerParts.push(`${key}=${val}`);
-            }
-        }
+        const playerParts = statParts(state.player.stats, 'playerStats');
         
         let playerLine = `Player (${state.player.name || 'You'}): ${playerParts.join(', ')}`;
         
@@ -146,12 +143,7 @@ function formatCompactStatus(state, fullDetail = false) {
     
     if (state.characters && Array.isArray(state.characters)) {
         for (const char of state.characters) {
-            const charParts = [];
-            for (const [key, val] of Object.entries(deps.statsInSystem(char.stats, 'npcStats', char))) {
-                if (val !== undefined && val !== null && val !== '') {
-                    charParts.push(`${key}=${val}`);
-                }
-            }
+            const charParts = statParts(char.stats, 'npcStats', char);
             
             let charLine = `${char.name}: ${charParts.join(', ')}`;
             if (charParts.length === 0) charLine = `${char.name}: Present`;
@@ -180,10 +172,23 @@ function formatCompactStatus(state, fullDetail = false) {
     }
     
 
+    const offstage = describeNamedButUnlisted(state, represented.npcStats);
+    const meanings = [];
+    for (const [scope, label] of [['globalStats', 'World'], ['playerStats', 'Player'], ['npcStats', 'NPC']]) {
+        const seen = new Set();
+        for (const stat of settings[scope] || []) {
+            const key = String(stat?.name ?? '').trim().toLowerCase();
+            const purpose = String(stat?.purpose ?? '').trim();
+            if (!purpose || !represented[scope].has(key) || seen.has(key)) continue;
+            seen.add(key);
+            meanings.push(`- ${label}.${stat.name}: ${purpose}`);
+        }
+    }
     return promptText('sceneBlock', {
         status: output.trim(),
+        statMeanings: meanings.join('\n'),
         // And who the story just named without putting on stage.
-        offstage: describeNamedButUnlisted(state),
+        offstage,
         // What the bracketed lines on the earlier messages are, when they are being sent.
         rule: settings.historyNotes ? promptText('historyNoteRule') : '',
     }).trim();
@@ -205,7 +210,7 @@ function formatCompactStatus(state, fullDetail = false) {
  * Deliberately unlike the extraction prompt's "KNOWN BUT NOT IN THE SCENE", which does state
  * absence - correctly, because there it exists to stop the reader re-adding their belongings.
  */
-function describeNamedButUnlisted(state) {
+function describeNamedButUnlisted(state, representedStats) {
     const listed = new Set((state.characters || [])
         .map(c => String(c?.name ?? '').trim().toLowerCase())
         .filter(Boolean));
@@ -224,7 +229,10 @@ function describeNamedButUnlisted(state) {
         // there are no live values to read.
         const stats = Object.entries(card.statusOverrides || {})
             .filter(([, value]) => String(value ?? '').trim() !== '')
-            .map(([name, value]) => `${name}=${value}`)
+            .map(([name, value]) => {
+                representedStats.add(name.trim().toLowerCase());
+                return `${name}=${value}`;
+            })
             .join(', ');
 
         /* Their belongings, in full, as anybody in the room gets them. They had none at all

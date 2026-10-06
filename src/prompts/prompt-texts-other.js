@@ -27,6 +27,7 @@ export const otherPromptTexts = [
         when: 'Every message while the tracker is on. Inside the Tracker block too, as its {{status}}, in inline mode.',
         placeholders: {
             status: 'The world, the player and each character present, with their stats and belongings.',
+            statMeanings: 'Purposes of the stats represented in this block, once per scope and stat.',
             offstage: 'Characters whose lorebook entry fired but who are not in the scene.',
             rule: 'The note above about the world notes, when they are on.',
         },
@@ -37,6 +38,10 @@ export const otherPromptTexts = [
             'Other known characters, listed for reference only:',
             '{{offstage}}',
             '{{/offstage}}',
+            '{{#statMeanings}}',
+            'Stat meanings:',
+            '{{statMeanings}}',
+            '{{/statMeanings}}',
             '{{#rule}}',
             '{{rule}}',
             '{{/rule}}'),

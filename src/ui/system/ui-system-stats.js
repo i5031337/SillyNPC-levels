@@ -72,7 +72,7 @@ export function buildStatsEditor(label, settingsKey, onRefresh, context = liveSy
                 <small class="sillynpc-field-note">Purpose:</small>
                 <input type="text" class="text_pole stat-purpose" value="${escapeHtml(stat.purpose || '')}"
                        placeholder="What this stat measures and when it changes"
-                       title="Sent to the reader for every stat type. Explain what this stat means and which story events change it."
+                       title="Sent to the reader for every stat type and to the Narrator when this stat appears in the scene context. Explain what this stat means and which story events change it."
                        style="flex:1; min-width:180px; font-size:var(--sillynpc-text-md); height:24px;">
                 <small class="sillynpc-field-note">Format:</small>
                 <input type="text" class="text_pole stat-format" value="${escapeHtml(stat.format || '{{value}}')}" placeholder="e.g. HP: {{value}}" style="flex:1; font-size:var(--sillynpc-text-md); height:24px;">

@@ -109,6 +109,19 @@ with browser_session() as browser:
             result.sceneStatusOnly = scene.includes('[Current Scene Status]')
               && scene.includes('Smoke Player') && scene.includes('Smoke NPC')
               && !scene.includes('Who they are:');
+            const savedPlayerStats = settings.playerStats;
+            try {
+              settings.playerStats = [
+                { name: 'Smoke Resolve', type: 'number', purpose: 'Mental endurance under pressure.' },
+                { name: 'Smoke Unused', type: 'number', purpose: 'UNUSED_SMOKE_MEANING' }
+              ];
+              const meaningsScene = buildSceneContext({ global: {}, characters: [],
+                player: { name: 'Smoke Player', stats: { 'Smoke Resolve': 0 }, collections: {} } });
+              result.sceneStatMeanings = meaningsScene.includes('Stat meanings:')
+                && meaningsScene.includes('Player.Smoke Resolve: Mental endurance under pressure.')
+                && meaningsScene.includes('Smoke Resolve=0')
+                && !meaningsScene.includes('UNUSED_SMOKE_MEANING');
+            } finally { settings.playerStats = savedPlayerStats; }
             const fields = resolveProfileFields('player');
             const values = Object.fromEntries(fields.map(field => [field.id, 'Smoke value']));
             const lore = formatLoreContent(values, '', undefined, 'player');
