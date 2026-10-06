@@ -8,6 +8,7 @@ import { applyMacros } from '../prompts/macros.js';
 import { getSettings } from '../core/settings.js';
 import { DEFAULT_INLINE_RULES } from '../core/settings-tracker-defaults.js';
 import { debugLog } from '../core/constants.js';
+import { noteActivatedLore } from '../lore/activated-lore.js';
 
 export function bind(deps) {
 /**
@@ -169,6 +170,8 @@ function applyScenePrompt() {
 
 function onGenerationStarted(type, data, dryRun) {
     if (dryRun) return;
+    // No activation event is emitted when nothing fires, so discard the previous turn.
+    noteActivatedLore([]);
     // A first pass, before any lorebook entry has fired. The WORLD_INFO_ACTIVATED handler
     // writes it again once it knows who did, and if nothing fires - SillyTavern does not
     // emit the event at all then - this is what stands.
