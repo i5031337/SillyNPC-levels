@@ -227,7 +227,7 @@ export const defaultTrackerSettings = {
     <div class="sillynpc-status-player">{{player}}</div>
     <div class="sillynpc-status-characters">
         {{#characters}}
-        <div class="sillynpc-status-char">👤 {{name}} — {{fields}}</div>
+        <div class="sillynpc-status-char">{{name}} — {{fields}}</div>
         {{/characters}}
     </div>
 </div>`,

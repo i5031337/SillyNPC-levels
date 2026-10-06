@@ -285,8 +285,10 @@ export function buildAddCard(openEditor) {
     card.className = 'sillynpc-card sillynpc-card-add';
     card.title = 'Add character';
     card.innerHTML = '<i class="fa-solid fa-plus"></i>';
-    card.addEventListener('click', () => {
-        const char = createCharacter();
+    card.addEventListener('click', async () => {
+        const name = (await Popup.show.input('New NPC', 'Enter a name:'))?.trim();
+        if (!name) return;
+        const char = createCharacter(name);
         // Made while a chat is open, so they belong to it - the same as a card made from a
         // message. Without this, somebody created for the scene you are in is invisible in
         // it the moment that chat is limited to categories.

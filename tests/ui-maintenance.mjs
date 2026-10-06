@@ -148,13 +148,16 @@ test('editor resolves a removed Pictures tab before building its tab bar', async
 test('new character card opens its editor through the supplied callback', async () => {
     const document = { createElement: tag => new Element(tag) };
     const addedToChat = [];
+    const names = [];
     const buildAddCard = load('manage/ui-manage-cards.js', [
-        'document', 'createCharacter', 'addCharacterToChat',
+        'document', 'createCharacter', 'addCharacterToChat', 'Popup',
     ], [
-        document, () => ({ id: 'new-character' }), id => addedToChat.push(id),
+        document, name => { names.push(name); return { id: 'new-character' }; }, id => addedToChat.push(id),
+        { show: { input: async () => '  Mira  ' } },
     ], 'buildAddCard');
     const opened = [];
     await buildAddCard(id => opened.push(id)).click();
     assert.deepEqual(addedToChat, ['new-character']);
     assert.deepEqual(opened, ['new-character']);
+    assert.deepEqual(names, ['Mira']);
 });

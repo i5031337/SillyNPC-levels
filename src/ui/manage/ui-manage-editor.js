@@ -3,7 +3,8 @@ import { Popup } from '../../../../../../popup.js';
 import { LOG_PREFIX } from '../../core/constants.js';
 import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { saveSettings } from '../../core/settings.js';
-import { deleteCharacter, findCharacter } from '../../characters/characters.js';
+import { deleteCharacter, findCharacter, assignMatchingTrackerTemplate } from '../../characters/characters.js';
+import { triggerReprocess } from '../../chat/reprocess.js';
 import { renameLorebookEntry } from '../../lore/lorebook.js';
 import { buildPortraitBlock } from '../characters/ui-portrait.js';
 import { taggedFields } from '../../characters/image-tags.js';
@@ -157,7 +158,7 @@ function buildEditorLeft(char, refreshEditor) {
     return { left, catContainer };
 }
 
-function buildEditorNameField(char, title) {
+function buildEditorNameField(char, title, refreshEditor) {
     const nameField = document.createElement('div');
     nameField.className = 'sillynpc-editor-field';
     nameField.innerHTML = '<label>Name</label>';
@@ -188,6 +189,11 @@ function buildEditorNameField(char, title) {
     let folderBeforeRename = folderFor(char);
     nameInput.addEventListener('focus', () => { folderBeforeRename = folderFor(char); });
     nameInput.addEventListener('change', () => {
+        if (assignMatchingTrackerTemplate(char)) {
+            saveSettings();
+            triggerReprocess();
+            refreshEditor();
+        }
         renameLorebookEntry(char).catch(err =>
             console.error(LOG_PREFIX, 'Could not rename the lorebook entry', err));
 
@@ -233,7 +239,7 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
     const right = document.createElement('div');
     right.className = 'sillynpc-editor-right';
 
-    const nameField = buildEditorNameField(char, title);
+    const nameField = buildEditorNameField(char, title, refreshEditor);
 
     const profileContainer = document.createElement('div');
     profileContainer.className = 'sillynpc-editor-field profile-field-container';

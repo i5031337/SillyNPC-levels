@@ -2,13 +2,14 @@ import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { npcStatsFor, npcTemplateFor } from '../../core/npc-templates.js';
 import { escapeHtml, escapeRegExp } from '../../core/utils.js';
 import { LOG_PREFIX } from '../../core/constants.js';
+import { findCardForName } from '../status-logic.js';
 import { summarizeCollectionUI, buildPortraitHtml, stripFieldReference, tidyLeftovers, joinTo } from './status-ui-template-core.js';
 
 export function renderCharacters(html, state, settings, renderFieldSet) {
 
     const charMatch = html.match(/{{#characters}}([\s\S]*?){{\/characters}}/);
     if (charMatch) {
-        let charTemplate = charMatch[1].trim() || '';
+        let charTemplate = charMatch[1].replace(/👤\uFE0F?\s*/g, '').trim() || '';
         let charsHtml = '';
         
         const hiddenCharKeys = new Set();
@@ -61,7 +62,9 @@ export function renderCharacters(html, state, settings, renderFieldSet) {
                 }
 
                 // Always ensure name is replaced
-                charRow = charRow.replace(/{{name}}/g, escapeHtml(char.name) + (npcTemplateFor(char) ? '' : ' <small class="notes">[template required]</small>'));
+                const fillBtnHtml = findCardForName(char.name) ? ''
+                    : ` <button type="button" class="sillynpc-char-fill fa-solid fa-fill-drip" data-name="${escapeHtml(char.name)}" title="Fill profile for ${escapeHtml(char.name)}" aria-label="Fill profile for ${escapeHtml(char.name)}"></button>`;
+                charRow = charRow.replace(/{{name}}/g, escapeHtml(char.name) + fillBtnHtml + (npcTemplateFor(char) ? '' : ' <small class="notes">[template required]</small>'));
                 
                 const renderedCharCollections = new Set();
 

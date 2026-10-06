@@ -1,5 +1,6 @@
 import { loadStateFromMetadata, applyUpdate, removeActiveCharacter } from '../status-logic.js';
 import { announceSceneChange } from './status-ui-menu.js';
+import { fillNewCharacter } from '../../ui/characters/ui-fill-new.js';
 
 /**
  * @param {HTMLElement} container
@@ -7,7 +8,20 @@ import { announceSceneChange } from './status-ui-menu.js';
  * @param {object} [drawn.state] The state it shows - which, under an older message, is that
  *   message's state, not the live one.
  */
-export function attachInlineEditListeners(container, { state: drawnState = null, redrawMessage = null } = {}) {
+export function attachInlineEditListeners(container, { state: drawnState = null, redrawMessage = null, onRedraw = null } = {}) {
+    container.querySelectorAll('.sillynpc-char-fill').forEach(button => {
+        button.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (button.disabled) return;
+            button.disabled = true;
+            try {
+                await fillNewCharacter(button.dataset.name, { onSave: onRedraw });
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
     container.querySelectorAll('.sillynpc-status-editable').forEach(el => {
         el.addEventListener('blur', () => {
             const type = el.dataset.type;

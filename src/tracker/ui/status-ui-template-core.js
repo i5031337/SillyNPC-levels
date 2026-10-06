@@ -93,7 +93,7 @@ export function stripFieldReference(text, name) {
 /**
  * What to put between a row's own text and the fields appended after it.
  *
- * A row that already ends with a connector - `👤 Goblin —` - has said how it joins to
+ * A row that already ends with a connector - `Goblin —` - has said how it joins to
  * what follows, and adding a pipe after it reads as punctuation nobody wrote.
  */
 export function joinTo(text) {

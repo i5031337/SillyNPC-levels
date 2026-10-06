@@ -32,6 +32,44 @@ const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replace('export function bind', 'function bind');
 
+const assignMatchingTrackerTemplate = new Function('npcTemplateFor', 'getContext',
+    `${source('../src/characters/characters.js').replaceAll('export ', '')}\nreturn assignMatchingTrackerTemplate;`)(npcTemplateFor, () => null);
+
+test('a manually named card inherits the matching tracker template without changing an existing choice', () => {
+    fixture();
+    const state = { characters: [{ name: 'Mira', npcTemplateId: 'human', stats: { HP: '8/10' } }] };
+    const card = { name: '', npcTemplateId: '' };
+    assert.equal(assignMatchingTrackerTemplate(card, state), false);
+    card.name = 'Someone else';
+    assert.equal(assignMatchingTrackerTemplate(card, state), false);
+    card.name = ' mIRA ';
+    assert.equal(assignMatchingTrackerTemplate(card, state), true);
+    assert.equal(card.npcTemplateId, 'human');
+    assert.equal(assignMatchingTrackerTemplate(card, state), false);
+    card.npcTemplateId = 'pokemon';
+    assert.equal(assignMatchingTrackerTemplate(card, state), false);
+    assert.equal(card.npcTemplateId, 'pokemon');
+    assert.deepEqual(state.characters[0].stats, { HP: '8/10' });
+    setProfileSettingsProvider(() => null);
+});
+
+test('manual template inheritance uses remembered assignments and rejects unknown templates', () => {
+    fixture();
+    for (const state of [
+        { characters: [], npcTemplateAssignments: { mira: 'human' } },
+        { characters: [{ id: 'tracker-mira', name: 'Mira' }], npcTemplateAssignments: { 'tracker-mira': 'human' } },
+    ]) {
+        const card = { name: 'Mira', npcTemplateId: '' };
+        assert.equal(assignMatchingTrackerTemplate(card, state), true);
+        assert.equal(card.npcTemplateId, 'human');
+    }
+    const card = { name: 'Mira', npcTemplateId: '' };
+    assert.equal(assignMatchingTrackerTemplate(card, { characters: [{ name: 'Mira', npcTemplateId: 'unknown' }] }), false);
+    assert.equal(assignMatchingTrackerTemplate(card, undefined), false);
+    assert.equal(card.npcTemplateId, '');
+    setProfileSettingsProvider(() => null);
+});
+
 const diffSource = [source('../src/tracker/status-diff-compare.js'), source('../src/tracker/status-diff-review.js')]
     .join('\n').replaceAll('export function ', 'function ').replace(/export \{ splitValue \};/g, '');
 const { computeStateDiff, partitionChanges, buildUpdateFromChanges } = new Function(

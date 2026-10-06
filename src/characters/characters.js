@@ -1,4 +1,4 @@
-import { npcStatsFor } from '../core/npc-templates.js';
+import { npcStatsFor, npcTemplateFor } from '../core/npc-templates.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { makeId } from '../core/utils.js';
 import { SPEAKER_PALETTE, paletteColorFor } from '../core/constants.js';
@@ -68,12 +68,23 @@ export function createCharacter(name = '') {
         /** Named prose fields from the active System. */
         profile: blankActiveProfile(),
     };
-    const state = getContext()?.chatMetadata?.sillynpc_status_state;
-    const actor = state?.characters?.find(actor => actor.name?.toLowerCase() === char.name.toLowerCase());
-    const assigned = actor?.npcTemplateId || state?.npcTemplateAssignments?.[char.name.toLowerCase()];
-    if (assigned) char.npcTemplateId = assigned;
+    assignMatchingTrackerTemplate(char);
     addCharacterRecord(char);
     return char;
+}
+
+/** Inherit a same-name tracker NPC's template when a new card receives its name. */
+export function assignMatchingTrackerTemplate(char, state = getContext()?.chatMetadata?.sillynpc_status_state) {
+    if (char.npcTemplateId) return false;
+    const name = String(char.name || '').trim().toLowerCase();
+    if (!name) return false;
+    const actor = state?.characters?.find(actor => String(actor.name || '').trim().toLowerCase() === name);
+    const remembered = state?.npcTemplateAssignments?.[actor?.id || name]
+        || state?.npcTemplateAssignments?.[name];
+    const template = npcTemplateFor(actor) || npcTemplateFor({ npcTemplateId: remembered });
+    if (!template) return false;
+    char.npcTemplateId = template.id;
+    return true;
 }
 
 export function deleteCategory(category) {

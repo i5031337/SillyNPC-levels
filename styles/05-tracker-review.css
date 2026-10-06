@@ -388,6 +388,26 @@ span.sillynpc-review-to {
 
 /* ─── NPC Portraits in the tracker ─────────────────────────────────────── */
 
+.sillynpc-status-box .sillynpc-char-fill {
+    display: inline-block;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    padding: 0.15em 0.25em;
+    font-size: 0.9em;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.sillynpc-status-box .sillynpc-char-fill:hover,
+.sillynpc-status-box .sillynpc-char-fill:focus-visible {
+    opacity: 1;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.sillynpc-status-box .sillynpc-char-fill:disabled { opacity: 0.4; cursor: wait; }
+
 .sillynpc-status-portrait {
     display: inline-block !important;
     width: 1.6em !important;

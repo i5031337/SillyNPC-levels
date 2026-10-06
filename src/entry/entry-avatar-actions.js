@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../st-context.js';
-import { LOG_PREFIX } from '../core/constants.js';
 import { getAllCharacters, getChatCharacters, isChatCharacter } from '../characters/character-repository.js';
 import { fillCharacter } from '../ui/characters/ui-fill.js';
+import { fillNewCharacter } from '../ui/characters/ui-fill-new.js';
 import { openManagePopup } from '../ui/manage/ui-manage.js';
 import { openPlayerSheet } from '../ui/characters/ui-player-sheet.js';
 import { createCharacter, addAlias, addCharacterToChat } from '../characters/characters.js';
@@ -13,7 +13,6 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../popup.js';
  * existing characters open their editor, and an unknown speaker gets a chat card and Fill.
  */
 export function wireAvatarClicks() {
-    const filling = new Set();
     const choosing = new Set();
     document.addEventListener('keydown', (e) => {
         if (e.target?.matches?.('.sillynpc-chat-avatar') && (e.key === 'Enter' || e.key === ' ')) {
@@ -96,23 +95,7 @@ export function wireAvatarClicks() {
             return;
         }
 
-        const key = `${getContext()?.getCurrentChatId?.() || ''}:${speakerName.toLowerCase()}`;
-        if (filling.has(key)) return;
-        filling.add(key);
-        try {
-            // A stale thumbnail can survive until the chat redraw. Reuse its card.
-            const char = getAllCharacters().find(c =>
-                String(c.name || '').toLowerCase() === speakerName.toLowerCase())
-                || createCharacter(speakerName);
-            addCharacterToChat(char.id);
-            triggerReprocess();
-            await fillCharacter(char, { preset: 'automatic', onSave: triggerReprocess });
-        } catch (err) {
-            console.error(LOG_PREFIX, 'Could not start character Fill', err);
-            toastr.error(`Fill could not start: ${err?.message || err}`, 'SillyNPC');
-        } finally {
-            filling.delete(key);
-        }
+        await fillNewCharacter(speakerName);
     });
 }
 
