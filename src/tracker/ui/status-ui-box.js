@@ -111,7 +111,7 @@ export function renderStatusTrackerBox(mesEl) {
     if (!hasOpenChat()) return;
 
     const settings = getSettings().statusTracker;
-    if (!settings.enabled) return;
+    if (!getSettings().enabled || !settings.enabled) return;
 
     // The eye, in its third state. Before the review panel below on purpose: a change
     // waiting for a decision is not part of the tracker box and stays reachable either

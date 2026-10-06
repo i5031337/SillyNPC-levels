@@ -16,7 +16,7 @@ import { promptText } from '../prompts/prompt-texts.js';
 globalThis.sillyNpcHistoryNotes = function sillyNpcHistoryNotes(chat) {
     try {
         const tracker = getSettings().statusTracker;
-        if (!tracker?.enabled || !tracker.historyNotes) return;
+        if (!getSettings().enabled || !tracker?.enabled || !tracker.historyNotes) return;
         const added = noteHistory(chat, {
             names: noteFieldNames(tracker),
             render: (fields) => promptText('historyNote', { fields }),
@@ -40,7 +40,7 @@ globalThis.sillyNpcHistoryNotes = function sillyNpcHistoryNotes(chat) {
 export function dropCopiedWorldNote(messageId, redraw) {
     try {
         const tracker = getSettings().statusTracker;
-        if (!tracker?.enabled || !tracker.historyNotes) return;
+        if (!getSettings().enabled || !tracker?.enabled || !tracker.historyNotes) return;
         const context = getContext();
         const message = context?.chat?.[Number(messageId)];
         if (!message || message.is_user) return;

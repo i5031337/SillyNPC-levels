@@ -1,3 +1,5 @@
+import { refreshExtensionEnabled } from './src/entry/entry-enabled.js';
+import { buildSettingToggle } from './src/ui/shared/ui-shared.js';
 import { eventSource, event_types } from '../../../events.js';
 import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted, onMessageEdited } from './src/entry/entry-message-events.js';
 import { wireAvatarClicks } from './src/entry/entry-avatar-actions.js';
@@ -41,6 +43,12 @@ async function addSettingsPanel() {
     try {
         const html = await renderExtensionTemplateAsync(extensionName, 'index');
         $('#extensions_settings2').append(html);
+        document.getElementById('sillynpc-enable-setting')?.append(buildSettingToggle({
+            key: 'enabled',
+            label: 'Enable SillyNPC',
+            help: 'Turn off chat decorations, prompts, the HUD and background reading. Saved characters and tracker data are kept.',
+            onChange: refreshExtensionEnabled,
+        }));
         refreshScanButton();
         refreshReadButton();
 
@@ -123,7 +131,7 @@ jQuery(async () => {
         // Refresh the scene prompt after lore activation, before host chat injection.
         eventSource.on(event_types.WORLD_INFO_ACTIVATED, (entries) => {
             try {
-                noteActivatedLore(entries);
+                if (getSettings().enabled) noteActivatedLore(entries);
                 applyScenePrompt();
             } catch (err) {
                 debugLog('Could not record activated lore', err);
@@ -158,12 +166,14 @@ jQuery(async () => {
         eventSource.on(event_types.PERSONA_CHANGED, syncActiveProfileLore);
         // Repair missing lorebook headings only when necessary.
         eventSource.on(event_types.CHAT_CHANGED, () => {
+            if (!getSettings().enabled) return;
             repairEntryIdentities().catch(err =>
                 console.error(LOG_PREFIX, 'Naming lorebook entries failed', err));
         });
         // The HUD has to re-evaluate on every chat switch: it hides when none is open.
         eventSource.on(event_types.CHAT_CHANGED, () => updateHUD());
         eventSource.on(event_types.CHAT_CHANGED, () => {
+            if (!getSettings().enabled) return;
             offerChatScope().catch(err => console.error(LOG_PREFIX, 'offerChatScope failed', err));
             syncLorebookScope().catch(err => console.error(LOG_PREFIX, 'syncLorebookScope failed', err));
         });

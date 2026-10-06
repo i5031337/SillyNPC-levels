@@ -19,7 +19,7 @@ function harness() {
     let duringRequest = () => {};
     const requested = [];
     const deps = {
-        getContext: () => context, getSettings: () => ({ statusTracker: tracker }),
+        getContext: () => context, getSettings: () => ({ enabled: true, statusTracker: tracker }),
         getAllCharacters: () => [], getCurrentPersonaKey: () => 'persona',
         getPendingChanges: () => pending, setPendingChanges: (id, rows) => { pending = rows; },
         getLooseNotes: () => [], getRefusedValues: () => [], appliedChangesForCurrentSwipe: () => applied,

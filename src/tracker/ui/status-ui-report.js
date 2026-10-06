@@ -50,6 +50,7 @@ export function renderExtractionReport(mesEl, messageId) {
     const previous = mesEl.querySelector('.sillynpc-reader-report');
     const wasOpen = previous?.querySelector('details')?.open;
     previous?.remove();
+    if (!getSettings().enabled) return;
     const showOutput = getSettings().statusTracker.showRawTrackerOutput !== false;
     const rewardFailures = getContext()?.chat?.[Number(messageId)]?.extra?.sillynpc_level_reading?.failures?.length;
     const report = getExtractionReport(messageId);

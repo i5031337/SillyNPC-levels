@@ -24,6 +24,12 @@ import { applyPlayerPortrait, injectCharacterImages } from './chat-portraits.js'
 function runReprocessLogic(mesEl) {
     if (!mesEl) return;
     try {
+        if (!getSettings().enabled) {
+            mesEl.querySelectorAll('.sillynpc-refresh-btn, .sillynpc-tracker-eye, .sillynpc-status-tracker-container, .sillynpc-review-panel, .sillynpc-reader-report').forEach(el => el.remove());
+            applyPlayerPortrait(mesEl);
+            injectCharacterImages(mesEl);
+            return;
+        }
         // Wrap every step in a try-catch to ensure one failure doesn't block the whole chain.
         // Also use requestIdleCallback or defer if possible to avoid UI contention.
         

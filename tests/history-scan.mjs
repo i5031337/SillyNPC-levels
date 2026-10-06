@@ -21,7 +21,7 @@ function harness({ chat = [], state = { player: { name: 'Player', collections: {
     const bindings = {
         collectionAppliesTo: () => true, npcTemplates: () => [], getAllCharacters: () => cards,
         promptText: (id, values) => id === 'scanRequest' ? JSON.stringify(values) : id,
-        getContext: () => ({ chat }), getSettings: () => ({ statusTracker: settings }),
+        getContext: () => ({ chat }), getSettings: () => ({ enabled: true, statusTracker: settings }),
         LOG_PREFIX: 'test', debugLog: () => {}, loadStateFromMetadata: () => state,
         requestExtraction: async prompt => { prompts.push(JSON.parse(prompt)); const reply = replies[requests++]; if (reply instanceof Error) throw reply; return reply; },
         coerceToUpdate: raw => raw, describeCollections: () => 'items', computeStateDiff,

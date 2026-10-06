@@ -56,6 +56,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/ui-npc-templates.py` | Temporary, unsaved Firefox fixtures for template controls, profile fields, reader guidance, and tracker rendering. |
 | `tests/ui_webdriver.py` | Shared Firefox session and guaranteed driver cleanup. |
 | `tests/history-scan.mjs` | Preserve NPC template assignments through scan filtering and multi-pass merging. |
+| `tests/ui-enable-switch.py` | Unsaved live checks for both master controls, synchronization, disabled reader, and UI cleanup. |
 | `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
@@ -202,6 +203,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/lore/lorebook-target.js` | Choose and name a chat lorebook for Fill without overwriting an existing book. |
 | `src/lore/lore-format.js` | Parse and format active System fields while retaining unknown saved lore lines. |
 | `src/lore/lore-sync.js` | Save player and NPC profile fields to lore, creating a link when needed. |
+| `src/entry/entry-enabled.js` | Apply the master switch, synchronize both controls, clear prompts and refresh runtime UI. |
 | `src/entry/entry-profile-lore.js` | Sync existing active profiles on startup, chat changes, and persona changes. |
 | `src/lore/activated-lore.js` | Capture activated lore entries and their characters. |
 | `src/story/beats.js` | Segment visible message content into story beats. |

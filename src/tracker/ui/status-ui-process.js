@@ -27,7 +27,7 @@ const statusObservers = new Map();
 /**
  * Disconnects and forgets every per-message observer. Called on chat change.
  */
-function disconnectStatusObservers() {
+export function disconnectStatusObservers() {
     for (const observer of statusObservers.values()) {
         observer.disconnect();
     }
@@ -95,7 +95,7 @@ export function processStatusUpdate(mesEl) {
     if (processingMessages.has(mesId)) return;
 
     const settings = getSettings().statusTracker;
-    if (!settings.enabled) return;
+    if (!getSettings().enabled || !settings.enabled) return;
 
     const textContainer = mesEl.querySelector('.mes_text');
     if (!textContainer) return;
@@ -114,6 +114,7 @@ export function processStatusUpdate(mesEl) {
             // cell - and rebuilding on that destroys the element being typed into, which
             // is why a field took one character per click and the whole box was rebuilt
             // on every keystroke.
+            if (!getSettings().enabled) return;
             if (records.every(record => insideTracker(record.target))) return;
 
             // Not while the reply is still arriving. Every token mutates this subtree, and
@@ -131,7 +132,7 @@ export function processStatusUpdate(mesEl) {
                     processStatusUpdate(mesEl);
                     renderStatusTrackerBox(mesEl);
                 } finally {
-                    observer.observe(textContainer, { childList: true, subtree: true, characterData: true });
+                    if (getSettings().enabled) observer.observe(textContainer, { childList: true, subtree: true, characterData: true });
                 }
             });
         });

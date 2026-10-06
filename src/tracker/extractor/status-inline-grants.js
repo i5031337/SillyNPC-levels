@@ -25,7 +25,7 @@ export function queueInlineReading(update, messageId, mesEl, fingerprint) {
     const message = context?.chat?.[Number(messageId)];
     const tracker = getSettings().statusTracker;
     // Archived inline blocks are display data. Loading an old turn never earns levels.
-    if (!message || message.is_user || Number(messageId) !== trackerMessageIndex(context.chat)
+    if (!getSettings().enabled || !tracker.enabled || !message || message.is_user || Number(messageId) !== trackerMessageIndex(context.chat)
         || mesEl.classList.contains('writing') || tracker.extractionMode !== 'inline') return false;
     const swipe = message.swipe_id ?? 0;
     const token = JSON.stringify([swipe, fingerprint]);
@@ -35,7 +35,8 @@ export function queueInlineReading(update, messageId, mesEl, fingerprint) {
     const metadata = context.chatMetadata;
     const source = message.mes;
     const cleaned = parseMessageForUpdates(source).cleanedText;
-    const fresh = () => getContext()?.chatMetadata === metadata
+    const fresh = () => getSettings().enabled && getSettings().statusTracker.enabled
+        && getContext()?.chatMetadata === metadata
         && getContext()?.chat?.[Number(messageId)] === message
         && (message.swipe_id ?? 0) === swipe
         && Number(messageId) === trackerMessageIndex(getContext()?.chat)

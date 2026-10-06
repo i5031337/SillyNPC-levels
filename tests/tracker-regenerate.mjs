@@ -44,6 +44,7 @@ function harness(mode = 'extract') {
     let pending = [{ old: true }];
     let response = { player: { stats: {}, deltas: { XP: 20 } } };
     let onRequest = () => {};
+    let enabled = true;
     let previewWarnings = [];
     let collectionWarnings = [];
     let prompted;
@@ -58,7 +59,7 @@ function harness(mode = 'extract') {
     const extraction = loadModule('../src/tracker/extractor/status-extractor-run.js', {
         ...deps, ...snapshots, normalizeCollectionUpdates,
         trackerMessageIndex: chat => chat.length - 1,
-        getSettings: () => ({ statusTracker: { ...settings, extractionMode: mode,
+        getSettings: () => ({ enabled, statusTracker: { ...settings, extractionMode: mode,
             playerStats: [{ name: 'XP', purpose: 'xp' }] } }),
         rememberSwipeBase: () => {},
         refreshTurnBase: () => { base.beforeApply = { state: structuredClone(live), profiles: {} }; },
@@ -97,6 +98,7 @@ function harness(mode = 'extract') {
     });
     return { run: (options = { regenerate: true }) => extraction.extractStateFromMessage(message.mes, 0, options),
         live: () => live, pending: () => pending, prompted: () => prompted, message, context, base,
+        setEnabled: value => { enabled = value; },
         setResponse: value => { response = value; }, onRequest: fn => { onRequest = fn; },
         setWarnings: value => { previewWarnings = value; } };
 }
@@ -169,4 +171,18 @@ test('manual reading is discarded if a new turn arrives during the request', asy
 test('manual mode does not enable the reader in inline mode', async () => {
     const h = harness('inline');
     assert.equal((await h.run({ manual: true })).reason, 'extraction disabled');
+});
+
+
+test('master switch blocks forced reads and discards replies from an in-flight read', async () => {
+    const h = harness();
+    const before = structuredClone(h.live());
+    h.setEnabled(false);
+    assert.deepEqual(await h.run({ force: true }), { applied: false, reason: 'extension disabled' });
+    assert.equal(h.prompted(), undefined);
+    h.setEnabled(true);
+    h.onRequest(() => { h.setEnabled(false); });
+    assert.deepEqual(await h.run(), { applied: false, reason: 'extension disabled' });
+    assert.deepEqual(h.live(), before);
+    assert.deepEqual(h.pending(), [{ old: true }]);
 });

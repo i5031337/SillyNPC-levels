@@ -117,7 +117,7 @@ function applyScenePrompt() {
 
     const clear = (key) => setExtensionPrompt(key, '', extension_prompt_types.IN_CHAT, 0, false);
 
-    if (!settings.enabled) {
+    if (!getSettings().enabled || !settings.enabled) {
         clear('sillynpc-status-instructions');
         clear('sillynpc-status-example');
         clear('sillynpc-status-scene');

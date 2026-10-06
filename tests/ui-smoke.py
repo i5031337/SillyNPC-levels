@@ -40,7 +40,10 @@ with browser_session() as browser:
           const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
           const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
           const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
-          const settings = getSettings().statusTracker;
+          const masterSettings = getSettings();
+          const savedEnabled = masterSettings.enabled;
+          masterSettings.enabled = true;
+          const settings = masterSettings.statusTracker;
           const keys = ['enabled', 'extractionMode', 'showGlobalStats', 'showPlayerStats',
             'showNpcStats', 'showRawTrackerOutput'];
           const saved = Object.fromEntries(keys.map(key => [key, settings[key]]));
@@ -190,6 +193,7 @@ with browser_session() as browser:
               if (saved[key] === undefined) delete settings[key];
               else settings[key] = saved[key];
             }
+            masterSettings.enabled = savedEnabled;
             renderStatusView(panel); refreshReadButton();
           }
           document.documentElement.setAttribute('data-manual-smoke', JSON.stringify(result));

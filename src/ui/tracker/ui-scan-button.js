@@ -35,13 +35,13 @@ function unmountScanButton() {
 /** Reflects the setting, so turning the tracker off takes the button with it. */
 export function refreshScanButton() {
     const settings = getSettings().statusTracker;
-    if (settings.enabled && settings.scanButtonEnabled !== false) mountScanButton();
+    if (getSettings().enabled && settings.enabled && settings.scanButtonEnabled !== false) mountScanButton();
     else unmountScanButton();
 }
 
 async function onScanClicked() {
     const button = document.getElementById(BUTTON_ID);
-    if (button?.classList.contains('sillynpc-scanning')) return;
+    if (!getSettings().enabled || button?.classList.contains('sillynpc-scanning')) return;
 
     const estimate = estimateScan();
     if (estimate.error) {

@@ -13,7 +13,7 @@ export function renderHUD(hudContainer, updatedState, { isDragging, applyHudZoom
     const settings = allSettings.statusTracker;
     // A player sheet with no chat behind it is showing whatever the last chat left in
     // memory, which reads as the current state and is not.
-    if (!settings.hudEnabled || !hasOpenChat()) {
+    if (!allSettings.enabled || !settings.hudEnabled || !hasOpenChat()) {
         hudContainer.style.display = 'none';
         return;
     }

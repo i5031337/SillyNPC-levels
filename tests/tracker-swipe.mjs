@@ -44,6 +44,7 @@ function harness() {
             }
         },
         toastr: { warning: text => warnings.push(text) }, LOG_PREFIX: 'test',
+        getSettings: () => ({ enabled: true }),
         document: { querySelector: () => null }, reprocessMessage: () => {},
         isImageOnlyMessage: () => false, trackerMessageIndex: chat => chat.length - 1,
     }, 'onSwipe');

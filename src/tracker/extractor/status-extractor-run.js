@@ -89,6 +89,7 @@ function reportExtractionProblem(message) {
 }
 
 export async function extractStateFromMessage(messageText, messageId, options = {}) {
+    if (!getSettings().enabled) return { applied: false, reason: 'extension disabled' };
     const trackerSettings = getSettings().statusTracker;
     if (!trackerSettings.enabled) return { applied: false, reason: 'tracker disabled' };
     if (!options.force && trackerSettings.extractionMode !== 'extract'
@@ -144,6 +145,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
 
         debugLog('Extraction request for message', key);
         const raw = await requestExtraction(userPrompt, schema, trackerSettings);
+        if (!getSettings().enabled || !getSettings().statusTracker.enabled || activeExtraction !== run) {
+            return { applied: false, reason: 'extension disabled' };
+        }
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
             || extractionSwipe(reportMessage) !== swipe
             || (options.manual && Number(messageId) !== trackerMessageIndex(getContext()?.chat || []))) {
@@ -177,6 +181,9 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         sanitizeModelUpdate(parsed, liveState, trackerSettings);
         const grants = await prepareLevelReading(parsed, liveState, trackerSettings,
             String(messageText), leadUp, reportMessage, messageId, options);
+        if (!getSettings().enabled || !getSettings().statusTracker.enabled || activeExtraction !== run) {
+            return { applied: false, reason: 'extension disabled' };
+        }
         if (getContext()?.chat?.[Number(messageId)] !== reportMessage
             || getContext()?.chatMetadata !== sourceMetadata || reportMessage?.mes !== sourceText
             || grants.reading.personaId !== getCurrentPersonaKey()
@@ -286,7 +293,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         // replies during profile generation cannot lose applied rows or review proposals.
         const profiles = await generateNewNpcProfiles(
             (parsed.characters || []).map(character => character?.name).filter(Boolean),
-            () => activeExtraction === run
+            () => getSettings().enabled && activeExtraction === run
                 && getContext()?.chatMetadata === sourceMetadata
                 && getContext()?.chat?.[Number(messageId)] === reportMessage
                 && reportMessage?.mes === sourceText

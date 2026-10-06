@@ -1,3 +1,4 @@
+import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
 import { reprocessMessage } from '../chat/chat.js';
@@ -42,6 +43,7 @@ export function onMessageRendered(messageId) {
  * extraction must never block reading it or throw into SillyTavern's event loop.
  */
 export function onMessageForExtraction(messageId) {
+    if (!getSettings().enabled) return;
     try {
         const context = getContext();
         const message = context?.chat?.[Number(messageId)];
@@ -64,6 +66,7 @@ export function onMessageForExtraction(messageId) {
 
 /** Restore the selected swipe’s tracker state before redrawing the message. */
 export function onSwipe(messageId) {
+    if (!getSettings().enabled) return;
     try {
         // Over-swiping keeps the outgoing text and extra until generation starts.
         // The new slot is beyond the saved replies even when mes is still nonempty.
@@ -89,6 +92,7 @@ export function onSwipe(messageId) {
  * GENERATION_STARTED identifies regeneration before MESSAGE_DELETED truncates the chat.
  */
 export function onRegenerateStarted(type, _data, dryRun) {
+    if (!getSettings().enabled) return;
     if (dryRun || type !== 'regenerate') return;
     try {
         const messageId = (getContext()?.chat?.length ?? 0) - 1;
@@ -114,6 +118,7 @@ export function onRegenerateStarted(type, _data, dryRun) {
  * the tracked reply survived; a middle deletion requires manual review.
  */
 export function onMessageDeleted(newLength) {
+    if (!getSettings().enabled) return;
     try {
         forgetExtractionsFrom(newLength);
         const base = swipeBaseRecord();
@@ -130,6 +135,7 @@ export function onMessageDeleted(newLength) {
 
 /** Re-reads an edited latest assistant reply from its pre-turn state. */
 export function onMessageEdited(messageId) {
+    if (!getSettings().enabled) return;
     const context = getContext();
     const id = Number(messageId);
     const message = context?.chat?.[id];

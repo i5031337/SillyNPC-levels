@@ -1,3 +1,4 @@
+import { getSettings } from '../core/settings.js';
 import { getContext } from '../../../../../st-context.js';
 import { hasOpenChat } from '../tracker/status-logic.js';
 import { CAST_KEY, setChatCast, getAllCategories, UNCATEGORISED } from '../characters/characters.js';
@@ -13,7 +14,7 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../../../../popup.js';
  * Declining leaves the chat unscoped, which includes every character.
  */
 export async function offerChatScope() {
-    if (!hasOpenChat()) return;
+    if (!getSettings().enabled || !hasOpenChat()) return;
 
     const context = getContext();
     if ((context?.chat?.length ?? 0) > 1) return;

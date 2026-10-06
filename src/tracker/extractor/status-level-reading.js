@@ -38,6 +38,7 @@ export function saveLevelReading(message, reading) {
 }
 
 export async function retryLevelReading(messageId) {
+    if (!getSettings().enabled) return { applied: false, reason: 'extension disabled' };
     const context = getContext();
     const message = context?.chat?.[Number(messageId)];
     const reading = message?.extra?.[LEVEL_READING_KEY];
@@ -48,6 +49,7 @@ export async function retryLevelReading(messageId) {
     try {
         const grants = await prepareLevelReading(reading.parsed, reading.state, getSettings().statusTracker,
             reading.text, reading.leadUp, message, messageId);
+        if (!getSettings().enabled) return { applied: false, reason: 'extension disabled' };
         if (getContext()?.chatMetadata !== context.chatMetadata || getContext()?.chat?.[Number(messageId)] !== message
             || reading.swipe !== Number(message.swipe_id ?? 0) || reading.sourceText !== message.mes
             || reading.personaId !== getCurrentPersonaKey()) return { applied: false, reason: 'reply changed while selecting rewards' };

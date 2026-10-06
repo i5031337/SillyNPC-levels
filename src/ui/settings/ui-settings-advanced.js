@@ -1,5 +1,5 @@
+import { refreshExtensionEnabled } from '../../entry/entry-enabled.js';
 import { renderStatsView } from '../shared/ui-stats.js';
-import { triggerReprocess } from '../../chat/chat.js';
 import { getSettings } from '../../core/settings.js';
 import { buildSettingToggle, buildSettingSlider } from '../shared/ui-shared.js';
 import { setDebugLogging } from '../../core/constants.js';
@@ -21,9 +21,8 @@ export function renderAdvancedView(view, handlers = {}) {
     view.append(buildSettingToggle({
         key: 'enabled',
         label: 'Enable SillyNPC',
-        help: 'The master switch. Off, nothing is decorated, no prompt is sent and the '
-            + 'tracker reads nothing - your characters and everything they hold are kept.',
-        onChange: () => triggerReprocess(),
+        help: 'Turn off chat decorations, prompts, the HUD and background reading. Saved characters and tracker data are kept.',
+        onChange: refreshExtensionEnabled,
     }));
 
     view.append(buildSettingToggle({

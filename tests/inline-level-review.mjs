@@ -11,7 +11,7 @@ function harness() {
     const calls = { applied: [], pending: [], selections: 0, records: [], replacements: 0, resets: 0 };
     let duringSelection = () => {};
     const deps = {
-        getContext: () => context, getSettings: () => ({ statusTracker: { extractionMode: calls.mode || 'inline' } }),
+        getContext: () => context, getSettings: () => ({ enabled: calls.enabled !== false, statusTracker: { enabled: true, extractionMode: calls.mode || 'inline' } }),
         getAllCharacters: () => [], loadStateFromMetadata: () => state, getCurrentPersonaKey: () => 'persona',
         parseMessageForUpdates: text => ({ cleanedText: text }),
         sanitizeModelUpdate: update => update, expandNumericDeltas: update => update,
@@ -91,4 +91,18 @@ test('separate reader mode never also awards an inline block', async () => {
     await settle();
     assert.equal(h.calls.applied.length, 0);
     assert.equal(h.calls.selections, 0);
+});
+
+
+test('disabled extension neither queues inline XP nor commits a pending reading', async () => {
+    const h = harness();
+    h.calls.enabled = false;
+    assert.equal(h.queue(), false);
+    assert.equal(h.calls.selections, 0);
+    h.calls.enabled = true;
+    h.setDuringSelection(() => { h.calls.enabled = false; });
+    assert.equal(h.queue(), true);
+    await settle();
+    assert.equal(h.calls.applied.length, 0);
+    assert.equal(h.message.reading, undefined);
 });

@@ -11,7 +11,7 @@ const BUTTON_ID = 'sillynpc-read-button';
 /** Manual reading stays available during play, beside the history scan. */
 export function refreshReadButton() {
     const settings = getSettings().statusTracker;
-    if (!settings.enabled || settings.extractionMode !== 'manual') {
+    if (!getSettings().enabled || !settings.enabled || settings.extractionMode !== 'manual') {
         document.getElementById(BUTTON_ID)?.remove();
         return;
     }
@@ -32,7 +32,7 @@ async function onReadClicked() {
     const button = document.getElementById(BUTTON_ID);
     const settings = getSettings().statusTracker;
     if (!button || button.classList.contains('sillynpc-scanning')
-        || !settings.enabled || settings.extractionMode !== 'manual') return;
+        || !getSettings().enabled || !settings.enabled || settings.extractionMode !== 'manual') return;
     const chat = getContext()?.chat || [];
     const messageId = trackerMessageIndex(chat);
     const message = chat[messageId];

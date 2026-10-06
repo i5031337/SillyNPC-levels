@@ -62,6 +62,7 @@ function refreshGrantDependencies(rows) {
  * @returns {HTMLElement|null}
  */
 function buildReviewPanel(messageId) {
+    if (!getSettings().enabled) return null;
     const pending = getPendingChanges(messageId);
     if (!pending.length) return null;
 

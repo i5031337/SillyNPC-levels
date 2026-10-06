@@ -211,6 +211,7 @@ export function buildScanPrompt(state, trackerSettings, history) {
  * @returns {Promise<{ ok: boolean, pending?: number, reason?: string, messages?: number }>}
  */
 export async function scanHistoryForCollections(onProgress) {
+    if (!getSettings().enabled) return { ok: false, reason: 'SillyNPC is disabled.' };
     const trackerSettings = getSettings().statusTracker;
     const context = getContext();
     const chat = context?.chat || [];
@@ -261,6 +262,7 @@ export async function scanHistoryForCollections(onProgress) {
             return failedPass(index, chunks.length, String(err?.message || err));
         }
 
+        if (!getSettings().enabled) return { ok: false, reason: 'SillyNPC is disabled.' };
         const parsed = coerceToUpdate(raw);
         if (!parsed) {
             return failedPass(index, chunks.length, looksTruncated(raw) ? 'a reply ran out of room' : 'a reply was not JSON');

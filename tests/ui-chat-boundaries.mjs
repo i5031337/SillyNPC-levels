@@ -45,6 +45,7 @@ for (const switchChat of [false, true]) {
             getContext: () => ({ chat: [], chatMetadata: metadata }), hasOpenChat: () => true,
             CAST_KEY: 'cast', UNCATEGORISED: '', getAllCategories: () => ['A', 'B'],
             setChatCast: cast => saved.push(cast), triggerReprocess: () => {},
+            getSettings: () => ({ enabled: true }),
         }, 'offerChatScope');
         await offer();
         assert.equal(saved.length, switchChat ? 0 : 1);
