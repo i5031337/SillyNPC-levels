@@ -14,7 +14,7 @@ with browser_session() as browser:
             JSON.stringify({ error: 'Page module failed to load or parse', source: script.textContent }));
         script.textContent = `
           try {
-            const { customProfilePayload } = await import(${JSON.stringify(new URL('src/api/connection-profile.js', entry.src).href)});
+            const { customProfilePayload } = await import(${JSON.stringify(new URL('src/api/api-connection-profile.js', entry.src).href)});
             const { substituteParams } = await import('/script.js');
             const context = SillyTavern.getContext();
             const service = context.ConnectionManagerRequestService;

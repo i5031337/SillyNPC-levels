@@ -113,7 +113,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/utils-format.js` | JSON, stat display, text, and DOM formatting helpers. |
 | `src/core/hash.js` | Stable hashes and palette indexes. |
 | `src/api/api.js` | Lore generation and image upload, generation, adoption, and cleanup. |
-| `src/api/connection-profile.js` | Request-local Additional Parameters from the Custom connection profile's completion preset; included YAML takes precedence over standard parameters. |
+| `src/api/api-connection-profile.js` | Request-local Additional Parameters from the Custom connection profile's completion preset; included YAML takes precedence over standard parameters. |
 | `src/api/api-lore-facts.js` | Assemble lore and tracked fact context. |
 | `src/api/api-lore-generate.js` | Generate and save lore content. |
 | `src/api/api-image-items.js` | Select collection items for portrait prompts. |

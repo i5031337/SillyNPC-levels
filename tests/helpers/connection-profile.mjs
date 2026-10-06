@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-const source = (await readFile(new URL('../../src/api/connection-profile.js', import.meta.url), 'utf8'))
+const source = (await readFile(new URL('../../src/api/api-connection-profile.js', import.meta.url), 'utf8'))
     .replace(/^import .*;$/gm, '').replace('export function', 'function');
 export const customProfilePayload = new Function('substituteParams', `${source}\nreturn customProfilePayload;`)(
     value => value.replaceAll('{{model}}', 'fixture-model'),

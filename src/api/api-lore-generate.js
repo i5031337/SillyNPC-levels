@@ -7,7 +7,7 @@ import { fillTemplate } from '../prompts/macros.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { DEFAULT_LORE_PROMPT } from '../prompts/default-prompt-texts.js';
 import { recordUsage } from '../core/usage.js';
-import { customProfilePayload } from './connection-profile.js';
+import { customProfilePayload } from './api-connection-profile.js';
 import { syncEntryIdentity, mergeKeywords, namesFor } from '../lore/lorebook.js';
 import { escapeRegExp, describeConnection } from '../core/utils.js';
 import { describeTrackedFacts, retrieveWorldFacts } from './api-lore-facts.js';

@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../st-context.js';
 import { extractMessageFromData } from '../../../../../../script.js';
 import { recordUsage } from '../core/usage.js';
-import { customProfilePayload } from '../api/connection-profile.js';
+import { customProfilePayload } from '../api/api-connection-profile.js';
 /** Capture reader connection preferences once; never fall back to another connection. */
 export function generationRequestAdapter(tracker, profileId = tracker.extractionProfileId || '') {
     const useSchema = tracker.extractionUseSchema === true;

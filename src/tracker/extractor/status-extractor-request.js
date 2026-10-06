@@ -4,7 +4,7 @@ import { applyMacros } from '../../prompts/macros.js';
 import { LOG_PREFIX, debugLog, SYSTEM_PROMPT } from '../../core/constants.js';
 import { describeConnection, extractJSON, safeJsonParse } from '../../core/utils.js';
 import { recordUsage } from '../../core/usage.js';
-import { customProfilePayload } from '../../api/connection-profile.js';
+import { customProfilePayload } from '../../api/api-connection-profile.js';
 
 /** What a reply cost, whether it arrived as text or as already-parsed data. */
 function describeAnswer(answer) {
