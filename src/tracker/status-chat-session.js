@@ -204,9 +204,9 @@ function recordTurnEffects(messageId) {
     const state = structuredClone(deps.loadStateFromMetadata());
     const profiles = snapshotProfiles();
     const effectsState = base.beforeApply
-        ? applyTurnValues(base.state, diffTurnValues(base.beforeApply.state, state)) : state;
+        ? applyTurnValues(base.applied?.state || base.state, diffTurnValues(base.beforeApply.state, state)) : state;
     const effectsProfiles = base.beforeApply
-        ? applyTurnValues(base.profiles, diffTurnValues(base.beforeApply.profiles, profiles)) : profiles;
+        ? applyTurnValues(base.applied?.profiles || base.profiles, diffTurnValues(base.beforeApply.profiles, profiles)) : profiles;
     message.extra ||= {};
     base.turnId ||= globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     message.extra.sillynpc_turn_id = base.turnId;

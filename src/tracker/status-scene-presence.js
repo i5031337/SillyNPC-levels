@@ -1,5 +1,6 @@
 import { npcStatsFor, npcTemplateFor, proposedNpcTemplate } from '../core/npc-templates.js';
 import { eventSource } from '../../../../../events.js';
+import { getContext } from '../../../../../st-context.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { debugLog } from '../core/constants.js';
@@ -7,7 +8,8 @@ import { debugLog } from '../core/constants.js';
 export function bind(deps) {
 function reconcileScenePresence(names, messageId, options = {}) {
     const settings = getSettings().statusTracker;
-    const state = structuredClone(deps.committedState || deps.loadStateFromMetadata());
+    const before = deps.committedState || deps.loadStateFromMetadata();
+    const state = structuredClone(before);
     if (!state.presence || typeof state.presence !== 'object') {
         state.presence = { tick: 0, messageId: null, seen: [] };
     }
@@ -96,12 +98,24 @@ function reconcileScenePresence(names, messageId, options = {}) {
 
     if (!changed) return false;
 
+    // Speakers arrive during rendering, before the reader starts. Capture their
+    // pre-turn cast now, and keep redraws out of any reader update in progress.
+    const chat = getContext()?.chat || [];
+    const message = chat[Number(messageId)];
+    const recordPresence = !options.authoritative && message && !message.is_user
+        && !message.is_system && Number(messageId) === chat.length - 1
+        && !deps.swipeBaseRecord()?.beforeApply;
+    if (recordPresence) {
+        deps.rememberSwipeBase(messageId, before);
+        deps.refreshTurnBase(messageId);
+    }
     state.timestamp = Date.now();
     // Not an undo step. Who is on stage is re-derived from the messages on every render,
     // so this fires several times a second while a chat loads - ten of them wiped the
     // entire undo ring in four seconds, and took the only copy of a story's stats with
     // it. Presence is not something anyone means to undo.
     deps.saveStateToMetadata(state, { label: 'Scene cast', recordHistory: false });
+    if (recordPresence) deps.recordTurnEffects(messageId);
     eventSource.emit('sillynpc-status-updated', state);
     return true;
 }
