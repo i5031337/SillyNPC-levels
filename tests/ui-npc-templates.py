@@ -41,7 +41,7 @@ with browser_session() as browser:
             profiles: { player: [], npc: [{ id: 'occupation', label: 'Occupation' }, { id: 'species', label: 'Species' }] },
             stats: { world: [], player: [], npc: [
               { id: 'hp', name: 'HP', type: 'number', defaultValue: '10/10' },
-              { id: 'friendship', name: 'Friendship', type: 'number', defaultValue: '0' }] },
+              { id: 'friendship', name: 'Friendship', type: 'number', defaultValue: '0', locked: true }] },
             collections: [
               { id: 'moves', name: 'Moves', target: 'npc', npcTemplateId: 'pokemon', fields: [{ name: 'name', isPrimary: true }] },
               { id: 'clothes', name: 'Clothing', targets: ['player', 'template:human'], fields: [{ name: 'name', isPrimary: true }] }],
@@ -145,6 +145,11 @@ with browser_session() as browser:
             humanFields: [...humanFields.querySelectorAll('.sillynpc-profile-label')].map(label => label.textContent.trim()),
             pokemonFields: [...pokemonFields.querySelectorAll('.sillynpc-profile-label')].map(label => label.textContent.trim()),
             readerTemplates: reader.includes('npcTemplateId') && reader.includes('Human trainers.') && reader.includes('Pokémon creatures.'),
+            readerLockedReference: reader.includes('"Friendship":"50"') && !reader.includes('"Friendship":"99"'),
+            readerNumberTypes: reader.includes('Absolute readings under "stats" and "global" are JSON strings')
+                && reader.includes('Numeric changes under "deltas" and "globalDeltas" are JSON numbers'),
+            readerIndependentExamples: reader.includes('Acquired item:') && reader.includes('Lost item:')
+                && reader.includes('### NEW NPC REPLY EXAMPLE'),
             humanHidden: !box.innerHTML.includes('99'), pokemonShown: box.innerHTML.includes('50'),
             box: box.textContent
           };
@@ -184,4 +189,5 @@ with browser_session() as browser:
     assert result['reviewOptions'] == ['', 'human', 'pokemon'] and result['reviewSelected'] == 'pokemon', result
     assert result['loreSelectedOnly'], result
     assert result['readerTemplates'] and result['humanHidden'] and result['pokemonShown'], result
+    assert result['readerLockedReference'] and result['readerNumberTypes'] and result['readerIndependentExamples'], result
     print('NPC templates live UI passed:', json.dumps(result))

@@ -1,10 +1,8 @@
-import { progressionFields } from '../progression-fields.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { charactersMentionedIn } from '../../chat/chat.js';
 import { charactersFromActivatedLore } from '../../lore/activated-lore.js';
 import { liveFactsFor } from '../../api/api.js';
 import { summariseCollections, profileBlock } from './status-extractor-prompt-state.js';
-import { isReaderStat } from '../stat-update-policy.js';
 
 /**
  * Cards for characters the message names who are not in the scene.
@@ -34,11 +32,8 @@ export function describeAbsentButNamed(state, messageText, trackerSettings) {
 
         // Offstage facts come from the card, including its held collections.
         const { stats, collections } = liveFactsFor(char);
-        const progression = progressionFields(trackerSettings, { actor: char });
-        const visibleStats = Object.fromEntries(Object.entries(stats || {}).filter(([name]) =>
-            !(trackerSettings.npcStats || []).some(def => !isReaderStat(def)
-                && def.name?.toLowerCase() === name.toLowerCase()
-                && !(progression.enabled && [progression.xpName, progression.levelName].includes(def.name)))));
+        const visibleStats = Object.fromEntries(Object.entries(stats || {})
+            .map(([name, value]) => [name, String(value ?? '')]));
         const listed = summariseCollections({ ...char, collections }, 'npc', trackerSettings);
         const profile = profileBlock(char);
 

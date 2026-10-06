@@ -50,6 +50,7 @@ export const drawsMeter = deps.drawsMeter;
 export const clampToCeiling = deps.clampToCeiling;
 export const getInitialStatValue = deps.getInitialStatValue;
 export const getCurrentPersonaKey = deps.getCurrentPersonaKey;
+export const getCurrentPersonaName = deps.getCurrentPersonaName;
 export const getPlayerCard = deps.getPlayerCard;
 export const getPlayerImageUrl = deps.getPlayerImageUrl;
 export const createChatPlayerSeed = deps.createChatPlayerSeed;

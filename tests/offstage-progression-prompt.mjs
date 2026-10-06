@@ -35,7 +35,7 @@ test('schema offers known offstage experience deltas and explicit absent-actor f
     assert.equal(actor.stats.properties.Rank.type, 'string'); // Blank locked NPC stats can be initialized.
 });
 
-test('offstage prompt exposes earned XP and Level baseline while hiding unrelated locked ratings', () => {
+test('offstage prompt exposes filled locked stats as initialization reference data', () => {
     const describe = load('../src/tracker/extractor/status-extractor-prompt-offstage.js', {
         progressionFields, npcTemplateFor: actor => ({ id: actor.npcTemplateId }),
         charactersMentionedIn: () => [card], charactersFromActivatedLore: () => [],
@@ -44,9 +44,26 @@ test('offstage prompt exposes earned XP and Level baseline while hiding unrelate
     }, 'describeAbsentButNamed');
     const records = JSON.parse(describe({ characters: [] }, 'Mira earned experience elsewhere.', tracker));
     assert.equal(records[0].offstage, true);
-    assert.deepEqual(records[0].stats, { Experience: '90/100', Rank: '1' });
+    assert.deepEqual(records[0].stats, { Experience: '90/100', Rank: '1', Power: '5' });
     const prompt = readerPromptTexts.find(entry => entry.id === 'reader').text;
     assert.match(prompt, /"offstage": true/);
     assert.match(prompt, /Never mark an unknown NPC offstage/);
     assert.match(prompt, /complete present cast/);
+});
+
+test('collection removal schema uses the configured primary field type', () => {
+    const build = load('../src/tracker/extractor/status-extractor-schema.js', {
+        progressionFields, npcStatsFor, collectionAppliesTo, numericDeltaNames, configuredXpName, isReaderStat,
+        npcTemplates: () => [],
+    }, 'buildExtractionSchema');
+    for (const type of ['number', 'boolean', 'text']) {
+        const schema = build({ ...tracker, collections: [{ id: 'gear', target: 'player', fields: [
+            { name: 'code', type, isPrimary: true },
+        ] }] });
+        const collection = schema.properties.player.properties.collections.properties.gear.properties;
+        const expected = type === 'text' ? 'string' : type;
+        assert.equal(collection.remove.items.type, expected);
+        assert.equal(collection.add.items.properties.code.type, expected);
+        assert.equal(collection.update.items.properties.code.type, expected);
+    }
 });

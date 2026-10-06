@@ -109,6 +109,23 @@ test('automatic assignment is validated, dry runs do not write cards, and other-
     setProfileSettingsProvider(() => null);
 });
 
+test('a sole template is assigned without asking the reader to select it', () => {
+    const { definition, settings } = fixture();
+    definition.npcTemplates = [definition.npcTemplates[0]];
+    assert.equal(proposedNpcTemplate({}, {}).id, 'human');
+    assert.equal(proposedNpcTemplate({}, { npcTemplateId: 'unknown' }), null);
+    assert.doesNotMatch(describeNpcTemplates(), /npcTemplateId|template|assignment/i);
+    assert.match(describeNpcTemplates(), /Human trainers/);
+    const { deps, card } = applyFixture(settings);
+    const preview = deps.applyUpdate({ characters: [{ name: 'Mira', stats: { HP: '8/10' } }] }, { dryRun: true });
+    assert.equal(preview.characters[0].npcTemplateId, 'human');
+    assert.deepEqual(preview.characters[0].stats, { HP: '8/10' });
+    assert.equal(card.npcTemplateId, undefined);
+    deps.applyUpdate({ characters: [{ name: 'Mira', stats: { HP: '8/10' } }] });
+    assert.equal(card.npcTemplateId, 'human');
+    setProfileSettingsProvider(() => null);
+});
+
 test('uncertain assignment becomes an editable review row even with review disabled', () => {
     const { settings } = fixture();
     const { deps, initial } = applyFixture(settings);

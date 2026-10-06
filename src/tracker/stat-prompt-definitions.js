@@ -71,6 +71,7 @@ export function describeReaderStats(settings, { initializeNpc = false } = {}) {
                 if (Number(stat.maxLength) > 0) parts.push(`up to ${stat.maxLength} characters`);
             }
             if (initializeNpc) {
+                if (stat.locked) parts.push('initialize once while blank; locked afterward');
                 if (String(stat.defaultValue ?? '').trim()) parts.push(`default: ${stat.defaultValue}`);
                 if (numeric) {
                     if (String(stat.min ?? '').trim()) parts.push(`min: ${stat.min}`);

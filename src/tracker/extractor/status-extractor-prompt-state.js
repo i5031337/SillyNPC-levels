@@ -2,7 +2,6 @@ import { collectionAppliesTo, collectionTargetLabel } from '../../core/collectio
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
 import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
-import { isReaderStat } from '../stat-update-policy.js';
 import { statsInSystem, getPlayerCard, findCardForName } from '../status-logic.js';
 import { describeReaderStats } from '../stat-prompt-definitions.js';
 
@@ -97,17 +96,17 @@ export function buildDeltaExample(trackerSettings) {
     const col = cols[0];
     const primary = (col.fields || []).find(f => f.isPrimary)?.name || 'name';
     const identifier = col.fields?.find(f => f.name === primary);
-    const primaryValue = identifier?.type === 'number' ? '<exact numeric identifier>'
-        : identifier?.type === 'boolean' ? '<true or false identifier>' : '<exact name>';
+    const primaryValue = identifier?.type === 'number' ? 1
+        : identifier?.type === 'boolean' ? true : '<exact primary field value>';
 
     const item = {};
     for (const field of col.fields || [{ name: 'name' }]) {
         if (field.name === primary) {
             item[field.name] = primaryValue;
         } else if (field.type === 'number') {
-            item[field.name] = '<number, or omit if the message does not say>';
+            item[field.name] = 1;
         } else if (field.type === 'boolean') {
-            item[field.name] = '<true or false, or omit if the message does not say>';
+            item[field.name] = true;
         } else {
             item[field.name] = '<or omit if the message does not say>';
         }
@@ -117,15 +116,13 @@ export function buildDeltaExample(trackerSettings) {
        user's own names, so a verb missing from it is a verb the reader does not use. */
     const changed = { [primary]: primaryValue, ...Object.fromEntries(
         Object.entries(item).filter(([key]) => key !== primary).slice(0, 1)
-            .map(([key]) => [key, '<its new value>'])) };
-    const shape = {
-        [col.id]: {
-            add: [item],
-            remove: [primaryValue],
-            ...(Object.keys(changed).length > 1 ? { update: [changed] } : {}),
-        },
-    };
-    return JSON.stringify(shape, null, 2);
+            .map(([key, value]) => [key, typeof value === 'number' ? 2
+                : typeof value === 'boolean' ? false : '<its new value>'])) };
+    return [
+        ['Acquired item', { add: [item] }],
+        ['Lost item', { remove: [primaryValue] }],
+        ...(Object.keys(changed).length > 1 ? [['Changed item', { update: [changed] }]] : []),
+    ].map(([label, change]) => `${label}:\n${JSON.stringify({ [col.id]: change }, null, 2)}`).join('\n\n');
 }
 
 /**
@@ -176,17 +173,13 @@ export function summariseCollections(actor, target, trackerSettings) {
         return out;
 }
 
-export function describeCurrentState(state, trackerSettings, { includeAdvancement = false } = {}) {
+export function describeCurrentState(state, trackerSettings) {
     const summarise = (actor, target) => summariseCollections(actor, target, trackerSettings);
     const visibleStats = (values, listKey, actor) => {
         const kept = statsInSystem(values, listKey, actor);
-        if (includeAdvancement) return kept;
-        const hidden = new Set((trackerSettings[listKey] || [])
-            .filter(def => !isReaderStat(def)).map(def => def.name?.toLowerCase()));
-        for (const key of Object.keys(kept)) {
-            if (hidden.has(key.toLowerCase())) delete kept[key];
-        }
-        return kept;
+        // Filled locked fields are reference data: the reader must distinguish them
+        // from blank fields eligible for initialization.
+        return Object.fromEntries(Object.entries(kept).map(([name, value]) => [name, String(value ?? '')]));
     };
 
     const playerCollections = summarise(state.player, 'player');

@@ -56,14 +56,20 @@ test('numeric identifiers including zero remain valid, and normal writes do not 
 
 test('collection examples use the primary field type consistently for all operations', () => {
     const build = new Function(`${source('../src/tracker/extractor/status-extractor-prompt-state.js')}\nreturn buildDeltaExample;`)();
-    for (const [type, expected] of [['number', '<exact numeric identifier>'],
-        ['boolean', '<true or false identifier>'], ['text', '<exact name>']]) {
-        const example = JSON.parse(build({ collections: [{ id: 'moves', fields: [
+    for (const [type, expected] of [['number', 1],
+        ['boolean', true], ['text', '<exact primary field value>']]) {
+        const examples = build({ collections: [{ id: 'moves', fields: [
             { name: 'key', type, isPrimary: true }, { name: 'power', type: 'number' },
-        ] }] }));
-        assert.equal(example.moves.add[0].key, expected);
-        assert.equal(example.moves.update[0].key, expected);
-        assert.equal(example.moves.remove[0], expected);
+        ] }] }).split('\n\n').map(block => JSON.parse(block.slice(block.indexOf('\n') + 1)).moves);
+        assert.equal(examples.length, 3);
+        assert.deepEqual(Object.keys(examples[0]), ['add']);
+        assert.deepEqual(Object.keys(examples[1]), ['remove']);
+        assert.deepEqual(Object.keys(examples[2]), ['update']);
+        assert.equal(examples[0].add[0].key, expected);
+        assert.equal(examples[2].update[0].key, expected);
+        assert.equal(examples[1].remove[0], expected);
+        assert.equal(examples[0].add[0].power, 1);
+        assert.equal(examples[2].update[0].power, 2);
     }
     const prompt = readerPromptTexts.find(entry => entry.id === 'reader').text;
     assert.match(prompt, /quoted collection ID.*never its display label/);

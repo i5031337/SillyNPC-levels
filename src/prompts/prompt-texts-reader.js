@@ -4,6 +4,7 @@ export const readerPromptTexts = [
         where: 'The request the tracker\'s reader gets for each new message, after your Extraction Instructions (which are its system prompt).',
         when: 'Every message, when the tracker reads replies separately.',
         placeholders: {
+            playerName: 'The active player persona’s name.',
             state: 'The scene as it stands, as JSON.',
             offstage: 'Tracked characters the message names who are not on stage, with what is on file for them.',
             limits: 'Editable stats, their meanings and text formats.',
@@ -17,13 +18,17 @@ export const readerPromptTexts = [
             collectionExample: 'A worked change in your own collection and field names.',
             minimalReply: 'A no-change reply listing the cast present.',
             changedReply: 'A configured example with player and NPC stats and collections.',
-            newNpcReply: 'An NPC initialization template with configured stat and item field guidance, even with an empty scene.',
+            newNpcReply: 'A new NPC reply example with configured stat and item field guidance, even with an empty scene.',
             numericDeltas: 'Existing numeric stats eligible for delta updates, by owner.',
             earlier: 'The messages before this one, when you send any.',
             message: 'The message being read.',
             reasons: 'Switch: on when "Ask for reasons" is on.',
         },
         text: `Read the latest message and report its changes and the full scene cast. "characters" contains NPCs present in the scene, never the player; put all player changes under "player". Use earlier messages only for context; their effects are already in the current state. Initialize every new NPC's blank configured stats with plausible individual values, even without story details. Do not report profile or memory changes.
+
+{{#playerName}}
+{{playerName}} is the player-controlled character. References to {{playerName}} belong under player.
+{{/playerName}}
 
 ### CURRENT STATE
 {{state}}
@@ -33,17 +38,23 @@ export const readerPromptTexts = [
 {{collections}}
 Use the quoted collection ID as the JSON key under "collections", never its display label. Use exact field spelling and capitalization. Include the configured primary field in every "add" and "update" entry, using its declared type; "remove" lists those same identifiers. A separate item "name" is unnecessary unless it is the configured primary field.
 {{/collections}}
+{{#npcFields}}
+
+### NPC INITIALIZATION FIELDS
+Initialize blank fields only, including locked fields. Preserve filled locked fields; never report deltas for them.
+{{npcFields}}
+{{/npcFields}}
 {{#newNpcReply}}
 
-### NPC INITIALIZATION TEMPLATE
+### NEW NPC REPLY EXAMPLE
 When an NPC enters the scene, include an object in the "characters" array with their exact "name", even when CURRENT STATE has no NPCs. Initialize blank configured fields under "stats", not "deltas"; preserve values already on file. Infer plausible individual values when the story gives no details.
-The template's field values describe how to fill them, using the configured field guidance and constraints. Replace them with actual values. Include starting possessions under each collection's "add" array; omit collections with no starting items. Use exact field spelling and capitalization. The configured primary field identifies an item; no separate item "name" field is required.
+The example's stat values describe how to fill them, using the configured field guidance and constraints. Replace them with actual string readings. Collection item values illustrate their declared types; replace them with actual item values. Include starting possessions under each collection's "add" array; omit collections with no starting items. Use exact field spelling and capitalization. The configured primary field identifies an item; no separate item "name" field is required.
 {{newNpcReply}}
 {{/newNpcReply}}
 {{#xpProgression}}
 
 ### EXPERIENCE
-Award experience once per concrete accomplishment in the latest message, including small progress, for the player and enabled NPC templates. Use each owner’s configured XP field in "player.deltas" or that character’s "deltas" with a positive number. The extension handles Level, excess XP, and reward proposals; never write Level or level-up growth directly. Disabled NPC templates use ordinary stat rules.
+Award experience once per concrete accomplishment in the latest message, including small progress, for the player and NPCs with enabled progression. Use each owner’s configured XP field in "player.deltas" or that character’s "deltas" with a positive number. The extension handles Level, excess XP, and reward proposals; never write Level or level-up growth directly. NPCs without progression use ordinary stat rules.
 {{/xpProgression}}
 {{#offstage}}
 
@@ -78,7 +89,7 @@ For a new NPC, add starting possessions shown in the story or background; infer 
 Report each collection change shown in the latest message:
 - "remove" for used, spent, transferred, lost, or destroyed items
 - "add" for acquired items, with stated fields
-- "update" for changed items, with their name and changed fields
+- "update" for changed items, with their configured primary field and changed fields
 {{/collections}}
 {{#earlier}}
 
@@ -90,7 +101,7 @@ Report each collection change shown in the latest message:
 {{message}}
 
 ### REPLY FORMAT
-Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Keep replacement formats: "8/10" stays a pool; a plain number stays a plain number.
+Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "Healthy". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
 "characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present and no known offstage NPC changes, use "characters": []. Known absent NPC updates must carry "offstage": true; all other entries describe the complete present cast.
 {{#reasons}}
 Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<name>.Health". Quote the latest message or name the event. For an initialized NPC stat, use "initial estimate" or "invented".
@@ -99,7 +110,7 @@ Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<
 Stranger example: { {{strangerExample}} }.
 {{/strangers}}
 {{#collectionExample}}
-Collection-change example:
+Independent collection-change examples (each shows a separate event). Replace illustrative values with actual values and include only fields established by the message. Put the collection object under the owner's "collections":
 {{collectionExample}}
 {{/collectionExample}}
 {{#minimalReply}}
@@ -147,15 +158,15 @@ Experience: award once per concrete accomplishment for the player and enabled NP
 
 ### COSTS
 Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
-Initialize new NPC pools with individual capacities, even when they differ from the default: "5/5" stays "5/5", and a bare initial 8 means "8/8". Keep pool values such as "8/10" in that form. Keep established maxima fixed during ordinary updates. Configured level growth may increase pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Plain numeric ratings keep their configured range. Keep plain numbers as numbers.
+Initialize new NPC pools with individual capacities, even when they differ from the default: "5/5" stays "5/5", and a bare initial "8" means "8/8". Keep pool values such as "8/10" in that form. Keep established maxima fixed during ordinary updates. Configured level growth may increase pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Plain numeric ratings keep their configured range. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "Healthy". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
 
 {{#schemas}}
 ### COLLECTIONS
 For a new NPC, add starting possessions shown in the story or background; infer plausible essentials when details are sparse.
 Report collection changes:
 - "add": [ { ...item fields } ] for gains
-- "remove": [ "Item name" ] for spent, lost, transferred, or destroyed items
-- "update": [ { ...name and changed fields } ] for changed items
+- "remove": [ <configured primary field value> ] for spent, lost, transferred, or destroyed items
+- "update": [ { ...configured primary field and changed fields } ] for changed items
 For a transfer, remove the item from one owner's collection and add it to the other's. Both player and characters can have collections.
 ### COLLECTION SCHEMAS
 {{schemas}}

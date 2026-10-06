@@ -9,6 +9,8 @@ import { describeCollections, buildDeltaExample, describeCurrentState, describeL
 import { describeAbsentButNamed } from './status-extractor-prompt-offstage.js';
 import { describeNumericDeltas, numericDeltaNames, progressionXpName } from './status-extractor-deltas.js';
 import { isReaderStat } from '../stat-update-policy.js';
+import { getCurrentPersonaName } from '../status-logic.js';
+import { progressionFields } from '../progression-fields.js';
 
 /**
  * Extra notes for the reader, from whoever registered one.
@@ -89,6 +91,7 @@ function readerValues(state, messageText, trackerSettings, leadUp = [], { strang
      *   known. Without them a new item arrived with only the field the example showed.
      */
     return {
+        playerName: getCurrentPersonaName(),
         state: describeCurrentState(state, trackerSettings) || '(empty)',
         offstage: describeAbsentButNamed(state, messageText, trackerSettings),
         limits: describeLimits(trackerSettings, state),
@@ -130,7 +133,7 @@ export function collectLeadUp(messageId, count) {
     for (let i = Math.max(0, index - count); i < index; i++) {
         const message = chat[i];
         if (!message || typeof message.mes !== 'string' || !message.mes.trim()) continue;
-        const who = message.is_user ? 'Player' : 'Narrator';
+        const who = message.is_user ? `Player (${message.name || getCurrentPersonaName()})` : 'Narrator';
         // Enough for a cost line or a roll result without pulling a whole scene back in.
         const text = message.mes.length > 1200 ? message.mes.slice(-1200) : message.mes;
         out.push(`[${who}] ${text}`);
@@ -162,7 +165,7 @@ export function buildMinimalExample(state, trackerSettings = {}) {
 export function buildNewNpcExample(trackerSettings = {}) {
     const template = npcTemplates()[0];
     const stats = Object.fromEntries((template ? npcStatsFor({ npcTemplateId: template.id }, trackerSettings) : trackerSettings.npcStats || [])
-        .filter(stat => stat?.name && isReaderStat(stat))
+        .filter(stat => stat?.name)
         .map(stat => [stat.name, describeReaderStats({ npcStats: [stat] }, { initializeNpc: true })
             .replace(`- NPC.${stat.name}: `, '')]));
     const collections = Object.fromEntries((trackerSettings.collections || [])
@@ -170,9 +173,8 @@ export function buildNewNpcExample(trackerSettings = {}) {
         .map(col => {
             const primary = (col.fields || []).find(field => field.isPrimary)?.name || 'name';
             const item = Object.fromEntries((col.fields || [{ name: primary }]).map(field => [
-                field.name, [String(field.hint || '').trim(),
+                field.name, field.type === 'number' ? 1 : field.type === 'boolean' ? true : [String(field.hint || '').trim(),
                     field.name === primary ? 'identifies the item' : '',
-                    field.type && field.type !== 'text' ? field.type : '',
                     field.type !== 'number' && field.options?.length ? `choose: ${field.options.join(', ')}` : '',
                 ].filter(Boolean).join('; '),
             ]));
@@ -183,7 +185,7 @@ export function buildNewNpcExample(trackerSettings = {}) {
         player: {},
         characters: [{
             name: '<exact NPC name from the story>',
-            ...(template ? { npcTemplateId: template.id } : {}),
+            ...(npcTemplates().length > 1 ? { npcTemplateId: template.id } : {}),
             ...(Object.keys(stats).length ? { stats } : {}),
             ...(Object.keys(collections).length ? { collections } : {}),
         }],
@@ -192,11 +194,15 @@ export function buildNewNpcExample(trackerSettings = {}) {
 
 /** Show a changed value only when this system has a stat to name in the example. */
 function buildChangedExample(state, trackerSettings) {
-    const playerStat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats)[0];
+    const playerStat = numericDeltaNames(trackerSettings.playerStats, state?.player?.stats,
+        progressionFields(trackerSettings, { isPlayer: true }))[0];
     const xpName = progressionXpName(trackerSettings, state);
     const cast = (state?.characters || []).filter(c => c?.name);
     const npc = cast[0];
-    const npcStat = npc && numericDeltaNames(trackerSettings.npcStats, npc.stats)[0];
+    const npcStat = npc && numericDeltaNames(npcStatsFor(npc, trackerSettings), npc.stats,
+        progressionFields(trackerSettings, { actor: npc }))[0];
+    const npcProgression = npc && progressionFields(trackerSettings, { actor: npc });
+    const npcXpName = npcProgression?.enabled ? npcProgression.xpName : null;
     const firstTurnStat = list => (list || []).find(stat => stat?.name && isReaderStat(stat) && !stat.locked
         && !['xp', 'level', 'level bonus'].includes(stat.name.toLowerCase()))?.name;
     const collectionFor = target => (trackerSettings.collections || [])
@@ -216,7 +222,7 @@ function buildChangedExample(state, trackerSettings) {
     const playerCollection = collectionChange(collectionFor('player'), 'add');
     if (playerCollection) player.collections = playerCollection;
     const characters = cast.map(actor => ({ name: actor.name }));
-    if (npcStat) characters[0].deltas = { [npcStat]: -1 };
+    if (npcStat) characters[0].deltas = { [npcStat]: npcStat === npcXpName ? 1 : -1 };
     else if (characters.length && firstTurnStat(trackerSettings.npcStats)) {
         characters[0].stats = { [firstTurnStat(trackerSettings.npcStats)]: '<new value>' };
     }

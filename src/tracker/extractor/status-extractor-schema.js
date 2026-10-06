@@ -53,7 +53,8 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                 type: 'object',
                 properties: {
                     add: { type: 'array', items: itemShape(col) },
-                    remove: { type: 'array', items: { type: 'string' } },
+                    remove: { type: 'array', items: { type: itemShape(col).properties[
+                        (col.fields || []).find(field => field.isPrimary)?.name || 'name']?.type || 'string' } },
                     /* The third verb, which the reader could not reach.
                        A schema names what may come back, so leaving "update" out told the
                        model not to send one - while the inline prompt documented all three

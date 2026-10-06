@@ -36,5 +36,5 @@ test('reader lists only editable stats without numeric enforcement rules', () =>
     assert.equal(describeReaderStats(settings),
         '- Player.Energy: number; Spent on spells\n- NPC.Health: number');
     assert.equal(describeReaderStats(settings, { initializeNpc: true }),
-        '- NPC.Health: number; default: 5/5; min: 0\n- NPC.Species: text; choose: Human, Elf\n- NPC.Rank: number');
+        '- NPC.Health: number; default: 5/5; min: 0\n- NPC.Species: text; choose: Human, Elf; initialize once while blank; locked afterward\n- NPC.Rank: number; initialize once while blank; locked afterward');
 });
