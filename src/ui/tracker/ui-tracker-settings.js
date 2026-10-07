@@ -7,6 +7,7 @@ import { renderTrackerTools } from './ui-tracker-tools.js';
 import { foldSettings } from '../settings/ui-settings-details.js';
 import { refreshReadButton } from './ui-read-button.js';
 import { refreshScanButton } from './ui-scan-button.js';
+import { refreshMemoryButton } from './ui-memory-button.js';
 import { redrawStatusBoxes } from '../../tracker/ui/status-ui-box.js';
 
 /**
@@ -41,6 +42,7 @@ export function renderStatusView(container) {
     const onChange = () => {
         refreshReadButton();
         refreshScanButton();
+        refreshMemoryButton();
         const scrollParent = container.closest('.sillynpc-tab-panel') || container.closest('.popup-body') || container;
         const top = scrollParent.scrollTop;
         renderStatusView(container);

@@ -47,6 +47,7 @@ function harness() {
         getSettings: () => ({ enabled: true }),
         document: { querySelector: () => null }, reprocessMessage: () => {},
         isImageOnlyMessage: () => false, trackerMessageIndex: chat => chat.length - 1,
+        reconcileMemorySources: () => {},
     }, 'onSwipe');
     return { message, warnings, swipe: () => events.onSwipe(0),
         live: () => live, profiles: () => profiles, initial, initialProfiles };

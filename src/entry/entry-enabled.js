@@ -9,6 +9,7 @@ import { restorePlayerDialogueSetting } from './entry-generation-names.js';
 import { updateHUD } from '../ui/hud/ui-hud.js';
 import { refreshReadButton } from '../ui/tracker/ui-read-button.js';
 import { refreshScanButton } from '../ui/tracker/ui-scan-button.js';
+import { refreshMemoryButton } from '../ui/tracker/ui-memory-button.js';
 
 /** Apply the master switch immediately; keep saved characters and tracker state. */
 export function refreshExtensionEnabled() {
@@ -26,5 +27,6 @@ export function refreshExtensionEnabled() {
     updateHUD();
     refreshReadButton();
     refreshScanButton();
+    refreshMemoryButton();
     triggerReprocess();
 }

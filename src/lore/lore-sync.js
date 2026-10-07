@@ -1,4 +1,5 @@
 import { profileFieldsForCard } from '../core/profile-fields.js';
+import { normalizeMemoryStore } from '../core/profile-memories.js';
 import { loadWorldInfo, saveWorldInfo } from '../../../../../world-info.js';
 import { formatLoreContent, parseLoreContent, mergeLoreValues } from './lore-format.js';
 import { saveSettings } from '../core/settings.js';
@@ -23,7 +24,8 @@ export function readLoreValues(content, cardProfile, scope = 'npc') {
 export async function syncProfileToLore(char, memories, { isCurrent = () => true } = {}) {
     if (!char?.name || !isCurrent()) return;
     if (!char.lorebook?.world) {
-        if (!Object.values(char.profile || {}).some(value => String(value ?? '').trim())) return;
+        const hasProfile = Object.values(char.profile || {}).some(value => String(value ?? '').trim());
+        if (!hasProfile && !normalizeMemoryStore(memories, 500).entries.length) return;
         const target = await ensureChatLorebookForFill();
         if (!target || !isCurrent()) return;
         await createLoreEntry(char, target, char.name, { isCurrent });

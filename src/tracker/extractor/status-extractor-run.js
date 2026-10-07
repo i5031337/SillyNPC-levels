@@ -24,6 +24,8 @@ import { generateNewNpcProfiles } from './status-npc-profiles.js';
 /** Guards against an extraction triggering the events that would start another. */
 let activeExtraction = null;
 
+export function isExtractionRunning() { return activeExtraction !== null; }
+
 /** Message ids already extracted, so a re-render does not re-run the request. */
 const extractedMessages = new Set();
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { prepareGrantReview, selectReviewRows, materializeGrantRows } from '../src/tracker/level-grant-review.js';
+import { mergePendingMemoryRows } from '../src/memory/memory-review.js';
 
 const settings = {
     playerStats: [{ id: 'xp', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'lv', name: 'Rank', type: 'number', defaultValue: '1' },
@@ -101,6 +102,7 @@ test('review acceptance applies story and growth together, preserves partial gra
         }, buildUpdateFromChanges: build, recordAppliedChanges: (_id, rows) => message.extra.sillynpc_applied.push(...rows),
         saveChatSoon: () => {}, appliedChangesForCurrentSwipe: () => message.extra.sillynpc_applied,
         selectReviewRows, materializeGrantRows, validateReviewedTransitions,
+        activeNpcSystem: () => null, mergePendingMemoryRows,
     };
     const resolve = new Function(...Object.keys(dependencies), source.replace(/^import .*;\n/gm, '').replace(/export /g, '')
         + '\nreturn resolvePendingChanges;')(...Object.values(dependencies));

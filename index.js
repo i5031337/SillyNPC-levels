@@ -30,6 +30,8 @@ import { resetExtractionState } from './src/tracker/extractor/status-extractor.j
 import { initHUD, updateHUD, forgetPortrait } from './src/ui/hud/ui-hud.js';
 import { refreshScanButton } from './src/ui/tracker/ui-scan-button.js';
 import { refreshReadButton } from './src/ui/tracker/ui-read-button.js';
+import { refreshMemoryButton } from './src/ui/tracker/ui-memory-button.js';
+import { setMemoryButtonRefresh, resetMemorySchedule } from './src/memory/memory-reader.js';
 import { applyPortraitFraming, applySpeechPadding } from './src/ui/shared/ui-shared.js';
 import { applyScenePrompt } from './src/tracker/status-logic.js';
 import { noteActivatedLore } from './src/lore/activated-lore.js';
@@ -51,6 +53,7 @@ async function addSettingsPanel() {
         }));
         refreshScanButton();
         refreshReadButton();
+        refreshMemoryButton();
 
         document.getElementById('sillynpc-open-manage')?.addEventListener('click', () => {
             openManagePopup().catch(err => console.error(LOG_PREFIX, 'openManagePopup failed', err));
@@ -82,6 +85,8 @@ jQuery(async () => {
             })
             .catch(err => console.warn(LOG_PREFIX, 'Could not move pictures into folders', err));
         initStatusLogic();
+        setMemoryButtonRefresh(refreshMemoryButton);
+        resetMemorySchedule();
         syncActiveProfileLore().catch(err => console.error(LOG_PREFIX, 'Profile lore sync failed', err));
         try {
             initHUD();
@@ -162,6 +167,7 @@ jQuery(async () => {
             reprocessAllMessages();
         });
         eventSource.on(event_types.CHAT_CHANGED, resetExtractionState);
+        eventSource.on(event_types.CHAT_CHANGED, resetMemorySchedule);
         eventSource.on(event_types.CHAT_CHANGED, syncActiveProfileLore);
         eventSource.on(event_types.PERSONA_CHANGED, syncActiveProfileLore);
         // Repair missing lorebook headings only when necessary.

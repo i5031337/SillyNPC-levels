@@ -1,4 +1,5 @@
 import { profileFieldsForCard } from '../src/core/profile-fields.js';
+import { normalizeMemoryStore } from '../src/core/profile-memories.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -28,7 +29,7 @@ test('player profile saves create and update one lore entry using player fields'
     });
     const dependencies = {
         loadWorldInfo: async () => book, saveWorldInfo: async () => {},
-        formatLoreContent, parseLoreContent, mergeLoreValues, profileFieldsForCard,
+        formatLoreContent, parseLoreContent, mergeLoreValues, profileFieldsForCard, normalizeMemoryStore,
         saveSettings: () => {}, syncEntryIdentity: identify,
         ensureChatLorebookForFill: async () => 'Chat',
         createLoreEntry: (card, world) => create(card, world, card.name, 'player/avatar'),
@@ -71,4 +72,36 @@ test('scene status contains tracker fields but no player, present NPC, or refere
     }
     assert.ok(!result.includes('PROFILE'));
     assert.ok(!result.includes('Who they are'));
+});
+
+test('memory-only NPCs create a lore entry and sync active memories, excluding archived ones', async () => {
+    const book = { entries: {} };
+    let created = 0;
+    let saved = 0;
+    const dependencies = {
+        loadWorldInfo: async () => book, saveWorldInfo: async () => { saved++; },
+        formatLoreContent, parseLoreContent, mergeLoreValues, profileFieldsForCard: () => [], normalizeMemoryStore,
+        saveSettings: () => {}, syncEntryIdentity: () => false,
+        ensureChatLorebookForFill: async () => 'Chat',
+        createLoreEntry: async card => {
+            created++;
+            card.lorebook = { world: 'Chat', uid: 0 };
+            book.entries[0] = { uid: 0, content: '', comment: card.name };
+        },
+    };
+    const sync = new Function(...Object.keys(dependencies),
+        source('../src/lore/lore-sync.js') + '\nreturn syncProfileToLore;')(...Object.values(dependencies));
+    const npc = { name: 'Mira', profile: {} };
+    await sync(npc, { entries: [], archive: [{ text: 'Archived promise' }] });
+    assert.equal(created, 0, 'archived-only memories do not allocate an entry');
+    await sync(npc, { entries: [{ text: 'Promised to meet at the harbor' }],
+        archive: [{ text: 'Archived promise' }] });
+    assert.equal(created, 1);
+    assert.match(book.entries[0].content, /### Memories\n- Promised to meet at the harbor/);
+    assert.ok(!book.entries[0].content.includes('Archived promise'));
+    await sync(npc, { entries: [{ text: 'Learned the harbor was closed' }], archive: [] });
+    assert.equal(created, 1);
+    assert.match(book.entries[0].content, /Learned the harbor was closed/);
+    assert.ok(!book.entries[0].content.includes('Promised to meet'));
+    assert.equal(saved, 2);
 });

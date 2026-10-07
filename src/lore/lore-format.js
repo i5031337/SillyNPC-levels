@@ -5,12 +5,18 @@ import { normalizeMemoryStore } from '../core/profile-memories.js';
 
 const MEMORY_HEADING = '### Memories';
 const EXTRA_HEADING = '### Additional lore';
-const beforeMemories = content => String(content ?? '').split(`\n${MEMORY_HEADING}`)[0];
+const memoryStart = text => /^### Memories(?:\r?\n|$)/.test(text)
+    ? 0 : text.indexOf(`\n${MEMORY_HEADING}`);
+const beforeMemories = content => {
+    const text = String(content ?? '');
+    const at = memoryStart(text);
+    return at < 0 ? text : text.slice(0, at);
+};
 const profileSection = content => beforeMemories(content).split(`\n${EXTRA_HEADING}`)[0];
 const memorySection = content => {
     const text = String(content ?? '');
-    const at = text.indexOf(`\n${MEMORY_HEADING}`);
-    return at < 0 ? '' : text.slice(at);
+    const at = memoryStart(text);
+    return at < 0 ? '' : `\n${text.slice(at).trimStart()}`;
 };
 
 /** Keep earlier labels after a System renames or retires a field. */
@@ -31,7 +37,7 @@ export function formatLoreContent(values = {}, existingContent = '', memories, s
     const extra = extraAt >= 0 ? body.slice(extraAt)
         : scope === 'player' && body.trim() && !parseLoreContent(existingContent, { scope })
             ? `\n${EXTRA_HEADING}\n${body.replace(/^###[^\n]*\n?/, '')}` : '';
-    return [...current, ...previous].join('\n') + extra + section;
+    return ([...current, ...previous].join('\n') + extra + section).replace(/^\n(?=### Memories)/, '');
 }
 
 /** NPC storage is complete; player entries can also contain ordered partial fields. */
@@ -40,6 +46,7 @@ export function parseLoreContent(content, { allowPartial = false, scope = 'npc' 
     if (lines[0]?.startsWith('### ')) lines.shift();
     const active = resolveProfileFields(scope);
     if (allowPartial) return parseGeneratedProfileFields(lines.join('\n'), scope);
+    if (!lines.join('\n').trim() && memorySection(content)) return {};
     // Entries written before a System changed its fields keep their original labels.
     const templates = scope === 'npc' ? npcTemplates().map(template => active.filter(field => template.profileIds.includes(field.id))) : [];
     for (const fields of [active, ...templates, scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS]) {

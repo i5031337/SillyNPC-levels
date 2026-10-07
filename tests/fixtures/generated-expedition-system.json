@@ -284,7 +284,10 @@
     }
   },
   "memories": {
-    "maxEntriesPerCharacter": 50
+    "maxEntriesPerCharacter": 50,
+    "enabled": true,
+    "guidance": "Remember consequential battles and commitments; skip routine travel.",
+    "interval": 8
   },
   "hud": {
     "layout": "plate",

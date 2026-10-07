@@ -26,6 +26,17 @@ test('player profiles use player fields and preserve additional lore and memorie
     assert.equal(parseLoreContent('Appearance: Red cloak', { scope: 'player' }).appearance, 'Red cloak');
 });
 
+test('memory-only lore stays structured and parses without profile fields or a leading newline', () => {
+    const memories = { entries: [{ text: 'Promised to meet at the harbor' }] };
+    const content = formatLoreContent({}, '', memories, 'npc', []);
+    assert.equal(content, '### Memories\n- Promised to meet at the harbor');
+    assert.deepEqual(parseLoreContent(content), {});
+    assert.deepEqual(parseLoreContent(`### Mira\n${content}`), {});
+    assert.equal(formatLoreContent({}, content, undefined, 'npc', []), content);
+    assert.equal(formatLoreContent({}, content, { entries: [] }, 'npc', []), '');
+    assert.equal(parseLoreContent('Unstructured profile prose\n' + content), null);
+});
+
 test('custom player profile fields never use the NPC schema', () => {
     setProfileSettingsProvider(() => ({ activeSystem: 'Custom', statusTracker: { presets: {
         Custom: { definition: { profiles: { player: [{ id: 'origin', label: 'Origin' }],

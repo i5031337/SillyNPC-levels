@@ -11,7 +11,6 @@ function element(tag, className, text) {
 export function renderMemorySection(container, { read, write, fields = [], limit = 50 }) {
     if (!container) return;
     const labels = new Map(fields.map(field => [field.id, field.label]));
-    const memoryFields = fields.filter(field => field.policy === 'memory');
     const section = element('section', 'sillynpc-memory-section');
     container.append(section);
 
@@ -19,29 +18,16 @@ export function renderMemorySection(container, { read, write, fields = [], limit
         const store = normalizeMemoryStore(read(), 500);
         section.replaceChildren(element('h3', '', 'Memories'));
 
-        if (memoryFields.length) {
+        {
             const form = element('div', 'sillynpc-memory-add');
             const input = element('textarea', 'text_pole sillynpc-memory-text');
             input.rows = 2;
             input.placeholder = 'Add a memory';
             input.setAttribute('aria-label', 'New memory');
-            let fieldSelect;
-            if (memoryFields.length > 1) {
-                fieldSelect = element('select', 'text_pole');
-                fieldSelect.setAttribute('aria-label', 'Memory field');
-                for (const field of memoryFields) {
-                    const option = element('option', '', field.label);
-                    option.value = field.id;
-                    fieldSelect.append(option);
-                }
-                fieldSelect.value = memoryFields[0].id;
-                form.append(fieldSelect);
-            }
             const add = element('button', 'menu_button', 'Add memory');
             add.type = 'button';
             add.addEventListener('click', () => {
-                const fieldId = fieldSelect?.value || memoryFields[0].id;
-                const result = appendMemory(read(), { text: input.value, fieldId, manual: true },
+                const result = appendMemory(read(), { text: input.value, manual: true },
                     memoryLimit(limit));
                 if (!result.added) return;
                 write(result.store);
@@ -62,8 +48,10 @@ export function renderMemorySection(container, { read, write, fields = [], limit
                 input.rows = 2;
                 input.value = entry.text;
                 input.setAttribute('aria-label', `Edit ${kind.toLowerCase()} memory`);
+                const sourceIds = entry.provenance?.sources?.map(source => source.messageId + 1);
                 const source = entry.manual ? 'Manually added'
-                    : `Message ${entry.sourceMessageId}`;
+                    : sourceIds?.length ? `Message${sourceIds.length > 1 ? 's' : ''} ${sourceIds.join(', ')}`
+                        : entry.sourceMessageId ? `Message ${entry.sourceMessageId}` : 'Story memory';
                 const label = labels.get(entry.fieldId) || entry.fieldId;
                 const meta = element('small', 'notes', `${label ? `${label} · ` : ''}${source}`
                     + (entry.editedManually ? ' · corrected' : ''));

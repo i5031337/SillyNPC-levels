@@ -10,6 +10,7 @@ import { openItemLibrary } from '../collections/ui-item-library.js';
 import { exportWorldCharacters } from '../../characters/world-character-export.js';
 import { carriesNpcStat } from '../../tracker/stat-persistence.js';
 import { normalizeSystemDefinition } from '../../core/system-schema.js';
+import { refreshMemoryButton } from '../tracker/ui-memory-button.js';
 
 /**
  * System Manager: importing, exporting, and switching reusable Systems.
@@ -83,6 +84,7 @@ export function buildSystemManager(onRefresh) {
                     return;
                 }
                 updateAllExtensionThemes();
+                refreshMemoryButton();
                 onRefresh();
                 triggerReprocess();
             });
@@ -174,6 +176,7 @@ export function buildSystemManager(onRefresh) {
             return;
         }
         updateAllExtensionThemes();
+        refreshMemoryButton();
         onRefresh();
         triggerReprocess();
     });
@@ -192,6 +195,7 @@ export function buildSystemManager(onRefresh) {
                 try {
                     const text = await file.text();
                     importSystemPreset(text);
+                    refreshMemoryButton();
                     onRefresh();
                 } catch (err) {
                     toastr.error(`Failed to import system: ${err.message}`, 'SillyNPC');
@@ -215,6 +219,7 @@ export function buildSystemManager(onRefresh) {
         if (wrap.querySelector('.sillynpc-system-generation')) return;
         wrap.append(buildSystemGeneration(name => {
             toastr.success(`Saved “${name}” as a new System.`, 'SillyNPC');
+            refreshMemoryButton();
             onRefresh();
         }));
     });

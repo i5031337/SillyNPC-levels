@@ -12,7 +12,7 @@ const scalar = { type: ['string', 'number', 'boolean'] };
 export const progressionSchema = object({ enabled: bool, xpFieldId: text, levelFieldId: text,
     statGrowth: enumeration(['none', 'one', 'all']), statIds: array(id) });
 export const profileSchema = object({ id, label: text, guidance: text,
-    policy: enumeration(['anchored', 'replaceable', 'memory']), placeholder: text, multiline: bool, includeInImagePrompt: bool, retired: bool },
+    policy: enumeration(['anchored', 'replaceable']), placeholder: text, multiline: bool, includeInImagePrompt: bool, retired: bool },
 ['id', 'label', 'guidance', 'policy']);
 export const statSchema = object({ id, name: text, type: enumeration(['number', 'text']), defaultValue: { ...scalar, description: 'Numeric pools use a current/maximum string such as 10/10. This is a starting default; each NPC may initialize its own capacity. Plain numbers define ratings.' },
     purpose: text, guidance: text, format: text,
@@ -31,7 +31,10 @@ export const templateSchema = object({ id, name: text, description: text, profil
 export const collectionSchema = object({ id, name: text, targets: array(text, 8), guidance: text,
     includeInImagePrompt: bool, retired: bool, fields: array(fieldSchema), levelUpRewards: rewardSchema },
 ['id', 'name', 'targets', 'guidance', 'fields']);
-export const presentationSchema = object({ memories: object({ maxEntriesPerCharacter: { type: 'integer', minimum: 1, maximum: 500 } }),
+export const memorySchema = object({ enabled: bool, guidance: text,
+    interval: { type: 'integer', minimum: 1, maximum: 100 },
+    maxEntriesPerCharacter: { type: 'integer', minimum: 1, maximum: 500 } });
+export const presentationSchema = object({ memories: memorySchema,
     hud: object({ layout: enumeration(['plate', 'underline', 'pips', 'splitring']), showWorld: bool,
         showNpcPortraits: bool, playerStatIds: array(id), npcStatIds: array(id), worldStatIds: array(id) }) });
 export const definitionSchema = object({ schemaVersion: { type: 'integer', enum: [1] }, id, name: text,
@@ -45,7 +48,7 @@ const plannedProgression = object({ enabled: bool,
     xp: { ...text, description: 'Exact XP stat NAME in this owner catalog, never a numeric default. Empty only when disabled.' },
     level: { ...text, description: 'Exact Level stat NAME in this owner catalog, never a starting value. Empty only when disabled.' },
     growth: text });
-export const planSchema = object({ name: text, description: text, rationale: text,
+export const planSchema = object({ name: text, description: text, rationale: text, memories: memorySchema,
     profiles: object({ player: array(plannedField), npc: array(plannedField) }),
     stats: object({ world: array(plannedField), player: array(plannedField), npc: array(plannedField) }),
     playerProgression: plannedProgression,

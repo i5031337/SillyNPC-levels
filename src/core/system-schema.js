@@ -174,7 +174,13 @@ export function normalizeSystemDefinition(source, { id, name } = {}) {
         stats: { world: worldStats, player: playerStats, npc: npcStats },
         collections: collections(modern ? input.collections : tracker.collections ?? defaultTrackerSettings.collections),
         progression: progression(modern ? input.progression : tracker.progression, playerStats, npcStats),
-        memories: { maxEntriesPerCharacter: memoryLimit(input.memories?.maxEntriesPerCharacter) },
+        memories: {
+            enabled: input.memories?.enabled === true,
+            guidance: string(input.memories?.guidance).slice(0, 4000),
+            interval: Number.isSafeInteger(input.memories?.interval) && input.memories.interval >= 1 && input.memories.interval <= 100
+                ? input.memories.interval : 8,
+            maxEntriesPerCharacter: memoryLimit(input.memories?.maxEntriesPerCharacter),
+        },
         hud: {
             layout: normalizeHudLayoutId(string(hud.layout, string(hud.hudLayout, 'plate'))),
             showWorld: hud.showWorld === undefined ? hud.showGlobalStats !== false : hud.showWorld === true,

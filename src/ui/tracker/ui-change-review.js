@@ -1,3 +1,4 @@
+import { buildNeverAgain } from './ui-review-item-rule.js';
 import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { loadStateFromMetadata } from '../../tracker/status-logic.js';
 import { npcTemplates } from '../../core/npc-templates.js';
@@ -18,6 +19,7 @@ import { acceptedByDefault } from '../../tracker/status-diff.js';
  */
 
 const KIND_LABEL = {
+    'memory-add': 'Add memory',
     'npc-template': 'template',
     'stat': 'changed',
     'stat-max': 'maximum',
@@ -27,6 +29,7 @@ const KIND_LABEL = {
 };
 
 const KIND_ICON = {
+    'memory-add': 'fa-brain',
     'npc-template': 'fa-shapes',
     'stat': 'fa-arrow-right-arrow-left',
     'stat-max': 'fa-arrows-up-down',
@@ -334,8 +337,8 @@ function buildRow(row, rows) {
 
     // Item rows name a thing rather than hold a value, so only stats are editable.
     const editable = !change.grant && !change.transition
-        && (change.kind === 'stat' || change.kind === 'stat-max' || change.kind === 'item-change');
-    const to = document.createElement(change.kind === 'npc-template' ? 'select' : editable ? 'input' : 'span');
+        && (change.kind === 'stat' || change.kind === 'stat-max' || change.kind === 'item-change' || change.kind === 'memory-add');
+    const to = document.createElement(change.kind === 'memory-add' ? 'textarea' : change.kind === 'npc-template' ? 'select' : editable ? 'input' : 'span');
     to.className = 'sillynpc-review-to';
     if (change.kind === 'npc-template') {
         const blank = document.createElement('option');
@@ -349,7 +352,8 @@ function buildRow(row, rows) {
         to.value = row.value;
         to.addEventListener('change', () => { row.value = to.value; rows.forEach(entry => entry.refreshCollections?.()); });
     } else if (editable) {
-        to.type = 'text';
+        if (change.kind === 'memory-add') to.rows = 3;
+        else to.type = 'text';
         to.value = row.value;
         to.title = 'Correct this value before applying';
         to.addEventListener('input', () => { row.value = to.value; });
@@ -385,37 +389,6 @@ function buildRow(row, rows) {
         el.appendChild(buildNeverAgain(row, change));
     }
     return el;
-}
-
-/**
- * The opt-in "stop suggesting this" control.
- *
- * Worded by what the row offers, because the two directions mean opposite things and one
- * shared label hid that completely: on a removal the tick used to record "this item is
- * gone for good" when every reader took it to mean "stop asking me to delete it".
- */
-function buildNeverAgain(row, change) {
-    const removing = change.kind === 'item-remove';
-
-    const wrap = document.createElement('label');
-    wrap.className = 'sillynpc-review-never';
-    wrap.title = removing
-        ? 'Protect this item. Nothing will propose taking it away again, including a scan '
-          + 'of the whole history. Reversible from the item library.'
-        : 'Stop proposing this item entirely. Use it for something the character has '
-          + 'genuinely finished with - a scan of the whole history will not raise it '
-          + 'again. Reversible from the item library.';
-
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.checked = false;
-    box.addEventListener('change', () => { row.dismiss = box.checked; });
-
-    const text = document.createElement('span');
-    text.textContent = removing ? 'never remove this' : 'never add this';
-
-    wrap.append(box, text);
-    return wrap;
 }
 
 /**

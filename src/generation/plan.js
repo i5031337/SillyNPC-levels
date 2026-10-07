@@ -62,7 +62,7 @@ export function allocatePlan(source) {
 }
 export function emptyDefinition(plan) {
     const definition = normalizeSystemDefinition({ schemaVersion: 1, id: slug(plan.name), name: plan.name,
-        metadata: { description: plan.description, author: 'Generated' }, profiles: { player: [], npc: [] },
+        metadata: { description: plan.description, author: 'Generated' }, memories: plan.memories, profiles: { player: [], npc: [] },
         stats: { world: [], player: [], npc: [] }, npcTemplates: [], collections: [],
         progression: { player: disabledProgression(), npc: disabledProgression() } });
     // Catalogs are still empty; normalization would strip the frozen memberships.

@@ -8,6 +8,9 @@ import { buildUpdateFromChanges } from './status-diff.js';
 import { recordAppliedChanges, saveChatSoon } from './snapshots/status-snapshots.js';
 import { appliedChangesForCurrentSwipe } from './snapshots/status-snapshot-records.js';
 import { selectReviewRows, materializeGrantRows, validateReviewedTransitions } from './level-grant-review.js';
+import { activeNpcSystem } from '../core/npc-templates.js';
+import { syncProfileToLore } from '../lore/lore-sync.js';
+import { selectMemoryReviewRows, applyReviewedMemories, mergePendingMemoryRows } from '../memory/memory-review.js';
 
 /**
  * Changes waiting for a decision.
@@ -80,10 +83,11 @@ export function getRefusedValues(messageId) {
  * @param {string[]} [looseNotes] Reasons that matched no row.
  * @param {string[]} [refused] Values a field's allowed list turned down.
  */
-export function setPendingChanges(messageId, changes, looseNotes = [], refused = []) {
+export function setPendingChanges(messageId, changes, looseNotes = [], refused = [], { replaceMemory = false } = {}) {
     const message = messageAt(messageId);
     if (!message) return false;
     if (!message.extra || typeof message.extra !== 'object') message.extra = {};
+    changes = mergePendingMemoryRows(getPendingChanges(messageId), changes, replaceMemory);
 
     if (!changes || changes.length === 0) delete message.extra[PENDING_KEY];
     else message.extra[PENDING_KEY] = changes;
@@ -101,6 +105,16 @@ export function setPendingChanges(messageId, changes, looseNotes = [], refused =
     saveChatSoon();
     eventSource.emit(REVIEW_EVENT, { messageId });
     return true;
+}
+
+/** Independent memory batches append to any tracker review on their anchor reply. */
+export function appendPendingMemoryChanges(messageId, rows) {
+    const pending = getPendingChanges(messageId);
+    const additions = (rows || []).filter(row => row.kind === 'memory-add').map((row, index) => ({
+        ...row, id: row.id || `memory-review-${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+    }));
+    return setPendingChanges(messageId, [...pending, ...additions], getLooseNotes(messageId),
+        getRefusedValues(messageId), { replaceMemory: true });
 }
 
 /**
@@ -230,7 +244,8 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
     if (!pending.length) return { applied: 0, discarded: 0 };
 
     const appliedRows = appliedChangesForCurrentSwipe(messageId) || [];
-    const selection = selectReviewRows(pending, accepted, appliedRows);
+    const selection = selectReviewRows(pending.filter(row => row.kind !== 'memory-add'),
+        (accepted || []).filter(row => row.kind !== 'memory-add'), appliedRows);
     const trackerSettings = getSettings().statusTracker;
     const cards = getAllCharacters();
     const validated = validateReviewedTransitions(selection.rows, loadStateFromMetadata(), trackerSettings, cards, getCurrentPersonaKey());
@@ -252,6 +267,26 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
         if (applyUpdate(update, applyOptions)) recorded = proposed;
     }
     if (recorded.length) recordAppliedChanges(messageId, recorded);
+    const settings = getSettings();
+    const memorySettings = activeNpcSystem(settings)?.memories;
+    let memories = { applied: 0, changed: [] };
+    if (memorySettings?.enabled) {
+        const context = getContext();
+        const chatId = context?.getCurrentChatId?.();
+        const systemId = settings.activeSystem;
+        const state = loadStateFromMetadata();
+        memories = applyReviewedMemories(state, selectMemoryReviewRows(pending, accepted), cards,
+            { messages: context?.chat, systemId, chatId, limit: memorySettings.maxEntriesPerCharacter });
+        if (memories.applied) {
+            saveStateToMetadata(state, { label: 'Reviewed NPC memories' });
+            const isCurrent = () => getContext()?.getCurrentChatId?.() === chatId
+                && getSettings().activeSystem === systemId;
+            for (const { card, store } of memories.changed) {
+                syncProfileToLore(card, store, { isCurrent }).catch(error =>
+                    console.error('SillyNPC: Could not sync reviewed memories', error));
+            }
+        }
+    }
     debugLog(`Applied ${recorded.length} reviewed change(s) from message ${messageId}`);
 
     // Only what was explicitly marked. Inferring this from an ordinary decision was a
@@ -278,6 +313,7 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
         reading.rejectedTransitionIds = [...new Set([...(reading.rejectedTransitionIds || []),
             ...selection.rejectedTransitions])];
     }
-    setPendingChanges(messageId, remaining, getLooseNotes(messageId), getRefusedValues(messageId));
-    return { applied: recorded.length, discarded: pending.length - rows.length - remaining.length, remaining: remaining.length };
+    setPendingChanges(messageId, remaining, getLooseNotes(messageId), getRefusedValues(messageId), { replaceMemory: true });
+    return { applied: recorded.length + memories.applied,
+        discarded: pending.length - recorded.length - memories.applied - remaining.length, remaining: remaining.length };
 }

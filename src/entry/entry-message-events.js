@@ -7,6 +7,7 @@ import { clearExtractionReport } from '../tracker/extractor/status-extraction-re
 import { rebaseToSwipe, revertToBase, clearTurnRecord } from '../tracker/snapshots/status-snapshots.js';
 import { swipeBaseRecord } from '../tracker/status-logic.js';
 import { isImageOnlyMessage, trackerMessageIndex } from '../tracker/ui/status-ui-placement.js';
+import { scheduleMemoryRead, reconcileMemorySources, resetMemorySchedule } from '../memory/memory-reader.js';
 
 export function onMessageRendered(messageId) {
     try {
@@ -58,7 +59,8 @@ export function onMessageForExtraction(messageId) {
                     debugLog('Extraction skipped:', result.reason);
                 }
             })
-            .catch(err => console.error(LOG_PREFIX, 'Extraction pass failed', err));
+            .catch(err => console.error(LOG_PREFIX, 'Extraction pass failed', err))
+            .finally(() => scheduleMemoryRead(messageId));
     } catch (err) {
         console.error(LOG_PREFIX, 'onMessageForExtraction error', err);
     }
@@ -85,6 +87,7 @@ export function onSwipe(messageId) {
         console.error(LOG_PREFIX, 'onSwipe error', err);
     }
     onMessageRendered(messageId);
+    reconcileMemorySources();
 }
 
 /**
@@ -119,6 +122,7 @@ export function onRegenerateStarted(type, _data, dryRun) {
  */
 export function onMessageDeleted(newLength) {
     if (!getSettings().enabled) return;
+    resetMemorySchedule();
     try {
         forgetExtractionsFrom(newLength);
         const base = swipeBaseRecord();
@@ -136,6 +140,7 @@ export function onMessageDeleted(newLength) {
 /** Re-reads an edited latest assistant reply from its pre-turn state. */
 export function onMessageEdited(messageId) {
     if (!getSettings().enabled) return;
+    reconcileMemorySources();
     const context = getContext();
     const id = Number(messageId);
     const message = context?.chat?.[id];

@@ -95,7 +95,11 @@ export function processStatusUpdate(mesEl) {
     if (processingMessages.has(mesId)) return;
 
     const settings = getSettings().statusTracker;
-    if (!getSettings().enabled || !settings.enabled) return;
+    if (!getSettings().enabled) return;
+    if (!settings.enabled) {
+        renderStatusTrackerBox(mesEl);
+        return;
+    }
 
     const textContainer = mesEl.querySelector('.mes_text');
     if (!textContainer) return;

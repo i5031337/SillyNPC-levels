@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SystemGenerationRun } from '../src/generation/generate-system.js';
-import { definitionSchema, presentationSchema } from '../src/generation/contracts.js';
+import { definitionSchema, presentationSchema, profileSchema } from '../src/generation/contracts.js';
 import { allocatePlan } from '../src/generation/plan.js';
 import { validateDefinition, finalizeDefinition } from '../src/generation/validate-definition.js';
 import { parseResponse } from '../src/generation/validate-shape.js';
@@ -293,4 +293,26 @@ test('generated definitions omit removed goal configuration and reject unsupport
     assert.equal(Object.hasOwn(definition, 'goals'), false);
     assert.ok(validateDefinition({ ...definition, goals: { playerShortTerm: true } })
         .some(error => error.includes('goals')));
+});
+
+
+test('generation plans genre memory rules without extra calls or memory profile fields', async () => {
+    const calls = [];
+    const { definition } = await runWith(args => { calls.push(args); return reply(args); }).generate();
+    assert.deepEqual(definition.memories, plan.memories);
+    assert.equal(calls.length, 8);
+    assert.match(calls[0].systemPrompt, /Never plan a Memory profile field/);
+    assert.deepEqual(profileSchema.properties.policy.enum, ['anchored', 'replaceable']);
+    for (const mutation of [
+        memories => { memories.enabled = 'yes'; },
+        memories => { memories.interval = 0; },
+        memories => { memories.interval = 101; },
+        memories => { memories.maxEntriesPerCharacter = 501; },
+        memories => { memories.guidance = 'x'.repeat(4001); },
+    ]) {
+        const bad = structuredClone(definition);
+        mutation(bad.memories);
+        assert.ok(validateDefinition(bad).some(error => error.includes('memories')));
+        assert.equal(finalizeDefinition(bad).definition, null);
+    }
 });

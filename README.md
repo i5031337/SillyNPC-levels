@@ -63,7 +63,9 @@ SillyNPC operates across two core modules:
 * **Interactive Sheets:** Edit the selected persona's profile, stats, items, and memories on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.
 
 ### Memories
-* **Character Memories:** Edit memory fields and entries on character sheets. Existing sourced memories remain readable, with older entries in an archive.
+* **Character Memories:** Add, edit, and remove memories on character sheets without configuring a profile field. Older entries move to an archive; only active entries are included in the NPC's linked lorebook.
+* **Occasional NPC Memory Reader:** Under **System → Builder → NPC Profile**, enable memory capture and optionally describe memorable events for your genre. A separate request uses the reader connection every eight assistant replies by default. Suggestions use the existing collection review controls and always wait for approval, independently of tracker review mode.
+* **Read Memories Now:** The brain icon beside the send controls reads the oldest unread segment on demand. Long chats may need several passes; the button reports remaining replies. This is currently separate from the History reader. Progress and pending suggestions survive reloads. Changed supporting replies invalidate automatic memories; manual entries and corrections are preserved.
 
 ### Floating HUD
 * **Four Meter Styles:** Bars, segmented bars, rings around the portrait, or text only.

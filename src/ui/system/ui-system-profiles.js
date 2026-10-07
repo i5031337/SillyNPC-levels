@@ -4,7 +4,6 @@ import { addProfileField, renameProfileField, moveProfileField, retireProfileFie
 const POLICIES = [
     ['anchored', 'Anchored: a stable profile detail'],
     ['replaceable', 'Replaceable: a profile detail you can edit or regenerate'],
-    ['memory', 'Memory: a memory field you can edit manually'],
 ];
 
 function control(tag, className, value) {
@@ -64,7 +63,7 @@ function rowFor(field, fields, onRefresh, context) {
 
     const policy = control('select', 'profile-policy');
     policy.setAttribute('aria-label', `Update policy for ${field.label}`);
-    for (const [value, label] of POLICIES) {
+    for (const [value, label] of [...POLICIES, ...(field.policy === 'memory' ? [['memory', 'Existing memory field']] : [])]) {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = label;
@@ -127,33 +126,64 @@ export function buildProfilesEditor(scope, onRefresh, context = liveSystemContex
     label.addEventListener('keydown', event => { if (event.key === 'Enter') addField(); });
     add.append(label, button('Add field', 'Add a profile field', addField));
     wrap.appendChild(add);
-    if (scope === 'npc') {
-        const limitLabel = document.createElement('label');
-        limitLabel.textContent = 'Memory entries per character: ';
-        const limit = control('input', 'profile-memory-limit', definition.memories?.maxEntriesPerCharacter ?? 50);
-        limit.type = 'number';
-        limit.min = '1';
-        limit.max = '500';
-        limit.style.width = '6em';
-        limit.addEventListener('change', () => {
-            const value = Number(limit.value);
-            if (!Number.isSafeInteger(value) || value < 1 || value > 500) {
-                limit.value = definition.memories?.maxEntriesPerCharacter ?? 50;
-                return;
-            }
-            definition.memories ??= {};
-            definition.memories.maxEntriesPerCharacter = value;
-            saveSettings();
-        });
-        limitLabel.appendChild(limit);
-        wrap.appendChild(limitLabel);
-    }
+    if (scope === 'npc') wrap.appendChild(buildMemoryControls(definition, saveSettings, context.refreshMemoryButton));
     const retired = fields.filter(field => field.retired);
     if (retired.length) {
         const title = document.createElement('h4');
         title.textContent = 'Retired fields';
         wrap.appendChild(title);
         retired.forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh, context)));
+    }
+    return wrap;
+}
+
+function buildMemoryControls(definition, saveSettings, refreshMemoryButton) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sillynpc-system-memory-controls';
+    definition.memories ??= { enabled: false, guidance: '', interval: 8, maxEntriesPerCharacter: 50 };
+    const memories = definition.memories;
+    const title = document.createElement('h4');
+    title.textContent = 'NPC memories';
+    const enabledLabel = document.createElement('label');
+    const enabled = document.createElement('input');
+    enabled.className = 'profile-memory-enabled';
+    enabled.type = 'checkbox';
+    enabled.checked = memories.enabled === true;
+    enabled.addEventListener('change', () => { memories.enabled = enabled.checked; saveSettings(); refreshMemoryButton?.(); });
+    enabledLabel.append(enabled, ' Automatically propose NPC memories for review');
+    const help = document.createElement('p');
+    help.textContent = 'A separate reader occasionally proposes durable events and knowledge for NPCs. Manual memory editing is always available.';
+    const guidance = control('textarea', 'profile-memory-guidance', memories.guidance || '');
+    guidance.rows = 3;
+    guidance.maxLength = 4000;
+    guidance.placeholder = 'Optional genre guidance: remember significant battles, promises, rivalries, or personally discovered clues. Skip routine activity.';
+    guidance.setAttribute('aria-label', 'Memorable-event guidance');
+    guidance.addEventListener('input', () => { memories.guidance = guidance.value; saveSettings(); });
+    wrap.append(title, enabledLabel, help, guidance);
+    for (const [key, label, fallback, max, className] of [
+        ['interval', 'Read every N assistant replies: ', 8, 100, 'profile-memory-interval'],
+        ['maxEntriesPerCharacter', 'Active memory entries per character: ', 50, 500, 'profile-memory-limit'],
+    ]) {
+        const numericLabel = document.createElement('label');
+        numericLabel.textContent = label;
+        const input = control('input', className, memories[key] ?? fallback);
+        input.type = 'number';
+        input.min = '1';
+        input.max = String(max);
+        input.step = '1';
+        input.style.width = '6em';
+        input.setAttribute('aria-label', label.trim().replace(/:$/, ''));
+        input.addEventListener('change', () => {
+            const value = Number(input.value);
+            if (!Number.isSafeInteger(value) || value < 1 || value > max) {
+                input.value = memories[key] ?? fallback;
+                return;
+            }
+            memories[key] = value;
+            saveSettings();
+        });
+        numericLabel.appendChild(input);
+        wrap.appendChild(numericLabel);
     }
     return wrap;
 }

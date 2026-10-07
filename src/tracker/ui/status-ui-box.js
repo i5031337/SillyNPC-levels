@@ -111,20 +111,20 @@ export function renderStatusTrackerBox(mesEl) {
     if (!hasOpenChat()) return;
 
     const settings = getSettings().statusTracker;
-    if (!getSettings().enabled || !settings.enabled) return;
+    if (!getSettings().enabled) return;
+    const messageId = mesEl.getAttribute('mesid');
+    renderReviewPanel(mesEl, messageId);
+    if (!settings.enabled) return;
 
     // The eye, in its third state. Before the review panel below on purpose: a change
     // waiting for a decision is not part of the tracker box and stays reachable either
     // way, which is the same reason that panel sits outside the early returns.
     const view = getTrackerView();
 
-    const messageId = mesEl.getAttribute('mesid');
-
     // Before any of the early returns below. The status box is often hidden on this
     // message - "show only at the bottom" is the common case - but a change waiting for
     // a decision has to stay reachable under the message that proposed it, or it can
     // only be resolved by scrolling back to a panel that is no longer drawn.
-    renderReviewPanel(mesEl, messageId);
     renderExtractionReport(mesEl, messageId);
 
     if (view === 'hidden') return;

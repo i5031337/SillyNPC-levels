@@ -9,7 +9,7 @@
  */
 export function insideTracker(node) {
     const el = node && typeof node.closest === 'function' ? node : node?.parentElement;
-    return !!el?.closest?.('.sillynpc-status-tracker-container');
+    return !!el?.closest?.('.sillynpc-status-tracker-container, .sillynpc-review-panel');
 }
 
 /**
@@ -27,7 +27,6 @@ export function isEditingInside(mesEl) {
     const active = document.activeElement;
     return !!active
         && typeof active.closest === 'function'
-        && !!active.closest('.sillynpc-status-editable')
+        && !!active.closest('.sillynpc-status-editable, .sillynpc-review-to')
         && mesEl.contains(active);
 }
-

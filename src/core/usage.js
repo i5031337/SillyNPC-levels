@@ -18,6 +18,8 @@ export const USAGE_KINDS = [
       note: 'One per lore entry you generate.' },
     { id: 'scan', label: 'History Scan', sends: 'text',
       note: 'Several per scan - a long story is read in passes.' },
+    { id: 'memory', label: 'NPC Memory Reading', sends: 'text',
+      note: 'An occasional separate pass proposing durable NPC memories for review.' },
     { id: 'fill', label: 'Character Fill', sends: 'text',
       note: 'One per manually regenerated profile field. Lore and portraits have separate counters.' },
     { id: 'banscan', label: 'Ban List Scan', sends: 'text',

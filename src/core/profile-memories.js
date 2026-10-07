@@ -3,6 +3,48 @@ const DEFAULT_LIMIT = 50;
 const cleanText = value => String(value ?? '').trim().replace(/\s+/g, ' ');
 const dedupeText = value => cleanText(value).toLocaleLowerCase();
 
+/** Two independent 32-bit hashes plus length keep stored provenance compact. */
+export function memoryTextFingerprint(text) {
+    const value = String(text ?? '');
+    let first = 2166136261;
+    let second = 5381;
+    for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index);
+        first = Math.imul(first ^ code, 16777619);
+        second = Math.imul(second, 33) ^ code;
+    }
+    return `${value.length}:${(first >>> 0).toString(16)}:${(second >>> 0).toString(16)}`;
+}
+
+/** Snapshots keep memories tied to the reply/swipe that established them. */
+export function normalizeMemorySources(values) {
+    if (!Array.isArray(values)) return [];
+    const seen = new Set();
+    return values.filter(value => value && Number.isSafeInteger(value.messageId)
+        && value.messageId >= 0 && (typeof value.fingerprint === 'string' || typeof value.text === 'string')).map(value => ({
+        messageId: value.messageId,
+        swipeId: Number.isSafeInteger(value.swipeId) ? value.swipeId : 0,
+        fingerprint: value.fingerprint ?? memoryTextFingerprint(value.text),
+        ...(typeof value.isUser === 'boolean' ? { isUser: value.isUser } : {}),
+        ...(typeof value.speaker === 'string' ? { speaker: value.speaker } : {}),
+    })).filter(value => !seen.has(value.messageId) && seen.add(value.messageId));
+}
+
+export function firstChangedMemorySource(messages, sources) {
+    const changed = normalizeMemorySources(sources).filter(source => {
+        const message = messages?.[source.messageId];
+        return !message || message.is_system || memoryTextFingerprint(message.mes) !== source.fingerprint
+            || Number(message.swipe_id ?? 0) !== source.swipeId
+            || (source.speaker !== undefined && String(message.name ?? '') !== source.speaker)
+            || (source.isUser !== undefined && Boolean(message.is_user) !== source.isUser);
+    });
+    return changed.length ? Math.min(...changed.map(source => source.messageId)) : null;
+}
+
+export function memorySourcesMatch(messages, sources) {
+    return firstChangedMemorySource(messages, sources) === null;
+}
+
 export function memoryLimit(value) {
     return Number.isSafeInteger(value) && value >= 1 && value <= 500 ? value : DEFAULT_LIMIT;
 }
@@ -13,11 +55,17 @@ function normalizeEntry(value) {
     const text = cleanText(old.text);
     if (!text) return null;
     const sourceMessageId = old.sourceMessageId == null ? '' : String(old.sourceMessageId).trim();
+    const sources = normalizeMemorySources(old.provenance?.sources);
     const entry = {
         id: typeof old.id === 'string' ? old.id.trim() : '',
         text,
         ...(old.fieldId ? { fieldId: String(old.fieldId) } : {}),
-        ...(sourceMessageId ? { sourceMessageId } : { manual: true }),
+        ...(sourceMessageId ? { sourceMessageId } : {}),
+        ...(sources.length ? { provenance: {
+            systemId: String(old.provenance.systemId ?? ''), sources,
+            ...(old.provenance.chatId !== undefined ? { chatId: String(old.provenance.chatId) } : {}),
+        } } : {}),
+        ...(!sources.length && !sourceMessageId || old.manual === true ? { manual: true } : {}),
     };
     if (old.editedManually === true) entry.editedManually = true;
     return entry;
@@ -82,4 +130,24 @@ export function removeMemory(source, id) {
     store.archive = store.archive.filter(entry => entry.id !== id);
     store.entries = store.entries.filter(entry => entry.id !== id);
     return store;
+}
+
+/** A changed source invalidates automatic memories, including archived ones. */
+export function invalidateMemoryStore(source, messages, systemId) {
+    const store = normalizeMemoryStore(source, 500);
+    const removed = [];
+    let rewindTo = null;
+    const valid = entry => {
+        if (entry.manual || entry.editedManually || !entry.provenance?.sources?.length) return true;
+        const changed = firstChangedMemorySource(messages, entry.provenance.sources);
+        const wrongSystem = systemId !== undefined && entry.provenance.systemId !== String(systemId);
+        if (changed === null && !wrongSystem) return true;
+        removed.push(entry);
+        const from = changed ?? Math.min(...entry.provenance.sources.map(item => item.messageId));
+        rewindTo = rewindTo === null ? from - 1 : Math.min(rewindTo, from - 1);
+        return false;
+    };
+    store.entries = store.entries.filter(valid);
+    store.archive = store.archive.filter(valid);
+    return { store, removed, rewindTo };
 }

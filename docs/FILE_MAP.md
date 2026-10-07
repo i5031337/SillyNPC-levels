@@ -147,6 +147,10 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/tracker/status-collection-schema.js` | Rename collection fields and stat schema references. |
 | `src/tracker/status-system-presets.js` | Active System, reusable definitions, chat locking, and System import. |
 | `src/tracker/npc-memories.js` | Store NPC memories in chat-owned or reusable character records. |
+| `src/memory/memory-batch.js`, `memory-prompt.js` | Bound transcript batches, validate sourced NPC additions, and build the separate memory request. |
+| `src/memory/memory-service.js`, `memory-reader.js` | Persist reading progress, guard asynchronous requests, schedule occasional reads, and invalidate changed sources. |
+| `src/memory/memory-review.js` | Match memory review decisions and apply accepted additions to chat-local storage. |
+| `src/ui/tracker/ui-memory-button.js` | Separate on-demand memory reader control on the send bar. |
 | `src/tracker/status-diff.js` | Public entry point for state difference and review helpers. |
 | `src/tracker/status-diff-compare.js` | Compare stats and collections across states. |
 | `src/tracker/status-diff-review.js` | Attach reasons, partition decisions, and rebuild accepted updates. |

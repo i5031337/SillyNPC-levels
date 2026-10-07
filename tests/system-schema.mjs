@@ -103,3 +103,19 @@ test('System normalization ignores removed goal switches while retaining profile
     assert.equal(normalized.profiles.player[0].id, 'wants');
     assert.equal(input.goals.playerLongTerm, true);
 });
+
+
+test('System memory capture is opt-in, independently configured, and bounded', () => {
+    const defaults = normalizeSystemDefinition({}).memories;
+    assert.deepEqual(defaults, { enabled: false, guidance: '', interval: 8, maxEntriesPerCharacter: 50 });
+    const input = { schemaVersion: 1, profiles: { player: [], npc: [] },
+        memories: { enabled: true, guidance: 'Remember clues personally discovered.', interval: 12, maxEntriesPerCharacter: 20 } };
+    const normalized = normalizeSystemDefinition(input);
+    assert.deepEqual(normalized.memories, input.memories);
+    assert.deepEqual(normalizeSystemDefinition(normalized), normalized);
+    for (const interval of [0, 101, 1.5, '8', null]) {
+        assert.equal(normalizeSystemDefinition({ memories: { interval } }).memories.interval, 8);
+    }
+    assert.equal(normalizeSystemDefinition({ memories: { enabled: 'true', guidance: 'x'.repeat(4001) } }).memories.enabled, false);
+    assert.equal(normalizeSystemDefinition({ memories: { guidance: 'x'.repeat(4001) } }).memories.guidance.length, 4000);
+});

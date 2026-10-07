@@ -259,7 +259,7 @@
 
 /* Editable because "it says 5 but it should be 4" has a right answer, and rejecting the
    row outright would leave the state wrong a different way. */
-input.sillynpc-review-to {
+input.sillynpc-review-to, textarea.sillynpc-review-to {
     width: 90px;
     padding: 2px 6px;
     border: 1px solid var(--sillynpc-border);
@@ -267,6 +267,13 @@ input.sillynpc-review-to {
     background: var(--sillynpc-bg-primary);
     color: inherit;
     font: inherit;
+}
+
+textarea.sillynpc-review-to {
+    width: min(100%, 600px);
+    flex: 1 1 300px;
+    min-height: 4em;
+    resize: vertical;
 }
 
 span.sillynpc-review-to {

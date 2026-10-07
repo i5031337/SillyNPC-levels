@@ -7,6 +7,7 @@ import { plan, responseFor } from './system-generation-fixture.mjs';
 
 // Reproduce Gemma's submitted references without coupling the test to prompt wording.
 const gemmaPlan = () => ({
+    memories: { enabled: false, guidance: '', interval: 8, maxEntriesPerCharacter: 50 },
     name: 'Pocket Monster Safari System', description: 'Trainer and creature adventure', rationale: 'Separate human and creature templates',
     profiles: { player: [{ name: 'Trainer', purpose: 'Primary actor' }], npc: [
         { name: 'Humanoid', purpose: 'Social entities' }, { name: 'Wild Creature', purpose: 'Autonomous entities' }] },
