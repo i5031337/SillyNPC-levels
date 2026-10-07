@@ -33,6 +33,7 @@ export const otherPromptTexts = [
         },
         text: lines(
             '[Current Scene Status]',
+            'Use this state as reference only; do not reproduce this block or append a status summary to your reply.',
             '{{status}}',
             '{{#offstage}}',
             'Other known characters, listed for reference only:',
