@@ -312,3 +312,43 @@ test('dry-run collection writes carry preview options for both player and NPC', 
     assert.equal(calls.settings, 0);
     assert.equal(calls.saved.length, 0);
 });
+
+test('preview warnings cover unknown and refused stats across actors without mutating state', () => {
+    const { deps, initial, settings, card, calls } = fixture();
+    const load = (path, globals) => {
+        const source = readFileSync(new URL(path, import.meta.url), 'utf8')
+            .replace(/^import .*;\n/gm, '').replace('export function bind', 'function bind');
+        new Function(...Object.keys(globals), `${source}\nreturn bind;`)(...Object.values(globals))(deps);
+    };
+    deps.STAT_SYNONYMS = {};
+    load('../src/tracker/status-update-parser.js', { debugLog: () => {} });
+    load('../src/tracker/status-update-constraints.js', {
+        debugLog: () => {}, constrainNumericStat: (_def, value) => value,
+        splitValue: value => { const [current, max] = String(value).split('/'); return { current, max }; },
+    });
+    settings.statusTracker.globalStats[0].options = ['old'];
+    settings.statusTracker.playerStats[0].options = ['5'];
+    settings.statusTracker.npcStats[0].options = ['4'];
+    const before = structuredClone(initial);
+    const warnings = [];
+    const preview = deps.applyUpdate({ global: { Scene: 'invalid', Missing: 9 },
+        player: { stats: { HP: 'invalid', Missing: 9 } },
+        characters: [{ name: 'Mira', stats: { HP: 'invalid', Missing: 9 } },
+            { name: 'Offstage', stats: { HP: '9' } }] },
+    { dryRun: true, admitCharacters: true, warnings });
+    assert.equal(warnings.length, 7);
+    for (const actor of ['World', 'Player', 'Mira']) {
+        assert.ok(warnings.some(line => line.startsWith(`${actor} ·`) && line.includes('allowed values')));
+        assert.ok(warnings.some(line => line.startsWith(`${actor} · Missing`) && line.includes('no configured stat')));
+    }
+    assert.match(warnings[6], /Offstage · HP.*no saved card/);
+    assert.equal(preview.global.Scene, 'old');
+    assert.equal(preview.player.stats.HP, '5');
+    assert.equal(preview.characters[0].stats.HP, '4');
+    assert.deepEqual(initial, before);
+    assert.deepEqual(card.statusOverrides, {});
+    assert.deepEqual(calls.saved, []);
+    const nextWarnings = [];
+    deps.applyUpdate({ player: { stats: { HP: '5' } } }, { dryRun: true, warnings: nextWarnings });
+    assert.deepEqual(nextWarnings, []);
+});

@@ -27,6 +27,6 @@ export function collectionTargetLabel(collection, system = activeNpcSystem()) {
         if (target === 'npc') return 'all NPCs';
         const id = target.slice(9);
         const template = npcTemplates(system).find(template => template.id === id);
-        return `NPC template ${template?.name || id} (npcTemplateId: ${id})`;
+        return `${template?.name || id} NPCs (npcTemplateId: ${id})`;
     }).join(' or ') || '(no targets)';
 }

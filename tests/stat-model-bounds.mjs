@@ -161,3 +161,25 @@ test('NPC initialization accepts individual pools and blank locked Level once', 
         assert.equal(bad.characters[0].stats.Level, undefined);
     }
 });
+
+test('sanitizing rejected stats explains actor, field and reason without warning on accepted initialization', () => {
+    const deps = { findMatchingStatKey: (stats, name) => Object.keys(stats || {})
+        .find(key => key.toLowerCase() === name.toLowerCase()), findCardForName: () => null };
+    bind(deps);
+    const settings = { globalStats: [{ name: 'Weather', locked: true }],
+        playerStats: [{ name: 'Power', locked: true }, { name: 'HP', type: 'bar' }],
+        npcStats: [{ name: 'Power', locked: true }] };
+    const warnings = [];
+    const state = { global: { Weather: 'sunny' }, player: { stats: { HP: '5/10', Power: '3' } },
+        characters: [{ name: 'Mira', stats: { Power: '4' } }] };
+    const update = { global: { Weather: 'rainy' }, player: { stats: { Power: '9', HP: '4/20', HP_max: 20 } },
+        characters: [{ name: 'Mira', stats: { Power: 9 } }, { name: 'New', stats: { Power: 7 } }] };
+    deps.sanitizeModelUpdate(update, state, settings, { warnings });
+    assert.equal(warnings.length, 5);
+    assert.match(warnings[0], /World · Weather.*locked/);
+    assert.match(warnings[1], /Player · Power.*locked/);
+    assert.match(warnings[2], /Player · HP.*maximum.*20.*4\/10/);
+    assert.match(warnings[3], /Player · HP_max.*maximum/);
+    assert.match(warnings[4], /Mira · Power.*locked/);
+    assert.equal(update.characters[1].stats.Power, 7);
+});

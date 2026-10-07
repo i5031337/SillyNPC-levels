@@ -52,46 +52,56 @@ export function describeNumericDeltas(state, settings) {
     return lines.join('\n');
 }
 
-function expand(target, values, deltas, defs, { xpName = null, levelName = null, enabled } = {}) {
+function expand(target, values, deltas, defs, { xpName = null, levelName = null, enabled, warnings = [], owner } = {}) {
     if (!deltas || typeof deltas !== 'object' || Array.isArray(deltas)) return;
     for (const [key, raw] of Object.entries(deltas)) {
         const def = (defs || []).find(item => item?.name?.toLowerCase() === key.toLowerCase());
         const held = def && heldValue(values, def.name);
-        if (!def || heldValue(target, def.name) !== undefined || !eligible(def, held, { xpName, levelName, enabled })) continue;
+        const reject = reason => warnings.push(`${owner} · ${key} delta "${String(raw)}" skipped: ${reason}.`);
+        if (!def) { reject('no configured stat matches this name'); continue; }
+        if (heldValue(target, def.name) !== undefined) { reject('the reply also provided an absolute value'); continue; }
+        if (!eligible(def, held, { xpName, levelName, enabled })) {
+            reject(def.locked ? 'this stat is locked' : !readable(held)
+                ? 'there is no numeric current value to change' : 'this field is managed by progression');
+            continue;
+        }
         const delta = Number(raw);
-        if (typeof raw !== 'number' || !Number.isFinite(delta)) continue;
-        if (xpName && def.name.toLowerCase() === xpName.toLowerCase() && delta <= 0) continue;
+        if (typeof raw !== 'number' || !Number.isFinite(delta)) { reject('a finite numeric delta is required'); continue; }
+        if (xpName && def.name.toLowerCase() === xpName.toLowerCase() && delta <= 0) { reject('earned XP must be a positive delta'); continue; }
         const match = readable(held);
         const next = Number(match[1]) + delta;
-        if (!Number.isFinite(next) || Math.abs(next) > Number.MAX_SAFE_INTEGER) continue;
+        if (!Number.isFinite(next) || Math.abs(next) > Number.MAX_SAFE_INTEGER) { reject('the resulting number is too large'); continue; }
         const number = String(Number(next.toPrecision(12)));
         target[def.name] = match[2] === undefined ? number : `${number}/${match[2]}`;
     }
 }
 
 /** Convert reader-only deltas to the existing absolute update contract. */
-export function expandNumericDeltas(update, state, settings, { cards = [] } = {}) {
+export function expandNumericDeltas(update, state, settings, { cards = [], warnings = [] } = {}) {
     if (!update || typeof update !== 'object') return update;
     const xpName = configuredXpName(settings);
-    function removeAbsoluteXp(owner, name) {
+    function removeAbsoluteXp(owner, name, label) {
         if (!name || !owner || typeof owner !== 'object') return;
         for (const values of [owner, owner.stats]) {
             if (!values || typeof values !== 'object') continue;
             for (const key of Object.keys(values)) {
                 const lower = key.toLowerCase(), base = name.toLowerCase();
                 if (lower === base || ['_current', '_cur', '_now', '_value', '_val',
-                    '_maximum', '_max', '_total', '_cap'].some(suffix => lower === base + suffix)) delete values[key];
+                    '_maximum', '_max', '_total', '_cap'].some(suffix => lower === base + suffix)) {
+                    warnings.push(`${label} · ${key}: "${String(values[key])}" skipped: earned XP must be reported as a positive delta.`);
+                    delete values[key];
+                }
             }
         }
     }
-    removeAbsoluteXp(update.player, xpName);
+    removeAbsoluteXp(update.player, xpName, 'Player');
     const global = update.global && typeof update.global === 'object' ? update.global : (update.global = {});
-    expand(global, state?.global, update.globalDeltas, settings.globalStats);
+    expand(global, state?.global, update.globalDeltas, settings.globalStats, { warnings, owner: 'World' });
     delete update.globalDeltas;
     if (update.player?.deltas) {
         const target = update.player.stats && typeof update.player.stats === 'object'
             ? update.player.stats : update.player;
-        expand(target, state?.player?.stats, update.player.deltas, settings.playerStats, { ...progressionFields(settings, { isPlayer: true }), xpName });
+        expand(target, state?.player?.stats, update.player.deltas, settings.playerStats, { ...progressionFields(settings, { isPlayer: true }), xpName, warnings, owner: 'Player' });
         delete update.player.deltas;
     }
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
@@ -102,9 +112,9 @@ export function expandNumericDeltas(update, state, settings, { cards = [] } = {}
                     .some(name => name?.toLowerCase() === actor.name?.toLowerCase()));
         const fields = progressionFields(settings, { actor: held || actor });
         const actorXp = configuredXpName(settings, held || actor);
-        removeAbsoluteXp(actor, actorXp);
+        removeAbsoluteXp(actor, actorXp, actor.name || 'NPC');
         const target = actor.stats && typeof actor.stats === 'object' ? actor.stats : actor;
-        expand(target, held?.stats, actor.deltas, npcStatsFor(held || actor, settings), { ...fields, xpName: actorXp });
+        expand(target, held?.stats, actor.deltas, npcStatsFor(held || actor, settings), { ...fields, xpName: actorXp, warnings, owner: actor.name || 'NPC' });
         delete actor.deltas;
     }
     return update;

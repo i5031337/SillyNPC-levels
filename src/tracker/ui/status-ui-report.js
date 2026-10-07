@@ -78,7 +78,7 @@ export function renderExtractionReport(mesEl, messageId) {
             const warnings = document.createElement('div');
             warnings.className = 'sillynpc-review-loose-notes sillynpc-reader-warnings';
             const heading = document.createElement('strong');
-            heading.textContent = 'Skipped collection changes';
+            heading.textContent = 'Skipped or adjusted changes';
             warnings.appendChild(heading);
             for (const warning of report.warnings) {
                 const line = document.createElement('div');

@@ -83,31 +83,35 @@ function lockedStats(trackerSettings = getSettings().statusTracker) {
  * @param {object} update Changed in place, and returned.
  * @param {object} state The state the reply is applied to.
  */
-function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker) {
+function sanitizeModelUpdate(update, state, trackerSettings = getSettings().statusTracker, { warnings = [] } = {}) {
     if (!update || typeof update !== 'object') return update;
     // Model replies never select level-derived stat growth or write narrative bonuses.
 
-    const clean = (stats, defs, stored, { npc = false, player = false, cardStats = {}, progression = {} } = {}) => {
+    const clean = (stats, defs, stored, { npc = false, player = false, cardStats = {}, progression = {}, owner = 'World' } = {}) => {
         if (!stats || typeof stats !== 'object') return;
         for (const key of Object.keys(stats)) {
+            const reject = reason => {
+                warnings.push(`${owner} · ${key}: "${String(stats[key])}" skipped: ${reason}.`);
+                delete stats[key];
+            };
             const fragment = key.replace(/_(?:current|cur|now|value|val|maximum|max|total|cap)$/i, '');
             const levelField = progression.enabled && fragment.toLowerCase() === progression.levelName?.toLowerCase();
             const levelHeld = stored?.[deps.findMatchingStatKey(stored || {}, fragment) || fragment];
             const levelCardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, fragment) || fragment];
             if (levelField && (!npc || key.toLowerCase() !== progression.levelName.toLowerCase()
                 || String(levelHeld ?? '').trim() || String(levelCardHeld ?? '').trim())) {
-                delete stats[key]; continue;
+                reject('Level is managed by XP progression'); continue;
             }
             const def = (defs || []).find(d => String(d?.name).toLowerCase() === key.toLowerCase());
             const maxFragment = key.match(/^(.*)_(?:maximum|max|total|cap)$/i);
             if (!def && maxFragment && (defs || []).some(d => d?.name?.toLowerCase() === maxFragment[1].toLowerCase()
                 && isNumericStat(d))) {
-                delete stats[key];
+                reject('the reader cannot change a numeric maximum');
                 continue;
             }
             if (!def) continue;
             if (levelField && (!Number.isSafeInteger(Number(stats[key])) || Number(stats[key]) < 1)) {
-                delete stats[key]; continue;
+                reject('initial Level must be a positive whole number'); continue;
             }
             const held = stored?.[deps.findMatchingStatKey(stored || {}, key) || key];
             const cardHeld = cardStats?.[deps.findMatchingStatKey(cardStats || {}, key) || key];
@@ -115,7 +119,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 // A locked NPC stat may be seeded once, but a value already on its
                 // card must also protect it while the character is off stage.
                 if (!npc || String(held ?? '').trim() || String(cardHeld ?? '').trim()) {
-                    delete stats[key];
+                    reject('this stat is locked');
                     continue;
                 }
             }
@@ -133,6 +137,10 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
                 const plainReading = !isPoolStat(def) && String(storedValue ?? '').trim() && ceilingFromValue(storedValue) === null;
                 const liveCap = plainReading ? '' : fixedCap ?? promptCeiling(def, storedValue);
                 stats[key] = keepNumericMaximum(incoming, liveCap);
+                const requestedCap = incoming.split('/')[1]?.trim();
+                if (requestedCap !== undefined && requestedCap !== String(stats[key]).split('/')[1]?.trim()) {
+                    warnings.push(`${owner} · ${key}: maximum "${requestedCap}" skipped: the reader keeps the existing maximum (using "${stats[key]}").`);
+                }
             }
         }
     };
@@ -142,7 +150,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         // applyUpdate reads update.player.stats, or update.player itself when it is flat.
         const playerStats = update.player.stats && typeof update.player.stats === 'object'
             ? update.player.stats : update.player;
-        clean(playerStats, trackerSettings.playerStats, state?.player?.stats, { player: true, progression: progressionFields(trackerSettings, { isPlayer: true }) });
+        clean(playerStats, trackerSettings.playerStats, state?.player?.stats, { player: true, owner: 'Player', progression: progressionFields(trackerSettings, { isPlayer: true }) });
     }
     for (const actor of Array.isArray(update.characters) ? update.characters : []) {
         const current = (state?.characters || [])
@@ -150,7 +158,7 @@ function sanitizeModelUpdate(update, state, trackerSettings = getSettings().stat
         const selected = proposedNpcTemplate(current?.npcTemplateId ? current : deps.findCardForName(actor?.name), actor);
         clean(actor?.stats && typeof actor.stats === 'object' ? actor.stats : actor,
             npcStatsFor({ npcTemplateId: selected?.id }, trackerSettings), current?.stats,
-            { npc: true, cardStats: deps.findCardForName(actor?.name)?.statusOverrides,
+            { npc: true, owner: actor.name || 'NPC', cardStats: deps.findCardForName(actor?.name)?.statusOverrides,
                 progression: progressionFields(trackerSettings, { actor: { npcTemplateId: selected?.id
                     || current?.npcTemplateId || deps.findCardForName(actor?.name)?.npcTemplateId || actor?.npcTemplateId } }) });
     }

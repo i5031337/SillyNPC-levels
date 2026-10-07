@@ -119,19 +119,30 @@ function looksUnfilled(value) {
     return /^current\s*\/\s*maximum$/i.test(text) || /^<[^>]*>$/.test(text);
 }
 
-function constrainToDefinition(def, incoming, existing) {
+function constrainToDefinition(def, incoming, existing, onWarning = () => {}) {
+    const warn = reason => onWarning(`"${String(incoming)}" skipped: ${reason}; kept "${String(existing ?? '')}".`);
     if (looksUnfilled(incoming)) {
+        warn('this is a prompt placeholder, not a value');
         debugLog(`Refused "${String(incoming).trim()}" for ${def?.name || 'a field'}: that is the prompt's wording, not a value`);
         return existing;
     }
     const bounded = constrainNumericStat(def, incoming, existing);
+    if (bounded !== incoming) {
+        onWarning(`"${String(incoming)}" adjusted or refused: outside the numeric bounds or not a valid numeric reading; using "${String(bounded ?? '')}".`);
+    }
+    const allowed = allowedValues(def);
+    if (allowed.length && String(bounded ?? '').trim() && !allowed.includes(String(bounded).trim())) {
+        warn(`allowed values are ${allowed.join(', ')}`);
+    }
     const kept = constrainToOptions(def, bounded, existing);
     // Only ever cut what was actually written. When the options guard refuses a value it
     // hands back the one already stored, and trimming that would rewrite something nobody
     // submitted - the same rule that stops narrowing a list rewriting characters nobody
     // was looking at.
     if (kept !== incoming) return kept;
-    return capToLength(def, kept);
+    const capped = capToLength(def, kept);
+    if (capped !== kept) onWarning(`"${String(kept)}" shortened: exceeds the ${def.maxLength} character limit; using "${capped}".`);
+    return capped;
 }
 
 function combineStatValue(existingValue, group, statDef, options = {}) {

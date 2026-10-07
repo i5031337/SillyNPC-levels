@@ -191,7 +191,7 @@ function splitStatKeyPart(key) {
  * @param {(key: string) => boolean} shouldSkip Keys to ignore entirely.
  * @returns {Map<string, { whole?: any, current?: any, max?: any }>}
  */
-function groupIncomingStats(sourceStats, resolveBase, isExactStat, shouldSkip) {
+function groupIncomingStats(sourceStats, resolveBase, isExactStat, shouldSkip, onUnknown = () => {}) {
     const groups = new Map();
 
     for (const updKey of Object.keys(sourceStats)) {
@@ -214,6 +214,7 @@ function groupIncomingStats(sourceStats, resolveBase, isExactStat, shouldSkip) {
         }
 
         if (!actualKey) {
+            onUnknown(updKey);
             debugLog('Ignoring stat key that matches no configured stat:', updKey);
             continue;
         }

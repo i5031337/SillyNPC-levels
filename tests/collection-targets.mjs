@@ -97,7 +97,7 @@ test('multiple targets include the player and humans, exclude Pokémon, and surv
     assert.equal(collectionAppliesTo(clothes, 'npc', {}), false);
     const imported = normalizeSystemDefinition(JSON.parse(JSON.stringify(definition)));
     assert.deepEqual(imported.collections[1], clothes);
-    assert.match(collectionTargetLabel(clothes), /player or NPC template Human/);
+    assert.equal(collectionTargetLabel(clothes), 'player or Human NPCs (npcTemplateId: human)');
     const several = { targets: ['template:human', 'template:pokemon'] };
     assert.equal(collectionAppliesTo(several, 'player'), false);
     assert.equal(collectionAppliesTo(several, 'npc', human), true);

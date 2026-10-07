@@ -20,6 +20,6 @@
 # Coding practices
 
 - Whenever System fields, formatting, or rules change, update the Generate from premise instructions, schema (`src/generation/contracts.js`), stage requests, validation, and generation fixtures/tests in the same change. Keep generated Systems consistent with the editor and runtime.
-
 - No source file should exceed 20kB, for agentic efficiency. Keep code clear and concise. When appropriate, recommend a refactor strategy. 
 - This project is a prototype. Never make something more complicated for the sake of legacy compatibility. The new way is the only way.
+- Comments describe purpose and function, not everything needs an explanation.

@@ -7,6 +7,22 @@ import { progressXp } from './progression.js';
 import { progressionFields } from './progression-fields.js';
 
 export function bind(deps) {
+    function warnClamped(warnings, owner, key, incoming, merged) {
+        const wanted = String(incoming ?? '').split('/')[0].trim();
+        const used = String(merged ?? '').split('/')[0].trim();
+        if (wanted && Number.isFinite(Number(wanted)) && Number(wanted) !== Number(used)) {
+            warnings?.push(`${owner} · ${key}: "${incoming}" adjusted: exceeds the pool maximum; using "${merged}".`);
+        }
+    }
+
+    function warnSkippedActor(warnings, actor, reason, settings) {
+        const metadata = new Set(['name', 'stats', 'collections', 'boundto', 'offstage', 'npcTemplateId', 'profile']);
+        for (const key of Object.keys(actor.stats || actor)) {
+            if (metadata.has(key) || settings.collections.some(col => col.id.toLowerCase() === key.toLowerCase())) continue;
+            warnings?.push(`${actor.name || 'NPC'} · ${key}: skipped: ${reason}.`);
+        }
+    }
+
     function ageTombstones(state) {
         if (!state.recently_deleted) return;
         for (const colId in state.recently_deleted) {
@@ -18,7 +34,7 @@ export function bind(deps) {
         }
     }
 
-    function applyGlobalUpdate(state, update, settings, verbatim) {
+    function applyGlobalUpdate(state, update, settings, verbatim, warnings) {
         const validKeys = new Set(settings.globalStats.map(s => s.name.toLowerCase()));
         if (update.global) {
             Object.keys(update.global).forEach(updKey => {
@@ -26,8 +42,9 @@ export function bind(deps) {
                 if (validKeys.has(actualKey.toLowerCase())) {
                     const statDef = settings.globalStats.find(s => s.name.toLowerCase() === actualKey.toLowerCase());
                     const merged = deps.mergeStatValue(state.global[actualKey], update.global[updKey], { verbatim });
-                    state.global[actualKey] = deps.constrainToDefinition(statDef, merged, state.global[actualKey]);
-                }
+                    warnClamped(warnings, 'World', actualKey, update.global[updKey], merged);
+                    state.global[actualKey] = deps.constrainToDefinition(statDef, merged, state.global[actualKey], warning => warnings?.push(`World · ${actualKey}: ${warning}`));
+                } else warnings?.push(`World · ${updKey}: skipped: no configured stat matches this name.`);
             });
         }
     }
@@ -45,7 +62,7 @@ export function bind(deps) {
         return collected;
     }
 
-    function applyPlayerUpdate(state, player, settings, { verbatim, allowReplace, progressionResolved, dryRun }) {
+    function applyPlayerUpdate(state, player, settings, { verbatim, allowReplace, progressionResolved, dryRun, warnings }) {
         debugLog('Applying player update:', player);
         const validKeys = new Set(settings.playerStats.map(s => s.name.toLowerCase()));
         const collectionIds = new Set(settings.collections.map(c => c.id.toLowerCase()));
@@ -64,6 +81,7 @@ export function bind(deps) {
                 return lower === 'name' || lower === 'stats' || lower === 'collections'
                     || collectionIds.has(lower);
             },
+            key => warnings?.push(`Player · ${key}: skipped: no configured stat matches this name.`),
         );
 
         const { xpName, levelName, enabled } = progressionFields(settings, { isPlayer: true });
@@ -81,7 +99,8 @@ export function bind(deps) {
                 || (actualKey === levelName && xpProgress.levelsGained > 0))) continue;
             const statDef = settings.playerStats.find(s => s.name.toLowerCase() === actualKey.toLowerCase());
             const merged = deps.combineStatValue(state.player.stats[actualKey], group, statDef, { verbatim });
-            state.player.stats[actualKey] = deps.constrainToDefinition(statDef, merged, state.player.stats[actualKey]);
+            warnClamped(warnings, 'Player', actualKey, group.current ?? group.whole, merged);
+            state.player.stats[actualKey] = deps.constrainToDefinition(statDef, merged, state.player.stats[actualKey], warning => warnings?.push(`Player · ${actualKey}: ${warning}`));
         }
         if (xpProgress) {
             state.player.stats[xpName] = xpProgress.xp;
@@ -120,7 +139,7 @@ export function bind(deps) {
     }
 
     function applyCharacterStats(charData, updChar, matchedChar, settings, validKeys, collectionIds,
-        { verbatim, progressionResolved, dryRun, skipProgression = false }) {
+        { verbatim, progressionResolved, dryRun, warnings, skipProgression = false }) {
         const sourceStats = updChar.stats || updChar;
         const groups = deps.groupIncomingStats(
             sourceStats,
@@ -132,8 +151,10 @@ export function bind(deps) {
             key => {
                 const lower = key.toLowerCase();
                 return lower === 'name' || lower === 'stats' || lower === 'boundto'
-                    || lower === 'collections' || collectionIds.has(lower);
+                    || lower === 'collections' || lower === 'npctemplateid' || lower === 'offstage'
+                    || lower === 'profile' || collectionIds.has(lower);
             },
+            key => warnings?.push(`${updChar.name} · ${key}: skipped: no configured stat matches this name.`),
         );
         const { xpName, levelName, enabled } = progressionFields(settings, { actor: charData });
         const xpGroup = groups.get(xpName);
@@ -147,7 +168,8 @@ export function bind(deps) {
         for (const [canonicalKey, group] of groups) {
             const statDef = settings.npcStats.find(s => s.name.toLowerCase() === canonicalKey.toLowerCase());
             const merged = deps.combineStatValue(charData.stats[canonicalKey], group, statDef, { verbatim });
-            charData.stats[canonicalKey] = deps.constrainToDefinition(statDef, merged, charData.stats[canonicalKey]);
+            warnClamped(warnings, updChar.name, canonicalKey, group.current ?? group.whole, merged);
+            charData.stats[canonicalKey] = deps.constrainToDefinition(statDef, merged, charData.stats[canonicalKey], warning => warnings?.push(`${updChar.name} · ${canonicalKey}: ${warning}`));
 
             // Cards live in settings, outside the cloned state. A dry run cannot touch them.
             if (matchedChar && !dryRun) {
@@ -161,12 +183,16 @@ export function bind(deps) {
 
     function applyCharacterUpdate(state, updChar, context) {
         const { settings, lookup, validKeys, collectionIds,
-            admitCharacters, dryRun, allowReplace, progressionResolved, verbatim, offstageSkipped } = context;
-        if (!updChar.name) return false;
+            admitCharacters, dryRun, allowReplace, progressionResolved, verbatim, offstageSkipped, warnings } = context;
+        if (!updChar.name) {
+            warnSkippedActor(warnings, updChar, 'the NPC name is missing', settings);
+            return false;
+        }
         const canonicalName = deps.resolveCanonicalName(updChar.name);
         if (!deps.mayJoinScene(canonicalName)
             || (state.player?.name && [updChar.name, canonicalName]
                 .some(name => String(name).trim().toLowerCase() === String(state.player.name).trim().toLowerCase()))) {
+            warnSkippedActor(warnings, updChar, 'this character is excluded from the NPC scene', settings);
             return false;
         }
         const lowerName = canonicalName.toLowerCase();
@@ -176,16 +202,18 @@ export function bind(deps) {
             || lookup.regexes.find(r => r.regex.test(updChar.name))?.char;
 
         if (!charData && !admitCharacters) {
+            warnSkippedActor(warnings, updChar, 'the NPC is not present in the scene', settings);
             debugLog('Ignoring character not present in the message:', updChar.name);
             return false;
         }
         if (!charData && admitCharacters) {
             if (!matchedChar) {
                 offstageSkipped.push(updChar.name);
+                warnSkippedActor(warnings, updChar, 'the NPC is offstage and has no saved card', settings);
                 return false;
             }
             const detached = deps.updateCardOffstage(matchedChar, updChar, state, settings,
-                { dryRun, allowReplace, progressionResolved, verbatim });
+                { dryRun, allowReplace, progressionResolved, verbatim, warnings });
             // The review diff needs a row; the real card update leaves the cast untouched.
             if (dryRun && detached) state.characters.push(detached);
             return false;
@@ -212,7 +240,7 @@ export function bind(deps) {
         }
         const actorKeys = new Set(actorSettings.npcStats.map(stat => stat.name.toLowerCase()));
         let cardChanged = applyCharacterStats(charData, updChar, matchedChar, actorSettings, actorKeys,
-            collectionIds, { verbatim, progressionResolved, dryRun, skipProgression: assigned });
+            collectionIds, { verbatim, progressionResolved, dryRun, warnings, skipProgression: assigned });
         cardChanged ||= assigned && !!matchedChar && !dryRun;
         const collections = collectCollections(updChar, collectionIds, `character update for ${updChar.name}`);
         Object.keys(collections).forEach(id => {
@@ -239,7 +267,7 @@ export function bind(deps) {
 
     function applyUpdate(update, options = {}) {
         const { dryRun = false, label = 'AI update', admitCharacters = false, allowReplace = false,
-            partOfMessage = false, verbatim = false, progressionResolved = false } = options;
+            partOfMessage = false, verbatim = false, progressionResolved = false, warnings } = options;
         // Card writes occur before the state save, so reject a missing chat before either.
         if (!dryRun && !deps.hasOpenChat()) {
             console.warn(LOG_PREFIX, 'Refused to apply a tracker update with no chat open.');
@@ -250,13 +278,13 @@ export function bind(deps) {
         const state = structuredClone(deps.committedState || deps.loadStateFromMetadata());
         ageTombstones(state);
         const settings = getSettings().statusTracker;
-        applyGlobalUpdate(state, update, settings, verbatim);
+        applyGlobalUpdate(state, update, settings, verbatim, warnings);
 
-        if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace, progressionResolved, dryRun });
+        if (update.player) applyPlayerUpdate(state, update.player, settings, { verbatim, allowReplace, progressionResolved, dryRun, warnings });
         if (update.characters && Array.isArray(update.characters)) {
             applyCharacters(state, update.characters, settings, {
                 admitCharacters, dryRun, allowReplace, progressionResolved,
-                verbatim, offstageSkipped,
+                verbatim, offstageSkipped, warnings,
             });
         }
 

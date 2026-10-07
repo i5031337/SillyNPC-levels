@@ -182,11 +182,14 @@ with browser_session() as browser:
             renderExtractionReport(message, 0);
             result.reportRestored = !!message.querySelector('.sillynpc-reader-report details');
             const warning = 'Collection "missing" skipped: expected "moves". <img src=x onerror=alert(1)>';
-            chat[0].extra.sillynpc_reader_report.warnings = [warning];
+            chat[0].extra.sillynpc_reader_report.warnings = [warning,
+              'Player · Condition: "Tense" skipped: allowed values are Happy; kept "Happy".'];
             settings.showRawTrackerOutput = false;
             renderExtractionReport(message, 0);
             const warningBox = message.querySelector('.sillynpc-reader-warnings');
             result.collectionWarningsVisible = warningBox?.textContent.includes(warning)
+              && warningBox.textContent.includes('Player · Condition')
+              && warningBox.querySelector('strong').textContent === 'Skipped or adjusted changes'
               && !warningBox.querySelector('img')
               && !message.querySelector('.sillynpc-reader-content');
             delete chat[0].extra.sillynpc_reader_report.warnings;

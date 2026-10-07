@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import { readerPromptTexts } from '../src/prompts/prompt-texts-reader.js';
+import { SYSTEM_PROMPT } from '../src/core/constants-prompts.js';
 
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
@@ -28,6 +29,28 @@ test('collection previews explain unknown IDs and target mismatches without chan
     assert.match(warnings[1], /does not apply to NPC template "pokemon"/);
     assert.deepEqual(actor.collections, {});
     assert.deepEqual(deps.takeCollectionWarnings(), []);
+});
+
+test('changed examples show previous and new values for any configured field type', () => {
+    const build = new Function(`${source('../src/tracker/extractor/status-extractor-prompt-state.js')}\nreturn buildDeltaExample;`)();
+    for (const [name, type, previous, next] of [
+        ['Charge', 'number', 1, 2], ['Ready', 'boolean', true, false],
+        ['Detail', 'text', '<its previous value>', '<its new value>'],
+    ]) {
+        const examples = build({ collections: [{ id: 'entries', fields: [
+            { name: 'key', type: 'text', isPrimary: true }, { name, type },
+        ] }] });
+        const changed = examples.split('\n\n')[2];
+        assert.ok(changed.startsWith(`Changed item (${JSON.stringify(name)} changed from ${JSON.stringify(previous)} to ${JSON.stringify(next)}; report the new absolute value, not a delta)`));
+        assert.equal(JSON.parse(changed.slice(changed.indexOf('\n') + 1)).entries.update[0][name], next);
+    }
+    for (const { text } of readerPromptTexts) {
+        assert.match(text, /Fields in "update" contain the new absolute values, not amounts gained or lost/);
+        assert.match(text, /Use "update" when fields of an existing entry change/);
+        assert.doesNotMatch(text, /quantity|stack|remaining total/i);
+    }
+    assert.match(SYSTEM_PROMPT, /Collection "update" fields contain their new absolute values, not deltas/);
+    assert.doesNotMatch(SYSTEM_PROMPT, /quantity|stack|remaining total/i);
 });
 
 test('missing and blank identifiers are explained for additions, updates and replacements', () => {

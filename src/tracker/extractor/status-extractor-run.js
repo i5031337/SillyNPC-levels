@@ -177,10 +177,10 @@ export async function extractStateFromMessage(messageText, messageId, options = 
         const liveState = options.regenerate ? replacementReadingState(messageId) : loadStateFromMetadata();
         if (!liveState || (options.regenerate && !canReplace())) return { applied: false, reason: 'reply changed while reading' };
         const warnings = normalizeCollectionUpdates(parsed, trackerSettings, liveState, getAllCharacters());
-        expandNumericDeltas(parsed, liveState, trackerSettings, { cards: getAllCharacters() });
+        expandNumericDeltas(parsed, liveState, trackerSettings, { cards: getAllCharacters(), warnings });
         // No ceilings the stats do not have, and nothing for a locked stat. See
         // sanitizeModelUpdate.
-        sanitizeModelUpdate(parsed, liveState, trackerSettings);
+        sanitizeModelUpdate(parsed, liveState, trackerSettings, { warnings });
         const grants = await prepareLevelReading(parsed, liveState, trackerSettings,
             String(messageText), leadUp, reportMessage, messageId, options);
         if (!getSettings().enabled || !getSettings().statusTracker.enabled || activeExtraction !== run) {
@@ -233,7 +233,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
            this whole reply, so what it turns down is this message's. */
         takeRefusedValues();
         takeCollectionWarnings();
-        const wouldBe = applyUpdate(parsed, { dryRun: true, admitCharacters: true });
+        const wouldBe = applyUpdate(parsed, { dryRun: true, admitCharacters: true, warnings });
         warnings.push(...takeCollectionWarnings());
         const refused = takeRefusedValues().map(({ field, wanted, allowed, kept }) =>
             `${field}: "${wanted}" is not one of ${allowed.join(', ')} - kept "${kept}"`);
@@ -287,7 +287,7 @@ export async function extractStateFromMessage(messageText, messageId, options = 
             `${appliedCount} applied`,
             `${pending.length} awaiting review`,
         ];
-        if (warnings.length) parts.push(`${warnings.length} collection warning${warnings.length === 1 ? '' : 's'}`);
+        if (warnings.length) parts.push(`${warnings.length} warning${warnings.length === 1 ? '' : 's'}`);
         if (grants.failures.length) parts.push(`${grants.failures.length} level-up choices failed; retry rewards`);
         if (blocked) parts.push(`${blocked} blocked by standing decisions`);
         report = { swipe, status: 'done', summary: parts.join(' · '), output: readerOutput, warnings };

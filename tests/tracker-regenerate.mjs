@@ -110,11 +110,11 @@ test('reader reports skipped collection proposals even with no review rows and c
     assert.equal((await h.run()).applied, true);
     assert.deepEqual(h.pending(), []);
     assert.deepEqual(h.message.report.warnings, [warning]);
-    assert.match(h.message.report.summary, /1 collection warning/);
+    assert.match(h.message.report.summary, /1 warning/);
     h.setWarnings([]);
     await h.run();
     assert.deepEqual(h.message.report.warnings, []);
-    assert.doesNotMatch(h.message.report.summary, /collection warning/);
+    assert.doesNotMatch(h.message.report.summary, /warning/);
 });
 test('regeneration replaces XP and applied rows, clears old proposals and keeps manual edits', async () => {
     const h = harness();
@@ -185,4 +185,17 @@ test('master switch blocks forced reads and discards replies from an in-flight r
     assert.deepEqual(await h.run(), { applied: false, reason: 'extension disabled' });
     assert.deepEqual(h.live(), before);
     assert.deepEqual(h.pending(), [{ old: true }]);
+});
+
+ test('stat rejection warnings persist without review rows and regeneration removes stale warnings', async () => {
+    const h = harness();
+    h.setResponse({ player: { deltas: { Missing: 1 } } });
+    await h.run();
+    assert.deepEqual(h.pending(), []);
+    assert.match(h.message.report.warnings[0], /Player · Missing.*no configured stat/);
+    assert.match(h.message.report.summary, /1 warning/);
+    assert.deepEqual(h.message.report.output, { player: { deltas: { Missing: 1 } } });
+    h.setResponse({ player: {} });
+    await h.run();
+    assert.deepEqual(h.message.report.warnings, []);
 });

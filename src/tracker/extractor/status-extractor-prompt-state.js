@@ -118,10 +118,15 @@ export function buildDeltaExample(trackerSettings) {
         Object.entries(item).filter(([key]) => key !== primary).slice(0, 1)
             .map(([key, value]) => [key, typeof value === 'number' ? 2
                 : typeof value === 'boolean' ? false : '<its new value>'])) };
+    const changedField = Object.keys(changed).find(key => key !== primary);
+    const previousValue = typeof item[changedField] === 'string' ? '<its previous value>' : item[changedField];
     return [
         ['Acquired item', { add: [item] }],
         ['Lost item', { remove: [primaryValue] }],
-        ...(Object.keys(changed).length > 1 ? [['Changed item', { update: [changed] }]] : []),
+        ...(Object.keys(changed).length > 1 ? [[
+            `Changed item (${JSON.stringify(changedField)} changed from ${JSON.stringify(previousValue)} to ${JSON.stringify(changed[changedField])}; report the new absolute value, not a delta)`,
+            { update: [changed] },
+        ]] : []),
     ].map(([label, change]) => `${label}:\n${JSON.stringify({ [col.id]: change }, null, 2)}`).join('\n\n');
 }
 

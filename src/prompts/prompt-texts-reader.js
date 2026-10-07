@@ -30,6 +30,10 @@ export const readerPromptTexts = [
 {{playerName}} is the player-controlled character. References to {{playerName}} belong under player.
 {{/playerName}}
 
+### INFERRING EFFECTS FROM PROSE
+Use only configured stats and collections. Their purposes and rules determine how resolved story events affect them, even when the narrator gives no field names or numbers. Use configured rules, established effects and costs, and earlier context first. If an effect on a configured field is clear but no amount is given, estimate a conservative amount using the field's current scale and the narrated event. Missing numbers do not mean an established effect should be ignored. Preserve established pool maxima and filled locked stats.
+Plans, requests, and unresolved attempts do not establish their intended outcomes. Apply only effects supported by what actually happened. For text fields, infer values within the configured meaning and allowed choices. Follow configured persistence and reset rules; a scene change alone does not establish a reset.
+
 ### CURRENT STATE
 {{state}}
 {{#collections}}
@@ -48,7 +52,7 @@ Initialize blank fields only, including locked fields. Preserve filled locked fi
 
 ### NEW NPC REPLY EXAMPLE
 When an NPC enters the scene, include an object in the "characters" array with their exact "name", even when CURRENT STATE has no NPCs. Initialize blank configured fields under "stats", not "deltas"; preserve values already on file. Infer plausible individual values when the story gives no details.
-The example's stat values describe how to fill them, using the configured field guidance and constraints. Replace them with actual string readings. Collection item values illustrate their declared types; replace them with actual item values. Include starting possessions under each collection's "add" array; omit collections with no starting items. Use exact field spelling and capitalization. The configured primary field identifies an item; no separate item "name" field is required.
+The example's stat values describe how to fill them, using the configured field guidance and constraints. Replace them with actual string readings. Collection item values illustrate their declared types; replace them with actual item values. Include starting entries consistent with each collection's purpose under its "add" array; omit collections with no starting entries. Use exact field spelling and capitalization. The configured primary field identifies an item; no separate item "name" field is required.
 {{newNpcReply}}
 {{/newNpcReply}}
 {{#xpProgression}}
@@ -85,11 +89,13 @@ Speakers without cards: {{strangers}}. In "strangers", assign each the best matc
 {{#collections}}
 
 ### WHEN A COLLECTION CHANGES
-For a new NPC, add starting possessions shown in the story or background; infer plausible essentials when details are sparse.
+For a new NPC, add starting entries shown in the story or background; infer plausible essentials only where consistent with the configured collection's purpose and rules.
 Report each collection change shown in the latest message:
-- "remove" for used, spent, transferred, lost, or destroyed items
-- "add" for acquired items, with stated fields
+- "remove" for consumed, spent, transferred, lost, or destroyed items
+- "add" for acquired items or newly demonstrated knowledge and abilities, if absent from the owner's current collection
 - "update" for changed items, with their configured primary field and changed fields
+Fields in "update" contain the new absolute values, not amounts gained or lost. Use "update" when fields of an existing entry change; "remove" deletes the entire entry.
+Follow each collection's configured purpose. If it tracks abilities or knowledge, an actor's actual use of a named ability establishes knowledge even if the intended outcome fails. Add it to their applicable configured collection when missing; no explicit learning announcement is needed, even for an already tracked actor. A command or mere mention alone does not prove the actor knows it. Keep reusable entries after use; update configured item fields only when supported by the event. Follow collection targets and field guidance, include supported item details, and omit unknown optional fields. Do not create collections or duplicate entries already held.
 {{/collections}}
 {{#earlier}}
 
@@ -101,10 +107,10 @@ Report each collection change shown in the latest message:
 {{message}}
 
 ### REPLY FORMAT
-Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "Healthy". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
+Return raw JSON with changed fields, initial values for blank NPC stats, and every NPC present in "characters". Never list the player there. Omit unchanged values. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "<configured text value>". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
 "characters" must be an array of objects, each with a "name" field containing the exact NPC name. Do not use an object keyed by NPC names. If no NPC is present and no known offstage NPC changes, use "characters": []. Known absent NPC updates must carry "offstage": true; all other entries describe the complete present cast.
 {{#reasons}}
-Put "why" first. Key each reason by stat, such as "Time", "Player.Health", or "<name>.Health". Quote the latest message or name the event. For an initialized NPC stat, use "initial estimate" or "invented".
+Put "why" first. Key each reason by configured field: "<world stat>", "Player.<stat>", or "<NPC name>.<stat>", or by owner and configured collection for an item change. Replace placeholders with exact configured names. Quote the latest message or name the event; when estimating an amount, briefly identify the narrated effect and that the amount is estimated. For an initialized NPC stat, use "initial estimate" or "invented".
 {{/reasons}}
 {{#strangers}}
 Stranger example: { {{strangerExample}} }.
@@ -156,18 +162,20 @@ For each present NPC, fill blank configured stats with plausible individual valu
 Experience: award once per concrete accomplishment for the player and enabled NPC templates. Report earned XP as a positive delta under "player.deltas" or that character’s "deltas", using the configured XP field. The extension handles Level, excess XP, stat growth, and collection reward review. Initialize a blank NPC Level once from the story; otherwise never write Level or level-up growth directly. Disabled templates use ordinary stat rules.
 {{/xpProgression}}
 
-### COSTS
-Apply costs paid in the latest turn. Earlier costs are reflected in Current Status.
-Initialize new NPC pools with individual capacities, even when they differ from the default: "5/5" stays "5/5", and a bare initial "8" means "8/8". Keep pool values such as "8/10" in that form. Keep established maxima fixed during ordinary updates. Configured level growth may increase pool capacity, within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Plain numeric ratings keep their configured range. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "Healthy". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
+### STAT CHANGES
+Use only configured stats and collections. Infer effects from resolved actions and narrated consequences according to each field's purpose and rules; explicit field names and numbers are unnecessary. Follow configured rules and established effects or costs first. If an effect on a configured field is clear but has no stated amount, estimate a conservative change using its current scale and the narrated event. Missing numbers do not mean an established effect should be ignored. Plans, requests, and unresolved attempts do not establish their intended outcomes. Preserve filled locked stats. Follow configured persistence and reset rules; a scene change alone does not establish a reset. Earlier effects are reflected in Current Status.
+For configured pools, initialize new NPCs with individual capacities, even when they differ from the default: "5/5" stays "5/5", and a bare initial "8" means "8/8". Keep pool values such as "8/10" in that form. Keep established maxima fixed during ordinary updates. Where progression is enabled, configured level growth may increase pool capacity within an explicit capacity limit. The level-up system proposes growth separately; never include it in story updates. Plain numeric ratings keep their configured range. Absolute readings under "stats" and "global" are JSON strings: "8", "8/10", or "<configured text value>". Numeric changes under "deltas" and "globalDeltas" are JSON numbers: -2 or 5. Collection fields use their declared types.
 
 {{#schemas}}
 ### COLLECTIONS
-For a new NPC, add starting possessions shown in the story or background; infer plausible essentials when details are sparse.
+For a new NPC, add starting entries shown in the story or background; infer plausible essentials only where consistent with the configured collection's purpose and rules.
 Report collection changes:
 - "add": [ { ...item fields } ] for gains
 - "remove": [ <configured primary field value> ] for spent, lost, transferred, or destroyed items
 - "update": [ { ...configured primary field and changed fields } ] for changed items
+Fields in "update" contain the new absolute values, not amounts gained or lost. Use "update" when fields of an existing entry change; "remove" deletes the entire entry.
 For a transfer, remove the item from one owner's collection and add it to the other's. Both player and characters can have collections.
+Follow each collection's configured purpose. For knowledge or ability collections, add a named ability when its actual use establishes that the actor knows it and it is missing from their applicable collection, even if its intended outcome fails. No explicit learning announcement is needed. Commands and mere mentions are insufficient. Keep reusable entries after use; remove entries only when their loss is established. Use configured fields and targets, omit unknown optional details, and avoid duplicate entries.
 ### COLLECTION SCHEMAS
 {{schemas}}
 {{/schemas}}
