@@ -94,7 +94,6 @@ Report each collection change shown in the latest message:
 - "remove" for consumed, spent, transferred, lost, or destroyed items
 - "add" for acquired items or newly demonstrated knowledge and abilities, if absent from the owner's current collection
 - "update" for changed items, with their configured primary field and changed fields
-Fields in "update" contain the new absolute values, not amounts gained or lost. Use "update" when fields of an existing entry change; "remove" deletes the entire entry.
 Follow each collection's configured purpose. If it tracks abilities or knowledge, an actor's actual use of a named ability establishes knowledge even if the intended outcome fails. Add it to their applicable configured collection when missing; no explicit learning announcement is needed, even for an already tracked actor. A command or mere mention alone does not prove the actor knows it. Keep reusable entries after use; update configured item fields only when supported by the event. Follow collection targets and field guidance, include supported item details, and omit unknown optional fields. Do not create collections or duplicate entries already held.
 {{/collections}}
 {{#earlier}}
@@ -116,7 +115,7 @@ Put "why" first. Key each reason by configured field: "<world stat>", "Player.<s
 Stranger example: { {{strangerExample}} }.
 {{/strangers}}
 {{#collectionExample}}
-Independent collection-change examples (each shows a separate event). Replace illustrative values with actual values and include only fields established by the message. Put the collection object under the owner's "collections":
+Independent collection-change examples (each shows a separate event). Replace illustrative values and placeholders with actual values of the declared types and include only fields established by the message. Put the collection object under the owner's "collections":
 {{collectionExample}}
 {{/collectionExample}}
 {{#minimalReply}}
@@ -173,7 +172,6 @@ Report collection changes:
 - "add": [ { ...item fields } ] for gains
 - "remove": [ <configured primary field value> ] for spent, lost, transferred, or destroyed items
 - "update": [ { ...configured primary field and changed fields } ] for changed items
-Fields in "update" contain the new absolute values, not amounts gained or lost. Use "update" when fields of an existing entry change; "remove" deletes the entire entry.
 For a transfer, remove the item from one owner's collection and add it to the other's. Both player and characters can have collections.
 Follow each collection's configured purpose. For knowledge or ability collections, add a named ability when its actual use establishes that the actor knows it and it is missing from their applicable collection, even if its intended outcome fails. No explicit learning announcement is needed. Commands and mere mentions are insufficient. Keep reusable entries after use; remove entries only when their loss is established. Use configured fields and targets, omit unknown optional details, and avoid duplicate entries.
 ### COLLECTION SCHEMAS

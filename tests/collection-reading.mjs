@@ -31,26 +31,24 @@ test('collection previews explain unknown IDs and target mismatches without chan
     assert.deepEqual(deps.takeCollectionWarnings(), []);
 });
 
-test('changed examples show previous and new values for any configured field type', () => {
+test('changed examples use a new-value placeholder for any configured field type', () => {
     const build = new Function(`${source('../src/tracker/extractor/status-extractor-prompt-state.js')}\nreturn buildDeltaExample;`)();
-    for (const [name, type, previous, next] of [
-        ['Charge', 'number', 1, 2], ['Ready', 'boolean', true, false],
-        ['Detail', 'text', '<its previous value>', '<its new value>'],
+    for (const [name, type] of [
+        ['Charge', 'number'], ['Ready', 'boolean'], ['Detail', 'text'],
     ]) {
         const examples = build({ collections: [{ id: 'entries', fields: [
             { name: 'key', type: 'text', isPrimary: true }, { name, type },
         ] }] });
         const changed = examples.split('\n\n')[2];
-        assert.ok(changed.startsWith(`Changed item (${JSON.stringify(name)} changed from ${JSON.stringify(previous)} to ${JSON.stringify(next)}; report the new absolute value, not a delta)`));
-        assert.equal(JSON.parse(changed.slice(changed.indexOf('\n') + 1)).entries.update[0][name], next);
+        assert.ok(changed.startsWith('Changed item:\n'));
+        assert.equal(JSON.parse(changed.slice(changed.indexOf('\n') + 1)).entries.update[0][name], '<new value>');
     }
     for (const { text } of readerPromptTexts) {
-        assert.match(text, /Fields in "update" contain the new absolute values, not amounts gained or lost/);
-        assert.match(text, /Use "update" when fields of an existing entry change/);
         assert.doesNotMatch(text, /quantity|stack|remaining total/i);
     }
-    assert.match(SYSTEM_PROMPT, /Collection "update" fields contain their new absolute values, not deltas/);
     assert.doesNotMatch(SYSTEM_PROMPT, /quantity|stack|remaining total/i);
+    assert.match(readerPromptTexts.find(entry => entry.id === 'reader').text,
+        /Replace illustrative values and placeholders with actual values of the declared types/);
 });
 
 test('missing and blank identifiers are explained for additions, updates and replacements', () => {
@@ -92,7 +90,7 @@ test('collection examples use the primary field type consistently for all operat
         assert.equal(examples[2].update[0].key, expected);
         assert.equal(examples[1].remove[0], expected);
         assert.equal(examples[0].add[0].power, 1);
-        assert.equal(examples[2].update[0].power, 2);
+        assert.equal(examples[2].update[0].power, '<new value>');
     }
     const prompt = readerPromptTexts.find(entry => entry.id === 'reader').text;
     assert.match(prompt, /quoted collection ID.*never its display label/);
