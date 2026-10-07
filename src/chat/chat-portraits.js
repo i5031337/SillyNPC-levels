@@ -167,7 +167,7 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
     img.style.objectFit = effectiveFit;
 
     // A cast decision can identify the speaker as the player even when a card exists.
-    const label = char?.name || name || '';
+    const label = name || char?.name || '';
     const persona = label ? resolvePersonaSpeaker(label) : null;
 
     if (persona) {

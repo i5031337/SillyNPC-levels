@@ -98,8 +98,16 @@ function setCastDecision(name, reason) {
     return true;
 }
 
+function isPlayerName(name, canonical = resolveCanonicalName(name)) {
+    const playerNames = [deps.resolvePersonaAvatarAndName()?.name,
+        deps.loadStateFromMetadata()?.player?.name];
+    return playerNames.some(player => player && [name, canonical]
+        .some(candidate => String(candidate ?? '').trim().toLowerCase() === String(player).trim().toLowerCase()));
+}
+
+
 /**
- * Your own portrait, for a speaker label you have said is you.
+ * Your own portrait, for the player name or a label you have said is you.
  *
  * "This is me" kept the name out of the cast and stopped there, so the chat still drew the
  * same blank stand-in it gives any name it has never heard of - which reads as the decision
@@ -113,10 +121,11 @@ function setCastDecision(name, reason) {
  * @returns {{ name: string, imageUrl: string } | null} Null when this is not you.
  */
 function resolvePersonaSpeaker(name) {
-    // No blank-name guard: setCastDecision refuses to record one, so a nameless speaker
-    // has no decision to find and falls out here like anybody else undecided.
     const canonical = resolveCanonicalName(name);
-    if (getCastDecisions()[canonical.toLowerCase()] !== CAST_PERSONA) return null;
+    if (!canonical) return null;
+    const decision = getCastDecisions()[canonical.toLowerCase()];
+    if (decision === CAST_EXCLUDED) return null;
+    if (decision !== CAST_PERSONA && !isPlayerName(name, canonical)) return null;
 
     const persona = deps.resolvePersonaAvatarAndName();
     // The player's own portrait wins, since that is the face they made for this character.
@@ -147,10 +156,7 @@ function resolvePersonaSpeaker(name) {
 function mayJoinScene(name, { speaker = true } = {}) {
     const canonical = resolveCanonicalName(name);
     if (!canonical) return false;
-    const playerNames = [deps.resolvePersonaAvatarAndName()?.name,
-        deps.loadStateFromMetadata()?.player?.name];
-    if (playerNames.some(player => player && [name, canonical]
-        .some(candidate => String(candidate).trim().toLowerCase() === String(player).trim().toLowerCase()))) return false;
+    if (isPlayerName(name, canonical)) return false;
     if (getCastDecisions()[canonical.toLowerCase()]) return false;
 
     // The ignore list describes labels mistaken for speech, not NPCs named by the
