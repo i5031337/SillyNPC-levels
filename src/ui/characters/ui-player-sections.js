@@ -11,7 +11,7 @@ import { profileFieldsForCard } from '../../core/profile-fields.js';
 import { readLoreEntry } from '../../characters/character-fill.js';
 import { renderCollectionUI, choiceOptionsHtml, isChoiceField } from '../shared/ui-shared.js';
 import { applyUpdate, getPlayerCard, loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
-import { currentTab, isCollectionEditMode, bulkFor, refreshPlayerSheet } from './ui-player-sheet.js';
+import { currentTab, refreshPlayerSheet } from './ui-player-sheet.js';
 
 export function renderSidebar(dom) {
     const sidebar = dom.querySelector('.sillynpc-sheet-sidebar');
@@ -231,7 +231,7 @@ export function renderTabContent(tabId, state) {
             </div>
             <div class="sillynpc-sheet-profile"></div>
             ${playerCollections().map(col => collectionSection(col, state, settings, {
-                isEditMode: false, showEditToggle: false,
+                isEditMode: false,
             })).join('')}
             <div class="sillynpc-sheet-lore"></div>
         `;
@@ -242,7 +242,7 @@ export function renderTabContent(tabId, state) {
     return `
         <div class="sillynpc-sheet-profile-form"></div>
         ${playerCollections().map(col => collectionSection(col, state, settings, {
-            isEditMode: isCollectionEditMode, showEditToggle: true, bulk: bulkFor(col.id),
+            isEditMode: true,
         })).join('')}
         <div class="lorebook-section-container"></div>
     `;

@@ -6,56 +6,11 @@ import { getSettings } from '../../core/settings.js';
 import { escapeHtml } from '../../core/utils.js';
 import { resetLorebookState } from '../story/ui-lorebook-section.js';
 import { fillCharacter } from './ui-fill.js';
-import { attachCollectionListeners, resolveCollectionTarget, persistCollectionEdit } from '../shared/ui-shared.js';
-import { buildBulkBar, spliceIndexes } from '../shared/ui-bulk-select.js';
+import { attachCollectionListeners } from '../shared/ui-shared.js';
 import { loadStateFromMetadata, applyUpdate, getPersonaData, getPlayerCard } from '../../tracker/status-logic.js';
 
 /** 'profile' | 'edit' - the same two the character page has, for the same reason. */
 export let currentTab = 'profile';
-export let isCollectionEditMode = false;
-
-/**
- * Bulk selection, one handle per collection.
- *
- * It used to be a single handle keyed to whichever collection tab was open. The tabs are
- * gone and every collection is on the page at once, so one handle would put its bar in
- * the first section and route every tick in every list into the same selection.
- *
- * Kept between draws because ticking a box redraws the sheet: a handle built during the
- * draw would forget the tick that caused it.
- *
- * @type {Map<string, object>}
- */
-const playerBulks = new Map();
-
-/** @param {string} colId */
-export function bulkFor(colId) {
-    return playerBulks.get(colId) || null;
-}
-
-/** Builds the handle for a collection the first time that collection is drawn. */
-function ensureBulk(colId, dom) {
-    if (playerBulks.has(colId)) return playerBulks.get(colId);
-
-    const handle = buildBulkBar({
-        noun: 'item',
-        allIds: () => (loadStateFromMetadata().player?.collections?.[colId] || [])
-            .map((_, i) => i),
-        onDelete: (ids) => {
-            const player = loadStateFromMetadata().player;
-            const where = resolveCollectionTarget(player, true);
-            const list = where.target?.collections?.[colId];
-            if (!list) return;
-            // Descending, or the first splice shifts every index chosen after it.
-            const removed = spliceIndexes(list, ids);
-            persistCollectionEdit(`Dropped ${removed} item(s)`, where, true);
-        },
-        onRefresh: () => refreshPlayerSheet(dom),
-    });
-    playerBulks.set(colId, handle);
-    return handle;
-}
-
 export function openPlayerSheet() {
     return import('../manage/ui-manage.js').then(({ openManagePopup }) => openManagePopup({ tab: 'player' }));
 }
@@ -160,24 +115,14 @@ function attachSheetListeners(dom) {
 
     const state = loadStateFromMetadata();
 
-    // Scoped to its own section, so each collection's Add, its checkboxes and its bulk
-    // bar reach only its own list. Handed the whole sheet they would all bind to the
-    // first section on the page.
     for (const col of playerCollections()) {
         const section = dom.querySelector(`[data-col-section="${col.id}"]`);
         if (!section) continue;
-        attachCollectionListeners(section, state.player, () => refreshPlayerSheet(dom),
-            ensureBulk(col.id, dom));
-    }
-
-    dom.querySelectorAll('.sillynpc-edit-toggle').forEach(btn => {
-        if (btn.dataset.listenerAttached) return;
-        btn.addEventListener('click', () => {
-            isCollectionEditMode = !isCollectionEditMode;
+        attachCollectionListeners(section, state.player, () => {
             refreshPlayerSheet(dom);
+            return dom.querySelector(`[data-col-section="${col.id}"]`);
         });
-        btn.dataset.listenerAttached = 'true';
-    });
+    }
 
     const fillBtn = dom.querySelector('.sillynpc-sheet-fill');
     if (fillBtn && !fillBtn.dataset.listenerAttached) {

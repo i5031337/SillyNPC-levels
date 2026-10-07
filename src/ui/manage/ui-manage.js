@@ -24,13 +24,17 @@ for (const type of [event_types.CHAT_CHANGED, event_types.PERSONA_CHANGED]) {
         if (manageState.manageRoot && manageState.activeTab === 'player') renderManageView();
     }, 0));
 }
-eventSource.on('sillynpc-status-updated', () => {
+export function refreshManageOnStatusUpdate(state, details) {
     if (!manageState.manageRoot || manageState.activeTab !== 'player') return;
+    // Collection controls already show the saved value. Redrawing here loses scroll
+    // and interrupts numeric steppers when clicking an arrow leaves focus elsewhere.
+    if (details?.source === 'collection-editor') return;
     const focused = document.activeElement;
     if (focused && manageState.manageRoot.contains(focused)
         && (focused.matches('input, textarea, select, [contenteditable="true"]'))) return;
     renderManageView();
-});
+}
+eventSource.on('sillynpc-status-updated', refreshManageOnStatusUpdate);
 
 export async function openManagePopup({ tab = 'characters', charId = null } = {}) {
     if (manageState.managePopup && manageState.manageRoot) {

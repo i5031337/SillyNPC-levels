@@ -48,17 +48,9 @@
 }
 
 .sillynpc-item-card .item-actions {
-    position: absolute;
-    top: var(--sillynpc-space-md);
-    right: var(--sillynpc-space-md);
     display: flex;
+    flex: 0 0 auto;
     gap: 10px;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.sillynpc-item-card:hover .item-actions {
-    opacity: 1;
 }
 
 .sillynpc-item-card .item-actions i {

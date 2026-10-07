@@ -15,7 +15,7 @@ const SYSTEM_EXCLUDED_ROOT = new Set([
     'imageBackend', 'geminiImageModel', 'imageSaveRoute',
     'loreProfileId', 'imageProfileId',
     // Your window, not your world.
-    'popupWidth', 'popupHeight',
+    'popupWidth', 'popupHeight', 'menuFontScale',
 ]);
 
 const SYSTEM_EXCLUDED_TRACKER = new Set([

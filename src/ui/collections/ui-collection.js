@@ -13,25 +13,15 @@ export function renderCollectionUI(tabId, actor, settings, options = {}) {
 
     const items = (actor.collections && actor.collections[tabId]) || [];
     const isEditMode = options.isEditMode !== false; // default true
-    // The caller's bulk-select handle, if it offers one. Rows are keyed by index here
-    // rather than by name: two items can share a name, and the index is what the delete
-    // below already works from.
-    const bulk = options.bulk || null;
-
     return `
         <div class="sillynpc-collection-container">
             <div class="sillynpc-collection-actions" style="display:flex; gap:10px; margin-bottom: 10px;">
-                ${options.showEditToggle ? 
-                    `<button class="menu_button sillynpc-edit-toggle" style="white-space: nowrap; width: auto; min-width: max-content;">${isEditMode ? 'Disable Edit' : 'Enable Edit'}</button>` 
-                    : ''}
-                ${isEditMode ? `<button class="menu_button sillynpc-add-item" data-col="${escapeHtml(tabId)}" style="white-space: nowrap; width: auto; min-width: max-content;">Add New Item</button>` : ''}
-                ${isEditMode && bulk ? '<span class="sillynpc-bulk-slot"></span>' : ''}
+                ${isEditMode ? `<button type="button" class="menu_button sillynpc-add-item" data-col="${escapeHtml(tabId)}" style="white-space: nowrap; width: auto; min-width: max-content;">Add New Item</button>` : ''}
             </div>
             <div class="sillynpc-collection-list">
                 ${items.map((item, idx) => `
                     <div class="sillynpc-item-card ${isEditMode ? '' : 'readonly-mode'}" data-idx="${idx}" data-col="${escapeHtml(tabId)}">
                         <div class="item-header" style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
-                            ${bulk?.isActive() ? `<input type="checkbox" class="sillynpc-bulk-check item-bulk-check"${bulk.isSelected(idx) ? ' checked' : ''}>` : ''}
                             ${colDef.fields.filter(f => !f.isMultiline).map(f => {
                                 const val = item[f.name] !== undefined ? item[f.name] : (f.defaultValue !== undefined ? f.defaultValue : (f.type === 'number' ? 0 : ''));
                                 if (!isEditMode) {
@@ -67,9 +57,9 @@ export function renderCollectionUI(tabId, actor, settings, options = {}) {
                                                    style="${width}">`;
                                 }
                             }).join('')}
-                            ${isEditMode && !bulk?.isActive() ? `
+                            ${isEditMode ? `
                             <div class="item-actions" style="margin-left:auto;">
-                                <i class="fa-solid fa-trash drop-item" title="Drop" style="cursor:pointer; color:var(--red); opacity:0.7;"></i>
+                                <button type="button" class="menu_button drop-item" title="Delete entry"><i class="fa-solid fa-trash" aria-hidden="true"></i> Delete</button>
                             </div>
                             ` : ''}
                         </div>
@@ -114,7 +104,7 @@ export function resolveCollectionTarget(actor, isPlayer) {
     const state = loadStateFromMetadata();
     const inScene = isPlayer
         ? state.player
-        : (state.characters || []).find(c => c.name === actor.name);
+        : (state.characters || []).find(c => c.name?.toLowerCase() === actor.name?.toLowerCase());
 
     if (inScene) return { target: inScene, state, offstage: false };
 
@@ -126,9 +116,6 @@ export function resolveCollectionTarget(actor, isPlayer) {
 /**
  * Writes a belongings edit where it belongs, and tells the rest of the app only if it
  * matters.
- *
- * Exported because bulk delete is a second door onto the same act, and two doors that
- * save differently is how a deletion appears to work and then comes back.
  *
  * @param {string} label For the tracker's undo history.
  * @param {{state: object|null, offstage: boolean}} where From resolveCollectionTarget.
@@ -142,28 +129,17 @@ export function persistCollectionEdit(label, { state, offstage }, isPlayer) {
         return;
     }
     saveStateToMetadata(state, { label });
-    eventSource.emit('sillynpc-status-updated', state);
+    eventSource.emit('sillynpc-status-updated', state, { source: 'collection-editor' });
 }
 
 /**
  * Attaches event listeners for collection UI.
  * @param {HTMLElement} dom Container element
  * @param {Object} actor Actor object to update
- * @param {Function} onRefresh Callback to refresh the UI
- * @param {object|null} [bulk] A bulk-select handle, when the caller offers one.
+ * @param {Function} onRefresh Refreshes the UI; may return its replacement container.
  */
-export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
+export function attachCollectionListeners(dom, actor, onRefresh) {
     const isPlayer = actor.name === 'Player' || actor.name === (loadStateFromMetadata().player?.name);
-
-    // The bar is one element reused across redraws - it holds the selection - so it is
-    // moved into the freshly drawn slot rather than rebuilt with the rest of the panel.
-    if (bulk) {
-        dom.querySelector('.sillynpc-bulk-slot')?.appendChild(bulk.bar);
-        dom.querySelectorAll('.item-bulk-check').forEach(box => {
-            const idx = box.closest('.sillynpc-item-card')?.dataset.idx;
-            box.addEventListener('change', () => bulk.toggle(idx, box.checked));
-        });
-    }
 
     const persist = (label, where) => persistCollectionEdit(label, where, isPlayer);
 
@@ -174,32 +150,30 @@ export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
             const colId = btn.dataset.col;
             const settings = getSettings().statusTracker;
             const colDef = settings.collections.find(c => c.id === colId);
-            const primaryField = colDef ? colDef.fields.find(f => f.isPrimary) : null;
-            const newItemName = "";
-            const newItem = { [primaryField ? primaryField.name : 'name']: newItemName };
-            
-            // Initialize fields with defaults
-            if (colDef) {
-                colDef.fields.forEach(f => {
-                    if (f.isPrimary) return;
-                    if (f.defaultValue !== undefined && f.defaultValue !== '') {
-                        newItem[f.name] = f.type === 'number' ? parseFloat(f.defaultValue) : f.defaultValue;
-                    } else {
-                        if (f.type === 'number') newItem[f.name] = 0;
-                        else if (f.type === 'boolean') newItem[f.name] = false;
-                        else newItem[f.name] = "";
-                    }
-                });
-            }
-
+            if (!colDef) return;
+            const primaryField = colDef.fields.find(f => f.isPrimary) || { name: 'name' };
             const where = resolveCollectionTarget(actor, isPlayer);
             if (!where.target) return;
 
-            addItem(where.target, colId, newItem);
+            // Adds require a name; use a unique placeholder so repeated clicks create rows.
+            const items = where.target.collections?.[colId] || [];
+            const newIndex = items.length;
+            const names = new Set(items.map(item => String(item[primaryField.name]).toLowerCase()));
+            let newItemName = 'New Item';
+            for (let suffix = 2; names.has(newItemName.toLowerCase()); suffix++) {
+                newItemName = `New Item ${suffix}`;
+            }
+            addItem(where.target, colId, { [primaryField.name]: newItemName });
             // A decision, not a reading of the state: authoritative, or the merge
             // guard puts back whatever master still remembers.
             persist('Item added', where);
-            onRefresh?.();
+            const refreshedDom = onRefresh?.() || dom;
+            const addedCard = [...refreshedDom.querySelectorAll('.sillynpc-item-card')]
+                .find(card => card.dataset.col === colId && Number(card.dataset.idx) === newIndex);
+            const nameInput = [...(addedCard?.querySelectorAll('.item-field-input') || [])]
+                .find(input => input.dataset.field === primaryField.name);
+            nameInput?.focus();
+            nameInput?.select?.();
         });
         btn.dataset.listenerAttached = 'true';
     });
@@ -224,7 +198,7 @@ export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
 
         const settings = getSettings().statusTracker;
         const colDef = settings.collections.find(c => c.id === colId);
-        const primaryField = colDef ? colDef.fields.find(f => f.isPrimary) : { name: 'name' };
+        const primaryField = colDef?.fields.find(f => f.isPrimary) || { name: 'name' };
         const fieldDef = colDef ? colDef.fields.find(f => f.name === fieldName) : null;
 
         const where = resolveCollectionTarget(actor, isPlayer);
@@ -297,7 +271,7 @@ export function attachCollectionListeners(dom, actor, onRefresh, bulk = null) {
                 const item = items[idx];
                 const settings = getSettings().statusTracker;
                 const colDef = settings.collections.find(c => c.id === colId);
-                const primaryField = colDef ? colDef.fields.find(f => f.isPrimary) : { name: 'name' };
+                const primaryField = colDef?.fields.find(f => f.isPrimary) || { name: 'name' };
                 const itemName = item[primaryField.name] || 'Item';
 
                 if (await Popup.show.confirm('Delete item', `Delete "${itemName}"?`)) {

@@ -25,6 +25,23 @@ const bindPresets = loadBind('status-system-presets.js', [
     () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}, normalizeTrackerProgression]);
 bindPresets(deps);
 
+test('System switches and creation preserve the user menu text size', () => {
+    settings.menuFontScale = 1.1;
+    const config = { menuFontScale: 1, statusTracker: {
+        globalStats: [], playerStats: [], npcStats: [], collections: [],
+    } };
+    deps.applySystemPreset({ config });
+    assert.equal(settings.menuFontScale, 1.1);
+    deps.saveSystemPreset('Text Size Fixture');
+    assert.equal(settings.statusTracker.presets['Text Size Fixture'].config.menuFontScale, undefined);
+    deps.chatHasStarted = () => false;
+    assert.equal(deps.createSystem('Text Size New System'), true);
+    assert.equal(settings.menuFontScale, 1.1);
+    delete settings.statusTracker.presets['Text Size Fixture'];
+    delete settings.statusTracker.presets['Text Size New System'];
+    settings.activeSystem = 'Harbor RPG';
+});
+
 test('loaded legacy world is discarded and stays outside the System', () => {
     settings.statusTracker.presets['Harbor RPG'] = {
         version: '2.1.0', metadata: { name: 'Harbor RPG', author: 'User' },
