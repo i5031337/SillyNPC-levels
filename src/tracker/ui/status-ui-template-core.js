@@ -129,7 +129,7 @@ export function replaceStatTag(template, statDef, rawValue, type, index = null) 
     /* data-initial is what the blur handler compares against, so a field that was
        clicked and left alone writes nothing. The same guard the item editor uses
        (ui-shared.js) and the player sheet learned in 0.5.1. */
-    const editable = `<span class="sillynpc-status-editable" data-type="${type}"${dataIndex} data-key="${escapeHtml(key)}" data-initial="${escapeHtml(rawValue)}" contenteditable="true">${escapeHtml(rawValue)}</span>`;
+    const editable = `<span class="sillynpc-status-editable" title="${escapeHtml(key)}" data-type="${type}"${dataIndex} data-key="${escapeHtml(key)}" data-initial="${escapeHtml(rawValue)}" contenteditable="true">${escapeHtml(rawValue)}</span>`;
 
     /* A Number whose value carries a ceiling keeps its editable value and gains a
        gauge behind it. The width is inline because it is per-value; everything else
