@@ -3,6 +3,9 @@ import { liveSystemContext } from './ui-system-context.js';
 import { normalizeSystemDefinition } from '../../core/system-schema.js';
 import { normalizeProgressionConfig } from '../../core/progression-config.js';
 
+// Keep disclosure state in the editor context, separate from saved System data.
+const disclosureStates = new WeakMap();
+
 /** Give the live NPC stat catalog stable IDs before templates reference it. */
 export function ensureNpcStatIds(context = liveSystemContext) {
     const { getSettings } = context;
@@ -53,6 +56,18 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
     wrap.className = 'sillynpc-npc-templates';
     const system = context.definition();
     if (!system) { wrap.textContent = 'Select a System to define NPC templates.'; return wrap; }
+    if (!disclosureStates.has(context)) disclosureStates.set(context, new Map());
+    const systems = disclosureStates.get(context);
+    const systemKey = getSettings().activeSystem;
+    if (!systems.has(systemKey)) systems.set(systemKey, new Map());
+    const openStates = systems.get(systemKey);
+    const refresh = () => {
+        // Capture synchronously: native toggle events can arrive after a checkbox refresh.
+        for (const section of wrap.querySelectorAll('details[data-template-id]')) {
+            openStates.set(section.dataset.templateId, section.open);
+        }
+        onRefresh?.();
+    };
     ensureNpcStatIds(context);
     getSettings().statusTracker.npcTemplates = system.npcTemplates;
     const help = document.createElement('p');
@@ -60,7 +75,11 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
     wrap.append(help);
     for (const template of system.npcTemplates) {
         const section = document.createElement('details');
-        section.open = true;
+        section.open = openStates.get(template.id) ?? true;
+        section.dataset.templateId = template.id;
+        section.addEventListener('toggle', () => {
+            if (section.isConnected) openStates.set(template.id, section.open);
+        });
         section.className = 'sillynpc-system-profile-row';
         const title = document.createElement('summary');
         title.textContent = template.name;
@@ -81,12 +100,12 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
             system.npcTemplates = system.npcTemplates.filter(item => item !== template);
             getSettings().statusTracker.npcTemplates = system.npcTemplates;
             if (system.legacyNpcTemplateId === template.id) delete system.legacyNpcTemplateId;
-            saveSettings(); onRefresh();
+            saveSettings(); refresh();
         });
         section.append(title, name, id, description,
-            choices('Profile fields', system.profiles.npc, template.profileIds, 'profileIds', template, onRefresh, saveSettings),
-            choices('Stats', getSettings().statusTracker.npcStats, template.statIds, 'statIds', template, onRefresh, saveSettings),
-            buildProgressionEditor({ template, onRefresh, context }), remove);
+            choices('Profile fields', system.profiles.npc, template.profileIds, 'profileIds', template, refresh, saveSettings),
+            choices('Stats', getSettings().statusTracker.npcStats, template.statIds, 'statIds', template, refresh, saveSettings),
+            buildProgressionEditor({ template, onRefresh: refresh, context }), remove);
         wrap.append(section);
     }
     const name = document.createElement('input');
@@ -104,7 +123,7 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
         for (let i = 2; used.has(id); i++) id = `${stem}-${i}`;
         system.npcTemplates.push({ id, name: name.value.trim(), description: '', profileIds: [], statIds: [],
             progression: normalizeProgressionConfig({}, [], { statIds: [] }) });
-        saveSettings(); onRefresh();
+        saveSettings(); refresh();
     });
     wrap.append(name, add);
     return wrap;

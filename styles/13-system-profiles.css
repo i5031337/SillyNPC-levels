@@ -8,6 +8,24 @@
 .sillynpc-system-profile-row textarea { width: 100%; resize: vertical; }
 .sillynpc-system-profile-row select, .sillynpc-system-profile-row .profile-placeholder { width: 100%; }
 
+.sillynpc-npc-templates { display: grid; gap: 12px; }
+.sillynpc-npc-templates > details > summary {
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--sillynpc-bg-secondary);
+    font-size: 1.15em;
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+.sillynpc-npc-templates > details > summary:hover {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.sillynpc-npc-templates > details > summary:focus-visible {
+    outline: 2px solid var(--sillynpc-accent);
+    outline-offset: 2px;
+}
+
 .sillynpc-system-builder .f-min,
 .sillynpc-system-builder .f-max {
     appearance: textfield;
