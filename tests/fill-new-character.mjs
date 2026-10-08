@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { automaticFillStages } from '../src/prompts/fill-preset.js';
 
 const source = readFileSync(new URL('../src/ui/characters/ui-fill-new.js', import.meta.url), 'utf8')
     .replace(/^import .*;\n/gm, '').replace('export async function', 'async function');
@@ -61,4 +62,15 @@ test('blank names do nothing and a failed fill releases its lock for retry', asy
     await f.run('Mira');
     assert.equal(f.cards.length, 1);
     assert.equal(f.calls.filter(call => call[0] === 'fill').length, 2);
+});
+
+test('automatic Fill draws missing portraits by default and keeps completed stages', () => {
+    const audit = {
+        lore: { done: true }, image: { done: false },
+    };
+    assert.deepEqual(automaticFillStages(audit), {
+        lore: false, image: true,
+    });
+    assert.equal(automaticFillStages(audit, false).image, false);
+    assert.equal(automaticFillStages({ ...audit, image: { done: true } }).image, false);
 });

@@ -37,19 +37,18 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `img/charactersexmp.png`, `img/charcterexmp.png`, `img/chatexmp.png` | Character and chat screenshots in the README. |
 | `img/floathudbar.png`, `img/floathudcircle.png`, `img/playerexmp.png` | HUD and player screenshots in the README. |
 | `img/stats.png`, `img/styleexmp.png` | Stats and appearance screenshots in the README. |
-| `tests/character-scope.mjs` | Character visibility and pattern tests. |
-| `tests/chat-npc-sources.mjs` | Chat NPC source routing tests. |
-| `tests/fill-preset.mjs` | Automatic fill stage tests. |
+| `tests/chat-character-ownership.mjs` | Character visibility, chat NPC routing, persona identity, and chat-local player state boundaries. |
+| `tests/fill-new-character.mjs` | Automatic fill stages, new chat cards, shared locks, and retry behavior. |
 | `tests/lore-entry-store.mjs` | Concurrent lore creation, ownership, and entry reuse tests. |
 | `tests/ui-audit-followup.py` | Unsaved live checks for editable Time and scan overflow before requests. |
 | `tests/status-extractor-request.mjs` | Mocked reader/scan routing and visible fallback warnings. |
 | `tests/profile-lore-storage.mjs` | Player lore persistence and tracker-only scene context tests. |
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/level-grants.mjs`, `tests/level-grant-review.mjs` | Actor-specific grant generation, bounds, dependencies, and atomic review acceptance. |
-| `tests/level-reading-retry.mjs`, `tests/inline-level-review.mjs` | Missing-choice retries, freshness, and inline reading replacement. |
+| `tests/level-reading-retry.mjs`, `tests/inline-level-review.mjs` | Grant caching, missing-choice retries, freshness, and inline reading replacement. |
 | `tests/collection-preview-purity.mjs` | Verify that previews never create library entries or mutate tombstones. |
 | `tests/ui-pool-readings.py` | Individual NPC pool/Level initialization, updates over plain saved values, live capacity, and tracker rendering. |
-| `tests/ui-level-rewards.py`, `tests/ui-progression-smoke.py` | Unsaved live Firefox fixtures for rewards, review dependencies, and Player/NPC progression controls. |
+| `tests/ui-progression-smoke.py` | Unsaved live Firefox fixtures for rewards, review dependencies, and Player/NPC progression controls. |
 | `tests/collection-rewards.mjs` | Reward field validation, schedules, intervals, targets, duplicate prevention, and rename stability. |
 | `tests/stat-settings-simplification.mjs` | Independent reader locking, carryover, growth, and premise schema contract. |
 | `tests/stat-persistence.mjs` | NPC persistence rule tests. |
@@ -57,12 +56,14 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/ui_webdriver.py` | Shared Firefox session and guaranteed driver cleanup. |
 | `tests/history-scan.mjs` | Preserve NPC template assignments through scan filtering and multi-pass merging. |
 | `tests/ui-enable-switch.py` | Unsaved live checks for both master controls, synchronization, disabled reader, and UI cleanup. |
-| `tests/ui-smoke.py` | Read-only headless Firefox check of the live System Builder. |
+| `tests/ui-smoke.py` | Read-only headless Firefox checks of startup, manual reader controls, and the System Builder. |
+| `tests/ui-settings-navigation.py` | Settings sections, search, accessibility labels, and narrow navigation. |
+| `tests/ui-collection-smoke.py` | Collection rendering and reward editor controls, validation, and narrow layouts. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
-| `tests/system-schema.mjs` | System definition normalization and legacy import tests. |
-| `tests/system-profile-builder.mjs` | System profile field edit operations. |
-| `tests/player-chat-ownership.mjs` | Persona identity and chat-local player state boundaries. |
+| `tests/system-schema.mjs` | System definition normalization, legacy imports, and retired HUD layouts. |
+| `tests/profile-fields-ui.mjs` | Profile rendering and System profile field edit operations. |
+| `tests/stat-model-bounds.mjs` | Numeric bounds, model sanitization, and rejection warnings. |
 | `tests/profile-memories.mjs` | Profile memory list normalization and capacity behavior. |
 | `tests/profile-memories-ui.mjs`, `tests/npc-memories.mjs` | Player/NPC memory display and persistence behavior. |
 | `tests/turn-delta.mjs` | Current turn change reversal and rebase behavior. |
@@ -290,7 +291,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/shared/ui-stats.js` | Stats view. |
 | `src/ui/system/ui-npc-templates.js` | Edit reusable NPC templates and shared field selections. |
 | `src/ui/characters/ui-npc-template.js` | Choose or correct a character’s NPC template. |
-| `tests/image-prompt.mjs`, `tests/image-description.mjs` | Portrait prompt preview/editing, selected profile fields, and image collection inputs. |
+| `tests/image-prompt.mjs` | Portrait prompt preview/editing, selected profile fields, and image collection inputs. |
 | `tests/ui-image-generation.py` | Unsaved live portrait prompt and profile image checkbox checks, without image requests. |
 | `tests/npc-templates.mjs` | Template normalization, assignment, validation, review, and scene return tests. |
 | `src/ui/system/ui-system-builder.js` | Public entry point for system schema editor. |
@@ -313,6 +314,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/system-generation-planning.mjs` | Regression for Gemma counter defaults, missing counters, and cross-scope template selections. |
 | `tests/system-generation.mjs`, `tests/system-generation-request.mjs` | Staged contracts, semantic corruption, limits, retries, cancellation, requests, and fixture progression. |
 | `tests/ui-system-generation.py` | Mocked, unsaved Firefox generator workflow and live-state isolation checks. |
+| `tests/fixtures/system-generation.mjs` | Shared staged-generation plan and mock responses; excluded from the test entry glob. |
 | `tests/fixtures/generated-expedition-system.json` | Canonical generated example with targeted progression and scheduled technique rewards. |
 | `src/ui/system/ui-system-manager.js` | Reusable System manager, import, export, and selection. |
 | `src/ui/shared/ui-template-tidy.js` | Prompt template cleanup UI. |

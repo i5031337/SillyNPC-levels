@@ -8,7 +8,7 @@ with browser_session() as browser:
     execute = browser.execute
     execute("document.querySelector('#sillynpc-open-manage').click()")
     time.sleep(0.5)
-    execute("[...document.querySelectorAll('.sillynpc-tab')].find(el => el.textContent.trim() === 'Systems').click()")
+    execute("document.querySelector('.sillynpc-section[data-section=systems]').click()")
     execute("document.querySelector('#sillynpc-systems-view [data-view=manager]').click()")
     real = execute("""const button = [...document.querySelectorAll('button')].find(el => el.textContent === 'Generate from premise');
         button.click();
@@ -24,7 +24,7 @@ with browser_session() as browser:
           const { buildSystemGeneration, saveGeneratedSystem } = await import(root + 'src/ui/system/ui-system-generation.js');
           const { getSettings } = await import(root + 'src/core/settings.js');
           const { allocatePlan } = await import(root + 'src/generation/plan.js');
-          const { plan, responseFor } = await import(root + 'tests/system-generation-fixture.mjs');
+          const { plan, responseFor } = await import(root + 'tests/fixtures/system-generation.mjs');
           const registry = allocatePlan(plan);
           const before = JSON.stringify(getSettings());
           const host = SillyTavern.getContext();

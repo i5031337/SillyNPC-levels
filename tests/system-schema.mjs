@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeSystemDefinition, getSystemField, SYSTEM_SCHEMA_VERSION } from '../src/core/system-schema.js';
+import { HUD_LAYOUTS, hudLayoutFor, normalizeHudLayoutId } from '../src/core/constants-base.js';
 
 test('legacy preset migration keeps only reusable schema and stable generated IDs', () => {
     const preset = {
@@ -118,4 +119,18 @@ test('System memory capture is opt-in, independently configured, and bounded', (
     }
     assert.equal(normalizeSystemDefinition({ memories: { enabled: 'true', guidance: 'x'.repeat(4001) } }).memories.enabled, false);
     assert.equal(normalizeSystemDefinition({ memories: { guidance: 'x'.repeat(4001) } }).memories.guidance.length, 4000);
+});
+
+test('retired HUD layouts resolve to a supported style', () => {
+    assert.deepEqual(HUD_LAYOUTS.map(layout => layout.id),
+        ['plate', 'underline', 'pips', 'splitring']);
+    for (const [oldId, currentId] of Object.entries({
+        blades: 'plate', dock: 'plate', fan: 'underline', brackets: 'underline',
+    })) {
+        assert.equal(normalizeHudLayoutId(oldId), currentId);
+        assert.equal(hudLayoutFor(oldId).id, currentId);
+        assert.equal(normalizeSystemDefinition({ schemaVersion: 1, hud: { layout: oldId } })
+            .hud.layout, currentId);
+    }
+    assert.equal(hudLayoutFor('unknown').id, 'plate');
 });

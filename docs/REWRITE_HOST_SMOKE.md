@@ -40,7 +40,7 @@ For the Player sheet, test with at least two personas and two chats, including o
 
 To exercise the remaining level-up case without a long play session, use a disposable chat and manually set the player's XP remainder to one below its displayed cap. Then generate a clearly earned minor accomplishment and inspect the reader report, stored remainder, level, reward proposals, Player sheet, and HUD. The reward-retry case needs a deliberately unusable reward selection response. The
 progression/reward flow has changed since the dated user report; verify its current
-behavior separately with `tests/ui-level-rewards.py` and `tests/ui-progression-smoke.py`.
+behavior separately with `tests/ui-progression-smoke.py`.
 
 ## Regression follow-up checks
 

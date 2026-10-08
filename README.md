@@ -210,7 +210,7 @@ window.SILLYNPC_DEBUG = true;
 
 See the [file map](docs/FILE_MAP.md) for every source file and its responsibility.
 
-Run the focused tests with `node --experimental-default-type=module --test tests/*.mjs`.
+Run the focused tests with `node --experimental-default-type=module --test tests/*.mjs`. Tests are grouped by feature; shared generation data lives in `tests/fixtures/`. For live UI checks, use `python3 tests/ui-smoke.py` plus the relevant feature script (navigation, collections, or progression).
 
 ---
 

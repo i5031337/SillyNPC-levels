@@ -1,4 +1,4 @@
-"""Collection editor interaction check in Firefox, with isolated persistence fixtures."""
+"""Collection and level-reward editor checks in Firefox, with isolated persistence fixtures."""
 import json
 import time
 from ui_webdriver import browser_session
@@ -11,6 +11,7 @@ with browser_session() as browser:
         script.textContent = `
             const root = ${JSON.stringify(new URL('.', entry.src).href)};
             const { bind } = await import(root + 'src/tracker/status-collection-updates.js');
+            const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
             const { getSettings } = await import(root + 'src/core/settings.js');
             const { renderTabContent } = await import(root + 'src/ui/characters/ui-player-sections.js');
             const source = await (await fetch(root + 'src/ui/collections/ui-collection.js')).text();
@@ -54,6 +55,57 @@ with browser_session() as browser:
             const actual = getSettings().statusTracker;
             const savedCollections = actual.collections;
             try {
+                const rewardCollection = { id: 'smoke-rewards', targets: ['player', 'template:smoke'], fields: [
+                  { id: 'reward-title', name: 'technique', label: 'Technique', type: 'text', isPrimary: true },
+                  { id: 'reward-power', name: 'power', label: 'Power', type: 'number', min: '1', maxStatValue: '3' },
+                  { id: 'reward-equipped', name: 'equipped', type: 'boolean', defaultValue: 'false' }
+                ] };
+                let rewardSaves = 0;
+                const rewardUi = buildCollectionRewardsEditor(rewardCollection, () => rewardSaves++);
+                const rewardHost = document.createElement('div');
+                rewardHost.style.width = '280px';
+                rewardHost.append(rewardUi); document.body.append(rewardHost);
+                try {
+                  const options = rewardUi.querySelector('.col-rewards-options');
+                  result.rewardsInitiallyHidden = options.hidden;
+                  const enabled = rewardUi.querySelector('.col-rewards-enabled');
+                  enabled.click();
+                  result.rewardsEnabled = !options.hidden && !rewardUi.querySelector('details')
+                    && rewardCollection.levelUpRewards.enabled;
+                  const restoredRewards = buildCollectionRewardsEditor(rewardCollection, () => {});
+                  result.rewardsVisibleOnLoad = !restoredRewards.querySelector('.col-rewards-options').hidden;
+                  const mode = rewardUi.querySelector('.col-rewards-mode');
+                  result.rewardsDefaultGuided = mode.value === 'guided'
+                    && rewardUi.querySelector('.col-rewards-interval').value === '1'
+                    && rewardUi.querySelector('.col-rewards-guidance').value === '';
+                  mode.value = 'scheduled'; mode.dispatchEvent(new Event('change'));
+                  rewardUi.querySelector('.col-rewards-add').click();
+                  const fields = [...rewardUi.querySelectorAll('.col-reward-field')];
+                  result.rewardsActualFields = fields.length === 3 && fields[0].dataset.fieldId === 'reward-title'
+                    && fields[1].type === 'number' && fields[1].min === '1' && fields[1].max === '3'
+                    && fields[2].tagName === 'SELECT';
+                  const error = rewardUi.querySelector('.col-reward-errors');
+                  result.rewardsIdentifierValidation = error.textContent.includes('required');
+                  fields[0].value = 'Smoke Technique'; fields[0].dispatchEvent(new Event('input'));
+                  fields[1].value = '4'; fields[1].dispatchEvent(new Event('input'));
+                  result.rewardsRangeValidation = error.textContent.includes('maximum');
+                  fields[1].value = '2'; fields[1].dispatchEvent(new Event('input'));
+                  result.rewardsValidSchedule = error.textContent === ''
+                    && rewardCollection.levelUpRewards.schedule[0].entry['reward-title'] === 'Smoke Technique'
+                    && rewardCollection.levelUpRewards.schedule[0].entry['reward-power'] === 2;
+                  result.rewardsNarrowLayout = rewardHost.scrollWidth <= rewardHost.clientWidth + 2;
+                  mode.value = 'guided'; mode.dispatchEvent(new Event('change'));
+                  const interval = rewardUi.querySelector('.col-rewards-interval');
+                  result.rewardsGuidedControls = interval.value === '1'
+                    && !!rewardUi.querySelector('.col-rewards-guidance') && !rewardUi.querySelector('.col-reward-row');
+                  interval.value = '0'; interval.dispatchEvent(new Event('input'));
+                  result.rewardsIntervalValidation = !interval.checkValidity()
+                    && rewardCollection.levelUpRewards.interval === 1;
+                  interval.value = '2'; interval.dispatchEvent(new Event('input'));
+                  result.rewardsValidInterval = interval.checkValidity() && rewardCollection.levelUpRewards.interval === 2;
+                  enabled.click();
+                  result.rewardsDisabled = options.hidden && !rewardCollection.levelUpRewards.enabled && rewardSaves > 0;
+                } finally { rewardHost.remove(); }
                 actual.collections = [col];
                 for (const actor of [state.player, state.characters[0], { name: 'Offstage', collections: {} }]) {
                     let section;

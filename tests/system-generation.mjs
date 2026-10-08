@@ -6,7 +6,7 @@ import { allocatePlan } from '../src/generation/plan.js';
 import { validateDefinition, finalizeDefinition } from '../src/generation/validate-definition.js';
 import { parseResponse } from '../src/generation/validate-shape.js';
 import { createDraftContext } from '../src/generation/draft-context.js';
-import { plan, responseFor } from './system-generation-fixture.mjs';
+import { plan, responseFor } from './fixtures/system-generation.mjs';
 const registry = allocatePlan(plan);
 const runWith = request => new SystemGenerationRun({ premise: 'A monster catching expedition.', request });
 const reply = ({ stage }) => responseFor(stage, registry);

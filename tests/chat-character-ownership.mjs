@@ -1,7 +1,52 @@
-import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { visibleCharacters, canAutoLinkLorebook } from '../src/characters/character-scope.js';
+import { chatNpcSources, chatNpcImagePaths } from '../src/chat/chat-npc-sources.js';
+import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import { readFileSync } from 'node:fs';
+
+test('two chats can resolve the same speaker to independent local cards', () => {
+    const world = [{ id: 'world', name: 'Mira' }, { id: 'other', name: 'Jon' }];
+    const first = [{ id: 'first', name: 'Mira' }];
+    const second = [{ id: 'second', name: 'Mira' }];
+    assert.deepEqual(visibleCharacters(first, world).map(card => card.id), ['first', 'other']);
+    assert.deepEqual(visibleCharacters(second, world).map(card => card.id), ['second', 'other']);
+    assert.deepEqual(world.map(card => card.id), ['world', 'other']);
+});
+
+test('a fresh chat profile cannot silently adopt a same-name lore entry', () => {
+    const fresh = { name: 'Mira', autoLinkLorebook: false };
+    assert.equal(canAutoLinkLorebook(fresh), false);
+    assert.equal(canAutoLinkLorebook(fresh, true), true);
+    assert.equal(canAutoLinkLorebook({ name: 'Mira' }), true);
+});
+
+test('world export includes independent NPCs from every assigned chat', () => {
+    const headers = [
+        { file_id: 'first', avatar: 'a.png', chat_metadata: {
+            sillynpc_system: 'A', sillynpc_npcs: [{ id: 'one', name: 'Mira' }],
+        } },
+        { file_id: 'second', avatar: 'a.png', chat_metadata: {
+            sillynpc_system: 'A', sillynpc_npcs: [{ id: 'one', name: 'Mira' }, { id: 'two', name: 'Jon' }],
+        } },
+        { file_id: 'third', avatar: 'a.png', chat_metadata: {
+            sillynpc_system: 'B', sillynpc_npcs: [{ id: 'three', name: 'Elsewhere' }],
+        } },
+    ];
+    const sources = chatNpcSources(headers, 'A');
+    assert.deepEqual(sources.map(({ char, sourceChat }) => [char.name, sourceChat]), [
+        ['Mira', ':a.png:first'], ['Mira', ':a.png:second'], ['Jon', ':a.png:second'],
+    ]);
+});
+
+test('portrait references in closed chats remain protected', () => {
+    const headers = [{ chat_metadata: { sillynpc_npcs: [
+        { imageUrl: '/user/images/a.png', images: ['/user/images/b.png'] },
+    ] } }];
+    assert.deepEqual(chatNpcImagePaths(headers), new Set([
+        '/user/images/a.png', '/user/images/b.png',
+    ]));
+});
 
 function bindFrom(file, names, values) {
     const source = readFileSync(new URL(file, import.meta.url), 'utf8')

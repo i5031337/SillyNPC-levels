@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { allocatePlan } from '../src/generation/plan.js';
 import { SystemGenerationRun } from '../src/generation/generate-system.js';
 import { PLANNING_EXAMPLE } from '../src/generation/planning-prompt.js';
-import { plan, responseFor } from './system-generation-fixture.mjs';
+import { plan, responseFor } from './fixtures/system-generation.mjs';
 
 // Reproduce Gemma's submitted references without coupling the test to prompt wording.
 const gemmaPlan = () => ({
