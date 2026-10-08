@@ -121,7 +121,7 @@ export function renderExtractionReport(mesEl, messageId) {
                         const { retryLevelReading } = await import('../extractor/status-level-reading.js');
                         const result = await retryLevelReading(messageId);
                         if (result.applied) {
-                            report.summary = `${result.pending} new rewards awaiting review`
+                            message.extra.sillynpc_reader_report.summary = '0 applied · 0 awaiting review'
                                 + (result.failures ? ` · ${result.failures} choices still failed` : '');
                             renderExtractionReport(mesEl, messageId);
                         }

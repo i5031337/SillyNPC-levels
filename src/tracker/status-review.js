@@ -11,6 +11,7 @@ import { selectReviewRows, materializeGrantRows, validateReviewedTransitions, re
 import { activeNpcSystem } from '../core/npc-templates.js';
 import { syncProfileToLore } from '../lore/lore-sync.js';
 import { selectMemoryReviewRows, applyReviewedMemories, mergePendingMemoryRows } from '../memory/memory-review.js';
+import { failedReviewedStats } from './review-stat-outcomes.js';
 
 /**
  * Changes waiting for a decision.
@@ -254,7 +255,7 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
     const ordinary = rows.filter(row => !row.grant);
     const before = loadStateFromMetadata();
     const applyOptions = { label: 'Reviewed change', admitCharacters: true, partOfMessage: true,
-        allowReplace: true, progressionResolved: true };
+        allowReplace: true, progressionResolved: true, verbatim: true };
     const preview = ordinary.length ? applyUpdate(buildUpdateFromChanges(ordinary, before, trackerSettings, cards),
         { ...applyOptions, dryRun: true }) : before;
     const grants = materializeGrantRows(rows.filter(row => row.grant), preview || before, trackerSettings,
@@ -262,9 +263,15 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
             acceptedTransitionIds: ordinary.map(row => row.transition?.id || row.transition?.transitionId).filter(Boolean) });
     const proposed = [...ordinary, ...grants.rows];
     let recorded = [];
+    let failedStats = [];
+    const reviewWarnings = [];
     if (proposed.length) {
         const update = buildUpdateFromChanges(proposed, before, trackerSettings, cards);
-        if (applyUpdate(update, applyOptions)) recorded = proposed;
+        const result = applyUpdate(update, { ...applyOptions, warnings: reviewWarnings });
+        failedStats = failedReviewedStats(ordinary, result, cards, grants.rows);
+        if (result) recorded = proposed.filter(row => !failedStats.includes(row));
+        for (const row of failedStats) reviewWarnings.push(`${row.actor || row.scope} · ${row.label}: `
+            + 'the reviewed value did not apply; kept this change awaiting review.');
     }
     if (recorded.length) recordAppliedChanges(messageId, recorded);
     const settings = getSettings();
@@ -303,9 +310,15 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
     }
 
     const remaining = remainingGrantRows(pending, rows, grants, recorded, selection.rejectedTransitions, discardAll);
+    if (!discardAll) remaining.push(...failedStats);
+    const report = messageAt(messageId)?.extra?.sillynpc_reader_report;
+    if (report) {
+        report.reviewedMemories = (report.reviewedMemories || 0) + memories.applied;
+        if (reviewWarnings.length) report.warnings = [...new Set([...(report.warnings || []), ...reviewWarnings])];
+    }
     const reading = messageAt(messageId)?.extra?.sillynpc_level_reading;
     if (reading && typeof reading === 'object') {
-        const outstanding = new Set(remaining.map(row => row.grant.id));
+        const outstanding = new Set(remaining.filter(row => row.grant).map(row => row.grant.id));
         reading.decidedGrantIds = [...new Set([...(reading.decidedGrantIds || []),
             ...pending.filter(row => row.grant && !outstanding.has(row.grant.id)).map(row => row.grant.id)])];
         reading.rejectedTransitionIds = [...new Set([...(reading.rejectedTransitionIds || []),

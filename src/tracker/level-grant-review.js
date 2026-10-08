@@ -38,7 +38,8 @@ export function selectReviewRows(pending, accepted, appliedRows = []) {
     for (const incoming of accepted || []) {
         const original = pending.find(row => incoming.grant?.id ? row.grant?.id === incoming.grant.id
             : row.kind === incoming.kind && row.scope === incoming.scope && same(row.actor, incoming.actor)
-                && row.label === incoming.label && row.collectionId === incoming.collectionId && row.field === incoming.field);
+                && row.label === incoming.label && (row.collectionId ?? null) === (incoming.collectionId ?? null)
+                && row.field === incoming.field);
         if (!original || (original.grant && appliedIds.has(original.grant.id))) continue;
         if (original.kind === 'stat-points' && (incoming.grant?.spent || 0) !== (original.grant.spent || 0)) continue;
         if (selectedOriginals.has(original)) continue;

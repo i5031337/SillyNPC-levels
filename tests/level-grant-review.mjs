@@ -118,6 +118,9 @@ test('review acceptance applies story and growth together, preserves partial gra
     const message = { extra: { sillynpc_pending: [grant('g1'), grant('g2')],
         sillynpc_applied: [{ transition }], sillynpc_level_reading: {} } };
     const source = await readFile(new URL('../src/tracker/status-review.js', import.meta.url), 'utf8');
+    const outcomes = await readFile(new URL('../src/tracker/review-stat-outcomes.js', import.meta.url), 'utf8');
+    const failedReviewedStats = new Function('splitValue', outcomes.replace(/^import .*;\n/gm, '').replace(/export /g, '')
+        + '\nreturn failedReviewedStats;')(split);
     const dependencies = {
         getContext: () => ({ chat: [message] }), getSettings: () => ({ statusTracker: settings }),
         getAllCharacters: () => [], debugLog: () => {}, eventSource: { emit() {} },
@@ -130,7 +133,7 @@ test('review acceptance applies story and growth together, preserves partial gra
         }, buildUpdateFromChanges: build, recordAppliedChanges: (_id, rows) => message.extra.sillynpc_applied.push(...rows),
         saveChatSoon: () => {}, appliedChangesForCurrentSwipe: () => message.extra.sillynpc_applied,
         selectReviewRows, materializeGrantRows, validateReviewedTransitions, remainingGrantRows,
-        activeNpcSystem: () => null, mergePendingMemoryRows,
+        activeNpcSystem: () => null, mergePendingMemoryRows, failedReviewedStats,
     };
     const resolve = new Function(...Object.keys(dependencies), source.replace(/^import .*;\n/gm, '').replace(/export /g, '')
         + '\nreturn resolvePendingChanges;')(...Object.values(dependencies));

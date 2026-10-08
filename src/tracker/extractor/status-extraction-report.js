@@ -1,5 +1,5 @@
 import { getContext } from '../../../../../../st-context.js';
-import { saveChatSoon } from '../snapshots/status-snapshot-records.js';
+import { saveChatSoon, appliedChangesForCurrentSwipe } from '../snapshots/status-snapshot-records.js';
 
 const REPORT_KEY = 'sillynpc_reader_report';
 const running = new WeakMap();
@@ -15,7 +15,14 @@ export function getExtractionReport(messageId) {
     const swipe = Number(message.swipe_id ?? 0);
     if (running.get(message) === swipe) return { status: 'running' };
     const report = message.extra?.[REPORT_KEY];
-    return report && report.swipe === swipe ? report : null;
+    if (!report || report.swipe !== swipe) return null;
+    if (report.status !== 'done') return report;
+    const applied = (appliedChangesForCurrentSwipe(messageId)?.length || 0) + (report.reviewedMemories || 0);
+    const pending = message.extra?.sillynpc_pending;
+    const summary = String(report.summary || '')
+        .replace(/\b\d+ applied\b/, `${applied} applied`)
+        .replace(/\b\d+ awaiting review\b/, `${Array.isArray(pending) ? pending.length : 0} awaiting review`);
+    return { ...report, summary };
 }
 
 export function startExtractionReport(messageId) {

@@ -118,7 +118,10 @@ export function buildUpdateFromChanges(changes, currentState, trackerSettings, c
         } : null;
     };
 
-    for (const change of changes) {
+    // Seed current values before joining maxima, including newly initialized pools.
+    const ordered = [...changes.filter(change => change.kind !== 'stat-max'),
+        ...changes.filter(change => change.kind === 'stat-max')];
+    for (const change of ordered) {
         if (change.kind === 'npc-template') {
             if (!change.after) continue;
             update.characters ||= [];

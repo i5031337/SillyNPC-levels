@@ -36,6 +36,8 @@ with browser_session() as browser:
           const { buildTrackerBox } = await import(root + 'src/tracker/ui/status-ui-box.js');
           const { renderExtractionReport } = await import(root + 'src/tracker/ui/status-ui-report.js');
           const { getExtractionReport } = await import(root + 'src/tracker/extractor/status-extraction-report.js');
+          const { renderReviewPanel } = await import(root + 'src/ui/tracker/ui-change-review.js');
+          const { selectReviewRows } = await import(root + 'src/tracker/level-grant-review.js');
           const { defaultTrackerSettings } = await import(root + 'src/core/settings-tracker-defaults.js');
           const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
           const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
@@ -181,6 +183,28 @@ with browser_session() as browser:
             settings.showRawTrackerOutput = true;
             renderExtractionReport(message, 0);
             result.reportRestored = !!message.querySelector('.sillynpc-reader-report details');
+            const storedSummary = chat[0].extra.sillynpc_reader_report.summary;
+            chat[0].extra.sillynpc_reader_report.summary = '0 applied · 106 awaiting review';
+            chat[0].extra.sillynpc_pending = Array.from({length: 106}, () => ({kind: 'stat'}));
+            renderExtractionReport(message, 0);
+            const pendingSummary = message.querySelector('summary').textContent;
+            chat[0].extra.sillynpc_applied = chat[0].extra.sillynpc_pending;
+            delete chat[0].extra.sillynpc_pending;
+            renderExtractionReport(message, 0);
+            result.reviewCountsRefresh = pendingSummary.includes('0 applied · 106 awaiting review')
+              && message.querySelector('summary').textContent.includes('106 applied · 0 awaiting review');
+            let reviewRows = Array.from({length: 106}, (_, i) => ({kind: 'stat', scope: 'player',
+              actor: null, label: 'Fixture ' + i, before: '0', after: '1'}));
+            let selectedCount = 0;
+            renderReviewPanel(message, 0, { getPendingChanges: () => reviewRows,
+              resolvePendingChanges: (_id, accepted) => {
+                selectedCount = selectReviewRows(reviewRows, accepted).rows.length;
+                reviewRows = [];
+              } });
+            message.querySelector('.sillynpc-review-actions button').click();
+            result.reviewStatSelection = selectedCount === 106 && !message.querySelector('.sillynpc-review-panel');
+            chat[0].extra.sillynpc_reader_report.summary = storedSummary;
+            delete chat[0].extra.sillynpc_applied;
             const warning = 'Collection "missing" skipped: expected "moves". <img src=x onerror=alert(1)>';
             chat[0].extra.sillynpc_reader_report.warnings = [warning,
               'Player · Condition: "Tense" skipped: allowed values are Happy; kept "Happy".'];
@@ -230,7 +254,7 @@ with browser_session() as browser:
     assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
     assert all(manual_result.get(key) for key in [
         'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
-        'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored',
+        'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored', 'reviewCountsRefresh', 'reviewStatSelection',
         'collectionWarningsVisible', 'collectionWarningsCleared',
         'rewardsInitiallyHidden', 'rewardsEnabled', 'rewardsVisibleOnLoad', 'rewardsActualFields',
         'rewardsIdentifierValidation', 'rewardsRangeValidation', 'rewardsValidSchedule',
