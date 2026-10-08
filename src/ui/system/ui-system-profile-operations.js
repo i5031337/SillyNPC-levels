@@ -10,7 +10,7 @@ export function addProfileField(fields, label) {
     const used = new Set(fields.map(field => field.id));
     let id = base;
     for (let number = 2; used.has(id); number++) id = `${base}-${number}`;
-    const field = { id, label: name, guidance: '', policy: 'replaceable',
+    const field = { id, label: name, guidance: '',
         placeholder: '', multiline: false, includeInImagePrompt: ['age', 'appearance'].includes(id), retired: false };
     fields.push(field);
     return field;

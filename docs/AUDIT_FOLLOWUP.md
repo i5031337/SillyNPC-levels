@@ -15,7 +15,7 @@ Follow-up to the October 2026 cleanup audit, source baseline `719f1ec`.
    character budget, including its speaker label. Explain the offending message and
    budget. Prompt instructions, schema, and rolling inventory add overhead beyond
    that transcript budget; character counts are not a model context guarantee.
-5. Defer changes to profile policies and memory. Profile and memory edits remain
+5. Defer changes to profiles and memory. Profile and memory edits remain
    manual; optional initial NPC profile generation is a separate feature.
 6. Remove references to the retired story subsystem and its promised archive.
    Remove the dedicated Goals subsystem as well; objectives can use profile fields,

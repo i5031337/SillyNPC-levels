@@ -1,11 +1,6 @@
 import { liveSystemContext } from './ui-system-context.js';
 import { addProfileField, renameProfileField, moveProfileField, retireProfileField } from './ui-system-profile-operations.js';
 
-const POLICIES = [
-    ['anchored', 'Anchored: a stable profile detail'],
-    ['replaceable', 'Replaceable: a profile detail you can edit or regenerate'],
-];
-
 function control(tag, className, value) {
     const element = document.createElement(tag);
     element.className = `text_pole ${className}`;
@@ -61,17 +56,6 @@ function rowFor(field, fields, onRefresh, context) {
     guidance.setAttribute('aria-label', `Guidance for ${field.label}`);
     guidance.addEventListener('input', () => { field.guidance = guidance.value; saveSettings(); });
 
-    const policy = control('select', 'profile-policy');
-    policy.setAttribute('aria-label', `Update policy for ${field.label}`);
-    for (const [value, label] of [...POLICIES, ...(field.policy === 'memory' ? [['memory', 'Existing memory field']] : [])]) {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        policy.appendChild(option);
-    }
-    policy.value = field.policy || 'replaceable';
-    policy.addEventListener('change', () => { field.policy = policy.value; saveSettings(); });
-
     const placeholder = control('input', 'profile-placeholder', field.placeholder || '');
     placeholder.type = 'text';
     placeholder.placeholder = 'Editor placeholder (optional)';
@@ -94,7 +78,7 @@ function rowFor(field, fields, onRefresh, context) {
         saveSettings();
     });
     imageLabel.append(imageCheckbox, ' Include in image prompt');
-    row.append(header, guidance, policy, placeholder, multiline, imageLabel);
+    row.append(header, guidance, placeholder, multiline, imageLabel);
     return row;
 }
 

@@ -36,7 +36,7 @@ test('manual memories need no Memory profile field and archive at the configured
     let store = { entries: [{ id: 'm1', text: 'First', fieldId: 'history', manual: true }], archive: [] };
     const section = renderMemorySection(new Element('div'), {
         read: () => store, write: next => { store = next; }, limit: 1,
-        fields: [{ id: 'role', label: 'Role', policy: 'replaceable' }],
+        fields: [{ id: 'role', label: 'Role' }],
     });
     const form = section.children[1];
     assert.deepEqual(form.children.map(child => child.tag), ['textarea', 'button']);

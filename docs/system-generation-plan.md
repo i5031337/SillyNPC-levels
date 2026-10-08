@@ -19,7 +19,7 @@ runtime, export, and generator; avoid a second set of generated-only rules.
 A complete draft should cover:
 
 - Name, description, and a concise explanation of the rules chosen for the premise.
-- Player and NPC profile fields with readable labels, guidance, and update policies.
+- Player and NPC profile fields with readable labels and guidance.
 - World, player, and shared NPC stat catalogs with stable IDs, sensible defaults,
   types, numeric bounds, display formats, purposes, and Turn or Advancement policies.
 - NPC templates with assignment guidance and explicit selections from those catalogs.
@@ -241,7 +241,6 @@ supply presentation details where possible.
 | Collection field `id`, `name`, and `label` | IDs and names are both storage/reference keys in different paths; labels are display text. Reward schedules use IDs while holdings use names. Consolidating storage on IDs would reduce rename logic and prompt surface. |
 | Stat growth amounts | Generation chooses nonnegative integer pointsPerLevel, random/manual assignment, and eligible stat IDs. Code allocates each point independently with replacement among uncapped candidates, or the user allocates points in review. Budgets may exceed the candidate count; numeric growth never requests an LLM. |
 | Numeric pool defaults encoded as strings | `6/10` is compact but requires repeated parsing and mixes a resource value with its capacity. Explicit numeric starting value/capacity would be clearer if the runtime and editor are changed together. |
-| Profile `memory` policy and dedicated memories | Both can express remembered information. Clarify whether memory policy is needed for custom manually edited prose when structured character memories already exist. |
 
 The existing normalized definition remains the shared editor/runtime/export contract.
 Do not remove these fields independently in the generator; simplify the canonical

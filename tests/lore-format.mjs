@@ -52,7 +52,7 @@ test('custom player profile fields never use the NPC schema', () => {
 
 test('active System fields replace defaults while retired fields stay on cards', () => {
     const system = { profiles: { npc: [
-        { id: 'calling', label: 'Calling', guidance: 'Their calling', policy: 'anchored' },
+        { id: 'calling', label: 'Calling', guidance: 'Their calling' },
         { id: 'old', label: 'Old', retired: true },
     ], player: [] } };
     assert.deepEqual(resolveProfileFieldsFromSystem(system, 'npc').map(field => field.id), ['calling']);

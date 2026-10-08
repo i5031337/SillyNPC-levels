@@ -124,16 +124,6 @@ export function renderProfileFields(char, container) {
         label.className = 'sillynpc-profile-label';
         label.textContent = field.label;
 
-        const policy = document.createElement('small');
-        policy.className = 'notes';
-        policy.textContent = field.policy === 'anchored' ? 'Anchored'
-            : field.policy === 'memory' ? 'Memory' : 'Replaceable';
-        policy.title = field.policy === 'anchored'
-            ? 'This field stays as written until you edit or regenerate it.'
-            : field.policy === 'memory'
-                ? 'Memories can be edited manually.'
-                : 'This field stays as written until you edit or regenerate it.';
-
         /* Write this one field again, whatever it already says.
          *
          * Fill on its own only ever writes a blank, and must keep doing so - pressing one
@@ -201,7 +191,7 @@ export function renderProfileFields(char, container) {
 
         const controls = document.createElement('div');
         controls.className = 'sillynpc-profile-controls';
-        controls.append(policy, undo.el, redo);
+        controls.append(undo.el, redo);
 
         const labelRow = document.createElement('div');
         labelRow.className = 'sillynpc-profile-label-row';

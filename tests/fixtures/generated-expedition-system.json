@@ -13,7 +13,6 @@
         "label": "Background",
         "guidance": "Training history",
         "includeInImagePrompt": false,
-        "policy": "anchored",
         "placeholder": "",
         "multiline": false,
         "retired": false
@@ -25,7 +24,6 @@
         "label": "Species",
         "guidance": "Stable visible species",
         "includeInImagePrompt": true,
-        "policy": "anchored",
         "placeholder": "",
         "multiline": false,
         "retired": false

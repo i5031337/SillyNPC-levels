@@ -305,7 +305,12 @@ test('generation plans genre memory rules without extra calls or memory profile 
     assert.deepEqual(definition.memories, plan.memories);
     assert.equal(calls.length, 8);
     assert.match(calls[0].systemPrompt, /Never plan a Memory profile field/);
-    assert.deepEqual(profileSchema.properties.policy.enum, ['anchored', 'replaceable']);
+    assert.equal(Object.hasOwn(profileSchema.properties, 'policy'), false);
+    assert.ok([...definition.profiles.player, ...definition.profiles.npc]
+        .every(field => !Object.hasOwn(field, 'policy')));
+    const unsupported = structuredClone(definition);
+    unsupported.profiles.npc[0].policy = 'unused';
+    assert.ok(validateDefinition(unsupported).some(error => error.includes('policy')));
     for (const mutation of [
         memories => { memories.enabled = 'yes'; },
         memories => { memories.interval = 0; },

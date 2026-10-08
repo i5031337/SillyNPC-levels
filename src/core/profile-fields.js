@@ -21,7 +21,6 @@ export function resolveProfileFieldsFromSystem(system, scope) {
         multiline: field.multiline === true,
         includeInImagePrompt: typeof field.includeInImagePrompt === 'boolean'
             ? field.includeInImagePrompt : ['age', 'appearance'].includes(field.id),
-        policy: field.policy || (['appearance', 'personality', 'speech'].includes(field.id) ? 'anchored' : 'replaceable'),
     }));
 }
 
@@ -29,10 +28,7 @@ export function resolveProfileFields(scope, settings = settingsProvider()) {
     const active = settings?.activeSystem;
     const system = active && settings?.statusTracker?.presets?.[active]?.definition;
     return resolveProfileFieldsFromSystem(system, scope)
-        ?? (scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => ({
-            ...field, policy: ['appearance', 'personality', 'speech'].includes(field.id)
-                ? 'anchored' : 'replaceable',
-        }));
+        ?? (scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS).map(field => ({ ...field }));
 }
 
 export function profileFieldsForCard(card, settings) {

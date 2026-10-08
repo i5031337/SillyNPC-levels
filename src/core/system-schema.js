@@ -8,7 +8,6 @@ import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { normalizeHudLayoutId } from './constants-base.js';
 
 export const SYSTEM_SCHEMA_VERSION = 1;
-const PROFILE_POLICIES = new Set(['anchored', 'replaceable', 'memory']);
 
 const IDENTIFIER = /^[a-z][a-z0-9_-]*$/;
 
@@ -33,13 +32,10 @@ function uniqueId(candidate, used) {
 function profileField(source, used) {
     const field = object(source);
     const id = uniqueId(field.id || field.label, used);
-    const inferred = id === 'appearance' || id === 'personality' || id === 'speech'
-        ? 'anchored' : 'replaceable';
     return {
         id,
         label: string(field.label, id),
         guidance: string(field.guidance, string(field.hint)),
-        policy: PROFILE_POLICIES.has(field.policy) ? field.policy : inferred,
         placeholder: string(field.placeholder),
         multiline: field.multiline === true,
         includeInImagePrompt: typeof field.includeInImagePrompt === 'boolean'

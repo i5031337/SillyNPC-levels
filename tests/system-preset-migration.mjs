@@ -77,7 +77,7 @@ test('old profile import ignores its world; modern definition import is usable',
     assert.equal(duplicate.world, undefined);
 
     const modern = normalizeSystemDefinition({ schemaVersion: 1, name: 'Sci-Fi',
-        profiles: { player: [], npc: [{ id: 'call-sign', label: 'Call sign', policy: 'anchored' }] },
+        profiles: { player: [], npc: [{ id: 'call-sign', label: 'Call sign' }] },
         stats: { world: [{ id: 'ship', name: 'Ship', defaultValue: 'Port' }], player: [], npc: [] },
         collections: [],
     });

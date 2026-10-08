@@ -28,7 +28,7 @@ character-transfer files are separate formats with different import behavior.
 
 ## Profiles and memories
 
-System profile fields have stable IDs and editable labels, guidance, and policy.
+System profile fields have stable IDs and editable labels and guidance.
 Retirement hides a field without discarding its stored prose. Fill and lore generation
 seed empty fields; manual edits and explicit regeneration can revise them. The turn
 reader currently updates tracked stats and collections; it does not

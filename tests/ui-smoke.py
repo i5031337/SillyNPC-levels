@@ -34,6 +34,8 @@ with browser_session() as browser:
           const { defaultTrackerSettings } = await import(root + 'src/core/settings-tracker-defaults.js');
           const { resolveProfileFields } = await import(root + 'src/core/profile-fields.js');
           const { formatLoreContent, parseLoreContent } = await import(root + 'src/lore/lore-format.js');
+          const { buildProfilesEditor } = await import(root + 'src/ui/system/ui-system-profiles.js');
+          const { renderProfileFields } = await import(root + 'src/ui/characters/ui-profile.js');
           const masterSettings = getSettings();
           const savedEnabled = masterSettings.enabled;
           masterSettings.enabled = true;
@@ -46,6 +48,24 @@ with browser_session() as browser:
           const panel = document.querySelector('#sillynpc-status-view');
           const result = {};
           try {
+            const fixtureDefinition = { profiles: {
+              player: [{ id: 'detail', label: 'Detail' }],
+              npc: [{ id: 'detail', label: 'Detail' }],
+            } };
+            result.profileEditors = ['player', 'npc'].every(scope => {
+              const editor = buildProfilesEditor(scope, () => {}, {
+                definition: () => fixtureDefinition, saveSettings: () => {},
+              });
+              return editor.querySelectorAll('.sillynpc-system-profile-row').length === 1
+                && !editor.querySelector('.profile-policy')
+                && !!editor.querySelector('.profile-guidance');
+            });
+            const profileEditor = document.createElement('div');
+            renderProfileFields({ isPlayer: true, profile: {} }, profileEditor);
+            result.profileControls = profileEditor.querySelectorAll('.sillynpc-profile-row').length > 0
+              && [...profileEditor.querySelectorAll('.sillynpc-profile-controls')].every(controls =>
+                controls.children.length === 2
+                && [...controls.children].every(control => control.tagName === 'BUTTON'));
             const scene = buildSceneContext({ global: {},
               player: { name: 'Smoke Player', stats: {}, collections: {} },
               characters: [{ name: 'Smoke NPC', stats: {}, collections: {} }] });
@@ -223,7 +243,7 @@ with browser_session() as browser:
     execute("""document.querySelector('#sillynpc-manual-smoke')?.remove();
         document.documentElement.removeAttribute('data-manual-smoke');""")
     assert manual_result and manual_result.get('manualOption'), manual_result
-    assert all(manual_result.get(key) for key in ['sceneStatusOnly', 'sceneStatMeanings', 'playerLoreFields']), manual_result
+    assert all(manual_result.get(key) for key in ['sceneStatusOnly', 'sceneStatMeanings', 'playerLoreFields', 'profileEditors', 'profileControls']), manual_result
     assert manual_result.get('buttons') == 1 and manual_result.get('accessible'), manual_result
     assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
     assert all(manual_result.get(key) for key in [

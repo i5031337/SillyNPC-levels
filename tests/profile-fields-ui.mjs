@@ -24,8 +24,8 @@ const source = readFileSync(new URL('../src/ui/characters/ui-profile.js', import
     .replaceAll('export async function ', 'async function ')
     .replaceAll('export function ', 'function ');
 const fields = [
-    { id: 'mood', label: 'Mood', policy: 'replaceable', multiline: false },
-    { id: 'origin', label: 'Origin', policy: 'anchored', multiline: true },
+    { id: 'mood', label: 'Mood', multiline: false },
+    { id: 'origin', label: 'Origin', multiline: true },
 ];
 const { renderProfileFields, buildProfileBlocks } = new Function(
     'document', 'profileFieldsForCard', 'saveSettings', 'syncProfileToLore',
@@ -38,10 +38,11 @@ test('editor follows System fields and keeps retired values editable', () => {
     renderProfileFields(char, root);
     const grid = root.children[0];
     assert.equal(grid.children.length, 2);
-    assert.equal(grid.children[0].children[0].children[1].children[0].textContent,
-        'Replaceable');
-    assert.equal(grid.children[1].children[0].children[1].children[0].textContent,
-        'Anchored');
+    for (const row of grid.children) {
+        const controls = row.children[0].children[1];
+        assert.equal(controls.children.length, 2);
+        assert.ok(controls.children.every(control => control.tag === 'button'));
+    }
     assert.equal(root.children[1].textContent, 'Other / Legacy details');
     const retiredInput = root.children[2].children[1];
     retiredInput.value = 'Admiral';

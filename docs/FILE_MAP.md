@@ -106,7 +106,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/generation/generate-system.js` | Sequential generation, bounded repair, retry, cancellation, progress, and assembly. |
 | `src/generation/request.js` | Captured reader connection adapter and usage reporting without connection fallback. |
 | `src/generation/draft-context.js` | Isolated Builder projection, draft capture, and local rename callbacks. |
-| `src/core/system-schema.js` | Versioned reusable System definitions, profile policy, and bounded legacy preset normalization. |
+| `src/core/system-schema.js` | Versioned reusable System definitions, profile fields, and bounded legacy preset normalization. |
 | `src/core/progression-config.js` | Canonical player and per-template progression configuration and configured stat resolution. |
 | `src/core/collection-rewards.js` | Pure collection reward normalization, typed entries, schedules, guided intervals, targeting, and duplicate checks. |
 | `src/core/utils.js` | Image preparation, JSON repair, stat display, downloads, and DOM helpers. |

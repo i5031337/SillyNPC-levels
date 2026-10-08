@@ -49,22 +49,21 @@ test('player and NPC profiles differ and label edits preserve field IDs', () => 
     const system = normalizeSystemDefinition({});
     assert.equal(getSystemField(system, 'player', 'profile', 'role'), null);
     assert.equal(getSystemField(system, 'npc', 'profile', 'role').label, 'Role');
-    assert.equal(getSystemField(system, 'npc', 'profile', 'appearance').policy, 'anchored');
-    assert.equal(getSystemField(system, 'npc', 'profile', 'history').policy, 'replaceable');
+    assert.ok(system.profiles.npc.every(field => !Object.hasOwn(field, 'policy')));
     system.profiles.npc.find(field => field.id === 'role').label = 'Occupation';
     assert.equal(getSystemField(normalizeSystemDefinition(system), 'npc', 'profile', 'role').label, 'Occupation');
 });
 
-test('modern definitions bound memory limits and retain configured fields and policies', () => {
+test('modern definitions bound memory limits and retain configured fields', () => {
     const system = normalizeSystemDefinition({
         schemaVersion: 1, name: 'Romance',
-        profiles: { player: [{ id: 'goal', label: 'Long-term goal', policy: 'replaceable' }],
-            npc: [{ id: 'memories', label: 'Memories', policy: 'memory' }] },
+        profiles: { player: [{ id: 'goal', label: 'Long-term goal' }],
+            npc: [{ id: 'memories', label: 'Memories' }] },
         stats: { player: [], npc: [], world: [] }, collections: [],
         memories: { maxEntriesPerCharacter: 9000 },
     });
     assert.equal(system.memories.maxEntriesPerCharacter, 50);
-    assert.equal(system.profiles.npc[0].policy, 'memory');
+    assert.equal(system.profiles.npc[0].id, 'memories');
     assert.equal(system.profiles.player[0].id, 'goal');
     assert.deepEqual(system.stats.player, []);
 });
@@ -97,7 +96,7 @@ test('duplicate legacy names receive distinct IDs without mutating input', () =>
 
 test('System normalization ignores removed goal switches while retaining profile objectives', () => {
     const input = { schemaVersion: SYSTEM_SCHEMA_VERSION, name: 'Objectives in profiles',
-        profiles: { player: [{ id: 'wants', label: 'Wants', policy: 'replaceable' }], npc: [] },
+        profiles: { player: [{ id: 'wants', label: 'Wants' }], npc: [] },
         goals: { npcShortTerm: true, playerShortTerm: true, playerLongTerm: true } };
     const normalized = normalizeSystemDefinition(input);
     assert.equal(Object.hasOwn(normalized, 'goals'), false);
