@@ -1,5 +1,5 @@
 import { progressXp, boostStat } from '../progression.js';
-import { configuredNumericMaximum } from '../numeric-stat-bounds.js';
+import { configuredNumericMaximum, isPoolStat } from '../numeric-stat-bounds.js';
 import { resolveProgressionConfig, progressionStatEligible, progressionFieldId } from '../../core/progression-config.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { collectionRewardAppliesTo, scheduledCollectionRewards, guidedRewardLevels,
@@ -43,7 +43,7 @@ export function collectLevelTransitions(parsed, state, tracker, context = {}) {
         const xp = definitions.find(def => def.id === config.xpFieldId);
         const level = definitions.find(def => def.id === config.levelFieldId);
         const current = owner.stats || owner.statusOverrides || {};
-        const incoming = proposal.stats || (isPlayer ? proposal : {});
+        const incoming = proposal.stats || proposal;
         const xpKey = Object.keys(incoming).find(name => key(name) === key(xp?.name));
         if (!xp || !level || !xpKey || current[xp.name] === undefined || current[level.name] === undefined) continue;
         const result = progressXp(current[xp.name], incoming[xpKey], current[level.name]);
@@ -84,9 +84,10 @@ function statRow(transition, def, level, gain, note = '') {
     const before = String(transition.current[def.name]);
     // An explicit pool maximum limits expandable capacity; its default pool cap does not.
     const explicitMax = String(def.maxStatValue ?? '').trim();
-    const fixedMaximum = before.includes('/') ? (explicitMax ? Number(explicitMax) : null)
+    const growMaximum = before.includes('/') && (isPoolStat(def) || !explicitMax);
+    const fixedMaximum = growMaximum ? (explicitMax ? Number(explicitMax) : null)
         : configuredNumericMaximum(def);
-    const bounds = { growMaximum: before.includes('/'), fixedMaximum };
+    const bounds = { growMaximum, fixedMaximum };
     const after = boostStat(before, undefined, gain, bounds);
     if (after === null || after === before) return null;
     return { scope: transition.scope, actor: transition.actor, label: def.name, kind: 'stat',

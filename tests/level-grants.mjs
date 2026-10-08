@@ -44,6 +44,37 @@ test('renamed configured fields transition only existing opted-in actors without
 const chooseGrowth = async prompt => ({ choices: JSON.parse(prompt).tasks.map(task => ({ id: task.id,
     statId: task.eligibleStats[0].id, amount: task.eligibleStats[0].id === 'hp' ? 2 : 1 })) });
 
+test('flat NPC XP readings trigger the same growth request as nested stats', async () => {
+    const initial = state(), settings = tracker();
+    const flat = { characters: [{ name: 'Ada', Experience: '10/10' }] };
+    const nested = { characters: [{ name: 'Ada', stats: { Experience: '10/10' } }] };
+    let calls = 0;
+    const actual = await selectLevelGrants(flat, initial, settings, 'Victory', [], {
+        requestExtraction: async prompt => { calls++; return chooseGrowth(prompt); },
+    });
+    const expected = await selectLevelGrants(nested, initial, settings, 'Victory', [], {
+        requestExtraction: chooseGrowth,
+    });
+    assert.equal(calls, 1);
+    assert.equal(actual.rows.length, 2);
+    assert.deepEqual(actual.failures, []);
+    assert.deepEqual(actual, expected);
+    assert.equal(initial.characters[0].stats.Rank, '1');
+});
+
+test('bounded numeric ratings saved with a denominator grow their value, not capacity', async () => {
+    const initial = state(), settings = tracker();
+    initial.characters[0].stats.Power = '4/5';
+    const result = await selectLevelGrants({ characters: [{ name: 'Ada', Experience: '10/10' }] },
+        initial, settings, 'Victory', [], { requestExtraction: chooseGrowth });
+    const power = result.rows.find(row => row.label === 'Power');
+    assert.ok(power);
+    assert.equal(power.after, '5');
+    assert.deepEqual(power.grant.bounds, { growMaximum: false, fixedMaximum: 5 });
+    assert.equal(boostStat('4/5', undefined, power.grant.gain, power.grant.bounds), '5/5');
+    assert.deepEqual(result.failures, []);
+});
+
 test('all growth stays separate from simultaneous story changes and retains exact per-level gain', async () => {
     const update = parsed(), initial = state();
     const before = structuredClone({ update, initial });
