@@ -111,12 +111,17 @@ with browser_session() as browser:
             result.backgroundUnchanged = settings.enabled && buildSceneContext(fixture) === sceneBefore;
             chat.splice(0, chat.length, { mes: 'Smoke story', swipe_id: 0, extra: {
               sillynpc_reader_report: { swipe: 0, status: 'done', summary: 'Smoke report',
-                output: { player: { stats: { HP: '17/20' } } } } } });
+                output: { player: { stats: { HP: '17/20' } }, characters: [
+                  { name: 'Mudkip', deltas: { XP: 10 } }, { name: 'Wurmple' }] } } } });
             const message = document.createElement('div');
             message.innerHTML = '<div class="mes_text">Smoke story</div>';
             settings.showRawTrackerOutput = true;
             renderExtractionReport(message, 0);
             result.reportShown = !!message.querySelector('.sillynpc-reader-report details');
+            const readerLabels = [...message.querySelectorAll('.sillynpc-reader-content strong')]
+              .map(label => label.textContent);
+            result.namedReaderEntries = readerLabels.includes('Mudkip') && readerLabels.includes('Wurmple')
+              && !readerLabels.includes('1') && !readerLabels.includes('2') && !readerLabels.includes('name');
             settings.showRawTrackerOutput = false;
             renderExtractionReport(message, 0);
             result.reportHidden = !message.querySelector('.sillynpc-reader-report')
@@ -132,8 +137,29 @@ with browser_session() as browser:
             chat[0].extra.sillynpc_applied = chat[0].extra.sillynpc_pending;
             delete chat[0].extra.sillynpc_pending;
             renderExtractionReport(message, 0);
-            result.reviewCountsRefresh = pendingSummary.includes('0 applied · 106 awaiting review')
-              && message.querySelector('summary').textContent.includes('106 applied · 0 awaiting review');
+            result.reviewCountsRefresh = pendingSummary.includes('Applied: None · Needs review: 106 stats')
+              && message.querySelector('summary').textContent.includes('Applied: 106 stats · Needs review: None')
+              && message.querySelector('.sillynpc-reader-breakdown').textContent.includes('106 stats');
+            chat[0].extra.sillynpc_applied = [
+              {scope: 'character', actor: 'Mudkip', kind: 'stat', label: 'XP', before: '9', after: '0'},
+              {scope: 'character', actor: 'Mudkip', kind: 'stat', label: 'Level', before: '4', after: '5'}];
+            renderExtractionReport(message, 0);
+            result.levelUpVisible = message.querySelector('summary').textContent.includes('1 XP update, 1 level-up')
+              && message.querySelector('.sillynpc-reader-breakdown').textContent.includes('Level: 4 → 5');
+            const savedNpcDefinitions = settings.npcStats;
+            try {
+              settings.npcStats = [{name: 'HP', type: 'bar', defaultValue: '10/10'},
+                {name: 'Rating', type: 'number', defaultValue: '1', maxStatValue: '5'}];
+              chat[0].extra.sillynpc_applied = ['HP', 'Rating'].flatMap(label => [
+                {scope: 'character', actor: 'Mudkip', kind: 'stat', label, before: '', after: '3'},
+                {scope: 'character', actor: 'Mudkip', kind: 'stat-max', label, before: '(none)',
+                  after: label === 'HP' ? '10' : '5'}]);
+              renderExtractionReport(message, 0);
+              const breakdownText = message.querySelector('.sillynpc-reader-breakdown').textContent;
+              result.poolMaximumSummary = message.querySelector('summary').textContent.includes('Applied: 2 stats')
+                && breakdownText.includes('HP maximum: 10') && !breakdownText.includes('Rating maximum')
+                && !message.querySelector('summary').textContent.includes('stat maximum');
+            } finally { settings.npcStats = savedNpcDefinitions; }
             let reviewRows = Array.from({length: 106}, (_, i) => ({kind: 'stat', scope: 'player',
               actor: null, label: 'Fixture ' + i, before: '0', after: '1'}));
             let selectedCount = 0;

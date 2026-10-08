@@ -126,6 +126,8 @@ function updateCardOffstage(card, updChar, state, settings,
     // A detached actor: built the same way the cast builds one, so it starts from what
     // the card already knows rather than from nothing.
     const actor = buildCharacterState(card.name, state, settings);
+    // The preview admits this detached sheet only for comparison, not as a new NPC.
+    if (dryRun) Object.defineProperty(actor, 'comparisonBase', { value: structuredClone(actor) });
     const selected = proposedNpcTemplate(card, updChar);
     if (selected) actor.npcTemplateId = selected.id;
     const statDefs = npcStatsFor(actor, settings);

@@ -164,11 +164,12 @@ test('a sole template is assigned without asking the reader to select it', () =>
     setProfileSettingsProvider(() => null);
 });
 
-test('uncertain assignment becomes an editable review row even with review disabled', () => {
+test('a new uncertain assignment is reviewable, but an existing unassigned NPC is not a change', () => {
     const { settings } = fixture();
     const { deps, initial } = applyFixture(settings);
     const proposed = deps.applyUpdate({ characters: [{ name: 'Mira', npcTemplateId: 'unknown', stats: { HP: '8' } }] }, { dryRun: true });
-    const changes = computeStateDiff(initial, proposed, settings.statusTracker);
+    assert.deepEqual(computeStateDiff(initial, proposed, settings.statusTracker), []);
+    const changes = computeStateDiff({ ...initial, characters: [] }, proposed, settings.statusTracker);
     assert.equal(changes.length, 1);
     assert.equal(changes[0].kind, 'npc-template');
     const { pending, auto } = partitionChanges(changes, { reviewMode: 'off' });

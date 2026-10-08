@@ -240,11 +240,13 @@ export function computeStateDiff(before, after, trackerSettings, { fromReplace =
         // against, so treat them as starting empty rather than skipping them. Skipping
         // meant a scan could learn an NPC's whole spell list and produce no rows at all,
         // which read as "nothing to change".
-        const beforeChar = beforeChars.get(key) || { name: afterChar.name, stats: {}, collections: {} };
+        const existing = beforeChars.get(key) || afterChar.comparisonBase;
+        const beforeChar = existing || { name: afterChar.name, stats: {}, collections: {} };
         const system = activeNpcSystem();
         const assigned = npcTemplateFor(afterChar, system);
         const previous = npcTemplateFor(beforeChar, system);
-        if (Array.isArray(system?.npcTemplates) && (!assigned || assigned.id !== previous?.id)) {
+        if (Array.isArray(system?.npcTemplates)
+            && (assigned?.id !== previous?.id || (!assigned && !existing))) {
             changes.push({ scope: 'character', actor: afterChar.name, label: 'NPC template',
                 kind: 'npc-template', before: previous?.name || '(unassigned)', after: assigned?.id || '',
                 risk: assigned ? 'normal' : 'risky', reason: assigned ? 'NPC template assigned' : 'Choose an NPC template; the story did not identify one.' });
@@ -268,4 +270,3 @@ export function computeStateDiff(before, after, trackerSettings, { fromReplace =
 
     return changes;
 }
-

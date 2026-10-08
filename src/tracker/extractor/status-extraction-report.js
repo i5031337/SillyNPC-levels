@@ -1,5 +1,7 @@
 import { getContext } from '../../../../../../st-context.js';
 import { saveChatSoon, appliedChangesForCurrentSwipe } from '../snapshots/status-snapshot-records.js';
+import { buildReportBreakdown } from './status-report-counts.js';
+import { getSettings } from '../../core/settings.js';
 
 const REPORT_KEY = 'sillynpc_reader_report';
 const running = new WeakMap();
@@ -17,12 +19,18 @@ export function getExtractionReport(messageId) {
     const report = message.extra?.[REPORT_KEY];
     if (!report || report.swipe !== swipe) return null;
     if (report.status !== 'done') return report;
-    const applied = (appliedChangesForCurrentSwipe(messageId)?.length || 0) + (report.reviewedMemories || 0);
+    const appliedRows = appliedChangesForCurrentSwipe(messageId) || [];
+    const applied = appliedRows.length + (report.reviewedMemories || 0);
     const pending = message.extra?.sillynpc_pending;
     const summary = String(report.summary || '')
         .replace(/\b\d+ applied\b/, `${applied} applied`)
         .replace(/\b\d+ awaiting review\b/, `${Array.isArray(pending) ? pending.length : 0} awaiting review`);
-    return { ...report, summary };
+    const tracker = getSettings().statusTracker;
+    const statDefinition = row => (row.scope === 'player' ? tracker.playerStats
+        : row.scope === 'global' ? tracker.globalStats : tracker.npcStats)?.find(def => def.name === row.label);
+    const breakdown = buildReportBreakdown(appliedRows, Array.isArray(pending) ? pending : [],
+        report.reviewedMemories || 0, statDefinition);
+    return { ...report, summary, breakdown };
 }
 
 export function startExtractionReport(messageId) {

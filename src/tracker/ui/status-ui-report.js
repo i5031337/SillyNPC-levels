@@ -24,7 +24,9 @@ function appendValue(parent, key, value) {
     row.appendChild(label);
     if (value && typeof value === 'object') {
         const entries = Array.isArray(value)
-            ? value.map((item, index) => [String(index + 1), item])
+            ? value.map((item, index) => item && typeof item === 'object' && item.name
+                ? [String(item.name), Object.fromEntries(Object.entries(item).filter(([name]) => name !== 'name'))]
+                : [`Entry ${index + 1}`, item])
             : Object.entries(value);
         if (entries.length) {
             const children = document.createElement('div');
@@ -70,10 +72,30 @@ export function renderExtractionReport(mesEl, messageId) {
         const details = document.createElement('details');
         details.open = Boolean(wasOpen);
         const summary = document.createElement('summary');
+        const diagnostics = String(report.summary || '').split(' · ')
+            .filter(part => !/^\d+ (applied|awaiting review)$/.test(part)).join(' · ');
         summary.textContent = report.status === 'failed'
             ? `Tracker reading failed · ${report.summary}`
-            : `Tracker reading complete · ${report.summary}`;
+            : `Tracker reading complete · Applied: ${report.breakdown.applied} · Needs review: ${report.breakdown.pending}`
+                + (diagnostics ? ` · ${diagnostics}` : '');
         details.appendChild(summary);
+        if (report.breakdown?.rows.length) {
+            const table = document.createElement('table');
+            table.className = 'sillynpc-reader-breakdown';
+            const heading = table.createTHead().insertRow();
+            for (const label of ['Who', 'Applied', 'Needs review']) {
+                const cell = document.createElement('th');
+                cell.scope = 'col';
+                cell.textContent = label;
+                heading.appendChild(cell);
+            }
+            const body = table.createTBody();
+            for (const row of report.breakdown.rows) {
+                const tr = body.insertRow();
+                for (const value of [row.target, row.applied, row.pending]) tr.insertCell().textContent = value;
+            }
+            details.appendChild(table);
+        }
         if (report.warnings?.length) {
             const warnings = document.createElement('div');
             warnings.className = 'sillynpc-review-loose-notes sillynpc-reader-warnings';
