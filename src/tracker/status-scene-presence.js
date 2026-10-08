@@ -4,6 +4,7 @@ import { getContext } from '../../../../../st-context.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getAllCharacters } from '../characters/character-repository.js';
 import { debugLog } from '../core/constants.js';
+import { syncNpcCollectionsToCards } from './npc-collections.js';
 
 export function bind(deps) {
 function reconcileScenePresence(names, messageId, options = {}) {
@@ -90,6 +91,7 @@ function reconcileScenePresence(names, messageId, options = {}) {
         return (presence.tick - ch.lastSeenTick) < grace;
     });
     if (survivors.length !== state.characters.length) {
+        syncNpcCollectionsToCards(state.characters.filter(ch => !survivors.includes(ch)));
         debugLog('Scene presence: dropping',
             state.characters.filter(ch => !survivors.includes(ch)).map(ch => ch.name));
         state.characters = survivors;
@@ -236,6 +238,7 @@ function removeActiveCharacter(charName) {
     
     const state = JSON.parse(JSON.stringify(deps.committedState || deps.loadStateFromMetadata()));
     const initialLen = state.characters.length;
+    syncNpcCollectionsToCards(state.characters.filter(c => c.name.toLowerCase() === charName.toLowerCase()));
     
     state.characters = state.characters.filter(c => c.name.toLowerCase() !== charName.toLowerCase());
     

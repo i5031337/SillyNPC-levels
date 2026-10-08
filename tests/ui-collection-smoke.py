@@ -17,6 +17,7 @@ with browser_session() as browser:
             const source = await (await fetch(root + 'src/ui/collections/ui-collection.js')).text();
             const manageSource = await (await fetch(root + 'src/ui/manage/ui-manage.js')).text();
             const npcSource = await (await fetch(root + 'src/ui/manage/ui-manage-collections.js')).text();
+            const collectionStoreSource = await (await fetch(root + 'src/tracker/npc-collections.js')).text();
             const strip = text => text.replace(/^import\\s+[\\s\\S]*?\\s+from\\s+['"][^'"]+['"];\\s*/gm, '')
                 .replaceAll('export function ', 'function ');
             const col = { id: 'smoke', name: 'Inventory', targets: ['player', 'npc'], fields: [
@@ -30,6 +31,10 @@ with browser_session() as browser:
             const deps = { loadStateFromMetadata: () => state, constrainToDefinition: (field, value) => value };
             bind(deps);
             let writes = 0, confirmations = 0;
+            const sceneCard = { name: 'Smoke NPC', statusCollections: {} };
+            const syncCollections = new Function('getAllCharacters', 'saveSettings',
+                strip(collectionStoreSource) + '; return syncNpcCollectionsToCards;')(
+                    () => [sceneCard], () => writes++);
             let statusHandler = () => {};
             const events = { emit(type, ...args) {
                 if (type === 'sillynpc-status-updated') statusHandler(...args);
@@ -38,11 +43,11 @@ with browser_session() as browser:
             const popup = { show: { confirm: async () => { confirmations++; return true; } } };
             const api = new Function('constrainNumericStat', 'choiceOptionsHtml', 'isChoiceField',
                 'getSettings', 'saveSettings', 'isStaticField', 'loadStateFromMetadata', 'saveStateToMetadata',
-                'addItem', 'removeItem', 'updateMasterItem', 'renameMasterItem', 'eventSource', 'escapeHtml', 'Popup',
+                'addItem', 'removeItem', 'updateMasterItem', 'renameMasterItem', 'eventSource', 'escapeHtml', 'Popup', 'syncNpcCollectionsToCards',
                 strip(source) + '; return { renderCollectionUI, attachCollectionListeners };')(
                     (field, value) => value, () => '', () => false, () => settings, () => writes++,
                     () => false, () => state, () => writes++, deps.addItem, deps.removeItem,
-                    () => {}, () => {}, events, html, popup);
+                    () => {}, () => {}, events, html, popup, syncCollections);
             const renderNpc = new Function('collectionAppliesTo', 'Popup', 'getSettings', 'saveSettings',
                 'getAllCategories', 'createCategory', 'escapeHtml', 'loadStateFromMetadata',
                 'renderCollectionUI', 'attachCollectionListeners',
@@ -172,6 +177,14 @@ with browser_session() as browser:
                 statusHandler = () => {};
                 host.style.height = ''; host.style.overflow = '';
                 const card = { name: 'Stored NPC', statusCollections: { smoke: [{ title: 'Card Sword' }] } };
+                result.sceneCardPersistence = JSON.stringify(sceneCard.statusCollections)
+                    === JSON.stringify(state.characters[0].collections);
+                const departed = state.characters.pop();
+                try {
+                    renderNpc(sceneCard, host);
+                    result.departedCardVisible = host.querySelectorAll('.sillynpc-item-card').length === 2
+                        && host.querySelector('[data-field="title"]').value === 'New Item';
+                } finally { state.characters.push(departed); }
                 renderNpc(card, host);
                 if (!host.querySelector('.item-field-input') || host.textContent.includes('Edit stored collections')) throw Error('Offstage gate');
                 host.querySelector('.sillynpc-add-item').click();

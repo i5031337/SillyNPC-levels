@@ -6,6 +6,7 @@ import { loadStateFromMetadata, saveStateToMetadata, addItem, removeItem, update
 import { eventSource } from '../../../../../../events.js';
 import { escapeHtml } from '../../core/utils.js';
 import { Popup } from '../../../../../../popup.js';
+import { syncNpcCollectionsToCards } from '../../tracker/npc-collections.js';
 
 export function renderCollectionUI(tabId, actor, settings, options = {}) {
     const colDef = settings.collections.find(c => c.id === tabId);
@@ -121,13 +122,13 @@ export function resolveCollectionTarget(actor, isPlayer) {
  * @param {{state: object|null, offstage: boolean}} where From resolveCollectionTarget.
  * @param {boolean} isPlayer
  */
-export function persistCollectionEdit(label, { state, offstage }, isPlayer) {
+export function persistCollectionEdit(label, { target, state, offstage }, isPlayer) {
     if (offstage) {
-        // The card lives in the settings, not in the chat. Nothing in the scene changed,
-        // so nothing needs reprocessing either.
+        // saveSettings also persists chat-owned cards; the scene needs no redraw.
         saveSettings();
         return;
     }
+    if (!isPlayer) syncNpcCollectionsToCards([target]);
     saveStateToMetadata(state, { label });
     eventSource.emit('sillynpc-status-updated', state, { source: 'collection-editor' });
 }

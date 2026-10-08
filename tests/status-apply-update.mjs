@@ -204,7 +204,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
     const source = readFileSync(new URL('../src/tracker/status-scene-presence.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replace('export function bind', 'function bind');
-    const bindPresence = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'getContext',
+    const bindPresence = new Function('npcStatsFor', 'npcTemplateFor', 'proposedNpcTemplate', 'eventSource', 'getSettings', 'getAllCharacters', 'debugLog', 'getContext', 'syncNpcCollectionsToCards',
         `${source}\nreturn bind;`);
     const settings = { statusTracker: {
         npcStats: [{ name: 'HP', defaultValue: '' }],
@@ -220,7 +220,7 @@ test('reader-reported NPC survives speaker redraw without speaking', () => {
         resolveMaxValue: () => '',
         saveStateToMetadata(state) { saved.push(structuredClone(state)); this.committedState = state; },
     };
-    bindPresence(npcStatsFor, npcTemplateFor, proposedNpcTemplate, { emit() {} }, () => settings, () => [], () => {}, () => ({ chat: [] }))(deps);
+    bindPresence(npcStatsFor, npcTemplateFor, proposedNpcTemplate, { emit() {} }, () => settings, () => [], () => {}, () => ({ chat: [] }), () => {})(deps);
 
     deps.reconcileScenePresence(['Other'], '4');
     deps.reconcileScenePresence(['Mira', 'Rejected'], '4', { authoritative: true });

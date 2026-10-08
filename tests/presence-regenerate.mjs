@@ -18,6 +18,7 @@ function fixture() {
         getContext: () => context, getAllCharacters: () => [],
         getSettings: () => ({ statusTracker: { npcStats: [] } }),
         saveSettings() {}, debugLog() {}, eventSource: { emit() {} },
+        syncNpcCollectionsToCards() {},
         diffTurnValues, applyTurnValues, turnEffectStatus,
         loadStateFromMetadata: () => state,
         saveStateToMetadata: value => { state = structuredClone(value); },
