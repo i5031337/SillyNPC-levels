@@ -3,7 +3,7 @@ import { getSettings, saveSettings } from '../../core/settings.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { escapeHtml } from '../../core/utils.js';
 import { syncOverrideToActiveState } from '../../tracker/status-logic.js';
-import { constrainNumericStat } from '../../tracker/numeric-stat-bounds.js';
+import { constrainNumericStat, isPoolStat } from '../../tracker/numeric-stat-bounds.js';
 import { buildChoiceSelect, isChoiceField } from '../shared/ui-shared.js';
 
 export function renderOverridesSection(char, container) {
@@ -11,7 +11,7 @@ export function renderOverridesSection(char, container) {
     
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
-            <label>Initial Status Overrides</label>
+            <label>Stats</label>
             <small class="notes">Leave blank to use global default values.</small>
         </div>
     `;
@@ -44,13 +44,16 @@ export function renderOverridesSection(char, container) {
         label.style.fontWeight = 'bold';
         label.textContent = stat.name;
 
-        // Parse currentValue (e.g. "50/100" or "50")
         const currentValue = char.statusOverrides?.[stat.name] || '';
-        const fixedNumeric = (stat.type === 'number' || stat.type === 'bar')
-            && !String(currentValue || stat.defaultValue || '').includes('/');
+        const numeric = stat.type === 'number' || stat.type === 'bar';
+        const pool = numeric && isPoolStat(stat);
+        const fixedNumeric = numeric && !pool;
+        const defaultParts = pool ? String(stat.defaultValue ?? '').split('/') : [stat.defaultValue ?? ''];
+        const defaultValue = String(defaultParts[0]).trim();
+        const defaultMax = defaultParts[1]?.trim() ?? stat.maxStatValue ?? '';
         let valPart = currentValue;
         let maxPart = '';
-        if (typeof currentValue === 'string' && currentValue.includes('/')) {
+        if (pool && typeof currentValue === 'string' && currentValue.includes('/')) {
             const parts = currentValue.split('/');
             valPart = parts[0];
             maxPart = parts[1];
@@ -60,7 +63,7 @@ export function renderOverridesSection(char, container) {
         valInput.type = 'text';
         valInput.className = 'text_pole override-val-input';
         valInput.style.flex = '2';
-        valInput.placeholder = `Val (Def: ${stat.defaultValue || ''})`;
+        valInput.placeholder = `Val (Def: ${defaultValue})`;
         valInput.value = valPart;
 
         const slashLabel = document.createElement('span');
@@ -71,12 +74,12 @@ export function renderOverridesSection(char, container) {
         maxInput.type = 'text';
         maxInput.className = 'text_pole override-max-input';
         maxInput.style.flex = '1';
-        maxInput.placeholder = `Max (Def: ${stat.maxStatValue || ''})`;
+        maxInput.placeholder = `Max (Def: ${defaultMax})`;
         maxInput.value = maxPart;
 
         const updateOverride = () => {
             const v = valInput.value.trim();
-            const m = fixedNumeric ? '' : maxInput.value.trim();
+            const m = pool ? maxInput.value.trim() : '';
             
             if (!char.statusOverrides) char.statusOverrides = {};
             
@@ -90,7 +93,7 @@ export function renderOverridesSection(char, container) {
             saveSettings();
             
             const finalValue = char.statusOverrides[stat.name] || '';
-            if (fixedNumeric) valInput.value = String(finalValue).split('/')[0];
+            if (fixedNumeric) valInput.value = String(finalValue);
             syncOverrideToActiveState(char.name, stat.name, finalValue);
             triggerReprocess();
         };
@@ -114,10 +117,10 @@ export function renderOverridesSection(char, container) {
         }
 
         valInput.addEventListener(fixedNumeric ? 'change' : 'input', updateOverride);
-        if (!fixedNumeric) maxInput.addEventListener('input', updateOverride);
+        if (pool) maxInput.addEventListener('input', updateOverride);
 
         row.append(label, valInput);
-        if (!fixedNumeric) row.append(slashLabel, maxInput);
+        if (pool) row.append(slashLabel, maxInput);
         grid.appendChild(row);
     });
 
