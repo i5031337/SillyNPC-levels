@@ -168,7 +168,7 @@ export const defaultSettings = {
     // a world and its rules, and rolling one back should not rewrite what you spent.
     usage: {},
     /** Composition instructions placed before the character's image description. Empty disables. */
-    imgGenPromptPrefix: 'Solo, profile picture',
+    imgGenPromptPrefix: 'Solo, portrait',
     /** Folder name under user/images/ for generated portraits. */
     imageSaveRoute: 'sillynpc',
     /**
