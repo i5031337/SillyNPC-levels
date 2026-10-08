@@ -118,6 +118,28 @@ test('earned XP and level-ups are explicit, including configured field names', (
     assert.equal(buildReportBreakdown([{ ...rows[1], before: '5', after: '4' }]).applied, '1 level change');
 });
 
+test('initial NPC XP and Level are stats rather than progression, including saved review rows', () => {
+    for (const before of ['', undefined, null, '(none)']) {
+        const rows = ['XP', 'Level'].map(label => ({
+            scope: 'character', actor: 'Mira', kind: 'stat', label, before,
+            after: label === 'XP' ? '0' : '5',
+        }));
+        const breakdown = buildReportBreakdown(rows, rows);
+        assert.equal(breakdown.applied, '2 stats');
+        assert.equal(breakdown.pending, '2 stats');
+        assert.deepEqual(breakdown.rows, [{ target: 'NPC: Mira', applied: '2 stats', pending: '2 stats' }]);
+        assert.deepEqual(buildReportBreakdown(JSON.parse(JSON.stringify(rows))), buildReportBreakdown(rows));
+    }
+    const transition = { xpName: 'Experience', levelName: 'Rank' };
+    assert.equal(buildReportBreakdown(['Experience', 'Rank'].map(label => ({
+        scope: 'character', actor: 'Mira', kind: 'stat', label, before: '', after: '5', transition,
+    }))).applied, '2 stats');
+    assert.equal(buildReportBreakdown([
+        { scope: 'character', actor: 'Mira', kind: 'stat', label: 'XP', before: '0', after: '1' },
+        { scope: 'character', actor: 'Mira', kind: 'stat', label: 'Level', before: '0', after: '1' },
+    ]).applied, '1 XP update, 1 level-up');
+});
+
 test('initialized pools report their maximum once while fixed ratings omit their bounds', () => {
     const definition = row => row.label === 'HP'
         ? { type: 'number', defaultValue: '10/10' }

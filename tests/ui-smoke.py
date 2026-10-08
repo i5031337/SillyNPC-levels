@@ -146,6 +146,13 @@ with browser_session() as browser:
             renderExtractionReport(message, 0);
             result.levelUpVisible = message.querySelector('summary').textContent.includes('1 XP update, 1 level-up')
               && message.querySelector('.sillynpc-reader-breakdown').textContent.includes('Level: 4 → 5');
+            chat[0].extra.sillynpc_applied = [
+              {scope: 'character', actor: 'Mudkip', kind: 'stat', label: 'XP', before: '', after: '0'},
+              {scope: 'character', actor: 'Mudkip', kind: 'stat', label: 'Level', before: '', after: '5'}];
+            renderExtractionReport(message, 0);
+            result.initialStatsVisible = message.querySelector('summary').textContent.includes('Applied: 2 stats')
+              && !message.querySelector('.sillynpc-reader-report').textContent.includes('XP update')
+              && !message.querySelector('.sillynpc-reader-report').textContent.includes('level-up');
             const savedNpcDefinitions = settings.npcStats;
             try {
               settings.npcStats = [{name: 'HP', type: 'bar', defaultValue: '10/10'},
@@ -222,7 +229,7 @@ with browser_session() as browser:
     assert all(manual_result.get(key) for key in [
         'visibilityControls', 'visibilityCombinations', 'customCollectionVisibility',
         'noTrackerBar', 'backgroundUnchanged', 'reportShown', 'reportHidden', 'reportRestored', 'reviewCountsRefresh', 'reviewStatSelection',
-        'collectionWarningsVisible', 'collectionWarningsCleared',
+        'collectionWarningsVisible', 'collectionWarningsCleared', 'levelUpVisible', 'initialStatsVisible',
     ]), manual_result
     execute("document.querySelector('.sillynpc-section[data-section=systems]').click()")
     execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player Stats').click()")

@@ -17,6 +17,8 @@ const categories = {
 function category(row) {
     if (row.grant || row.kind === 'stat-points') return 'reward';
     if (row.kind === 'stat') {
+        // Filling a blank field establishes its starting value, not progression.
+        if (!String(row.before ?? '').trim() || row.before === '(none)') return 'stat';
         const label = String(row.label || '').toLowerCase();
         if ((row.transition?.xpName && row.label === row.transition.xpName) || label === 'xp') return 'xp';
         if ((row.transition?.levelName && row.label === row.transition.levelName) || label === 'level') {
