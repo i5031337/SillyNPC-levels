@@ -1,154 +1,47 @@
 # Player and NPC progression with collection rewards
 
-Implemented progression resolves XP and Level by configured field IDs for the
-player and independently enabled NPC templates. Stat growth and collection rewards
-share the existing tracker review and latest-reply replacement paths.
+Progression resolves XP and Level by stable field IDs for the player and independently enabled NPC templates. The reader reports earned XP as a positive delta; extraction converts it to an absolute reading before code stores remainder XP and the new level. New sheets, manual edits, imports, transfers, and template assignments never backfill earned rewards.
 
-The background reader reports earned XP only as a positive delta. Extraction converts
-that delta to an absolute reading before progression stores the remainder and level.
-Manual edits and saved review rows can still carry absolute values. XP rollover
-supports several crossed levels in one update.
+## Numeric growth configuration
 
-## System configuration
+Each owner selects XP, Level, and eligible numeric stats, then configures:
 
-### Progression by owner
+- `pointsPerLevel`: a nonnegative whole number. Zero disables numeric growth. The budget may exceed the number of selected stats.
+- `assignment`: `random` or `manual`.
 
-Configure the player separately and configure NPC progression per template. An NPC
-template can opt out even when another template levels up. Resolve XP and Level by
-configured field IDs, using existing normalization to initialize older systems.
-The runtime must use the same resolved configuration as the editor and prompts.
+XP, Level, retired fields, and nonnumeric fields are excluded. Reader locking and NPC carryover are independent of growth eligibility. Older saved configurations retain their candidates and normalize to the new contract; old None configurations use zero points, otherwise selected candidates default to one point and random assignment.
 
-Each enabled owner configuration selects:
+Numeric growth never makes an LLM call. A reading creates one point budget per actor, equal to points per level multiplied by levels gained. Random assigns each point independently with replacement among stats that can accept another whole point. Once a stat reaches its cap, it leaves the available set immediately. Allocations are cached with the reading so missing-reward retries and reloads never reroll them. If every candidate is capped or uninitialized, the unspent budget remains pending.
 
-- XP field and Level field, both included in that owner's stat selection.
-- Stat growth policy: None, One stat, or All selected stats.
-- Eligible numeric stats. Exclude XP, Level, retired fields, and nonnumeric values.
-- For All selected stats, the reader chooses an independent integer increase of
-  0–3 for each selected stat at each crossed level, informed by the story. Zero
-  means no growth; positive increases remain optional review proposals.
+Manual assignment uses per-stat number inputs and a remaining-points counter in the tracker review. Inputs cannot exceed the budget or the stat's available capacity. Apply selected can spend part of the budget; the rest stays on the originating message for later allocation, including after another level-up. Unselected budgets stay pending. Discard all explicitly rejects the remaining budget.
 
-XP rollover uses a fixed cap. Variable experience curves and level caps are outside
-the current progression contract.
+## Bounds and acceptance
 
-One stat chooses one eligible stat and an integer increase from 1 through 5. All selected stats asks the reader for each stat
-at every crossed level and caches valid choices, including zero, for retries. Collection rewards are independent of the stat growth policy:
-an owner may receive both stat growth and rewards, or rewards without stat growth.
+Every point increases a rating by one within its fixed cap. A rating saved as `10/255` still grows its value, not its denominator. Each point increases a pool's current and maximum by one, preserving depletion: `6/10` plus two points becomes `8/12`. Blank pool maxima permit expansion; explicit maximum values limit capacity. Growth does not refill, cleanse, or fully heal pools.
 
-### Collection rewards
+XP and Level form one reviewed transition. Point budgets and collection rewards wait for that transition to be accepted. Rejected XP cannot leave rewards behind. Accepted gains are materialized against live state after ordinary story changes. If caps changed while waiting, only spendable points are consumed and the remainder stays pending.
 
-Collections expose a collapsed reward section behind a Level-up rewards checkbox. Reuse the
-collection's existing targets; do not add a second competing ownership selector.
+Budgets preserve immutable actor, persona, template, field, message, swipe, and transition provenance. Only allocations may be edited. Partial spending advances the budget's spent counter and gives applied stat rows distinct IDs. Stale confirmations cannot spend the same version twice. Applied pool rows include both current and maximum, and unspent budgets survive chat serialization. The existing turn baseline and replacement reading handle regeneration and swipes rather than adding a separate global ledger.
 
-Support two explicit modes:
+## Collection rewards
 
-- Scheduled: rows containing a required level and an entry using the collection's
-  actual field definitions. Every eligible scheduled entry becomes a review proposal
-  when its level is crossed. This makes an exact progression outline possible.
-- Guided: concise guidance for choosing one suitable entry at each eligible level,
-  with an optional interval (default every level). The model fills the collection's
-  configured fields, not a free-form reward string.
+Collections keep their existing ownership targets and have independent level-up rewards:
 
-Use one mode per collection in the initial UI. A scheduled entry is authored in
-the System, not inserted into any character's holdings or the Item Library until
-accepted. Validate required identifiers, field types, ranges, and level numbers.
+- Scheduled rewards propose typed configured entries at every crossed threshold.
+- Guided rewards use one batched LLM request to choose suitable typed entries at eligible levels. The model can return `noReward: true` when no suitable new reward exists.
 
-Empty schedules or disabled reward sections grant nothing. Empty guidance should
-use a general story-appropriate default. If guided selection has no suitable new
-reward, allow an explicit no-reward result rather than forcing duplicates.
+Only guided collection rewards call the model. Requests use short local task keys; persistent identities stay internal. Validate primary identifiers, types, ranges, options, ownership, and duplicates against holdings and story proposals. A failed guided request preserves numeric allocations and scheduled proposals, reports missing rewards, and retries only the missing choices without awarding XP again.
 
-## Progression and review behavior
+Guided replies request an `entry` object for each task. Flat choices with collection fields directly under the task key are normalized to the same entry contract and validated identically. Explicit wrapped entries take precedence; malformed entries cannot be rescued by unrelated fields outside the wrapper.
 
-1. Resolve the actor and template using existing ownership/identity helpers. New NPC
-   initialization is a starting sheet, not evidence of having earned earlier levels.
-2. Normalize earned XP using the existing delta boundary, then compute a transition
-   from the pre-update state. Produce one transition per actor with old/new level,
-   crossed levels, and remainder XP.
-3. Derive stat growth and scheduled rewards from those transitions. Guided rewards
-   and One stat choices use model selection with validated, owner-specific schemas.
-4. Preview and apply use the same transition and arithmetic. A dry run must never
-   modify NPC cards, library entries, settings, or chat metadata.
-5. Apply XP/Level through the existing review policy. Keep level-derived stat growth
-   and collection rewards in review.
-   If XP/Level is itself held for review, its dependent grants must wait for that
-   transition to be accepted. Rejected XP must never leave applied rewards behind.
-6. Review rows identify the recipient, crossed level, stat/collection, and reason.
-   Numeric growth and collections can coexist without one overwriting the other.
-   Keep story-derived changes and level-derived gains distinct when they affect the
-   same stat so accepting growth cannot reapply a story change or bypass its review.
-7. Resolve proposed numeric gains against the applicable current value at acceptance;
-   reject or rebuild stale proposals when their level transition is no longer valid.
-   Preserve exact gains and bounds in history and use an explicit provenance record
-   rather than inferring a level-up from a label or a stat's changed value.
+## Explicit NPC level-ups
 
-### Bounds, pools, and multiple levels
+Cast → Card → Edit includes **Trigger Level-up**. This explicit action advances the configured Level once, preserves remainder XP, and prepares the same numeric points and collection rewards as an earned level-up. It works for offstage cards without admitting them to the scene. Progression must be enabled, counters valid, and the next level within its cap.
 
-- Plain ratings increase within their configured fixed maximum.
-- Numeric pools increase current and capacity by the growth amount, preserving existing
-  depletion. For example, 6/10 with +1 becomes 7/11, not a full heal.
-- Explicit maxima remain hard ceilings for pool growth; blank maxima allow
-  capacity expansion. Configured limits are preserved.
-- No automatic revival, cleansing, refilling, or full healing.
-- All selected stats chooses independent 0–3 increases per stat per crossed level,
-  subject to bounds. One stat chooses
-  one increase per crossed level. Scheduled rewards include each crossed threshold;
-  guided intervals are evaluated for each crossed level, not just the final level.
-- Direct manual edits of Level/XP are edits, not automatic reward triggers. Imported
-  sheets, template changes, new NPC initialization, and chat transfers never backfill rewards.
+The level advances immediately; rewards await review below the button. Pending budgets, partial allocations, and guided failures persist in chat metadata by card, System, and persona rather than on a story message. Later manual level-ups do not invalidate these rewards. Discard all rejects rewards without reversing the explicit level advance. Context and counter changes during preparation abort the action; duplicate clicks cannot advance twice.
 
-### Idempotency and failure handling
+## Verification
 
-Use stable actor identity plus the tracker message/swipe, crossed level, and grant
-identity to associate grants with their originating transition. Integrate with the
-existing turn baseline, applied-row history, and replacement-reading flow instead
-of creating an unrelated global ledger.
+Run `node --experimental-default-type=module --test tests/*.mjs`. Meaningful coverage includes replacement sampling, budgets larger than candidate counts, immediate cap exclusion, all-capped leftovers, multiple levels, locked candidates, pool depletion and capacity, bounded ratings saved with denominators, manual validation and partial spending, serialization, stale confirmations, persona changes, offstage cards, guided retries, and generation schema validation.
 
-Repeated reads, accepting a row twice, regeneration, and swipes must not double
-grant XP, stat growth, or rewards. Regeneration replaces that reading's grants;
-undo restores them with the rest of the tracker state. Rejected grants remain rejected
-for that reading and should not be silently recreated on retry.
-
-Reward duplicate checks use the configured primary identifier and existing matching
-rules, both against holdings and against other proposals in the same reading. By
-default, do not increase quantities or overwrite an existing item as a duplicate reward.
-Deleting an earned item later must not cause an old scheduled reward to reappear.
-
-Validate generated entries through existing collection normalization and targeting.
-Ignore attempts to reward another template or change locked fields. A malformed
-guided reply should produce a visible retryable reward failure; do not lose the XP
-transition or already validated deterministic proposals, and retry only missing grants.
-Apply actor/chat freshness checks after asynchronous selection, as the reader already does.
-
-## Verification and acceptance criteria
-
-Run meaningful focused Node tests, then the full suite:
-
-```sh
-node --experimental-default-type=module --test tests/*.mjs
-```
-
-Cover:
-
-- Player and NPC rollover, exact thresholds, overflow across several levels, invalid
-  XP, positive deltas versus absolute review values, configured renamed fields.
-- Different NPC templates with different/disabled progression and overlapping
-  collection targets; All NPCs plus a template never grants twice.
-- None, One stat, and All selected stats; locked growth candidates and retired/nonnumeric exclusions, fixed
-  bounds, depleted pools, simultaneous story changes, and multi-level gains.
-- Scheduled thresholds, guided intervals/no-reward/malformed replies, custom primary
-  fields, collection numeric ranges, existing items, duplicate proposals, static fields.
-- Initial NPC sheets, manual edits, chat transfer/reset, persona changes, and offstage
-  actor resolution without creating unwanted scene presence.
-- Held/rejected XP, partially accepted grants, stale rows, pending grants surviving
-  reload, retries, double acceptance, regeneration, swipe replacement, and undo.
-- Schema/export/import round trips and readable older sheets/reviews without automatic grants.
-
-Verify UI behavior in the running SillyTavern instance, following AGENTS.md. Use
-read-only fixtures that restore state, never save test holdings or request models.
-Run `python3 tests/ui-smoke.py` and extend relevant fixture checks for the new controls.
-Check narrow layouts, collapsed sections, keyboard access, range errors, target
-selection, and actual player/NPC reward review rows.
-
-A complete demonstration should show a player and one enabled NPC crossing a level,
-another disabled NPC remaining unaffected, several selected stats gaining their
-configured small increases, and a correctly targeted collection reward awaiting
-review. Accepting, rejecting, and regenerating must behave predictably without duplicates.
+Live unsaved fixtures run with `python3 tests/ui-level-rewards.py`, `python3 tests/ui-manual-level-ups.py`, `python3 tests/ui-progression-smoke.py`, and `python3 tests/ui-smoke.py`. Verify player and NPC controls, card button placement, manual budget enforcement, review dependencies, narrow layouts, keyboard access, dry-run purity, and final pool and rating values without saving fixtures or requesting models.

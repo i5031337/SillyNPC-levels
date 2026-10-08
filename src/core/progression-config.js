@@ -27,7 +27,9 @@ export function normalizeProgressionConfig(source, stats = [], { enabledByDefaul
     return {
         enabled: validFields && (input.enabled === undefined ? enabledByDefault : input.enabled === true),
         xpFieldId, levelFieldId,
-        statGrowth: ['none', 'one', 'all'].includes(input.statGrowth) ? input.statGrowth : selected.length ? 'one' : 'none',
+        pointsPerLevel: Number.isSafeInteger(Number(input.pointsPerLevel)) && Number(input.pointsPerLevel) >= 0
+            ? Number(input.pointsPerLevel) : input.statGrowth === 'none' || !selected.length ? 0 : 1,
+        assignment: input.assignment === 'manual' ? 'manual' : 'random',
         statIds: selected,
     };
 }

@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prepareGrantReview, selectReviewRows, materializeGrantRows } from '../src/tracker/level-grant-review.js';
+import { prepareGrantReview, selectReviewRows, materializeGrantRows, remainingGrantRows } from '../src/tracker/level-grant-review.js';
 import { mergePendingMemoryRows } from '../src/memory/memory-review.js';
 
 const settings = {
     playerStats: [{ id: 'xp', name: 'Experience', type: 'number', defaultValue: '0/100' }, { id: 'lv', name: 'Rank', type: 'number', defaultValue: '1' },
         { id: 'hp', name: 'Health', type: 'bar', defaultValue: '10/10' },
         { id: 'str', name: 'Strength', type: 'number', locked: true, maxStatValue: '10' }],
-    progression: { player: { enabled: true, xpFieldId: 'xp', levelFieldId: 'lv', statGrowth: 'all', statIds: ['hp', 'str'] } },
+    progression: { player: { enabled: true, xpFieldId: 'xp', levelFieldId: 'lv', pointsPerLevel: 2, assignment: 'random', statIds: ['hp', 'str'] } },
 };
 const transition = { transitionId: 't', scope: 'player', actor: null, actorId: 'player:player', xpName: 'Experience', levelName: 'Rank', oldLevel: 1, newLevel: 2, xpAfter: '5/100' };
 const grant = (id = 'g', label = 'Health') => ({ scope: 'player', actor: null, kind: 'stat', label, before: '6', after: '7', grant: { ...transition, id, gain: 1 } });
@@ -35,6 +35,34 @@ test('fixed ratings clamp; multiple crossed levels accumulate against current st
     const result = materializeGrantRows([grant('g1'), grant('g2'), grant('s', 'Strength')], state, settings, [], { acceptedTransitionIds: ['t'] });
     assert.equal(result.rows.find(row => row.grant.id === 'g2').grant.valueAfter, '8/12');
     assert.equal(result.rows.find(row => row.label === 'Strength').after, '10');
+});
+
+test('confirmed NPC rating rewards keep the proposed gains on slash-form bounded ratings', async () => {
+    const { selectLevelGrants } = await import('../src/tracker/extractor/status-level-grants.js');
+    const stats = settings.playerStats.map(def => ({ ...def }));
+    const tracker = { ...settings, npcStats: stats, npcTemplates: [{ id: 'fighter',
+        statIds: stats.map(def => def.id), progression: { ...settings.progression.player, pointsPerLevel: 6, assignment: 'manual' } }] };
+    const cards = [{ id: 'mudkip', name: 'Mudkip', npcTemplateId: 'fighter' }];
+    const initial = { player: { stats: {} }, characters: [{ name: 'Mudkip',
+        npcTemplateId: 'fighter', stats: { Experience: '90/100', Rank: '1', Health: '6/10', Strength: '3/10' } }] };
+    const selection = await selectLevelGrants({ characters: [{ name: 'Mudkip', Experience: '110/100' }] },
+        initial, tracker, 'Victory', [], { cards, requestExtraction: () => assert.fail('No numeric model request') });
+    assert.equal(selection.rows[0].grant.points, 6);
+    selection.rows[0].allocations = { str: 3, hp: 3 };
+    const leveled = structuredClone(initial);
+    Object.assign(leveled.characters[0].stats, { Experience: '10/100', Rank: '2' });
+    const accepted = materializeGrantRows(selection.rows, leveled, tracker, cards, {
+        acceptedTransitionIds: selection.rows.map(row => row.grant.transitionId),
+    });
+    assert.deepEqual(accepted.rejected, []);
+    const strength = accepted.rows.find(row => row.label === 'Strength');
+    assert.ok(strength);
+    assert.equal(strength.grant.valueAfter, '6/10');
+    assert.equal(accepted.rows.some(row => row.label === 'Strength' && row.kind === 'stat-max'), false);
+    assert.equal(accepted.rows.find(row => row.label === 'Health').grant.valueAfter, '9/13');
+    assert.deepEqual(initial.characters[0].stats, {
+        Experience: '90/100', Rank: '1', Health: '6/10', Strength: '3/10',
+    });
 });
 
 test('stale transitions, changed actors and duplicate acceptance cannot grant again', () => {
@@ -101,7 +129,7 @@ test('review acceptance applies story and growth together, preserves partial gra
             return result;
         }, buildUpdateFromChanges: build, recordAppliedChanges: (_id, rows) => message.extra.sillynpc_applied.push(...rows),
         saveChatSoon: () => {}, appliedChangesForCurrentSwipe: () => message.extra.sillynpc_applied,
-        selectReviewRows, materializeGrantRows, validateReviewedTransitions,
+        selectReviewRows, materializeGrantRows, validateReviewedTransitions, remainingGrantRows,
         activeNpcSystem: () => null, mergePendingMemoryRows,
     };
     const resolve = new Function(...Object.keys(dependencies), source.replace(/^import .*;\n/gm, '').replace(/export /g, '')
@@ -130,4 +158,40 @@ test('review acceptance applies story and growth together, preserves partial gra
     message.extra.sillynpc_pending = [xp, level];
     resolve(0, []);
     assert.deepEqual(message.extra.sillynpc_level_reading.rejectedTransitionIds, ['t']);
+
+    live = structuredClone(state);
+    const budget = { ...grant('budget'), kind: 'stat-points', label: 'Skill points', allocations: {},
+        grant: { ...grant('budget').grant, points: 5, assignment: 'manual', statIds: ['hp', 'str'], spent: 0 } };
+    message.extra.sillynpc_pending = [budget];
+    message.extra.sillynpc_applied = [{ transition }];
+    message.extra.sillynpc_level_reading = {};
+    resolve(0, [{ ...budget, allocations: { hp: 2 } }]);
+    assert.equal(live.player.stats.Health, '8/12');
+    assert.equal(message.extra.sillynpc_pending[0].grant.points, 3);
+    assert.equal(message.extra.sillynpc_pending[0].grant.spent, 2);
+    assert.deepEqual(message.extra.sillynpc_level_reading.decidedGrantIds, []);
+    const partialWrites = writes;
+    resolve(0, [{ ...budget, allocations: { hp: 2 } }]);
+    assert.equal(writes, partialWrites, 'A stale confirmation cannot spend the budget again');
+    // The remaining budget survives serialization and later level-ups.
+    message.extra.sillynpc_pending = JSON.parse(JSON.stringify(message.extra.sillynpc_pending));
+    live.player.stats.Rank = '3';
+    const remainder = message.extra.sillynpc_pending[0];
+    resolve(0, [{ ...remainder, allocations: { hp: 3 } }]);
+    assert.equal(live.player.stats.Health, '11/15');
+    assert.equal(message.extra.sillynpc_pending, undefined);
+    assert.deepEqual(message.extra.sillynpc_level_reading.decidedGrantIds, ['budget']);
+    assert.equal(new Set(message.extra.sillynpc_applied.filter(row => row.kind === 'stat').map(row => row.grant.id)).size, 2);
+    resolve(0, [{ ...remainder, allocations: { hp: 3 } }]);
+    assert.equal(live.player.stats.Health, '11/15');
+
+    const capped = { ...budget, grant: { ...budget.grant, assignment: 'random' }, allocations: { str: 5 } };
+    live.player.stats.Strength = '10';
+    message.extra.sillynpc_pending = [capped];
+    message.extra.sillynpc_applied = [{ transition }];
+    message.extra.sillynpc_level_reading = {};
+    resolve(0, [capped]);
+    assert.equal(message.extra.sillynpc_pending[0].grant.points, 5);
+    assert.deepEqual(message.extra.sillynpc_pending[0].allocations, {});
+    assert.equal(live.player.stats.Strength, '10');
 });

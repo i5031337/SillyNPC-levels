@@ -21,7 +21,8 @@ export async function prepareLevelReading(parsed, state, tracker, text, leadUp, 
     const skipped = (reading.failures || []).filter(failure =>
         [...rejected].some(id => failure.id.startsWith(`${id}:`))).map(failure => failure.id);
     const context = { messageId, swipeId: swipe, personaId, cards: getAllCharacters(),
-        cache: reading.cache, decidedGrantIds: [...(reading.decidedGrantIds || []), ...skipped] };
+        cache: reading.cache, allowNewPointBudgets: !previous,
+        decidedGrantIds: [...(reading.decidedGrantIds || []), ...skipped] };
     const grants = await selectLevelGrants(reading.parsed, reading.state, tracker, text, leadUp, context);
     grants.rows = grants.rows.filter(row => !rejected.has(row.grant.transitionId));
     grants.failures = grants.failures.filter(failure => ![...rejected].some(id => failure.id.startsWith(`${id}:`)));

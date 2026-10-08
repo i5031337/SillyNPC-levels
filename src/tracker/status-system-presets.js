@@ -97,7 +97,7 @@ function migrateSavedPresets(settings) {
     const presets = settings.statusTracker?.presets || {};
     let changed = false;
     for (const [name, preset] of Object.entries(presets)) {
-        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && preset.definition?.progression?.player?.statGrowth && !preset.world
+        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && preset.definition?.progression?.player?.assignment && !preset.world
             && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
                 .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
         presets[name] = migratePreset(name, preset);

@@ -122,9 +122,14 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/usage.js` | Model usage accounting. |
 | `src/core/tokens.js` | Token budget readout. |
 | `src/tracker/progression.js` | XP transitions and bounded stat growth, including multiple crossed levels. |
+| `src/tracker/level-stat-points.js` | Numeric point capacity, allocation with replacement, and manual spending validation. |
+| `src/ui/tracker/ui-point-allocation.js` | Random allocation summaries and manual controls for pending point budgets. |
 | `src/tracker/progression-fields.js` | Resolve actor progression and reserve configured XP and Level fields in tracker updates. |
-| `src/tracker/extractor/status-level-grants.js` | Owner-specific One stat and guided collection selection alongside deterministic level grants. |
+| `src/tracker/extractor/status-level-grants.js` | Code-owned numeric point budgets and guided collection selection alongside scheduled rewards. |
 | `src/tracker/level-grant-review.js` | Structured grant provenance, XP dependencies, freshness, and acceptance-time grant arithmetic. |
+| `src/tracker/manual-level-up-logic.js`, `src/tracker/manual-level-ups.js` | Explicit NPC level advances and chat-owned reward reviews, with runtime bindings. |
+| `src/ui/characters/ui-manual-level-up.js` | Card Edit button and pending manual level-up reward controls. |
+| `tests/manual-level-ups.mjs`, `tests/ui-manual-level-ups.py` | Explicit level-up lifecycle, generic pool growth, persistence, context guards, and live card review checks. |
 | `src/tracker/numeric-stat-bounds.js` | Enforce numeric minimums and pool ceilings. |
 | `src/tracker/stat-prompt-definitions.js` | Format stat purposes and rules for reader and inline prompts. |
 | `src/tracker/stat-persistence.js` | Rules for NPC stat persistence. |
@@ -293,7 +298,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/system/ui-system-profile-operations.js` | Pure add, rename, order, retire, and restore operations for profile fields. |
 | `src/ui/system/ui-system-collections.js` | Collection schema editor, including NPC template targets. |
 | `src/ui/system/ui-collection-rewards.js` | Collapsed Level-up rewards controls with field-driven schedules and guided selection settings. |
-| `src/ui/system/ui-system-progression.js` | Player and NPC template XP/Level selection, stat growth policies, eligible stats, and per-stat gains. |
+| `src/ui/system/ui-system-progression.js` | Player and NPC template XP/Level selection, points per level, random/manual assignment, and eligible stats. |
 | `src/ui/system/ui-collection-targets.js` | Collection target checkboxes for player and NPC template combinations. |
 | `src/core/collection-targets.js` | Shared collection targeting rules for sheets, prompts, and updates. |
 | `tests/collection-targets.mjs` | Template target normalization and update boundary tests. |

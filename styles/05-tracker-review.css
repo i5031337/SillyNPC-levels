@@ -235,6 +235,25 @@
     cursor: pointer;
 }
 
+.sillynpc-point-allocation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+.sillynpc-point-allocation > strong, .sillynpc-point-allocation > small {
+    width: 100%;
+}
+.sillynpc-point-allocation label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sillynpc-point-allocation input {
+    width: 70px;
+}
+
 .sillynpc-review-icon {
     opacity: 0.55;
     width: 1em;

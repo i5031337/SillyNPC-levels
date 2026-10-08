@@ -7,7 +7,7 @@ import { loadStateFromMetadata, applyUpdate, saveStateToMetadata, getCurrentPers
 import { buildUpdateFromChanges } from './status-diff.js';
 import { recordAppliedChanges, saveChatSoon } from './snapshots/status-snapshots.js';
 import { appliedChangesForCurrentSwipe } from './snapshots/status-snapshot-records.js';
-import { selectReviewRows, materializeGrantRows, validateReviewedTransitions } from './level-grant-review.js';
+import { selectReviewRows, materializeGrantRows, validateReviewedTransitions, remainingGrantRows } from './level-grant-review.js';
 import { activeNpcSystem } from '../core/npc-templates.js';
 import { syncProfileToLore } from '../lore/lore-sync.js';
 import { selectMemoryReviewRows, applyReviewedMemories, mergePendingMemoryRows } from '../memory/memory-review.js';
@@ -302,9 +302,7 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
         if (noted) saveStateToMetadata(state, { label: 'Standing item decisions' });
     }
 
-    const attempted = new Set(rows.filter(row => row.grant).map(row => row.grant.id));
-    const remaining = discardAll ? [] : pending.filter(row => row.grant
-        && !attempted.has(row.grant.id) && !selection.rejectedTransitions.has(row.grant.transitionId));
+    const remaining = remainingGrantRows(pending, rows, grants, recorded, selection.rejectedTransitions, discardAll);
     const reading = messageAt(messageId)?.extra?.sillynpc_level_reading;
     if (reading && typeof reading === 'object') {
         const outstanding = new Set(remaining.map(row => row.grant.id));
@@ -315,5 +313,5 @@ export function resolvePendingChanges(messageId, accepted, dismissed = [], { dis
     }
     setPendingChanges(messageId, remaining, getLooseNotes(messageId), getRefusedValues(messageId), { replaceMemory: true });
     return { applied: recorded.length + memories.applied,
-        discarded: pending.length - recorded.length - memories.applied - remaining.length, remaining: remaining.length };
+        discarded: Math.max(0, pending.length - recorded.length - memories.applied - remaining.length), remaining: remaining.length };
 }

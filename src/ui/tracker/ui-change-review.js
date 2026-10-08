@@ -6,6 +6,7 @@ import { getPendingChanges, resolvePendingChanges, getLooseNotes, getRefusedValu
 import { getSettings } from '../../core/settings.js';
 import { getAllCharacters } from '../../characters/character-repository.js';
 import { acceptedByDefault } from '../../tracker/status-diff.js';
+import { buildPointAllocation } from './ui-point-allocation.js';
 
 /**
  * The inline review panel.
@@ -64,9 +65,9 @@ function refreshGrantDependencies(rows) {
  * @param {string|number} messageId
  * @returns {HTMLElement|null}
  */
-function buildReviewPanel(messageId) {
+function buildReviewPanel(messageId, review = {}) {
     if (!getSettings().enabled) return null;
-    const pending = getPendingChanges(messageId);
+    const pending = (review.getPendingChanges || getPendingChanges)(messageId);
     if (!pending.length) return null;
 
     // Working copy: edits and toggles live here until the user commits.
@@ -109,7 +110,7 @@ function buildReviewPanel(messageId) {
        restates the whole state explains every value it restates, and all but a handful of
        those explain something that did not change - thirty lines above seven rows, burying
        the decision the panel exists for. The evidence is still here, one click away. */
-    const loose = getLooseNotes(messageId);
+    const loose = review.getLooseNotes ? review.getLooseNotes(messageId) : review.getPendingChanges ? [] : getLooseNotes(messageId);
     if (loose.length) {
         const notes = document.createElement('details');
         notes.className = 'sillynpc-review-loose-notes';
@@ -131,7 +132,7 @@ function buildReviewPanel(messageId) {
        whether the reader said nothing about a field or said something it was not allowed to
        say, and those call for opposite answers: one is a reader to fix, the other a word to
        add in System Builder. */
-    const refused = getRefusedValues(messageId);
+    const refused = review.getRefusedValues ? review.getRefusedValues(messageId) : review.getPendingChanges ? [] : getRefusedValues(messageId);
     if (refused.length) {
         const box = document.createElement('details');
         box.className = 'sillynpc-review-loose-notes sillynpc-review-refused';
@@ -178,12 +179,13 @@ function buildReviewPanel(messageId) {
         const accepted = rows.filter(r => r.accepted).map(r => ({
             ...r.change, after: r.value,
             scope: r.scope, actor: r.actor, collectionId: r.collectionId,
+            ...(r.change.kind === 'stat-points' ? { allocations: r.allocations } : {}),
         }));
         const dismissed = rows.filter(r => r.dismiss).map(r => r.change);
         const container = panel.parentElement;
-        resolvePendingChanges(messageId, accepted, dismissed);
+        (review.resolvePendingChanges || resolvePendingChanges)(messageId, accepted, dismissed);
         panel.remove();
-        renderReviewPanel(container, messageId);
+        renderReviewPanel(container, messageId, review);
     });
 
     const discard = document.createElement('button');
@@ -194,7 +196,7 @@ function buildReviewPanel(messageId) {
     discard.addEventListener('click', () => {
         // Declining is about this message. Only a ticked never-again box is permanent.
         const dismissed = rows.filter(r => r.dismiss).map(r => r.change);
-        resolvePendingChanges(messageId, [], dismissed, { discardAll: true });
+        (review.resolvePendingChanges || resolvePendingChanges)(messageId, [], dismissed, { discardAll: true });
         panel.remove();
     });
 
@@ -321,6 +323,11 @@ function buildRow(row, rows) {
     const label = document.createElement('span');
     label.className = 'sillynpc-review-label';
     label.textContent = change.label;
+    if (change.kind === 'stat-points') {
+        icon.className = 'fa-solid fa-coins sillynpc-review-icon';
+        el.append(toggle, icon, label, buildPointAllocation(row));
+        return el;
+    }
     if (change.kind === 'item-remove') {
         label.title = change.fromReplace
             ? 'A scan rebuilt this list and this item was not in it. Tick it to remove the item.'
@@ -403,12 +410,12 @@ function buildRow(row, rows) {
  * @param {Element} container A `.mes`, or anywhere else the panel should live.
  * @param {string|number} messageId
  */
-export function renderReviewPanel(container, messageId) {
+export function renderReviewPanel(container, messageId, review = {}) {
     const mesEl = container;
     if (!mesEl) return;
     mesEl.querySelectorAll('.sillynpc-review-panel').forEach(el => el.remove());
 
-    const panel = buildReviewPanel(messageId);
+    const panel = buildReviewPanel(messageId, review);
     if (!panel) return;
 
     const textContainer = mesEl.querySelector('.mes_text');

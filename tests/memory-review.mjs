@@ -1,3 +1,4 @@
+import { remainingGrantRows } from '../src/tracker/level-grant-review.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { selectMemoryReviewRows, applyReviewedMemories, mergePendingMemoryRows } from '../src/memory/memory-review.js';
@@ -83,7 +84,7 @@ test('review resolver saves and syncs memory batches without creating narrator t
         appliedChangesForCurrentSwipe: () => [],
         selectReviewRows: () => ({ rows: [], rejectedTransitions: new Set() }),
         validateReviewedTransitions: () => ({ rows: [], invalid: new Set() }),
-        materializeGrantRows: () => ({ rows: [] }),
+        materializeGrantRows: () => ({ rows: [] }), remainingGrantRows,
         activeNpcSystem: () => ({ memories: { enabled: true, maxEntriesPerCharacter: 50 } }),
         syncProfileToLore: async (card, store, options) => synced.push({ card, store, current: options.isCurrent() }),
         selectMemoryReviewRows, applyReviewedMemories, mergePendingMemoryRows,

@@ -538,3 +538,15 @@
 .sillynpc-tab-panel[style*="display: flex"] {
     animation: sillynpc-fade-in 0.3s ease-out;
 }
+.sillynpc-manual-level-up {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+.sillynpc-trigger-level-up {
+    align-self: flex-start;
+}
+.sillynpc-manual-level-up-review {
+    min-width: 0;
+}

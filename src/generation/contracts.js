@@ -10,7 +10,7 @@ export const object = (properties, required = Object.keys(properties)) => ({ typ
 const id = { type: 'string', pattern: '^[a-z][a-z0-9_-]*$', maxLength: 80 };
 const scalar = { type: ['string', 'number', 'boolean'] };
 export const progressionSchema = object({ enabled: bool, xpFieldId: text, levelFieldId: text,
-    statGrowth: enumeration(['none', 'one', 'all']), statIds: array(id) });
+    pointsPerLevel: { type: 'integer', minimum: 0 }, assignment: enumeration(['random', 'manual']), statIds: array(id) });
 export const profileSchema = object({ id, label: text, guidance: text,
     policy: enumeration(['anchored', 'replaceable']), placeholder: text, multiline: bool, includeInImagePrompt: bool, retired: bool },
 ['id', 'label', 'guidance', 'policy']);

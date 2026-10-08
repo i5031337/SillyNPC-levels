@@ -137,7 +137,7 @@ test('NPC initialization accepts individual pools and blank locked Level once', 
     const xp = { id: 'xp', name: 'XP', type: 'number', defaultValue: '0/20' };
     const settings = { globalStats: [], playerStats: [], npcStats: [hp, level, xp],
         npcTemplates: [{ id: 'pokemon', statIds: ['hp', 'level', 'xp'], progression: {
-            enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'none', statIds: [],
+            enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 0, assignment: 'random', statIds: [],
         } }] };
     const state = { characters: [] };
     const update = { characters: [

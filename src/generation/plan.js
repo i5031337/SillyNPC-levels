@@ -1,7 +1,7 @@
 import { planSchema } from './contracts.js';
 import { validateShape } from './validate-shape.js';
 import { normalizeSystemDefinition } from '../core/system-schema.js';
-export const disabledProgression = () => ({ enabled: false, xpFieldId: '', levelFieldId: '', statGrowth: 'none', statIds: [] });
+export const disabledProgression = () => ({ enabled: false, xpFieldId: '', levelFieldId: '', pointsPerLevel: 0, assignment: 'random', statIds: [] });
 const slug = name => {
     const base = name.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 65) || 'field';
     return /^[a-z]/.test(base) ? base : `f-${base}`;

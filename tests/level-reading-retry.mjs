@@ -10,9 +10,11 @@ function harness() {
     const context = { chat: [message], chatMetadata: {} };
     const tracker = { playerStats: [{ id: 'xp', name: 'XP', type: 'bar' },
         { id: 'level', name: 'Level', type: 'number' }, { id: 'hp', name: 'HP', type: 'bar' }],
-        progression: { player: { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'one', statIds: ['hp'] } },
+        progression: { player: { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 2, assignment: 'random', statIds: ['hp'] } },
         collections: [{ id: 'skills', targets: ['player'], fields: [{ id: 'name', name: 'name', type: 'text', isPrimary: true }],
-            levelUpRewards: { enabled: true, mode: 'scheduled', schedule: [{ id: 'dodge', level: 2, entry: { name: 'Dodge' } }] } }] };
+            levelUpRewards: { enabled: true, mode: 'scheduled', schedule: [{ id: 'dodge', level: 2, entry: { name: 'Dodge' } }] } },
+            { id: 'guided', targets: ['player'], fields: [{ id: 'name', name: 'name', type: 'text', isPrimary: true }],
+                levelUpRewards: { enabled: true, mode: 'guided', interval: 1 } }] };
     const state = { player: { stats: { XP: '9/10', Level: '1', HP: '6/10' }, collections: {} } };
     const parsed = { player: { stats: { XP: '20/10' } } };
     let pending = [], applied = [], requestMode = 'partial';
@@ -29,7 +31,7 @@ function harness() {
                 const tasks = JSON.parse(prompt).tasks; requested.push(tasks.map(task => task.id));
                 await duringRequest();
                 return { choices: (requestMode === 'partial' ? tasks.slice(0, 1) : tasks)
-                    .map(task => ({ id: task.id, statId: 'hp', amount: 1 })) };
+                    .map(task => ({ id: task.id, entry: { name: `Reward ${task.level}` } })) };
             } }),
     };
     const api = new Function(...Object.keys(deps), `${source}\nreturn {prepareLevelReading,saveLevelReading,retryLevelReading,LEVEL_READING_KEY};`)(...Object.values(deps));
@@ -45,27 +47,27 @@ async function initialReading(h) {
 
 test('retry requests missing choices only and keeps deterministic proposals without applying XP', async () => {
     const h = harness(), result = await initialReading(h);
-    assert.equal(result.rows.length, 2);
+    assert.equal(result.rows.length, 3);
     assert.equal(result.failures.length, 1);
     h.setMode('complete');
     const retry = await h.retryLevelReading(0);
     assert.equal(retry.applied, true);
     assert.equal(retry.pending, 1);
     assert.equal(h.requested[1].length, 1);
-    assert.equal(h.pending().length, 3);
-    assert.equal(h.pending().filter(row => row.kind === 'item-add').length, 1);
+    assert.equal(h.pending().length, 4);
+    assert.equal(h.pending().filter(row => row.kind === 'item-add').length, 3);
     assert.equal(h.state.player.stats.XP, '9/10');
     assert.equal(h.state.player.stats.Level, '1');
 });
 
 test('accepted and rejected grants stay decided when missing choices are retried', async () => {
     const h = harness(), result = await initialReading(h);
-    const accepted = result.rows.find(row => row.kind === 'stat');
+    const accepted = result.rows.find(row => row.kind === 'stat-points');
     const rejected = result.rows.find(row => row.kind === 'item-add');
     h.message.extra[h.LEVEL_READING_KEY].decidedGrantIds.push(accepted.grant.id, rejected.grant.id);
     h.setApplied([accepted]); h.setPending([]); h.setMode('complete');
     await h.retryLevelReading(0);
-    assert.equal(h.pending().length, 1);
+    assert.equal(h.pending().length, 2);
     assert.ok(h.pending().every(row => ![accepted.grant.id, rejected.grant.id].includes(row.grant.id)));
 });
 

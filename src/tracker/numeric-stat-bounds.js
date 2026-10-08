@@ -14,6 +14,14 @@ export function isPoolStat(def, value = def?.defaultValue) {
     return def?.type === 'bar' || READING.test(String(value ?? '')) && String(value).includes('/');
 }
 
+/** Level growth expands pools but increases bounded ratings within their existing cap. */
+export function statGrowthBounds(def, value) {
+    const explicitMax = String(def?.maxStatValue ?? '').trim();
+    const growMaximum = String(value ?? '').includes('/') && (isPoolStat(def) || !explicitMax);
+    return { growMaximum, fixedMaximum: growMaximum
+        ? (explicitMax ? Number(explicitMax) : null) : configuredNumericMaximum(def) };
+}
+
 /** Numeric bounds apply to the current reading; a pool carries its own live cap. */
 export function constrainNumericStat(def, incoming, existing) {
     if (def?.type !== 'number' && def?.type !== 'bar') return incoming;

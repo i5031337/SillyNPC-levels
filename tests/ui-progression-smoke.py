@@ -20,19 +20,22 @@ with browser_session() as browser:
           const stats=[{id:'earned',name:'Experience',type:'number',defaultValue:'0/10'},
             {id:'rank',name:'Rank',type:'number',defaultValue:'1',locked:true,carryOver:false},
             {id:'health',name:'Health',type:'number',defaultValue:'6/10',locked:true}];
-          const template={id:'hero',statIds:['earned','rank','health'],progression:{enabled:true,xpFieldId:'earned',levelFieldId:'rank',statGrowth:'all',statIds:['health'],increments:{health:2}}};
+          const template={id:'hero',statIds:['earned','rank','health'],progression:{enabled:true,xpFieldId:'earned',levelFieldId:'rank',pointsPerLevel:7,assignment:'random',statIds:['health'],increments:{health:2}}};
           settings.statusTracker={playerStats:structuredClone(stats),npcStats:structuredClone(stats),npcTemplates:[template],progression:{player:structuredClone(template.progression)}};
           const render=(owner)=>{host.replaceChildren(buildProgressionEditor({template:owner,onSave:()=>{},onRefresh:()=>render(owner)}));};
           render();
           result.playerFields=[...host.querySelectorAll('select')].length===3;
-          result.playerGrowth=!host.querySelector('input[type=number]') && host.textContent.includes('0–3') && [...host.querySelectorAll('input[type=checkbox]')].some(input=>input.checked && input.parentElement.textContent.includes('Health'));
+          result.playerGrowth=host.querySelector('[aria-label="Skill points per level"]').value==='7' && host.textContent.includes('independently') && [...host.querySelectorAll('input[type=checkbox]')].some(input=>input.checked && input.parentElement.textContent.includes('Health'));
           result.narrowLayout=host.scrollWidth<=host.clientWidth+2;
           render(template);
-          const growth=host.querySelector('[aria-label="Stat growth"]'); growth.value='none'; growth.dispatchEvent(new Event('change'));
-          result.npcPolicy=template.progression.statGrowth==='none' && !host.querySelector('input[type=number]');
+          const growth=host.querySelector('[aria-label="Point assignment"]'); growth.value='manual'; growth.dispatchEvent(new Event('change'));
+          const points=host.querySelector('[aria-label="Skill points per level"]'); points.value='12'; points.dispatchEvent(new Event('change'));
+          result.npcPolicy=template.progression.assignment==='manual' && template.progression.pointsPerLevel===12;
+          const invalid=host.querySelector('[aria-label="Skill points per level"]'); invalid.value='-1'; invalid.dispatchEvent(new Event('change'));
+          result.invalidPoints=invalid.value==='12' && template.progression.pointsPerLevel===12;
           result.npcCarryoverIndependent=settings.statusTracker.npcStats.find(s=>s.id==='rank').carryOver===false;
           const enable=host.querySelector('[aria-label="Enable level progression"]'); enable.checked=false; enable.dispatchEvent(new Event('change'));
-          result.disabledControls=!host.querySelector('[aria-label="Stat growth"]') && !!host.querySelector('[aria-label="XP field"]');
+          result.disabledControls=!host.querySelector('[aria-label="Point assignment"]') && !!host.querySelector('[aria-label="XP field"]');
         } catch(error) {result.error=error.stack;}
         finally {settings.statusTracker=saved;host.remove();}
         document.documentElement.setAttribute('data-progression-smoke',JSON.stringify(result));

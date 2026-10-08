@@ -1,6 +1,7 @@
 import { resolveProgressionConfig, progressionStatEligible, progressionFieldId } from '../core/progression-config.js';
 import { boostStat } from './progression.js';
-import { configuredNumericMaximum } from './numeric-stat-bounds.js';
+import { statGrowthBounds } from './numeric-stat-bounds.js';
+import { pointSpend } from './level-stat-points.js';
 import { collectionRewardAppliesTo, validateRewardEntry } from '../core/collection-rewards.js';
 
 const same = (a, b) => String(a ?? '').toLowerCase() === String(b ?? '').toLowerCase();
@@ -39,14 +40,16 @@ export function selectReviewRows(pending, accepted, appliedRows = []) {
             : row.kind === incoming.kind && row.scope === incoming.scope && same(row.actor, incoming.actor)
                 && row.label === incoming.label && row.collectionId === incoming.collectionId && row.field === incoming.field);
         if (!original || (original.grant && appliedIds.has(original.grant.id))) continue;
+        if (original.kind === 'stat-points' && (incoming.grant?.spent || 0) !== (original.grant.spent || 0)) continue;
         if (selectedOriginals.has(original)) continue;
         selectedOriginals.add(original);
-        rows.push(original.grant || original.transition ? original : { ...original, ...incoming });
+        rows.push(original.kind === 'stat-points' ? { ...original, allocations: incoming.allocations }
+            : original.grant || original.transition ? original : { ...original, ...incoming });
     }
     const rejectedTransitions = new Set();
     for (const row of pending) {
         const id = transitionId(row);
-        if (id && !rows.includes(row)) rejectedTransitions.add(id);
+        if (id && !selectedOriginals.has(row)) rejectedTransitions.add(id);
     }
     return {
         rows: rows.filter(row => !rejectedTransitions.has(transitionId(row))
@@ -88,12 +91,14 @@ export function validateReviewedTransitions(rows, state, settings, cards = [], p
 
 /** Resolve gains from live state after ordinary accepted rows have been applied. */
 export function materializeGrantRows(rows, state, settings, cards = [], { appliedRows = [], acceptedTransitionIds = [], personaId } = {}) {
-    const result = [], rejected = [];
+    const result = [], rejected = [], remaining = [];
     const appliedIds = new Set(appliedRows.map(row => row.grant?.id).filter(Boolean));
     const transitions = new Set([...acceptedTransitionIds, ...appliedRows.map(transitionId).filter(Boolean)]);
     const working = structuredClone(state);
     const workingCards = structuredClone(cards);
-    for (const row of rows) {
+    const queue = [...rows];
+    for (let index = 0; index < queue.length; index++) {
+        const row = queue[index];
         if (!row.grant) { result.push(row); continue; }
         const grant = row.grant;
         const actor = reviewActor(row, working, workingCards);
@@ -107,20 +112,31 @@ export function materializeGrantRows(rows, state, settings, cards = [], { applie
         if (!actor || !grant.id || !identityOkay || !config.enabled || appliedIds.has(grant.id)
             || !transitions.has(grant.transitionId) || xp !== grant.xpName || level !== grant.levelName
             || (grant.templateId && actor.npcTemplateId !== grant.templateId)
-            || Number(actor.stats?.[level]) !== Number(grant.newLevel)) {
+            || !Number.isSafeInteger(Number(actor.stats?.[level]))
+            || (row.kind === 'stat-points' || grant.pointBudgetId || grant.manual
+                ? Number(actor.stats?.[level]) < Number(grant.newLevel)
+                : Number(actor.stats?.[level]) !== Number(grant.newLevel))) {
             rejected.push(row); continue;
+        }
+        if (row.kind === 'stat-points') {
+            const spend = pointSpend(row, definitions, config, actor.stats);
+            if (!spend) { rejected.push(row); remaining.push(row); continue; }
+            const children = spend.choices.map(choice => ({ ...row, kind: 'stat', label: choice.name,
+                grant: { ...grant, id: `${grant.id}:spent:${grant.spent || 0}:${choice.id}`,
+                    pointBudgetId: grant.id, statId: choice.id, gain: choice.gain } }));
+            queue.splice(index + 1, 0, ...children);
+            if (spend.spent < grant.points) remaining.push({ ...row, after: String(grant.points - spend.spent),
+                allocations: {}, grant: { ...grant, points: grant.points - spend.spent,
+                    spent: (grant.spent || 0) + spend.spent } });
+            appliedIds.add(grant.id);
+            continue;
         }
         if (row.kind === 'stat') {
             const definition = definitions.find(field => field.name === row.label);
-            if (config.statGrowth === 'none' || !progressionStatEligible(definition, config)
+            if ((!grant.pointBudgetId && config.pointsPerLevel === 0) || !progressionStatEligible(definition, config)
                 || !config.statIds.includes(definition.id)) { rejected.push(row); continue; }
             const before = actor.stats?.[row.label];
-            const pool = String(before ?? '').includes('/');
-            const bounds = {
-                growMaximum: pool,
-                fixedMaximum: pool ? (String(definition.maxStatValue ?? '').trim()
-                    ? Number(definition.maxStatValue) : null) : configuredNumericMaximum(definition),
-            };
+            const bounds = statGrowthBounds(definition, before);
             const after = boostStat(before, before, grant.gain, bounds);
             if (after === null) { rejected.push(row); continue; }
             const [oldCurrent, oldMax] = String(before).split('/');
@@ -153,5 +169,22 @@ export function materializeGrantRows(rows, state, settings, cards = [], { applie
         } else rejected.push(row);
         appliedIds.add(grant.id);
     }
-    return { rows: result, rejected };
+    return { rows: result, rejected, remaining };
+}
+
+/** Keep unspent budgets and unselected rewards after a successful or failed review write. */
+export function remainingGrantRows(pending, rows, grants, recorded, rejectedTransitions = new Set(), discardAll = false) {
+    if (discardAll) return [];
+    const attempted = new Set(rows.filter(row => row.grant).map(row => row.grant.id));
+    const remaining = pending.filter(row => row.grant && !attempted.has(row.grant.id)
+        && !rejectedTransitions.has(row.grant.transitionId));
+    const spent = new Set(recorded.map(row => row.grant?.pointBudgetId).filter(Boolean));
+    for (const row of rows.filter(row => row.kind === 'stat-points')) {
+        const remainder = grants.remaining.find(candidate => candidate.grant.id === row.grant.id);
+        if (spent.has(row.grant.id)) { if (remainder) remaining.push(remainder); }
+        else if (remainder && recorded.length === grants.rows.length + rows.filter(row => !row.grant).length
+            && !grants.rejected.some(candidate => candidate.grant.id === row.grant.id)) remaining.push(remainder);
+        else remaining.push(pending.find(candidate => candidate.grant?.id === row.grant.id) || row);
+    }
+    return remaining;
 }

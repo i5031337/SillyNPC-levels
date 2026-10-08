@@ -47,7 +47,7 @@ test('locked stats receive selected level growth, with pool capacity independent
         { id: 'pool', name: 'Pool', type: 'number', defaultValue: '5/10', locked: true },
     ];
     const settings = { playerStats: definitions, progression: { player: {
-        enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'all', statIds: ['rating', 'pool'],
+        enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 2, assignment: 'random', statIds: ['rating', 'pool'],
     } } };
     const state = { player: { stats: { XP: '0/10', Level: '2', Rating: '4', Pool: '5/10' } } };
     const rows = ['Rating', 'Pool'].map(label => ({ scope: 'player', kind: 'stat', label,

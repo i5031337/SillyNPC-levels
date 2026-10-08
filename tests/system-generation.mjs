@@ -155,7 +155,7 @@ test('two-template two-collection adventure uses eight model calls without repai
     assert.equal(events.at(-1).index, 8);
     assert.ok(events.filter(event => event.total).every(event => event.total === 8));
     assert.equal(definition.npcTemplates.length, 2);
-    assert.equal(definition.npcTemplates.find(t => t.id === 'human').progression.statGrowth, 'none');
+    assert.equal(definition.npcTemplates.find(t => t.id === 'human').progression.pointsPerLevel, 0);
     assert.equal(definition.collections.length, 2);
     assert.deepEqual(validateDefinition(definition), []);
 });
@@ -190,6 +190,9 @@ test('strict validation rejects semantic corruption before normalization can rep
         d => { d.npcTemplates[0].statIds.push('missing'); },
         d => { d.stats.npc[1].updatePolicy = 'turn'; },
         d => { d.progression.player.increments = { energy: 2 }; },
+        d => { d.progression.player.pointsPerLevel = -1; },
+        d => { d.progression.player.pointsPerLevel = 1.5; },
+        d => { d.progression.player.assignment = 'llm'; },
         d => { d.progression.player.statIds = ['xp']; },
         d => { d.collections[0].targets = ['template:missing']; },
         d => { d.collections[0].fields[1].isPrimary = true; },

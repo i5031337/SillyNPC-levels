@@ -22,7 +22,7 @@ with browser_session() as browser:
           const level = { id: 'level', name: 'Level', type: 'number', locked: true, defaultValue: '' };
           const xp = { id: 'xp', name: 'XP', type: 'number', defaultValue: '0/20' };
           const template = { id: 'pokemon', statIds: ['hp', 'level', 'xp'], progression: {
-            enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'none', statIds: [] } };
+            enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 0, assignment: 'random', statIds: [] } };
           const tracker = { ...originalTracker, globalStats: [hp], playerStats: [hp], npcStats: [hp, level, xp], npcTemplates: [template],
             progression: { player: { enabled: false } }, collections: [],
             presets: { ...originalTracker.presets, [settings.activeSystem]: { definition: {

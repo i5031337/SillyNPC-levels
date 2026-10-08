@@ -17,9 +17,10 @@ with browser_session() as browser:
           const root = ${JSON.stringify(new URL('.', entry.src).href)};
           const { getSettings } = await import(root + 'src/core/settings.js');
           const { loadStateFromMetadata, applyUpdate, getCurrentPersonaKey } = await import(root + 'src/tracker/status-logic.js');
-          const { computeStateDiff } = await import(root + 'src/tracker/status-diff.js');
+          const { computeStateDiff, buildUpdateFromChanges } = await import(root + 'src/tracker/status-diff.js');
           const { selectLevelGrants, collectLevelTransitions } = await import(root + 'src/tracker/extractor/status-level-grants.js');
           const { prepareGrantReview, materializeGrantRows, selectReviewRows } = await import(root + 'src/tracker/level-grant-review.js');
+          const { buildPointAllocation } = await import(root + 'src/ui/tracker/ui-point-allocation.js');
           const { renderReviewPanel } = await import(root + 'src/ui/tracker/ui-change-review.js');
           settings = getSettings(); originalTracker = settings.statusTracker;
           live = loadStateFromMetadata(); savedLive = structuredClone(live);
@@ -30,7 +31,7 @@ with browser_session() as browser:
             { id: 'health', name: 'Health', type: 'bar', defaultValue: '10/10' },
             { id: 'power', name: 'Power', type: 'number', locked: true, defaultValue: '3', maxStatValue: '10' }
           ];
-          const progression = { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'all',
+          const progression = { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 2, assignment: 'random',
             statIds: ['health', 'power'], increments: { health: 1, power: 1 } };
           const templates = [
             { id: 'levels-enabled', name: 'Levels enabled', statIds: stats.map(stat => stat.id), progression },
@@ -43,7 +44,7 @@ with browser_session() as browser:
             npcTemplates: templates, progression: { player: progression }, collections: [collection],
             presets: { ...originalTracker.presets, [settings.activeSystem]: { definition: { npcTemplates: templates, stats: { npc: stats } } } } };
           settings.statusTracker = tracker;
-          const readings = { Experience: '90/100', Rank: '1', Health: '6/10', Power: '3' };
+          const readings = { Experience: '90/100', Rank: '1', Health: '6/10', Power: '3/10' };
           const fixture = { ...savedLive, global: {}, player: { ...savedLive.player, name: 'Fixture Player', stats: { ...readings }, collections: {} },
             characters: [
               { id: 'fixture-enabled', name: 'Fixture Enabled NPC', npcTemplateId: 'levels-enabled', stats: { ...readings }, collections: {} },
@@ -55,7 +56,9 @@ with browser_session() as browser:
             { name: 'Fixture Disabled NPC', stats: { Experience: '95/100' } }
           ] };
           const context = { messageId: 0, swipeId: 0, personaId: getCurrentPersonaKey(),
-            system: tracker.presets[settings.activeSystem].definition, requestExtraction: async prompt => ({ choices: Object.fromEntries(JSON.parse(prompt).tasks.map(task => [task.id, {statId: task.eligibleStats[0].id, amount: 1}])) }) };
+            system: tracker.presets[settings.activeSystem].definition,
+            random: (() => { let n=0; return () => n++ % 2 ? .99 : 0; })(),
+            requestExtraction: () => { throw new Error('Unexpected numeric LLM request'); } };
           const preview = applyUpdate(parsed, { dryRun: true });
           result.playerRollover = preview.player.stats.Rank === '2' && preview.player.stats.Experience === '10/100';
           result.npcRollover = preview.characters[0].stats.Rank === '2' && preview.characters[0].stats.Experience === '10/100';
@@ -63,7 +66,7 @@ with browser_session() as browser:
           result.dryRunPure = live.player.stats.Rank === '1' && live.characters[0].stats.Rank === '1';
           const selection = await selectLevelGrants(parsed, fixture, tracker, '', [], context);
           const transitions = collectLevelTransitions(parsed, fixture, tracker, context);
-          result.grantCounts = selection.rows.length === 6 && selection.failures.length === 0
+          result.grantCounts = selection.rows.length === 4 && selection.failures.length === 0
             && !selection.rows.some(row => row.actor === 'Fixture Disabled NPC');
           const pending = computeStateDiff(fixture, preview, tracker).filter(row => row.actor !== 'Fixture Disabled NPC');
           prepareGrantReview([], pending, transitions); pending.push(...selection.rows);
@@ -74,19 +77,39 @@ with browser_session() as browser:
           result.reviewRecipients = panel.textContent.includes('You') && panel.textContent.includes('Fixture Enabled NPC')
             && !panel.textContent.includes('Fixture Disabled NPC');
           result.reviewRewards = [...panel.querySelectorAll('.kind-item-add')].length === 2
-            && [...panel.querySelectorAll('.sillynpc-review-to')].filter(el => el.textContent === '+1').length === 4;
+            && panel.querySelectorAll('.sillynpc-point-allocation').length === 2
+            && [...panel.querySelectorAll('.sillynpc-point-allocation span')].every(el => el.textContent === '+1');
           const dependencies = [...panel.querySelectorAll('.sillynpc-review-row')].filter(el =>
             ['Experience', 'Rank'].includes(el.querySelector('.sillynpc-review-label')?.textContent));
           const firstToggle = dependencies[0].querySelector('input[type=checkbox]');
           firstToggle.focus(); result.keyboard = document.activeElement === firstToggle;
           firstToggle.click();
-          result.dependencies = [...panel.querySelectorAll('.sillynpc-review-toggle:disabled')].length === 3;
+          result.dependencies = [...panel.querySelectorAll('.sillynpc-review-toggle:disabled')].length === 2;
           firstToggle.click();
           result.dependenciesRestored = panel.querySelectorAll('.sillynpc-review-toggle:disabled').length === 0;
           result.narrowLayout = host.scrollWidth <= host.clientWidth + 2;
           const applied = materializeGrantRows(selection.rows, preview, tracker, [], {
             acceptedTransitionIds: transitions.map(t => t.transitionId), personaId: getCurrentPersonaKey() });
           result.acceptanceMath = applied.rows.filter(row => row.label === 'Health' && row.kind === 'stat').every(row => row.grant.valueAfter === '7/11');
+          const confirmed = applyUpdate(buildUpdateFromChanges(applied.rows, preview, tracker), {
+            dryRun: true, progressionResolved: true });
+          result.confirmedRatings = confirmed.player.stats.Power === '4/10'
+            && confirmed.characters[0].stats.Power === '4/10'
+            && confirmed.characters[0].stats.Health === '7/11';
+          const manual = selection.rows.find(row => row.kind === 'stat-points' && row.scope === 'player');
+          const model = { change: { ...manual, allocations: {}, grant: { ...manual.grant, assignment: 'manual' } } };
+          const widget = buildPointAllocation(model); host.append(widget);
+          const hp = widget.querySelector('[aria-label="Health skill points"]');
+          const power = widget.querySelector('[aria-label="Power skill points"]');
+          hp.value='2'; hp.dispatchEvent(new Event('input'));
+          power.value='1'; power.dispatchEvent(new Event('input'));
+          result.manualBudget = model.allocations.health===2 && !model.allocations.power
+            && widget.textContent.includes('0 of 2 points remaining');
+          hp.value='1'; hp.dispatchEvent(new Event('input'));
+          const partial = materializeGrantRows([{...model.change, allocations:model.allocations}], preview, tracker, [], {
+            acceptedTransitionIds: transitions.map(t => t.transitionId), personaId: getCurrentPersonaKey() });
+          result.manualRemainder = partial.remaining[0].grant.points===1
+            && partial.rows.find(row=>row.kind==='stat').grant.valueAfter==='7/11';
           result.rejectedXpBlocks = selectReviewRows(pending, selection.rows).rows.length === 0;
         } catch (error) { result.error = String(error); result.stack = error.stack; }
         finally {
@@ -107,6 +130,6 @@ with browser_session() as browser:
         time.sleep(0.25)
     execute("document.querySelector('#sillynpc-level-fixture')?.remove(); document.documentElement.removeAttribute('data-level-fixture');")
     expected = ['playerRollover', 'npcRollover', 'disabledUnchanged', 'dryRunPure', 'grantCounts', 'reviewRecipients',
-                'reviewRewards', 'keyboard', 'dependencies', 'dependenciesRestored', 'narrowLayout', 'acceptanceMath', 'rejectedXpBlocks']
+                'reviewRewards', 'keyboard', 'dependencies', 'dependenciesRestored', 'narrowLayout', 'acceptanceMath', 'confirmedRatings', 'manualBudget', 'manualRemainder', 'rejectedXpBlocks']
     assert result and all(result.get(key) for key in expected), result
     print('SillyNPC level rewards UI passed:', json.dumps(result))

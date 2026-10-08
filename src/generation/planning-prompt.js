@@ -37,7 +37,7 @@ Progression:
 - Before enabling player progression, include both counters in stats.player.
 - Before enabling an NPC template's progression, include both counters in stats.npc AND that template's stats list.
 - If progression is disabled, set enabled: false and xp/level to empty strings. Otherwise both names must be nonempty and distinct. Do not leave enabled progression without counters.
-- growth describes desired advancement, reset, and persistence in plain text. No experience curves or character values.
+- growth describes desired code-owned numeric advancement, including points per level and random or manual assignment, reset, and persistence in plain text. Random picks each point independently with replacement from stats below their caps. Budgets may exceed the number of stats. No experience curves or character values.
 
 Collections are lists with one row per item, move, or other entry. The first field names each entry, usually Name. Do not make party slots separate columns or use a discovery count as the only field of a species list; a single count is a stat. Targets are player, npc (all NPCs), or an exact NPC template name. Rewards are none, scheduled, or guided; rewards require progression enabled for at least one target.
 

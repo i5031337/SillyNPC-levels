@@ -19,6 +19,7 @@ import { manageState } from './ui-manage-state.js';
 import { renderPictureTagsSection } from './ui-manage-pictures.js';
 import { renderCollectionsSection, renderCategorySelect } from './ui-manage-collections.js';
 import { renderOverridesSection, buildAliasRow } from './ui-manage-overrides.js';
+import { buildManualLevelUpSection } from '../characters/ui-manual-level-up.js';
 
 /**
  * The tabs, in their own class.
@@ -308,6 +309,7 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
     });
     renderLorebookSection(char, loreContainer, { onChange: refreshEditor, label: 'Linked lorebook entry' });
     renderOverridesSection(char, overridesContainer);
+    if (!char.isPlayer) overridesContainer.append(buildManualLevelUpSection(char, { onChange: refreshEditor }));
     renderCollectionsSection(char, collectionsContainer);
 }
 

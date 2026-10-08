@@ -134,9 +134,9 @@ test('canonical progression projects into live tracker and survives capture', ()
             { id: 'earned', name: 'Experience', defaultValue: '0/10' },
             { id: 'rank', name: 'Rank', defaultValue: '1' },
         ] },
-        progression: { player: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank', statGrowth: 'none' } },
+        progression: { player: { enabled: true, xpFieldId: 'earned', levelFieldId: 'rank', pointsPerLevel: 0, assignment: 'random' } },
         npcTemplates: [{ id: 'human', name: 'Human', statIds: ['xp', 'level'],
-            progression: { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', statGrowth: 'none' } }],
+            progression: { enabled: true, xpFieldId: 'xp', levelFieldId: 'level', pointsPerLevel: 0, assignment: 'random' } }],
     });
     const imported = deps.migratePreset('Growth', { definition, metadata: { name: 'Growth' } });
     deps.applySystemPreset(imported);

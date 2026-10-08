@@ -1,13 +1,11 @@
-import { progressXp, boostStat } from '../progression.js';
-import { configuredNumericMaximum, isPoolStat } from '../numeric-stat-bounds.js';
-import { resolveProgressionConfig, progressionStatEligible, progressionFieldId } from '../../core/progression-config.js';
+import { progressXp } from '../progression.js';
+import { pointOptions, allocateRandomPoints, pointBudgetRow } from '../level-stat-points.js';
+import { resolveProgressionConfig, progressionFieldId } from '../../core/progression-config.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { collectionRewardAppliesTo, scheduledCollectionRewards, guidedRewardLevels,
     normalizeCollectionRewards, validateRewardEntry, hasRewardDuplicate, rewardIdentifier } from '../../core/collection-rewards.js';
 
 const key = value => String(value ?? '').toLowerCase();
-
-const numeric = value => /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(value ?? ''));
 
 function matchingCard(name, cards = []) {
     const exact = cards.find(card => key(card.name) === key(name))
@@ -74,28 +72,6 @@ function provenance(transition, level, identity, extra = {}) {
         xpBefore: transition.xpBefore, xpAfter: transition.xpAfter, ...extra };
 }
 
-function eligibleStats(transition) {
-    return transition.definitions.filter(def => transition.config.statIds.includes(def.id)
-        && progressionStatEligible(def, transition.config) && numeric(transition.current[def.name])
-        && statRow(transition, def, transition.oldLevel + 1, 1));
-}
-
-function statRow(transition, def, level, gain, note = '') {
-    const before = String(transition.current[def.name]);
-    // An explicit pool maximum limits expandable capacity; its default pool cap does not.
-    const explicitMax = String(def.maxStatValue ?? '').trim();
-    const growMaximum = before.includes('/') && (isPoolStat(def) || !explicitMax);
-    const fixedMaximum = growMaximum ? (explicitMax ? Number(explicitMax) : null)
-        : configuredNumericMaximum(def);
-    const bounds = { growMaximum, fixedMaximum };
-    const after = boostStat(before, undefined, gain, bounds);
-    if (after === null || after === before) return null;
-    return { scope: transition.scope, actor: transition.actor, label: def.name, kind: 'stat',
-        before: before.split('/')[0], after: after.split('/')[0], risk: 'risky',
-        reason: `Level ${level} stat growth`, note,
-        grant: provenance(transition, level, `stat:${def.id}`, { statId: def.id, gain, bounds }) };
-}
-
 function itemRow(transition, collection, reward, identity, note = '') {
     const fields = collection.fields || [];
     const primary = fields.find(field => field.isPrimary) || fields[0];
@@ -122,15 +98,21 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
     const decided = new Set(context.decidedGrantIds || []);
     const transitions = collectLevelTransitions(parsed, state, tracker, context);
     for (const transition of transitions) {
-        const defs = eligibleStats(transition);
-        for (const level of transition.crossedLevels) {
-            if (transition.config.statGrowth === 'all') {
-                for (const def of defs) {
-                    tasks.push({ id: provenance(transition, level, `stat:${def.id}`).id,
-                        type: 'stat', transition, level, defs: [def], minimum: 0, maximum: 3 });
+        const points = transition.config.pointsPerLevel * transition.levelsGained;
+        if (Number.isSafeInteger(points) && points > 0 && transition.config.statIds.length) {
+            const grant = provenance(transition, transition.newLevel, 'points', {
+                points, assignment: transition.config.assignment, spent: 0, statIds: transition.config.statIds,
+            });
+            if (!decided.has(grant.id) && (context.allowNewPointBudgets !== false || Object.hasOwn(cache, grant.id))) {
+                if (!Object.hasOwn(cache, grant.id)) {
+                    const options = pointOptions(transition.definitions, transition.config, transition.current, points);
+                    cache[grant.id] = { points, assignment: grant.assignment, statIds: [...grant.statIds],
+                        allocations: grant.assignment === 'random'
+                        ? allocateRandomPoints(options, points, context.random) : {} };
                 }
-            } else if (transition.config.statGrowth === 'one' && defs.length) {
-                tasks.push({ id: provenance(transition, level, 'one').id, type: 'stat', transition, level, defs, minimum: 1, maximum: 5 });
+                Object.assign(grant, { points: cache[grant.id].points, assignment: cache[grant.id].assignment,
+                    statIds: cache[grant.id].statIds });
+                rows.push(pointBudgetRow(transition, grant, cache[grant.id].allocations));
             }
         }
         for (const collection of tracker.collections || []) {
@@ -153,36 +135,37 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
     const pendingTasks = tasks.filter(task => !decided.has(task.id));
     const missing = pendingTasks.filter(task => !Object.hasOwn(cache, task.id));
     if (missing.length) {
-        const choices = missing.map(task => ({ id: task.id, recipient: task.transition.actor || 'Player',
+        // Request-local keys keep persistent provenance out of the model's reply.
+        const requestTasks = new Map(missing.map((task, index) => [`task-${index + 1}`, task]));
+        const choices = [...requestTasks].map(([id, task]) => ({ id, recipient: task.transition.actor || 'Player',
             level: task.level, type: task.type, currentStats: task.transition.current,
-            ...(task.type === 'stat' ? { eligibleStats: task.defs.map(({ id, name, purpose, guidance, maxStatValue }) =>
-                ({ id, name, purpose, guidance, maxStatValue })),
-                amount: `integer ${task.minimum} through ${task.maximum}` }
-                : { collection: task.collection.name, fields: collectionSchema(task.collection),
-                    fieldRules: (task.collection.fields || []).filter(field => !field.retired && !field.locked)
-                        .map(({ name, label, type, guidance, min, maxStatValue, options }) =>
-                            ({ name, label, type, guidance, min, maxStatValue, options })),
-                    guidance: normalizeCollectionRewards(task.collection.levelUpRewards, task.collection).guidance
-                        || 'Choose a suitable new story-appropriate reward.',
-                    existing: [...task.holdings, ...task.proposals] }) }));
+            collection: task.collection.name, fields: collectionSchema(task.collection),
+            fieldRules: (task.collection.fields || []).filter(field => !field.retired && !field.locked)
+                .map(({ name, label, type, guidance, min, maxStatValue, options }) =>
+                    ({ name, label, type, guidance, min, maxStatValue, options })),
+            guidance: normalizeCollectionRewards(task.collection.levelUpRewards, task.collection).guidance
+                || 'Choose a suitable new story-appropriate reward.',
+            existing: [...task.holdings, ...task.proposals] }));
         // Match the main reader's Google-compatible schema subset; validate bounds locally.
         const schema = { type: 'object', required: ['choices'], properties: { choices: { type: 'object',
-            properties: Object.fromEntries(missing.map(task => [task.id, { type: 'object',
+            properties: Object.fromEntries([...requestTasks].map(([id, task]) => [id, { type: 'object',
                 properties: { description: { type: 'string' },
-                    ...(task.type === 'stat' ? { statId: { type: 'string' }, amount: { type: 'number' } }
-                        : { entry: collectionSchema(task.collection), noReward: { type: 'boolean' } }) } }])) } } };
+                    entry: collectionSchema(task.collection), noReward: { type: 'boolean' } } }])) } } };
         try {
             const request = context.requestExtraction || (await import('./status-extractor-request.js')).requestExtraction;
-            const raw = await request(JSON.stringify({ instructions: 'Choose each requested level-up grant. Return choices as an object keyed by exact task id. Stat choices contain an eligible statId and an integer amount within the task range. For All selected stats, choose each stat independently from 0 through 3 at each level: 0 means no increase. Base growth on the story, recipient, and stat purpose; vary increases to reflect what they practiced or accomplished instead of giving every stat the same bonus. For One stat, choose one eligible stat and an increase from 1 through 5. Collection choices contain entry with the configured fields; return noReward:true and omit entry when no suitable new reward exists. Never repeat an existing reward. Respect field types, ranges and options. Do not calculate XP or levels.',
+            const raw = await request(JSON.stringify({ instructions: 'Choose each requested level-up collection reward. Return choices as an object keyed by exact task id. Put all configured collection fields inside entry, not directly under the task id. Alternatively return noReward:true and omit entry when no suitable new reward exists. Never repeat an existing reward. Respect field types, ranges and options. Numeric stat growth is handled by code; do not calculate stats, XP or levels.',
                 leadUp, story: text, tasks: choices }), schema, tracker,
-            'Return only a JSON object with a choices object keyed by task id. Respect each owner, stat ID, collection field type and bound.');
+            'Return only a JSON object shaped as {"choices":{"task-1":{"entry":{configured collection fields}}}}. Use the requested task ids and field names. Respect each owner, collection field type and bound.');
             const result = typeof raw === 'object' ? raw : (await import('./status-extractor-request.js')).coerceToUpdate(raw);
-            const replies = Array.isArray(result?.choices) ? result.choices
+            const replies = Array.isArray(result?.choices) ? result.choices.map(choice => [choice?.id, choice])
                 : result?.choices && typeof result.choices === 'object' ? Object.entries(result.choices)
-                    .filter(([, choice]) => choice && typeof choice === 'object' && !Array.isArray(choice))
-                    .map(([id, choice]) => ({ ...choice, id })) : [];
-            for (const choice of replies) {
-                if (missing.some(task => task.id === choice?.id)) cache[choice.id] = choice;
+                    .filter(([, choice]) => choice && typeof choice === 'object' && !Array.isArray(choice)) : [];
+            for (const [id, choice] of replies) {
+                const task = requestTasks.get(id);
+                if (!task) continue;
+                // Some readers flatten the entry despite the requested wrapper; validate it identically.
+                const entry = Object.hasOwn(choice, 'entry') ? choice.entry : choice;
+                cache[task.id] = { ...choice, entry, id: task.id };
             }
         } catch (error) {
             for (const task of missing) failures.push({ id: task.id, actor: task.transition.actor,
@@ -193,14 +176,7 @@ export async function selectLevelGrants(parsed, state, tracker, text, leadUp = [
         const choice = cache[task.id];
         let row = null, error = '';
         if (!choice) error = 'The reader omitted this level-up choice.';
-        else if (task.type === 'stat') {
-            const def = task.defs.find(item => item.id === choice.statId);
-            if (!def || !Number.isInteger(choice.amount) || choice.amount < task.minimum || choice.amount > task.maximum) error = 'The stat growth choice was invalid.';
-            else if (choice.amount > 0) {
-                row = statRow(task.transition, def, task.level, choice.amount, String(choice.description || '').slice(0, 180));
-                if (row) row.grant.id = task.id;
-            }
-        } else if (choice.noReward !== true && choice.entry !== null) {
+        else if (choice.noReward !== true && choice.entry !== null) {
             const valid = validateRewardEntry(task.collection, choice.entry);
             if (!valid.entry) error = valid.errors.join(' ');
             else {

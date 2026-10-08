@@ -49,10 +49,11 @@
         "enabled": true,
         "xpFieldId": "xp",
         "levelFieldId": "level",
-        "statGrowth": "all",
         "statIds": [
           "vigor"
-        ]
+        ],
+        "pointsPerLevel": 2,
+        "assignment": "random"
       }
     }
   ],
@@ -270,17 +271,19 @@
       "enabled": true,
       "xpFieldId": "xp",
       "levelFieldId": "level",
-      "statGrowth": "all",
       "statIds": [
         "energy"
-      ]
+      ],
+      "pointsPerLevel": 2,
+      "assignment": "random"
     },
     "npc": {
       "enabled": false,
       "xpFieldId": "",
       "levelFieldId": "",
-      "statGrowth": "none",
-      "statIds": []
+      "statIds": [],
+      "pointsPerLevel": 0,
+      "assignment": "random"
     }
   },
   "memories": {

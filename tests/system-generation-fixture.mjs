@@ -28,7 +28,7 @@ export function responseFor(stage, registry) {
             const candidates = section.filter(field => field.type === 'number' && (!owner.statIds || owner.statIds.includes(field.id))
                 && ![config.xpFieldId, config.levelFieldId].includes(field.id)).map(field => field.id);
             return [owner.id, { enabled: true, xpFieldId: config.xpFieldId, levelFieldId: config.levelFieldId,
-                statGrowth: candidates.length ? 'all' : 'none', statIds: candidates }];
+                pointsPerLevel: candidates.length ? 2 : 0, assignment: 'random', statIds: candidates }];
         })) };
     }
     if (kind === 'collection') {

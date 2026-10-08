@@ -42,13 +42,22 @@ export function buildProgressionEditor({ template, onRefresh = () => {}, context
         .map(stat => [stat.id, stat.name])];
     select('XP field', 'xpFieldId', options); select('Level field', 'levelFieldId', options);
     if (!config.enabled) return wrap;
-    select('Stat growth', 'statGrowth', [['none', 'None'], ['one', 'One stat'], ['all', 'All selected stats']]);
-    if (config.statGrowth === 'all') {
-        const help = document.createElement('p');
-        help.textContent = 'The reader chooses a separate increase of 0–3 for each selected stat at every level, based on the story. Review positive increases before applying them.';
-        controls.append(help);
-    }
-    if (config.statGrowth !== 'none') for (const stat of stats.filter(stat => progressionStatEligible(stat, config)
+    const pointsLabel = document.createElement('label'); pointsLabel.style.display = 'block';
+    pointsLabel.textContent = 'Skill points per level ';
+    const points = document.createElement('input'); points.type = 'number'; points.min = '0'; points.step = '1';
+    points.className = 'text_pole'; points.value = config.pointsPerLevel;
+    points.setAttribute('aria-label', 'Skill points per level');
+    points.addEventListener('change', () => {
+        const value = Number(points.value);
+        if (!points.value.trim() || !Number.isSafeInteger(value) || value < 0) { points.value = config.pointsPerLevel; return; }
+        config.pointsPerLevel = value; save();
+    });
+    pointsLabel.append(points); controls.append(pointsLabel);
+    select('Point assignment', 'assignment', [['random', 'Random'], ['manual', 'Manual']]);
+    const help = document.createElement('p');
+    help.textContent = 'Each point increases one selected stat by 1. Pools gain current value and capacity; ratings stay within their caps. Random picks independently for each point, so a stat can receive several points. Set points to 0 to disable numeric growth.';
+    controls.append(help);
+    for (const stat of stats.filter(stat => progressionStatEligible(stat, config)
         && (!template || template.statIds.includes(stat.id)))) {
         const label = document.createElement('label'); label.style.display = 'block';
         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = config.statIds.includes(stat.id);
