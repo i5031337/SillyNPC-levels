@@ -404,8 +404,9 @@ export async function renderProfileView(char, container) {
     // comes precisely to see what is not on the bar.
     for (const colDef of getSettings().statusTracker.collections || []) {
         if (!colDef?.id) continue;
+        const identifier = colDef.fields?.find(field => field.isPrimary)?.name || 'name';
         const items = (collections[colDef.id] || [])
-            .map(item => String(item?.name ?? '').trim())
+            .map(item => String(item?.[identifier] ?? '').trim())
             .filter(Boolean);
         const row = chipRow(colDef.name || colDef.id, items.map(name => chip(name)));
         if (row) right.append(row);
