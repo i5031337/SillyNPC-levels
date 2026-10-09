@@ -73,10 +73,12 @@ async function main() {
             const {playNpcMessage,renderNpcTtsControl,stopNpcTts}=await import(${JSON.stringify(root + 'src/tts/npc-tts.js')});
             settings=getSettings();savedTts=structuredClone(settings.tts);
             const host=SillyTavern.getContext().extensionSettings.tts?.['OpenAI Compatible'];
+            out.hostEndpoint=host?.provider_endpoint||'';
             out.panel=Boolean(document.getElementById('sillynpc-tts-settings'));
+            out.endpointReadOnly=Boolean(document.querySelector('#sillynpc-tts-settings input[type=url]')?.readOnly);
             out.mainPanel=Boolean(document.getElementById('sillynpc-settings'));
             out.extensionArea=Boolean(document.getElementById('extensions_settings2'));
-            settings.tts={enabled:true,autoPlay:false,endpoint:host?.provider_endpoint||'',model:host?.model||'',
+            settings.tts={enabled:true,autoPlay:false,endpoint:'https://stale.example/speech',model:host?.model||'',
                 voices:host?.available_voices||['alloy'],narratorVoice:(host?.available_voices||['alloy'])[0],speed:1};
             const card={id:'voice-fixture',name:'Voice Fixture',presentation:{voices:{}}};
             section=buildVoicesSection(card,{save:()=>out.saved=(out.saved||0)+1,
@@ -146,6 +148,12 @@ async function main() {
                 Object.assign(nativeTts,{enabled:true,auto_generation:true});
                 await playNpcMessage(chatLength,{automatic:true});
                 out.duplicateBlocked=out.calls.length===6;
+                const originalEndpoint=host.provider_endpoint;
+                try {
+                    host.provider_endpoint='https://updated-built-in.example/speech';
+                    await playNpcMessage(chatLength);
+                    out.liveEndpoint=out.calls.at(-3)?.provider_endpoint;
+                }finally{host.provider_endpoint=originalEndpoint}
             }
             stopNpcTts();
         }catch(error){out.error=String(error.stack||error)}finally{
@@ -167,19 +175,22 @@ async function main() {
         await evaluate(`(() => { document.getElementById('npc-voices-fixture')?.remove(); document.documentElement.removeAttribute('data-npc-voices-fixture'); return true })()`);
         console.log(result);
         const parsed = JSON.parse(result);
-        if (parsed.error || !parsed.panel || !parsed.options.some(value => value.startsWith('voice:'))
+        if (parsed.error || !parsed.panel || !parsed.endpointReadOnly
+            || !parsed.options.some(value => value.startsWith('voice:'))
             || parsed.saved !== 1 || !parsed.previewEnabled || parsed.previewStatus !== 'Voice preview finished.'
             || parsed.units?.map(unit => unit[0]).join(',') !== 'narration,dialogue,narration,dialogue,narration'
             || parsed.units?.some(unit => unit[2].includes('secret code'))
             || !parsed.manualButton || parsed.calls?.slice(0,3).map(call => call.input).join('|')
                 !== 'The hall went quiet.|Wait.|She lowers her sword.'
+            || parsed.calls?.[0]?.provider_endpoint !== parsed.hostEndpoint
             || parsed.playStart?.length < 3 || !parsed.playEnd?.length
             || parsed.requestTimes?.[1] >= parsed.playEnd[0]
             || parsed.requestTimes?.[2] >= parsed.playEnd[0]
             || (process.argv.includes('--real-playback')
                 ? parsed.audio?.length !== 3 || parsed.audio.some(item => item.status !== 200
                     || item.bytes < 1000 || item.seconds <= 0 || item.rms <= 0.001)
-                : !parsed.autoPlayed || !parsed.duplicateBlocked)
+                : !parsed.autoPlayed || !parsed.duplicateBlocked
+                    || parsed.liveEndpoint !== 'https://updated-built-in.example/speech')
             || parsed.calls?.[1]?.voice !== 'nova' || parsed.calls?.[0]?.voice !== 'alloy')
             process.exitCode = 1;
     } finally {

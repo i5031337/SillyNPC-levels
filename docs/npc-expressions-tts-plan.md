@@ -4,8 +4,8 @@ Status: Stages 1, 2, and 4 implemented; Stage 3 host adapter superseded. Updated
 
 Add mood sprites and individual voices to SillyNPC NPCs using the dialogue lines
 SillyNPC already recognizes and highlights. Expressions can reuse SillyTavern's
-classifier and sprite storage with a SillyNPC display. Stage 4 gives SillyNPC an
-independent speech connection and one ordered queue for narration and dialogue.
+classifier and sprite storage with a SillyNPC display. Stage 4 gives SillyNPC
+its own model and voice settings and one ordered queue for narration and dialogue.
 
 ## Agreed scope
 
@@ -19,8 +19,8 @@ independent speech connection and one ordered queue for narration and dialogue.
   sprite. Dialogue portraits can retain the expression for their individual line.
 - Initially operate on completed replies. Automatic streaming narration and
   expressions synchronized to speech are later stages.
-- Stage 4 starts with a separately configured local OpenAI-compatible speech
-  endpoint, model, narrator voice, and NPC voices. Broad support for every built-in
+- Stage 4 uses the built-in OpenAI Compatible speech endpoint and API key, with
+  a separate model, narrator voice, and NPC voices. Broad support for every built-in
   TTS provider, pitch, rate, and emotional delivery remains outside the MVP.
 
 Multiple speakers in one highlighted block are not an expected workflow. Do not
@@ -207,14 +207,15 @@ worker and group-layer cleanup can overwrite injected NPC content.
 ## Stage 4: SillyNPC-owned TTS
 
 Stage 4 supersedes the earlier host queue proposal. SillyNPC owns narration and
-NPC dialogue playback through one ordered queue. The initial provider is a
-separately configured local OpenAI-compatible `/v1/audio/speech` endpoint, with
-its own model, voice list, narrator voice, and per-NPC voice bindings. The user
-may copy the current built-in OpenAI Compatible connection as a starting point;
-subsequent changes are independent. The existing SillyTavern server proxy can
-carry requests to a local server without a browser CORS dependency. Its API key
-is the host's existing OpenAI-compatible TTS secret, so separate credentials
-require a later server-side adapter.
+NPC dialogue playback through one ordered queue. It reads the built-in OpenAI
+Compatible provider endpoint at synthesis time, sharing that provider's API key
+while keeping its own model, voice list, narrator voice, and per-NPC voice
+bindings. Existing saved SillyNPC endpoints are discarded during normalization,
+so an imported or stale extension setting cannot redirect that shared key. The
+SillyTavern server proxy carries requests without a browser CORS dependency.
+The current custom proxy forwards input, model, voice, speed, and audio format;
+it does not forward `instructions`. Supporting that argument or separate provider
+credentials requires a server-side change.
 
 Build ordered speech units from rendered story content and shared dialogue
 discovery. Narration paragraphs use the narrator voice. A recognized speaker
@@ -240,7 +241,7 @@ settings. Its megaphone remains a separate control; SillyNPC Play always uses th
 SillyNPC queue. No host TTS extension patch is needed for Stage 4 playback.
 
 Stage 3 briefly used experimental host voice hooks. Stage 4 replaced that editor
-with SillyNPC's own connection and removed the host patch and adapter. Saved
+with SillyNPC's own voice settings and removed the host patch and adapter. Saved
 Stage 3 voice bindings remain readable as a fallback for the OpenAI-compatible
 provider; changing a voice writes the new SillyNPC binding.
 
@@ -262,7 +263,7 @@ animation, lip sync, or emotional voice delivery.
 | --- | --- | --- |
 | 1 complete | Shared dialogue records and NPC configuration | Highlighted lines resolve to the same NPC IDs and order; labels/prose are excluded; ownership, rename, defaults, and transfer behavior are verified |
 | 2 complete | Sprite binding, preview, and automatic expressions | Last line selects each NPC's current sprite; missing assets fall back; stale results cannot update a different chat or swipe; native Expressions coexist |
-| 3 superseded | Host TTS voice prototype | The experimental host hooks were removed when Stage 4 adopted its own provider configuration |
+| 3 superseded | Host TTS voice prototype | The experimental host hooks were removed when Stage 4 adopted its own voice configuration and playback queue |
 | 4 complete | Independent narration and NPC playback | Narration and quoted dialogue play in order with separate voices; SillyNPC Play, Stop, opt-in automatic mode, stale cancellation, and duplicate-narration warning work |
 | 5 | Optional playback synchronization | Sprite changes follow audible SillyNPC lines; synthesis completion cannot advance the displayed speaker |
 | 6 | Optional streaming and provider styling | Streaming emits each completed dialogue unit once, cancels stale work, and preserves ordering; style controls appear only for supported providers |
@@ -373,10 +374,11 @@ Visual Novel/group mode alongside the NPC portraits.
 
 Implemented on 2026-10-09:
 
-- `src/tts/tts-settings.js` normalizes separate endpoint, model, voice list,
-  narrator voice, speed, enablement, and opt-in automatic playback settings.
-  Extension settings offer a one-time copy of the built-in OpenAI Compatible
-  connection. The NPC editor stores per-card choices under
+- `src/tts/tts-settings.js` normalizes separate model, voice list, narrator
+  voice, speed, enablement, and opt-in automatic playback settings. The endpoint
+  is read live from built-in OpenAI Compatible TTS; a saved SillyNPC endpoint is
+  discarded. Extension settings can copy the built-in model and voice list.
+  The NPC editor stores per-card choices under
   `presentation.voices['SillyNPC OpenAI Compatible']`, with default narrator,
   explicit silence, and missing-voice status. The previous `OpenAI Compatible`
   binding is read only when no SillyNPC binding exists.
@@ -417,3 +419,47 @@ for the second and third units begin before the first unit ends. The real
 Kokoro check passed with three decodable, non-silent MP3 responses. Focused
 queue tests cover ordered playback, bounded prefetch, and Stop cancellation.
 The full Node suite passed 426 tests after this change.
+
+A subsequent security review removed SillyNPC's independent endpoint setting.
+The Windows Edge fixture set a deliberately stale SillyNPC endpoint and confirmed
+manual and automatic requests still used the current built-in OpenAI Compatible
+endpoint. It then changed that built-in endpoint in memory and confirmed the
+next message used the new value. Its displayed endpoint is read-only. The real
+Kokoro check still returned three decodable, non-silent MP3 segments; voice,
+model, speed, and ordered prefetch checks also passed. The custom server proxy
+currently drops `instructions`, so the UI does not claim support for them.
+
+### Next integration: designed NPC voices with Kokoro narration
+
+The local `~/Documents/qwentts/` service already implements the desired
+design-then-clone lifecycle behind one OpenAI-style `/v1/audio/speech` endpoint.
+Keep Stage 4's shared endpoint and ordered playback queue. Route narration with
+`model: "kokoro"` and a Kokoro preset voice, omitting `npc_id` and `instructions`.
+Route NPC dialogue with `model: "qwen3-tts"`, a stable `npc_id`, and the card's
+brief voice description in `instructions`. The server designs the first spoken
+line, returns it, then prepares a persistent clone reference in the background;
+later requests with the same `npc_id` use the saved clone. A changed description
+needs a new versioned ID because the server intentionally retains the first
+description for an existing ID. Derive IDs from card identity and a voice version
+so same-name chat-owned NPCs remain separate and imports cannot accidentally
+reuse another NPC's server voice.
+
+SillyNPC still needs separate narrator/NPC model settings, an editable NPC voice
+description, and a Qwen request adapter. The current SillyTavern custom speech
+proxy forwards only input, voice, model, speed, and format. It drops the service's
+required `instructions` and `npc_id`, and its useful `max_new_tokens` control.
+An allowlisted server-side bridge must forward these fields without putting the
+API key in extension settings. Consider forwarding `X-Voice-Status` if the editor
+will display background reference preparation. Keep the custom service's optional
+Bearer key in SillyTavern's server-side TTS secret. Do not send Qwen-only fields
+to Kokoro: the service rejects unknown fields and Kokoro rejects instructions.
+
+On the running Windows machine (2026-10-09), `GET /health` reported CUDA readiness
+and `GET /v1/models` listed `qwen3-tts`, `qwen3-tts-0.6b`, and `kokoro`. Direct
+stateless POST checks returned HTTP 200 MP3 audio from VoiceDesign (11,496 bytes)
+and Kokoro (11,376 bytes). The first Qwen check failed the server's sequence
+budget with the default `max_new_tokens: 2048`; the documented short-line value
+of 128 succeeded. The client must set a suitable bounded token budget for each
+Qwen speech unit. These checks did not test persistent `npc_id` creation or
+audible voice quality. The previous fixed-voice commit lacks all three required
+fields too, so it is not a better integration base.

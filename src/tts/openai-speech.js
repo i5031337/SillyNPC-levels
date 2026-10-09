@@ -1,10 +1,17 @@
 import { getRequestHeaders } from '../../../../../../script.js';
+import { extension_settings } from '../../../../../extensions.js';
+
+/** The host owns the destination and its matching OpenAI-compatible TTS secret. */
+export function hostSpeechEndpoint() {
+    return extension_settings.tts?.['OpenAI Compatible']?.provider_endpoint || '';
+}
 
 /** Use SillyTavern's server proxy to avoid browser CORS against a local speech server. */
 export async function synthesizeSpeech(unit, config, signal) {
+    const endpoint = hostSpeechEndpoint();
     const response = await fetch('/api/openai/custom/generate-voice', {
         method: 'POST', signal, headers: getRequestHeaders(),
-        body: JSON.stringify({ provider_endpoint: config.endpoint, model: config.model,
+        body: JSON.stringify({ provider_endpoint: endpoint, model: config.model,
             input: unit.text, voice: unit.voice, response_format: 'mp3', speed: config.speed }),
     });
     if (!response.ok) throw new Error(`Speech request failed (HTTP ${response.status}).`);

@@ -12,7 +12,7 @@ export function buildVoicesSection(card, { save = () => {
     const root = document.createElement('fieldset'); root.className = 'sillynpc-voice-editor';
     const legend = document.createElement('legend'); legend.textContent = 'Dialogue voice'; root.append(legend);
     const note = document.createElement('p');
-    note.textContent = 'Uses the separate SillyNPC speech connection. Set its endpoint, model, and voice list in extension settings.';
+    note.textContent = 'Uses the built-in OpenAI Compatible endpoint and API key. Set the model and voice list in SillyNPC speech settings.';
     root.append(note);
     const select = document.createElement('select'); select.className = 'text_pole';
     select.setAttribute('aria-label', 'NPC dialogue voice'); root.append(select);

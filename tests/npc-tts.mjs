@@ -25,9 +25,11 @@ test('speaker quotes and surrounding prose become ordered, separate voices', () 
 });
 
 test('independent speech preferences keep explicit silence and missing voices', () => {
-    const config = normalizeTtsSettings({ enabled: true, endpoint: 'http://localhost/v1/audio/speech',
+    const config = normalizeTtsSettings({ enabled: true, endpoint: 'https://stale.example/speech',
         model: 'kokoro', narratorVoice: 'alloy', voices: ['alloy', 'nova', 'nova'] });
-    assert.equal(ttsConfigError(config), '');
+    assert.equal(Object.hasOwn(config, 'endpoint'), false);
+    assert.equal(ttsConfigError(config, 'http://localhost/v1/audio/speech'), '');
+    assert.match(ttsConfigError(config, ''), /built-in OpenAI Compatible TTS/);
     assert.deepEqual(config.voices, ['alloy', 'nova']);
     const dialogue = { kind: 'dialogue' };
     assert.equal(resolveUnitVoice({ kind: 'narration' }, config, null), 'alloy');

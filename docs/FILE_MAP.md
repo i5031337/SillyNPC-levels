@@ -391,7 +391,7 @@ paths have regression tests under `tests/`.
 | `src/tts/speech-queue.js` | Cancellable sequential synthesis and audio playback. |
 | `src/tts/openai-speech.js` | OpenAI-compatible synthesis through the host server proxy and HTML audio playback. |
 | `src/tts/npc-tts.js` | SillyNPC Play/Stop controls, automatic gating, previews, and runtime voice routing. |
-| `src/ui/tts/ui-tts-settings.js` | Separate endpoint, model, narrator, and automatic playback controls. |
+| `src/ui/tts/ui-tts-settings.js` | Shared built-in endpoint display, independent model and narrator settings, and automatic playback controls. |
 | `src/ui/characters/ui-voices.js` | Per-NPC voice selection, missing-binding status, and deliberate preview. |
 | `styles/16-npc-expressions.css` | NPC expression and voice editor layout. |
 | `tests/npc-expressions.mjs` | Classification order, caching, failure recovery, variants, cancellation, and event gating. |

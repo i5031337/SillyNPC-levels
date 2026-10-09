@@ -6,7 +6,7 @@ import { dialogueRevision } from '../chat/dialogue-presentation.js';
 import { MESSAGE_RENDERED_EVENT } from '../story/beats.js';
 import { readSpeechUnits } from './speech-units.js';
 import { createSpeechQueue } from './speech-queue.js';
-import { synthesizeSpeech, playSpeechAudio } from './openai-speech.js';
+import { hostSpeechEndpoint, synthesizeSpeech, playSpeechAudio } from './openai-speech.js';
 import { normalizeTtsSettings, resolveUnitVoice, ttsConfigError } from './tts-settings.js';
 import { builtInAutoTtsEnabled } from '../ui/tts/ui-tts-settings.js';
 import { wireSpeechEvents } from './speech-events.js';
@@ -14,6 +14,7 @@ import { wireSpeechEvents } from './speech-events.js';
 const messageElement = id => document.querySelector(`#chat .mes[mesid="${Number(id)}"]`);
 let previewController = null;
 let configSignature = '';
+let endpointSignature = '';
 
 function updateButtons() {
     const current = queue.current();
@@ -29,7 +30,8 @@ const queue = createSpeechQueue({
     playAudio: playSpeechAudio,
     valid: job => getSettings().enabled && getSettings().tts.enabled
         && dialogueRevision(getContext(), job.messageId) === job.revision
-        && JSON.stringify(normalizeTtsSettings(getSettings().tts)) === configSignature,
+        && JSON.stringify(normalizeTtsSettings(getSettings().tts)) === configSignature
+        && hostSpeechEndpoint() === endpointSignature,
     onState: (state, _job, detail) => {
         updateButtons();
         if (state === 'error') globalThis.toastr?.error(detail?.message || String(detail), 'SillyNPC speech');
@@ -46,7 +48,7 @@ export function stopNpcTts() {
 export async function previewNpcVoice(voice) {
     stopNpcTts();
     const config = normalizeTtsSettings(getSettings().tts);
-    const issue = ttsConfigError(config);
+    const issue = ttsConfigError(config, hostSpeechEndpoint());
     if (issue) throw new Error(issue);
     if (!config.voices.includes(voice)) throw new Error('Voice is not in the SillyNPC voice list.');
     const controller = new AbortController(); previewController = controller;
@@ -60,7 +62,7 @@ export async function playNpcMessage(messageId, { automatic = false } = {}) {
     stopNpcTts();
     const settings = getSettings();
     const config = normalizeTtsSettings(settings.tts);
-    const issue = !settings.enabled ? 'Enable SillyNPC first.' : ttsConfigError(config);
+    const issue = !settings.enabled ? 'Enable SillyNPC first.' : ttsConfigError(config, hostSpeechEndpoint());
     if (issue) { if (!automatic) globalThis.toastr?.warning(issue, 'SillyNPC speech'); return; }
     if (automatic && (!config.autoPlay || builtInAutoTtsEnabled())) return;
     const id = Number(messageId);
@@ -75,6 +77,7 @@ export async function playNpcMessage(messageId, { automatic = false } = {}) {
         voice: resolveUnitVoice(unit, config, cards.get(unit.npcId)), config }));
     if (!prepared.some(unit => unit.voice)) return;
     configSignature = JSON.stringify(config);
+    endpointSignature = hostSpeechEndpoint();
     await queue.play(id, units[0].revision, prepared);
 }
 
@@ -101,6 +104,9 @@ export function renderNpcTtsControl(mesEl) {
 
 /** Only a changed foreground reply can initiate automatic speech. */
 export function initNpcTts() {
+    document.addEventListener('input', event => {
+        if (event.target?.matches?.('#openai_compatible_tts_endpoint')) stopNpcTts();
+    });
     wireSpeechEvents({ events: eventSource, types: event_types, renderedEvent: MESSAGE_RENDERED_EVENT,
         render: renderNpcTtsControl, stop: stopNpcTts,
         latestId: () => (getContext()?.chat?.length ?? 0) - 1,

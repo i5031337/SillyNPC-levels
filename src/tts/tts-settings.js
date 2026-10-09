@@ -2,7 +2,6 @@ export const NPC_TTS_PROVIDER = 'SillyNPC OpenAI Compatible';
 export const defaultTtsSettings = Object.freeze({
     enabled: false,
     autoPlay: false,
-    endpoint: '',
     model: '',
     voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
     narratorVoice: 'alloy',
@@ -18,7 +17,6 @@ export function normalizeTtsSettings(value) {
     return {
         enabled: raw.enabled === true,
         autoPlay: raw.autoPlay === true,
-        endpoint: typeof raw.endpoint === 'string' ? raw.endpoint.trim().slice(0, 500) : '',
         model: typeof raw.model === 'string' ? raw.model.trim().slice(0, 200) : '',
         voices,
         narratorVoice: typeof raw.narratorVoice === 'string' ? raw.narratorVoice.trim() : '',
@@ -26,12 +24,12 @@ export function normalizeTtsSettings(value) {
     };
 }
 
-export function ttsConfigError(config) {
+export function ttsConfigError(config, endpoint) {
     if (!config.enabled) return 'SillyNPC speech is disabled.';
     try {
-        const url = new URL(config.endpoint);
-        if (!['http:', 'https:'].includes(url.protocol)) return 'Use an HTTP or HTTPS speech endpoint.';
-    } catch { return 'Enter an OpenAI-compatible speech endpoint.'; }
+        const url = new URL(endpoint);
+        if (!['http:', 'https:'].includes(url.protocol)) return 'Set an HTTP or HTTPS endpoint in built-in OpenAI Compatible TTS.';
+    } catch { return 'Set an endpoint in built-in OpenAI Compatible TTS.'; }
     if (!config.model) return 'Enter a speech model.';
     if (!config.narratorVoice || !config.voices.includes(config.narratorVoice)) return 'Choose an available narrator voice.';
     return '';
