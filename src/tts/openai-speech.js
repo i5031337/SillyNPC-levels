@@ -11,7 +11,7 @@ export async function synthesizeSpeech(unit, config, signal) {
     const endpoint = hostSpeechEndpoint();
     const response = await fetch('/api/openai/custom/generate-voice', {
         method: 'POST', signal, headers: getRequestHeaders(),
-        body: JSON.stringify({ provider_endpoint: endpoint, model: config.model,
+        body: JSON.stringify({ provider_endpoint: endpoint, model: unit.model || config.model,
             input: unit.text, voice: unit.voice, response_format: 'mp3', speed: config.speed }),
     });
     if (!response.ok) throw new Error(`Speech request failed (HTTP ${response.status}).`);

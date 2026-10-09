@@ -5,6 +5,7 @@ import { normalizeNpcPresentation, normalizeCharacterPresentation, normalizeSpri
 
 const preferences = {
     expressions: { enabled: true, spriteFolder: 'Mira/casual', fallback: 'joy' },
+    voiceDesign: { description: 'A soft, clear voice.', version: 3 },
     voices: {
         Edge: { mode: 'voice', voiceId: 'en-GB-001', voiceName: 'Mira voice' },
         System: { mode: 'disabled' },
@@ -26,7 +27,7 @@ test('old and malformed preferences gain disabled expressions and independent de
     assert.deepEqual(first, second);
     assert.deepEqual(first, { expressions: {
         enabled: false, spriteFolder: '', fallback: 'neutral', bindingStatus: 'unverified',
-    }, voices: {} });
+    }, voiceDesign: { description: '', version: 1 }, voices: {} });
     first.expressions.enabled = true;
     assert.equal(second.expressions.enabled, false);
     assert.equal(normalizeNpcPresentation({ expressions: { enabled: 'true' } }).expressions.enabled, false);
@@ -130,11 +131,13 @@ test('reusable card instantiation copies preferences into independent chat insta
     const first = instantiate('world');
     first.presentation.expressions.spriteFolder = 'first-chat';
     first.presentation.voices.Edge.voiceId = 'first-voice';
+    first.presentation.voiceDesign.description = 'A different voice.';
     chat = [];
     const second = instantiate('world');
     assert.notEqual(first.id, second.id);
     assert.equal(second.presentation.expressions.spriteFolder, 'Mira/casual');
     assert.equal(second.presentation.voices.Edge.voiceId, 'en-GB-001');
+    assert.equal(second.presentation.voiceDesign.description, 'A soft, clear voice.');
     assert.equal(world[0].presentation.voices.Edge.voiceId, 'en-GB-001');
 });
 
@@ -157,6 +160,7 @@ test('transfer exports safe preferences and imports explicit unresolved external
     assert.equal(local.presentation.voices.Edge.bindingStatus, 'unresolved');
     assert.equal(local.presentation.voices.System.mode, 'disabled');
     assert.equal(local.presentation.voices.Other.mode, 'default');
+    assert.deepEqual(local.presentation.voiceDesign, { description: 'A soft, clear voice.', version: 3 });
     assert.equal(record.presentation.voices.Edge.bindingStatus, 'unverified');
     apply(local, { name: 'Old' }, 'Old', 1);
     assert.deepEqual(local.presentation, normalizeNpcPresentation());

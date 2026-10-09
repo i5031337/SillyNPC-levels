@@ -7,7 +7,7 @@ import { MESSAGE_RENDERED_EVENT } from '../story/beats.js';
 import { readSpeechUnits } from './speech-units.js';
 import { createSpeechQueue } from './speech-queue.js';
 import { hostSpeechEndpoint, synthesizeSpeech, playSpeechAudio } from './openai-speech.js';
-import { normalizeTtsSettings, resolveUnitVoice, ttsConfigError } from './tts-settings.js';
+import { normalizeTtsSettings, resolveUnitSpeech, ttsConfigError, QWEN_MODEL } from './tts-settings.js';
 import { builtInAutoTtsEnabled } from '../ui/tts/ui-tts-settings.js';
 import { wireSpeechEvents } from './speech-events.js';
 
@@ -45,15 +45,22 @@ export function stopNpcTts() {
     updateButtons();
 }
 
-export async function previewNpcVoice(voice) {
+export async function previewNpcVoice(voice, card) {
     stopNpcTts();
     const config = normalizeTtsSettings(getSettings().tts);
     const issue = ttsConfigError(config, hostSpeechEndpoint());
     if (issue) throw new Error(issue);
-    if (!config.voices.includes(voice)) throw new Error('Voice is not in the SillyNPC voice list.');
+    const unit = { kind: 'dialogue', text: 'Hello. It is good to meet you.' };
+    if (card && config.npcModel === QWEN_MODEL && !card.presentation?.voiceDesign?.description)
+        throw new Error('Describe this NPC voice first.');
+    const choice = card && config.npcModel === QWEN_MODEL
+        ? resolveUnitSpeech(unit, config, card) : { voice, model: config.model };
+    if (config.npcModel !== QWEN_MODEL && !config.voices.includes(voice))
+        throw new Error('Voice is not in the SillyNPC voice list.');
+    if (!choice.voice) throw new Error('Describe this NPC voice first.');
     const controller = new AbortController(); previewController = controller;
     try {
-        const blob = await synthesizeSpeech({ text: 'This is a SillyNPC voice preview.', voice }, config, controller.signal);
+        const blob = await synthesizeSpeech({ ...unit, ...choice }, config, controller.signal);
         if (!controller.signal.aborted) await playSpeechAudio(blob, controller.signal);
     } finally { if (previewController === controller) previewController = null; }
 }
@@ -74,7 +81,7 @@ export async function playNpcMessage(messageId, { automatic = false } = {}) {
     if (!units.length) return;
     const cards = new Map(getActiveCharacters().map(card => [card.id, card]));
     const prepared = units.map(unit => ({ ...unit,
-        voice: resolveUnitVoice(unit, config, cards.get(unit.npcId)), config }));
+        ...resolveUnitSpeech(unit, config, cards.get(unit.npcId)), config }));
     if (!prepared.some(unit => unit.voice)) return;
     configSignature = JSON.stringify(config);
     endpointSignature = hostSpeechEndpoint();

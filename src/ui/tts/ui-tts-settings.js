@@ -25,7 +25,8 @@ export function renderTtsSettings({ onChange = () => {}, preview = () => {} } = 
     const auto = field('Automatically play completed replies', input('checkbox', config.autoPlay));
     const endpoint = field('Built-in OpenAI Compatible endpoint', input('url', hostSpeechEndpoint()));
     endpoint.readOnly = true;
-    const model = field('Speech model', input('text', config.model));
+    const model = field('Narrator model', input('text', config.model));
+    const npcModel = field('NPC dialogue model (optional)', input('text', config.npcModel || ''));
     const voices = field('Available voices (comma separated)', input('text', config.voices.join(', ')));
     const narrator = document.createElement('select'); narrator.className = 'text_pole';
     field('Narrator voice', narrator);
@@ -49,12 +50,13 @@ export function renderTtsSettings({ onChange = () => {}, preview = () => {} } = 
         const issue = ttsConfigError(config, endpoint.value);
         status.textContent = config.enabled && config.autoPlay && nativeAuto()
             ? 'Built-in TTS automatic narration is also on. Turn it off to avoid duplicate speech.'
-            : issue || 'SillyNPC uses the built-in OpenAI Compatible endpoint and API key, with its own model and voices.';
+            : issue || 'SillyNPC uses the built-in OpenAI Compatible endpoint and API key. Use kokoro for narration and qwen3-tts for designed NPC voices on the local service.';
     };
     const persist = () => { onChange(); saveSettingsDebounced(); refreshStatus(); };
     enabled.addEventListener('change', () => { config.enabled = enabled.checked; persist(); });
     auto.addEventListener('change', () => { config.autoPlay = auto.checked; persist(); });
     model.addEventListener('change', () => { config.model = model.value.trim(); persist(); });
+    npcModel.addEventListener('change', () => { config.npcModel = npcModel.value.trim(); persist(); });
     voices.addEventListener('change', () => {
         config.voices = [...new Set(voices.value.split(',').map(value => value.trim()).filter(Boolean))].slice(0, 100);
         refreshNarrator(); persist();

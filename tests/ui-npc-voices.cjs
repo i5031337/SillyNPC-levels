@@ -62,7 +62,7 @@ async function main() {
             await sleep(100);
         }
         const root = await evaluate(`new URL('.', [...document.scripts].find(s => s.src.includes('SillyNPC-levels/index.js') || s.src.includes('SillyNPC-XP/index.js')).src).href`);
-        const fixture = `const out={root:${JSON.stringify(root)}};let section,settings,savedTts,savedCharacters,hostContext,chatLength,fixtureMes,originalFetch,originalPlay,nativeTts,savedNative;try {
+        const fixture = `const out={root:${JSON.stringify(root)}};let section,designSection,settings,savedTts,savedCharacters,hostContext,chatLength,fixtureMes,originalFetch,originalPlay,nativeTts,savedNative;try {
             try{await import(${JSON.stringify(root + 'index.js')});out.entryOk=true}catch(error){out.entryError=String(error.stack||error)}
             for(let i=0;i<200&&!document.getElementById('sillynpc-tts-settings');i++)
                 await new Promise(r=>setTimeout(r,100));
@@ -72,7 +72,14 @@ async function main() {
             const {previewNpcVoice}=await import(${JSON.stringify(root + 'src/tts/npc-tts.js')});
             const {playNpcMessage,renderNpcTtsControl,stopNpcTts}=await import(${JSON.stringify(root + 'src/tts/npc-tts.js')});
             settings=getSettings();savedTts=structuredClone(settings.tts);
+            out.savedSpeechSettings={enabled:savedTts.enabled,autoPlay:savedTts.autoPlay,
+                model:savedTts.model,npcModel:savedTts.npcModel,
+                narratorVoice:savedTts.narratorVoice,voices:savedTts.voices};
             const host=SillyTavern.getContext().extensionSettings.tts?.['OpenAI Compatible'];
+            const nativeSettings=SillyTavern.getContext().extensionSettings.tts;
+            out.savedBuiltInAuto={enabled:nativeSettings?.enabled,
+                autoGeneration:nativeSettings?.auto_generation,
+                periodicAutoGeneration:nativeSettings?.periodic_auto_generation};
             out.hostEndpoint=host?.provider_endpoint||'';
             out.panel=Boolean(document.getElementById('sillynpc-tts-settings'));
             out.endpointReadOnly=Boolean(document.querySelector('#sillynpc-tts-settings input[type=url]')?.readOnly);
@@ -109,6 +116,7 @@ async function main() {
             document.querySelector('#chat').append(fixtureMes);
             renderNpcTtsControl(fixtureMes);out.manualButton=Boolean(fixtureMes.querySelector('.sillynpc-tts-play'));
             const realPlayback=${process.argv.includes('--real-playback')};
+            const realDesign=${process.argv.includes('--designed-real-playback')};
             const silence=realPlayback?null:await (await fetch('/sounds/silence.mp3')).blob();out.calls=[];out.audio=[];
             out.requestTimes=[];out.playStart=[];out.playEnd=[];
             originalPlay=HTMLMediaElement.prototype.play;
@@ -123,8 +131,10 @@ async function main() {
             window.fetch=async(url,options)=>{
                 if(!String(url).includes('/api/openai/custom/generate-voice'))return originalFetch(url,options);
                 out.requestTimes.push(performance.now());out.calls.push(JSON.parse(options.body));
-                if(!realPlayback)return new Response(silence,{status:200,headers:{'Content-Type':'audio/mpeg'}});
+                if(!realPlayback && !(realDesign && ['kokoro','qwen3-tts'].includes(out.calls.at(-1).model)))
+                    return new Response(silence,{status:200,headers:{'Content-Type':'audio/mpeg'}});
                 const response=await originalFetch(url,options);
+                if(!response.ok)throw new Error('Speech proxy HTTP '+response.status+': '+await response.clone().text());
                 const bytes=await response.clone().arrayBuffer();
                 const audioContext=new AudioContext();
                 const decoded=await audioContext.decodeAudioData(bytes.slice(0));
@@ -154,6 +164,22 @@ async function main() {
                     await playNpcMessage(chatLength);
                     out.liveEndpoint=out.calls.at(-3)?.provider_endpoint;
                 }finally{host.provider_endpoint=originalEndpoint}
+                settings.tts.model='kokoro';settings.tts.npcModel='qwen3-tts';
+                settings.tts.voices=['af_alloy'];settings.tts.narratorVoice='af_alloy';
+                const activeCard=settings.characters.at(-1);
+                activeCard.presentation.voiceDesign={description:'A calm, clear voice.',version:2};
+                designSection=buildVoicesSection(activeCard,{save:()=>out.designSaved=(out.designSaved||0)+1,
+                    previewVoice:async()=>{}});document.body.append(designSection);
+                const description=designSection.querySelector('textarea');
+                out.designEditor=description?.value==='A calm, clear voice.';
+                description.value='A bright, clear voice.';description.dispatchEvent(new Event('change'));
+                out.designVersion=activeCard.presentation.voiceDesign.version;
+                if(realDesign && host.provider_endpoint!=='http://127.0.0.1:8001/v1/audio/speech')
+                    throw new Error('Built-in OpenAI Compatible endpoint must point to the local Qwen service.');
+                await playNpcMessage(chatLength);
+                out.designedCalls=out.calls.slice(-3);
+                const payload=out.designedCalls[1].voice.split(':')[1].replace(/-/g,'+').replace(/_/g,'/');
+                out.designFields=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload),c=>c.charCodeAt(0))));
             }
             stopNpcTts();
         }catch(error){out.error=String(error.stack||error)}finally{
@@ -161,12 +187,12 @@ async function main() {
             if(originalPlay)HTMLMediaElement.prototype.play=originalPlay;
             if(nativeTts&&savedNative)Object.assign(nativeTts,savedNative);
             fixtureMes?.remove();if(hostContext&&chatLength!==undefined)hostContext.chat.splice(chatLength);
-            section?.remove();if(settings&&savedTts)settings.tts=savedTts;
+            section?.remove();designSection?.remove();if(settings&&savedTts)settings.tts=savedTts;
             if(settings&&savedCharacters)settings.characters=savedCharacters}
         document.documentElement.setAttribute('data-npc-voices-fixture',JSON.stringify(out));`;
         await evaluate(`(() => { const s=document.createElement('script');s.type='module';s.id='npc-voices-fixture';s.textContent=${JSON.stringify(fixture)};document.head.append(s);return true })()`);
         let result;
-        for (let i = 0; i < 400; i++) {
+        for (let i = 0; i < (process.argv.includes('--designed-real-playback') ? 1200 : 400); i++) {
             result = await evaluate(`document.documentElement.getAttribute('data-npc-voices-fixture')`);
             if (result) break;
             await sleep(100);
@@ -190,7 +216,16 @@ async function main() {
                 ? parsed.audio?.length !== 3 || parsed.audio.some(item => item.status !== 200
                     || item.bytes < 1000 || item.seconds <= 0 || item.rms <= 0.001)
                 : !parsed.autoPlayed || !parsed.duplicateBlocked
-                    || parsed.liveEndpoint !== 'https://updated-built-in.example/speech')
+                    || parsed.liveEndpoint !== 'https://updated-built-in.example/speech'
+                    || !parsed.designEditor || parsed.designSaved !== 1 || parsed.designVersion !== 3
+                    || parsed.designedCalls?.map(call => call.model).join(',') !== 'kokoro,qwen3-tts,kokoro'
+                    || parsed.designedCalls?.[0]?.voice !== 'af_alloy'
+                    || parsed.designFields?.npc_id !== 'sn_mira-tts-fixture_v3'
+                    || parsed.designFields?.instructions !== 'A bright, clear voice.'
+                    || parsed.designFields?.max_new_tokens !== 128
+                    || (process.argv.includes('--designed-real-playback') &&
+                        (parsed.audio?.length !== 3 || parsed.audio.some(item => item.status !== 200
+                            || item.bytes < 1000 || item.seconds <= 0 || item.rms <= 0.001))))
             || parsed.calls?.[1]?.voice !== 'nova' || parsed.calls?.[0]?.voice !== 'alloy')
             process.exitCode = 1;
     } finally {

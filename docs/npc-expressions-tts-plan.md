@@ -1,6 +1,6 @@
 # NPC Expressions and TTS integration plan
 
-Status: Stages 1, 2, and 4 implemented; Stage 3 host adapter superseded. Updated 2026-10-09.
+Status: Stages 1, 2, and 4 implemented, including designed NPC voices; Stage 3 host adapter superseded. Updated 2026-10-09.
 
 Add mood sprites and individual voices to SillyNPC NPCs using the dialogue lines
 SillyNPC already recognizes and highlights. Expressions can reuse SillyTavern's
@@ -463,3 +463,39 @@ of 128 succeeded. The client must set a suitable bounded token budget for each
 Qwen speech unit. These checks did not test persistent `npc_id` creation or
 audible voice quality. The previous fixed-voice commit lacks all three required
 fields too, so it is not a better integration base.
+
+### Designed voice integration
+
+Implemented on 2026-10-09 in the extension and local `qwentts` service. The
+extension keeps SillyTavern's built-in endpoint and server-side secret. A separate
+NPC model setting routes recognized NPC dialogue to `qwen3-tts`; narration uses the
+configured narrator model (`kokoro`) and preset voice. Each NPC card stores a brief
+voice description and version. Changing the description increments the version;
+the service voice ID derives from the card UUID and version. Imported cards receive
+new UUIDs through the existing import flow. An explicit preview also creates the
+versioned voice, so the preview line may become the clone reference.
+
+SillyTavern's unmodified custom speech proxy forwards the encoded `voice` string.
+The local service decodes a `sillynpc-v1:` URL-safe base64 JSON payload containing
+only `npc_id`, `instructions`, and a 128–512 Qwen token budget. It validates that
+payload only for `qwen3-tts` and leaves ordinary speech requests unchanged. Kokoro
+requests carry no Qwen fields. The service must restart to load the decoder. This
+wire format is specific to the local `qwentts` service; another OpenAI-compatible
+endpoint will reject it or interpret it as a voice ID.
+
+Verification: 427 Node tests passed. The local Qwen service's six server tests
+passed, including encoded-field decoding and ordinary voice requests. The
+full service suite ran 24 tests; its existing narrator format/speed case failed
+because FFmpeg is absent from this Windows shell's `PATH`. The Windows Edge
+fixture passed with mocked responses and with real playback through the unchanged
+SillyTavern proxy. Its first real run used an unsaved in-memory endpoint switch
+to `127.0.0.1:8001`; a later run used that endpoint after it was saved in the
+built-in provider. Both received three decodable, non-silent MP3s in
+narration/dialogue/narration order. The designed test voice's background
+reference reached `ready` with a 5.52-second reference, and the later run reused
+it. Browser fixtures restored chat and settings without saving. The latest saved
+settings snapshot had a combined `kokoro / qwen3-tts` narrator model, an empty
+NPC model, and built-in automatic TTS on. For ordinary playback, set SillyNPC's
+narrator model to `kokoro`, NPC model to `qwen3-tts`, and disable built-in
+automatic TTS if SillyNPC automatic speech is desired. Audible quality remains a
+manual listening check.

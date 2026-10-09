@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dialogueLabels } from '../src/chat/dialogue-line.js';
 import { createSpeechQueue } from '../src/tts/speech-queue.js';
 import { wireSpeechEvents } from '../src/tts/speech-events.js';
-import { normalizeTtsSettings, resolveUnitVoice, ttsConfigError, NPC_TTS_PROVIDER } from '../src/tts/tts-settings.js';
+import { normalizeTtsSettings, resolveUnitVoice, resolveUnitSpeech, ttsConfigError, NPC_TTS_PROVIDER } from '../src/tts/tts-settings.js';
 
 const source = readFileSync(new URL('../src/tts/speech-units.js', import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
@@ -43,6 +43,29 @@ test('independent speech preferences keep explicit silence and missing voices', 
         [NPC_TTS_PROVIDER]: { mode: 'voice', voiceId: 'removed' },
     } } }), null);
     assert.equal(resolveUnitVoice(dialogue, config, null), 'alloy');
+});
+
+test('Kokoro narration and designed NPC speech use separate model and stable versioned identity', () => {
+    const config = normalizeTtsSettings({ enabled: true, model: 'kokoro', npcModel: 'qwen3-tts',
+        narratorVoice: 'af_alloy', voices: ['af_alloy'] });
+    const card = { id: 'card-123', presentation: { voiceDesign: {
+        description: 'A gentle voice with a bright tone.', version: 3,
+    } } };
+    assert.deepEqual(resolveUnitSpeech({ kind: 'narration', text: 'The door opens.' }, config, card),
+        { voice: 'af_alloy', model: 'kokoro' });
+    const first = resolveUnitSpeech({ kind: 'dialogue', text: 'Hello.' }, config, card);
+    const second = resolveUnitSpeech({ kind: 'dialogue', text: 'Hello.' }, config, card);
+    assert.equal(first.model, 'qwen3-tts');
+    assert.equal(first.voice, second.voice);
+    const encoded = first.voice.split(':')[1].replace(/-/gu, '+').replace(/_/gu, '/');
+    const fields = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    assert.equal(fields.npc_id, 'sn_card-123_v3');
+    assert.equal(fields.instructions, card.presentation.voiceDesign.description);
+    assert.equal(fields.max_new_tokens, 128);
+    card.presentation.voiceDesign.version++;
+    assert.notEqual(resolveUnitSpeech({ kind: 'dialogue', text: 'Hello.' }, config, card).voice, first.voice);
+    card.presentation.voices = { [NPC_TTS_PROVIDER]: { mode: 'disabled' } };
+    assert.equal(resolveUnitSpeech({ kind: 'dialogue', text: 'Hello.' }, config, card).voice, null);
 });
 
 test('speech queue prefetches requests while keeping playback ordered and bounded', async () => {

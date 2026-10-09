@@ -3,6 +3,7 @@ export const defaultTtsSettings = Object.freeze({
     enabled: false,
     autoPlay: false,
     model: '',
+    npcModel: '',
     voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
     narratorVoice: 'alloy',
     speed: 1,
@@ -18,10 +19,40 @@ export function normalizeTtsSettings(value) {
         enabled: raw.enabled === true,
         autoPlay: raw.autoPlay === true,
         model: typeof raw.model === 'string' ? raw.model.trim().slice(0, 200) : '',
+        npcModel: typeof raw.npcModel === 'string' ? raw.npcModel.trim().slice(0, 200) : '',
         voices,
         narratorVoice: typeof raw.narratorVoice === 'string' ? raw.narratorVoice.trim() : '',
         speed: Number.isFinite(speed) && speed >= 0.25 && speed <= 4 ? speed : 1,
     };
+}
+
+export const QWEN_MODEL = 'qwen3-tts';
+
+/** The host proxy forwards voice but drops the local service's NPC fields. */
+export function encodeDesignedVoice(card, text) {
+    const design = card?.presentation?.voiceDesign;
+    if (!design?.description || !card?.id) return '';
+    const id = `sn_${String(card.id).replace(/[^A-Za-z0-9_-]/gu, '_')}_v${design.version || 1}`;
+    if (id.length > 128) return '';
+    const maxNewTokens = Math.min(512, Math.max(128, Math.ceil(String(text).length * 2.5)));
+    const json = JSON.stringify({ npc_id: id, instructions: design.description, max_new_tokens: maxNewTokens });
+    const bytes = new TextEncoder().encode(json);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `sillynpc-v1:${btoa(binary).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/u, '')}`;
+}
+
+export function resolveUnitSpeech(unit, config, card) {
+    if (unit.kind === 'dialogue' && card && config.npcModel === QWEN_MODEL) {
+        const binding = card.presentation?.voices?.[NPC_TTS_PROVIDER]
+            || card.presentation?.voices?.['OpenAI Compatible'];
+        if (binding?.mode === 'disabled') return { voice: null, model: '' };
+        const designed = encodeDesignedVoice(card, unit.text);
+        return designed ? { voice: designed, model: QWEN_MODEL } : { voice: config.narratorVoice, model: config.model };
+    }
+    const voice = resolveUnitVoice(unit, config, card);
+    if (!voice) return { voice: null, model: '' };
+    return { voice, model: unit.kind === 'dialogue' ? config.npcModel || config.model : config.model };
 }
 
 export function ttsConfigError(config, endpoint) {

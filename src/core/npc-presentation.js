@@ -14,6 +14,7 @@ export function normalizeSpriteFolder(value) {
 export function normalizeNpcPresentation(value, { imported = false } = {}) {
     const raw = object(value);
     const expressions = object(raw.expressions);
+    const voiceDesign = object(raw.voiceDesign);
     const spriteFolder = normalizeSpriteFolder(expressions.spriteFolder);
     const bindingStatus = (binding, hasReference) => hasReference && (imported || binding?.bindingStatus === 'unresolved')
         ? 'unresolved' : 'unverified';
@@ -35,6 +36,11 @@ export function normalizeNpcPresentation(value, { imported = false } = {}) {
             spriteFolder,
             fallback: text(expressions.fallback) || 'neutral',
             bindingStatus: bindingStatus(expressions, Boolean(spriteFolder)),
+        },
+        voiceDesign: {
+            description: text(voiceDesign.description).slice(0, 500),
+            version: Number.isSafeInteger(voiceDesign.version) && voiceDesign.version > 0
+                ? voiceDesign.version : 1,
         },
         voices,
     };
