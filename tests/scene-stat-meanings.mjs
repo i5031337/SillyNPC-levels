@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { promptText } from '../src/prompts/prompt-texts.js';
 
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-    .replaceAll('export function ', 'function ');
+    .replaceAll('export function ', 'function ') + `\n${collectionQuantityField.toString()}\n`;
 
 function renderer(tracker, referenced = []) {
     const deps = {};

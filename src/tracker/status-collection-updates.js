@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../core/collection-fields.js';
 import { collectionAppliesTo } from '../core/collection-targets.js';
 import { getSettings } from '../core/settings.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
@@ -153,7 +154,29 @@ function applyCollectionUpdate(actor, collectionId, update, { allowReplace = fal
 
     // Handle "remove"
     if (Array.isArray(update.remove)) {
-        for (const itemName of update.remove) removeItem(actor, actualCollectionId, itemName);
+        for (const removal of update.remove) {
+            const qtyField = collectionQuantityField(colDef);
+            const primary = colDef.fields.find(field => field.isPrimary)?.name || 'name';
+            const structured = removal && typeof removal === 'object';
+            const itemName = structured
+                ? itemIdentifier(actor, actualCollectionId, removal, primary, dryRun) : removal;
+            if (itemName === undefined) continue;
+            if (!qtyField || (structured && removal.all === true)) {
+                removeItem(actor, actualCollectionId, itemName);
+                continue;
+            }
+            const amount = structured ? removal[qtyField.name] ?? 1 : 1;
+            if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+                warnSkipped(actor, actualCollectionId, 'removal requires a positive quantity.', dryRun);
+                continue;
+            }
+            const item = actor.collections[actualCollectionId].find(entry =>
+                String(entry[primary]).toLowerCase() === String(itemName).toLowerCase());
+            if (!item) continue;
+            const remaining = Math.max(0, (Number(item[qtyField.name] ?? 1) || 0) - amount);
+            if (remaining === 0) removeItem(actor, actualCollectionId, itemName);
+            else item[qtyField.name] = remaining;
+        }
     }
 
     // Handle "update"
@@ -180,6 +203,13 @@ function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
     const primaryField = colDef.fields.find(f => f.isPrimary) || { name: 'name' };
     const itemName = itemIdentifier(actor, collectionId, itemData, primaryField.name, dryRun);
     if (itemName === undefined) return;
+
+    const qtyField = collectionQuantityField(colDef);
+    const amount = qtyField ? itemData[qtyField.name] ?? 1 : null;
+    if (qtyField && (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0)) {
+        warnSkipped(actor, collectionId, 'addition requires a positive quantity.', dryRun);
+        return;
+    }
 
     // Clear from recently_deleted if it was there
     const lowerName = String(itemName).toLowerCase();
@@ -208,31 +238,7 @@ function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
         // Merge fields
         const merged = { ...existing, ...filteredItem };
         
-        // Handle quantity merging if a numeric quantity field exists
-        const qtyField = colDef.fields.find(f => f.type === 'number' && (f.name === 'quantity' || f.name === 'qty' || f.name === 'count'));
-        if (qtyField) {
-            const fieldName = qtyField.name;
-            if (existing[fieldName] !== undefined && filteredItem[fieldName] !== undefined) {
-                const q1 = parseFloat(existing[fieldName]) || 0;
-                const q2 = parseFloat(filteredItem[fieldName]) || 0;
-                // The same number that is already held is the model restating the state,
-                // not the character acquiring a second lot. Summing it doubled the
-                // quantity on every message that mentioned the item, compounding in
-                // silence - and asked the review panel to confirm the same doubling over
-                // and over.
-                //
-                // The two cannot be told apart from the delta alone, so this picks the
-                // safer error: finding exactly two more rope while already holding two is
-                // missed, which the story shows and a person can correct. The other way
-                // round grows without bound and reads as the tracker inventing loot.
-                //
-                // Judged on the quantity alone rather than on the whole item: an add that
-                // corrects some other field - a note, a description - is a real update,
-                // and the quantity coming along with it unchanged must not be doubled for
-                // having been mentioned.
-                if (q1 !== q2) merged[fieldName] = q1 + q2;
-            }
-        }
+        if (qtyField) merged[qtyField.name] = (Number(existing[qtyField.name] ?? 1) || 0) + amount;
 
         // Normalised like any other item: the merge could otherwise leave a quantity the
         // model sent as text sitting beside one already stored as a number.
@@ -241,7 +247,7 @@ function addItem(actor, collectionId, itemData, { dryRun = false } = {}) {
         // This branch filled in defaults but never enforced types, so an item added
         // through the delta path - which is every item the per-message extractor adds -
         // kept "4" as a string where the replace path would have stored 4.
-        actor.collections[collectionId].push(normaliseItem(filteredItem, colDef.fields));
+        actor.collections[collectionId].push(normaliseItem(qtyField ? { ...filteredItem, [qtyField.name]: amount } : filteredItem, colDef.fields));
     }
 }
 
@@ -290,7 +296,7 @@ function updateItem(actor, collectionId, itemName, updates) {
 
         const merged = { ...item };
         Object.keys(updates).forEach(key => {
-            if (validFields.has(key)) merged[key] = updates[key];
+            if (validFields.has(key) && key !== collectionQuantityField(colDef)?.name) merged[key] = updates[key];
         });
 
         /* Normalised like the add and replace paths, which this used to skip: writing

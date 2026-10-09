@@ -1,5 +1,5 @@
 import { attachRangeValidation } from './ui-system-range.js';
-import { ensureCollectionIdentifier, moveCollectionField, deleteCollectionField } from '../../core/collection-fields.js';
+import { ensureCollectionIdentifier, ensureCollectionQuantity, collectionQuantityField, moveCollectionField, deleteCollectionField } from '../../core/collection-fields.js';
 import { liveSystemContext } from './ui-system-context.js';
 import { escapeHtml } from '../../core/utils.js';
 import { parseOptions } from './ui-system-stats.js';
@@ -7,12 +7,16 @@ import { parseOptions } from './ui-system-stats.js';
 /** Render and wire one collection's field rows. Rebuild after structural edits. */
 export function renderCollectionFields(col, fieldsList, onRefresh, context = liveSystemContext) {
     const { saveSettings } = context;
-    if (ensureCollectionIdentifier(col)) saveSettings();
+    const identifierChanged = ensureCollectionIdentifier(col);
+    if (ensureCollectionQuantity(col) || identifierChanged) saveSettings();
     fieldsList.replaceChildren();
     col.fields.forEach((field, index) => {
         const box = createFieldBox();
         const row = createFieldControls(col, field, index);
-        wireFieldControls(row, col, field, index, fieldsList, onRefresh, context);
+        if (field === collectionQuantityField(col)) {
+            row.querySelectorAll('input, select, button').forEach(control => { control.disabled = true; });
+            row.title = 'Built-in quantity: gains and consumption use add/remove amounts. Default 1.';
+        } else wireFieldControls(row, col, field, index, fieldsList, onRefresh, context);
         box.append(row, createFieldHint(field, context));
         fieldsList.appendChild(box);
     });

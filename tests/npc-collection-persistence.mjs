@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { progressionFields } from '../src/tracker/progression-fields.js';
 
 function load(path, globals, names = 'bind') {
     const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
-        .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '').replaceAll('export ', '');
+        .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '').replaceAll('export ', '') + `\n${collectionQuantityField.toString()}\n`;
     return new Function(...Object.keys(globals), `${source}\nreturn { ${names} };`)(...Object.values(globals));
 }
 

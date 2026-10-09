@@ -53,6 +53,8 @@ export function allocatePlan(source) {
     for (const collection of plan.collections) {
         checkNames(collection.fields, `collection.${collection.name}.fields`);
         if (!collection.fields.length) errors.push(`collection.${collection.name}: requires identifier field first`);
+        if (collection.trackQuantity && !collection.fields.some(field => field.name.toLowerCase() === 'quantity'))
+            collection.fields.push({ name: 'quantity', purpose: 'Built-in amount held; gains and consumption use add/remove amounts.' });
         collection.fields = allocate(collection.fields);
         collection.targets = collection.targets.map(target => ['player', 'npc'].includes(target) ? target : `template:${resolve(target, plan.npcTemplates, `collection.${collection.name}.targets`, 'npcTemplates')}`);
         if (!collection.targets.length || new Set(collection.targets).size !== collection.targets.length) errors.push(`collection.${collection.name}: select unique targets`);

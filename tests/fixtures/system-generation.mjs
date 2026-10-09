@@ -8,7 +8,7 @@ export const plan = {
     playerProgression: { enabled: true, xp: 'XP', level: 'Level', growth: 'All selected stats gain small increases; resources reset.' },
     npcTemplates: [{ name: 'Creature', description: 'Catchable monsters.', profiles: ['Species'], stats: ['XP', 'Level', 'Vigor'],
         progression: { enabled: true, xp: 'XP', level: 'Level', growth: 'All selected stats grow; Level persists.' } }],
-    collections: [{ name: 'Techniques', purpose: 'Learned combat actions', targets: ['player', 'Creature'],
+    collections: [{ name: 'Techniques', purpose: 'Learned combat actions', targets: ['player', 'Creature'], trackQuantity: false,
         fields: [{ name: 'Name', purpose: 'Technique identifier' }, { name: 'Power', purpose: 'Personal proficiency' }], rewards: 'scheduled' }],
 };
 export function responseFor(stage, registry) {
@@ -33,9 +33,9 @@ export function responseFor(stage, registry) {
     }
     if (kind === 'collection') {
         const c = registry.collections.find(c => c.id === scope);
-        section = { id: c.id, name: c.name, targets: c.targets, guidance: c.purpose, fields: c.fields.map((f, index) => ({
+        section = { id: c.id, name: c.name, targets: c.targets, trackQuantity: c.trackQuantity, guidance: c.purpose, fields: c.fields.map((f, index) => ({
             id: f.id, name: f.id, label: f.name, type: index ? 'number' : 'text', defaultValue: index ? 1 : '',
-            isPrimary: index === 0, isStatic: index === 0, ...(index ? { min: '1', maxStatValue: '3' } : {}) })) };
+            isPrimary: index === 0, isStatic: index === 0, ...(f.id === 'quantity' ? { min: '0', maxStatValue: '' } : index ? { min: '1', maxStatValue: '3' } : {}) })) };
     }
     if (kind === 'rewards') section = { enabled: true, mode: 'scheduled', guidance: 'Learn at training milestones.', interval: 1,
         schedule: [{ id: 'reward-2', level: 2, entry: { name: 'Quick Strike', power: 2 } }, { id: 'reward-3', level: 3, entry: { name: 'Guard', power: 1 } }] };

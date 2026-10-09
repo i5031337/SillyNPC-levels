@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ import { readerPromptTexts } from '../src/prompts/prompt-texts-reader.js';
 
 function load(path, deps, exported) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-        .replace(/^import .*;\n/gm, '').replaceAll('export function ', 'function ');
+        .replace(/^import .*;\n/gm, '').replaceAll('export function ', 'function ') + `\n${collectionQuantityField.toString()}\n`;
     return new Function(...Object.keys(deps), `${source}\nreturn ${exported};`)(...Object.values(deps));
 }
 const tracker = { globalStats: [], playerStats: [], npcStats: [

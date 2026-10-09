@@ -1,5 +1,5 @@
 import { normalizeTrackerProgression } from './progression-config.js';
-import { ensureCollectionIdentifier } from './collection-fields.js';
+import { ensureCollectionIdentifier, ensureCollectionQuantity } from './collection-fields.js';
 import { debugLog, SPEAKER_PALETTE, NPC_LORE_FIELDS, normalizeHudLayoutId } from './constants.js';
 import { paletteIndexFor } from './hash.js';
 import { normaliseNpcPersistence } from '../tracker/stat-persistence.js';
@@ -307,6 +307,9 @@ export function normalizeSettings(settings) {
     normalizeDefaultImagesAndPreferences(settings);
     migrateLegacyTrackerLayout(settings);
     normalizeTrackerSchema(settings);
-    for (const collection of settings.statusTracker?.collections || []) ensureCollectionIdentifier(collection);
+    for (const collection of settings.statusTracker?.collections || []) {
+        ensureCollectionIdentifier(collection);
+        ensureCollectionQuantity(collection);
+    }
     migratePresetsAndStores(settings, currentVersion);
 }

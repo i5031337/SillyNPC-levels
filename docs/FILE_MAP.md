@@ -48,6 +48,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/progression.mjs` | XP advancement tests. |
 | `tests/level-grants.mjs`, `tests/level-grant-review.mjs` | Actor-specific grant generation, bounds, dependencies, and atomic review acceptance. |
 | `tests/level-reading-retry.mjs`, `tests/inline-level-review.mjs` | Grant caching, missing-choice retries, freshness, and inline reading replacement. |
+| `tests/collection-quantity.mjs` | Quantity arithmetic, consumption, transfers, migration, and reader contracts. |
+| `tests/collection-quantity-generation.mjs` | Generate and validate built-in quantity configuration. |
+| `tests/ui-collection-quantity.py` | Unsaved Firefox fixtures for quantity controls and stack arithmetic. |
 | `tests/collection-preview-purity.mjs` | Verify that previews never create library entries or mutate tombstones. |
 | `tests/ui-pool-readings.py` | Individual NPC pool/Level initialization, updates over plain saved values, live capacity, and tracker rendering. |
 | `tests/ui-progression-smoke.py` | Unsaved live Firefox fixtures for rewards, review dependencies, and Player/NPC progression controls. |

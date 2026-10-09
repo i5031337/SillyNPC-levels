@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../../core/collection-fields.js';
 import { escapeHtml, escapeRegExp, computeStatBar, applyStatFormat, splitValue } from '../../core/utils.js';
 import { findTemplateLabels, applyLabelFixes } from '../../ui/shared/template-labels.js';
 import { BUILT_IN_DEFAULT_AVATAR } from '../../core/constants.js';
@@ -20,8 +21,8 @@ export function summarizeCollectionUI(collectionId, items, settings) {
     const itemStrings = displayItems.map(item => {
         const primaryField = colDef.fields.find(f => f.isPrimary) || { name: 'name' };
         let str = item[primaryField.name] || item.name || 'Unknown Item';
-        const qtyField = colDef.fields.find(f => f.type === 'number' && ['quantity', 'qty', 'count'].includes(f.name));
-        const qty = qtyField ? item[qtyField.name] : item.quantity;
+        const qtyField = collectionQuantityField(colDef);
+        const qty = qtyField ? item[qtyField.name] ?? 1 : undefined;
         return (qty > 1) ? `${str} (x${qty})` : str;
     });
 

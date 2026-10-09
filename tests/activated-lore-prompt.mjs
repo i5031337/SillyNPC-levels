@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -5,7 +6,7 @@ import { promptText } from '../src/prompts/prompt-texts.js';
 
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-    .replaceAll('export function ', 'function ');
+    .replaceAll('export function ', 'function ') + `\n${collectionQuantityField.toString()}\n`;
 
 test('a turn with no activated lore drops previous references and a later activation restores them', () => {
     const card = { name: 'Mira', lorebook: { world: 'Cast', uid: 1 }, statusOverrides: { HP: 7 } };

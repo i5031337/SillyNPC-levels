@@ -29,8 +29,8 @@ export const rewardSchema = object({ enabled: bool, mode: enumeration(['schedule
 export const templateSchema = object({ id, name: text, description: text, profileIds: array(id), statIds: array(id),
     progression: progressionSchema }, ['id', 'name', 'description', 'profileIds', 'statIds']);
 export const collectionSchema = object({ id, name: text, targets: array(text, 8), guidance: text,
-    includeInImagePrompt: bool, retired: bool, fields: array(fieldSchema), levelUpRewards: rewardSchema },
-['id', 'name', 'targets', 'guidance', 'fields']);
+    trackQuantity: bool, includeInImagePrompt: bool, retired: bool, fields: array(fieldSchema), levelUpRewards: rewardSchema },
+['id', 'name', 'targets', 'guidance', 'trackQuantity', 'fields']);
 export const memorySchema = object({ enabled: bool, guidance: text,
     interval: { type: 'integer', minimum: 1, maximum: 100 },
     maxEntriesPerCharacter: { type: 'integer', minimum: 1, maximum: 500 } });
@@ -56,6 +56,6 @@ export const planSchema = object({ name: text, description: text, rationale: tex
         profiles: { ...array(text), description: 'Exact attribute names from profiles.npc, not actor categories.' },
         stats: { ...array(text), description: 'Exact stat names from stats.npc only, including XP/Level if progression is enabled.' },
         progression: plannedProgression }), LIMITS.templates),
-    collections: array(object({ name: text, purpose: text, targets: array(text, 8), fields: array(plannedField),
+    collections: array(object({ name: text, purpose: text, targets: array(text, 8), trackQuantity: bool, fields: array(plannedField),
         rewards: enumeration(['none', 'scheduled', 'guided']) }), LIMITS.collections) });
 export const responseSchema = section => object({ section, assumptions: array(text, 12) });

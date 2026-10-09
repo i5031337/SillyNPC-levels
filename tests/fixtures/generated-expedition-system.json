@@ -261,7 +261,8 @@
             }
           }
         ]
-      }
+      },
+      "trackQuantity": false
     }
   ],
   "progression": {

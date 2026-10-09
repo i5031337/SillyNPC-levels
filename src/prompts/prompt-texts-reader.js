@@ -40,7 +40,7 @@ Plans, requests, and unresolved attempts do not establish their intended outcome
 
 ### COLLECTIONS AND THEIR FIELDS
 {{collections}}
-Use the quoted collection ID as the JSON key under "collections", never its display label. Use exact field spelling and capitalization. Include the configured primary field in every "add" and "update" entry, using its declared type; "remove" lists those same identifiers. A separate item "name" is unnecessary unless it is the configured primary field.
+Use the quoted collection ID as the JSON key under "collections" and exact field spelling. Include the configured primary field in every add, update, and counted remove object, using its declared type. Uncounted remove entries are identifiers.
 {{/collections}}
 {{#npcFields}}
 
@@ -91,10 +91,11 @@ Speakers without cards: {{strangers}}. In "strangers", assign each the best matc
 ### WHEN A COLLECTION CHANGES
 For a new NPC, add starting entries shown in the story or background; infer plausible essentials only where consistent with the configured collection's purpose and rules.
 Report each collection change shown in the latest message:
-- "remove" for consumed, spent, transferred, lost, or destroyed items
-- "add" for acquired items or newly demonstrated knowledge and abilities, if absent from the owner's current collection
-- "update" for changed items, with their configured primary field and changed fields
-Follow each collection's configured purpose. If it tracks abilities or knowledge, an actor's actual use of a named ability establishes knowledge even if the intended outcome fails. Add it to their applicable configured collection when missing; no explicit learning announcement is needed, even for an already tracked actor. A command or mere mention alone does not prove the actor knows it. Keep reusable entries after use; update configured item fields only when supported by the event. Follow collection targets and field guidance, include supported item details, and omit unknown optional fields. Do not create collections or duplicate entries already held.
+- "remove" for consumption or loss; with quantity enabled, report the amount spent (default 1), or "all": true for the whole entry
+- "add" for acquisitions, with the amount gained (default 1) when quantity is enabled; add newly demonstrated knowledge and abilities when missing
+- "update" for changes to other item fields, with the identifier and changed values
+The extension calculates remaining quantities and removes entries at zero. Reusable entries stay held after use.
+Follow collection purposes, targets, and field guidance. For abilities and knowledge, actual use establishes knowledge even when the outcome fails; add a missing entry when demonstrated. Include supported item details. Maintain one entry per identifier; quantity gains accumulate.
 {{/collections}}
 {{#earlier}}
 
@@ -169,11 +170,12 @@ For configured pools, initialize new NPCs with individual capacities, even when 
 ### COLLECTIONS
 For a new NPC, add starting entries shown in the story or background; infer plausible essentials only where consistent with the configured collection's purpose and rules.
 Report collection changes:
-- "add": [ { ...item fields } ] for gains
-- "remove": [ <configured primary field value> ] for spent, lost, transferred, or destroyed items
-- "update": [ { ...configured primary field and changed fields } ] for changed items
+- "add": [ { ...item fields } ] for gains; quantity is the amount gained (default 1)
+- "remove": [ <configured primary field value> ] for uncounted entries; counted entries use { ...identifier, quantity: <amount spent> } or { ...identifier, all: true }
+- "update": [ { ...identifier and changed fields } ] for other item fields
+Use each collection’s configured quantity key. The extension calculates remaining quantities and removes entries at zero. Reusable entries stay held after use.
 For a transfer, remove the item from one owner's collection and add it to the other's. Both player and characters can have collections.
-Follow each collection's configured purpose. For knowledge or ability collections, add a named ability when its actual use establishes that the actor knows it and it is missing from their applicable collection, even if its intended outcome fails. No explicit learning announcement is needed. Commands and mere mentions are insufficient. Keep reusable entries after use; remove entries only when their loss is established. Use configured fields and targets, omit unknown optional details, and avoid duplicate entries.
+Follow collection purposes, targets, and field guidance. For abilities and knowledge, actual use establishes knowledge even when the outcome fails; add a missing entry when demonstrated. Include supported item details. Maintain one entry per identifier; quantity gains accumulate.
 ### COLLECTION SCHEMAS
 {{schemas}}
 {{/schemas}}

@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -7,7 +8,7 @@ import { SYSTEM_PROMPT } from '../src/core/constants-prompts.js';
 
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-    .replaceAll('export ', '');
+    .replaceAll('export ', '') + `\n${collectionQuantityField.toString()}\n`;
 function fixture() {
     const settings = { statusTracker: { collections: [{ id: 'moves', name: 'Moves', target: 'player',
         fields: [{ name: 'dex', type: 'number', isPrimary: true }, { name: 'power', type: 'number' }] }] } };
@@ -43,10 +44,8 @@ test('changed examples use a new-value placeholder for any configured field type
         assert.ok(changed.startsWith('Changed item:\n'));
         assert.equal(JSON.parse(changed.slice(changed.indexOf('\n') + 1)).entries.update[0][name], '<new value>');
     }
-    for (const { text } of readerPromptTexts) {
-        assert.doesNotMatch(text, /quantity|stack|remaining total/i);
-    }
-    assert.doesNotMatch(SYSTEM_PROMPT, /quantity|stack|remaining total/i);
+    assert.match(readerPromptTexts.find(entry => entry.id === 'reader').text, /amount spent/);
+    assert.match(SYSTEM_PROMPT, /amounts gained\/spent/);
     assert.match(readerPromptTexts.find(entry => entry.id === 'reader').text,
         /Replace illustrative values and placeholders with actual values of the declared types/);
 });
@@ -93,6 +92,6 @@ test('collection examples use the primary field type consistently for all operat
         assert.equal(examples[2].update[0].power, '<new value>');
     }
     const prompt = readerPromptTexts.find(entry => entry.id === 'reader').text;
-    assert.match(prompt, /quoted collection ID.*never its display label/);
-    assert.match(prompt, /primary field in every "add" and "update" entry/);
+    assert.match(prompt, /quoted collection ID as the JSON key/);
+    assert.match(prompt, /primary field in every add, update, and counted remove object/);
 });

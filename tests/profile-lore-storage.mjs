@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import { profileFieldsForCard } from '../src/core/profile-fields.js';
 import { normalizeMemoryStore } from '../src/core/profile-memories.js';
 import assert from 'node:assert/strict';
@@ -10,7 +11,7 @@ import { promptText } from '../src/prompts/prompt-texts.js';
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
     .replaceAll('export async function ', 'async function ')
-    .replaceAll('export function ', 'function ');
+    .replaceAll('export function ', 'function ') + `\n${collectionQuantityField.toString()}\n`;
 
 test('player profile saves create and update one lore entry using player fields', async () => {
     const book = { entries: {} };

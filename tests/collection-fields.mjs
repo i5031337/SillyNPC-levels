@@ -3,7 +3,7 @@ import { isStaticField } from '../src/core/constants-profile.js';
 import { collectionAppliesTo } from '../src/core/collection-targets.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ensureCollectionIdentifier, moveCollectionField, deleteCollectionField } from '../src/core/collection-fields.js';
+import { collectionQuantityField, ensureCollectionIdentifier, moveCollectionField, deleteCollectionField } from '../src/core/collection-fields.js';
 import { normalizeSystemDefinition } from '../src/core/system-schema.js';
 
 const normalize = fields => normalizeSystemDefinition({ schemaVersion: 1,
@@ -72,7 +72,7 @@ test('reader changes use the pinned custom identifier instead of assuming a name
     const collection = normalize([{ name: 'pp', type: 'number' }, { name: 'move', isPrimary: true }]);
     const source = readFileSync(new URL('../src/tracker/status-collection-updates.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-        .replace('export function bind', 'function bind');
+        .replace('export function bind', 'function bind') + `\n${collectionQuantityField.toString()}\n`;
     const deps = { committedState: {}, getCurrentPersonaName: () => 'Player',
         constrainToDefinition: (field, value) => value };
     new Function('collectionAppliesTo', 'getSettings', 'debugLog', 'LOG_PREFIX', source + '\nreturn bind;')(
@@ -94,7 +94,7 @@ test('numeric collection ranges survive System export/import and text choices re
     assert.equal(col.fields[1].maxStatValue, '40');
     assert.equal(col.fields[1].options, undefined);
     assert.deepEqual(col.fields[2].options, ['New', 'Worn']);
-    assert.equal(col.fields[3].min, '');
+    assert.equal(col.fields[3].min, '0');
     assert.equal(col.fields[3].maxStatValue, '');
     assert.deepEqual(normalize(JSON.parse(JSON.stringify(col.fields))), col);
 });
@@ -106,7 +106,7 @@ test('collection additions, replacements, defaults and updates respect optional 
         { name: 'unbounded', type: 'number' }]);
     const source = readFileSync(new URL('../src/tracker/status-collection-updates.js', import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-        .replace('export function bind', 'function bind');
+        .replace('export function bind', 'function bind') + `\n${collectionQuantityField.toString()}\n`;
     const deps = { committedState: {}, getCurrentPersonaName: () => 'Player',
         constrainToDefinition: constrainNumericStat, getMergedItem: (id, item) => item };
     new Function('collectionAppliesTo', 'getSettings', 'debugLog', 'LOG_PREFIX', source + '\nreturn bind;')(

@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../../core/collection-fields.js';
 import { collectionAppliesTo, collectionTargetLabel } from '../../core/collection-targets.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
@@ -70,7 +71,8 @@ export function describeCollections(trackerSettings) {
 
         lines.push(`- ${title} for ${collectionTargetLabel(col)}`
             + `${note ? ` - ${endsSentence(note)}` : ''}`
-            + ` Fields: ${fields || 'name'}`);
+            + ` Fields: ${fields || 'name'}`
+            + (collectionQuantityField(col) ? ` Quantity enabled: ${collectionQuantityField(col).name} reports amounts gained in add and spent in remove; all: true removes the whole entry. update changes other fields.` : ''));
     }
     return lines.join('\n');
 }
@@ -108,18 +110,20 @@ export function buildDeltaExample(trackerSettings) {
         } else if (field.type === 'boolean') {
             item[field.name] = true;
         } else {
-            item[field.name] = '<or omit if the message does not say>';
+            item[field.name] = '<supported item detail>';
         }
     }
 
     /* All three verbs. The example is the only place the reply's shape is shown in the
        user's own names, so a verb missing from it is a verb the reader does not use. */
     const changed = { [primary]: primaryValue, ...Object.fromEntries(
-        Object.entries(item).filter(([key]) => key !== primary).slice(0, 1)
+        Object.entries(item).filter(([key]) => key !== primary && key !== collectionQuantityField(col)?.name).slice(0, 1)
             .map(([key]) => [key, '<new value>'])) };
     return [
         ['Acquired item', { add: [item] }],
-        ['Lost item', { remove: [primaryValue] }],
+        ['Lost item', { remove: [collectionQuantityField(col)
+            ? { [primary]: primaryValue, [collectionQuantityField(col).name]: 1 } : primaryValue] }],
+        ...(collectionQuantityField(col) ? [['Whole stack lost', { remove: [{ [primary]: primaryValue, all: true }] }]] : []),
         ...(Object.keys(changed).length > 1 ? [['Changed item', { update: [changed] }]] : []),
     ].map(([label, change]) => `${label}:\n${JSON.stringify({ [col.id]: change }, null, 2)}`).join('\n\n');
 }

@@ -26,7 +26,8 @@ export const defaultTrackerSettings = {
         collections: [
             { 
                 id: 'inventory', 
-                name: 'Inventory', 
+                name: 'Inventory',
+                trackQuantity: true,
                 fields: [
                     { name: 'name', label: 'Name', type: 'text', isPrimary: true, defaultValue: '' },
                     { name: 'quantity', label: 'Quantity', type: 'number', isPrimary: false, defaultValue: '1' },

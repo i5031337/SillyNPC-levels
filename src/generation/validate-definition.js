@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../core/collection-fields.js';
 import { definitionSchema, LIMITS } from './contracts.js';
 import { validateShape } from './validate-shape.js';
 import { normalizeSystemDefinition } from '../core/system-schema.js';
@@ -86,6 +87,12 @@ export function validateCollections(collections, templates, errors) {
         const p = `collections[${i}]`;
         if (!col.name.trim()) errors.push(`${p}.name: required`);
         validateFields(col.fields, `${p}.fields`, errors, 'collection');
+        if (col.trackQuantity) {
+            const quantity = collectionQuantityField(col);
+            if (!quantity || quantity.isStatic || Number(quantity.defaultValue) !== 1
+                || quantity.min !== '0' || quantity.maxStatValue !== '' || quantity.retired)
+                errors.push(`${p}: built-in quantity requires a personal numeric field, default 1, minimum 0 and open maximum`);
+        }
         if (!col.fields.length || !col.fields[0].isPrimary || col.fields.filter(field => field.isPrimary).length !== 1
             || col.fields[0].retired) errors.push(`${p}.fields: exactly one active identifier, pinned first, is required`);
         unique(col.targets, 'target', `${p}.targets`, errors);

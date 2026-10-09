@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { collectionAppliesTo } from '../src/core/collection-targets.js';
 function bindSource(path, dependencies, deps) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8')
         .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-        .replace('export function bind', 'function bind');
+        .replace('export function bind', 'function bind') + `\n${collectionQuantityField.toString()}\n`;
     new Function(...Object.keys(dependencies), `${source}\nreturn bind;`)(...Object.values(dependencies))(deps);
 }
 function fixture(masterItems) {

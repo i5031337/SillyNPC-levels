@@ -1,3 +1,4 @@
+import { collectionQuantityField, ensureCollectionIdentifier, ensureCollectionQuantity } from '../../core/collection-fields.js';
 import { buildCollectionTargetsEditor } from './ui-collection-targets.js';
 import { liveSystemContext } from './ui-system-context.js';
 import { Popup } from '../../../../../../popup.js';
@@ -36,7 +37,7 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
         </details>`;
     wrap.append(guide);
 
-    // Migration logic: convert string fields to object fields
+    // Normalize collections before drawing their option controls.
     collections.forEach(col => {
         if (Array.isArray(col.fields) && col.fields.length > 0 && typeof col.fields[0] === 'string') {
             col.fields = col.fields.map(fieldName => ({
@@ -49,6 +50,8 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
             }));
             saveSettings();
         }
+        const identifierChanged = ensureCollectionIdentifier(col);
+        if (ensureCollectionQuantity(col) || identifierChanged) saveSettings();
     });
 
     const bulk = statsBulkBar('collections', onRefresh, 'collection', context);
@@ -63,6 +66,7 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
         collections.push({
             id: 'new_collection',
             name: 'New Collection',
+            trackQuantity: true,
             fields: [
                 { name: 'name', label: 'Name', type: 'text', isPrimary: true, isStatic: true, defaultValue: '' },
                 { name: 'quantity', label: 'Quantity', type: 'number', isPrimary: false, isStatic: false, defaultValue: '1' },
@@ -104,6 +108,10 @@ function createCollectionRow(col, index, collections, bulk, onRefresh, context) 
             <button type="button" class="menu_button move-down-btn" title="Move Down" ${index === collections.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
             <button type="button" class="menu_button delete-btn" title="Delete Collection" style="color: var(--sillynpc-danger);"><i class="fa-solid fa-trash"></i></button>
         </div>
+        <label class="sillynpc-check-group" title="Track amounts gained and spent; entries disappear when their quantity reaches zero.">
+            <input type="checkbox" class="col-quantity" ${col.trackQuantity ? 'checked' : ''}>
+            <small>Track quantity</small>
+        </label>
         <div class="col-targets-slot"></div>
         <div style="display:flex; gap:8px; width:100%; align-items:center; margin-bottom:12px;">
             <small class="sillynpc-field-note" title="What this collection holds, in your own words. Sent to the reader with every extraction.">What it holds:</small>
@@ -132,6 +140,19 @@ function wireCollectionControls(colWrap, col, index, collections, bulk, onRefres
     const renderRewards = () => colWrap.querySelector('.col-rewards-slot').replaceChildren(buildCollectionRewardsEditor(col, saveSettings));
     const renderFields = () => { renderCollectionFields(col, fieldsList, onRefresh, context); renderRewards(); };
     fieldsList.addEventListener('change', renderRewards);
+    colWrap.querySelector('.col-quantity').addEventListener('change', e => {
+        if (e.target.checked && col.fields[0]?.name === 'quantity') {
+            e.target.checked = false;
+            toastr.error('Choose a different identifier key to enable the built-in quantity field.', 'SillyNPC');
+            return;
+        }
+        const field = collectionQuantityField(col);
+        col.trackQuantity = e.target.checked;
+        if (!col.trackQuantity && field) col.fields = col.fields.filter(entry => entry !== field);
+        ensureCollectionQuantity(col);
+        saveSettings();
+        renderFields();
+    });
 
     colWrap.querySelector('.add-field-btn').addEventListener('click', () => {
         col.fields.push({ name: 'new_field', label: 'New Field', type: 'text' });

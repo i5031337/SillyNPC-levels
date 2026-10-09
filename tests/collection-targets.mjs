@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../src/core/collection-fields.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ const pokemon = { name: 'Pikachu', npcTemplateId: 'pokemon', collections: {} };
 function fixture() { setNpcTemplateSettingsProvider(() => settings); }
 const source = path => readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*/gm, '')
-    .replaceAll('export function ', 'function ');
+    .replaceAll('export function ', 'function ') + `\n${collectionQuantityField.toString()}\n`;
 
 test('template collection targets survive normalization and never widen a missing template to all NPCs', () => {
     fixture();

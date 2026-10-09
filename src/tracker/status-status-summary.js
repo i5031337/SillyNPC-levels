@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../core/collection-fields.js';
 import { collectionAppliesTo } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
 import { getSettings } from '../core/settings.js';
@@ -73,8 +74,8 @@ function summarizeCollection(collectionId, items, includeFull = false) {
 
         let str = nameVal;
         // Try to find a numeric quantity field to display
-        const qtyField = colDef?.fields?.find(f => f.type === 'number' && (f.name === 'quantity' || f.name === 'qty' || f.name === 'count'));
-        const qty = qtyField ? item[qtyField.name] : item.quantity;
+        const qtyField = collectionQuantityField(colDef);
+        const qty = qtyField ? item[qtyField.name] ?? 1 : undefined;
         
         if (qty !== undefined && parseInt(qty) > 1) {
             str += ` (x${qty})`;

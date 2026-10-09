@@ -142,7 +142,7 @@ test('two-template two-collection adventure uses eight model calls without repai
     compact.npcTemplates.push({ name: 'Human', description: 'Rivals and leaders', profiles: ['Species'], stats: ['XP', 'Level'],
         progression: { enabled: true, xp: 'XP', level: 'Level', growth: 'No stat growth' } });
     compact.collections[0].rewards = 'none';
-    compact.collections.push({ name: 'Items', purpose: 'Inventory', targets: ['player'],
+    compact.collections.push({ name: 'Items', purpose: 'Inventory', targets: ['player'], trackQuantity: true,
         fields: [{ name: 'Name', purpose: 'Identifier' }, { name: 'Quantity', purpose: 'Owned quantity' }], rewards: 'none' });
     const allocated = allocatePlan(compact), calls = [], events = [];
     const run = new SystemGenerationRun({ premise: 'Basic monster adventure', onProgress: event => events.push(event), request: args => {

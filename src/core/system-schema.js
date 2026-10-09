@@ -1,7 +1,7 @@
 import { statBehavior } from '../tracker/stat-update-policy.js';
 import { normalizeProgressionConfig } from './progression-config.js';
 import { normalizeCollectionRewards } from './collection-rewards.js';
-import { ensureCollectionIdentifier } from './collection-fields.js';
+import { ensureCollectionIdentifier, ensureCollectionQuantity } from './collection-fields.js';
 import { collectionTargets } from './collection-targets.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
@@ -88,6 +88,7 @@ function collections(source) {
             id,
             name: string(collection.name, id),
             targets: collectionTargets(collection),
+            trackQuantity: collection.trackQuantity,
             includeInImagePrompt: collection.includeInImagePrompt !== false,
             guidance: string(collection.guidance),
             retired: collection.retired === true,
@@ -112,6 +113,7 @@ function collections(source) {
             }),
         };
         ensureCollectionIdentifier(normalized);
+        ensureCollectionQuantity(normalized);
         normalized.levelUpRewards = normalizeCollectionRewards(collection.levelUpRewards, normalized);
         return normalized;
     });

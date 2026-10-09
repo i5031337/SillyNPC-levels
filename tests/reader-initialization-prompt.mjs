@@ -65,10 +65,10 @@ test('battle reader permits prose-derived damage and records demonstrated abilit
     assert.match(prompt, /Missing numbers do not mean an established effect should be ignored/);
     assert.match(prompt, /estimate a conservative amount using the field's current scale/);
     assert.match(prompt, /"characters\[\]\.deltas"/);
-    assert.match(prompt, /no explicit learning announcement is needed, even for an already tracked actor/);
-    assert.match(prompt, /Keep reusable entries after use/);
-    assert.match(prompt, /A command or mere mention alone does not prove/);
-    assert.match(prompt, /Do not create collections or duplicate entries already held/);
+    assert.match(prompt, /actual use establishes knowledge even when the outcome fails; add a missing entry when demonstrated/);
+    assert.match(prompt, /Reusable entries stay held after use/);
+    assert.match(prompt, /Apply only effects supported by what actually happened/);
+    assert.match(prompt, /Maintain one entry per identifier/);
     assert.match(prompt, /Preserve established pool maxima and filled locked stats/);
     assert.match(prompt, /when estimating an amount, briefly identify.*estimated/);
 });
@@ -81,8 +81,8 @@ test('system and inline prompts share general inference and ability discovery gu
     const inline = promptText('storyBlock', { status: '{}', rules: '', schemas: 'Configured ability collection' });
     assert.match(inline, /explicit field names and numbers are unnecessary/);
     assert.match(inline, /Plans, requests, and unresolved attempts do not establish their intended outcomes/);
-    assert.match(inline, /No explicit learning announcement is needed/);
-    assert.match(inline, /Keep reusable entries after use/);
+    assert.match(inline, /actual use establishes knowledge even when the outcome fails/);
+    assert.match(inline, /Reusable entries stay held after use/);
     for (const text of [SYSTEM_PROMPT, defaultPromptText('reader'), defaultPromptText('storyBlock')]) {
         assert.doesNotMatch(text, /pok[eé]mon|Mudkip|Poochyena|Water Gun|Tackle/i);
     }

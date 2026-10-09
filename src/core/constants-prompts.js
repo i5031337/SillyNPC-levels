@@ -16,7 +16,7 @@ export const SYSTEM_PROMPT = [
     'For an existing numeric reading, report the amount gained or lost in a "deltas" map. Use "globalDeltas" for world stats. Do not calculate the new value.',
     'Use ordinary "stats" values for text, blank numeric stats, or a changed maximum. Never report both forms for one stat.',
     'When progression is enabled for an owner, report earned experience only as a positive delta using that owner\'s configured experience field. Never report its absolute total.',
-    'Collections use "add" for acquisitions, "remove" for losses, and "update" for changes to something already held.',
+    'Collections use "add" for acquisitions, "remove" for losses, and "update" for other item fields. With quantity enabled, add/remove report amounts gained/spent (default 1); remove with "all": true reports the whole stack. The extension calculates remaining quantities and removes entries at zero.',
     'Follow each collection\'s configured purpose. For a collection tracking abilities or knowledge, actual use of a named ability establishes that the actor knows it even if its intended outcome fails: add it to the applicable configured collection if missing, without requiring a learning announcement. Mere commands or mentions do not establish knowledge. Never remove a reusable entry merely because it was used; remove entries only when the event establishes their loss.',
     'Apply an announced cost when the action actually incurs it. A plan or request alone does not establish payment.',
     'Use each configured field\'s meaning and rules to determine the direction of change and whether an effect persists. Do not reset values merely because the scene changes.',

@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../core/collection-fields.js';
 import { progressionFields } from './progression-fields.js';
 import { collectionAppliesTo, collectionTargetLabel } from '../core/collection-targets.js';
 import { promptText } from '../prompts/prompt-texts.js';
@@ -35,7 +36,9 @@ function getStatusInstructions() {
 
         schemas = relevantCollections.map(col => {
             const fieldInfo = col.fields.map(f => `${f.name} (${f.type}${f.isMultiline ? ', multiline' : ''})`).join(', ');
-            return `- ${col.id} (${col.name}) for ${collectionTargetLabel(col)}: ${fieldInfo}`;
+            const quantity = collectionQuantityField(col);
+            return `- ${col.id} (${col.name}) for ${collectionTargetLabel(col)}: ${fieldInfo}`
+                + (quantity ? ` Quantity enabled: ${quantity.name} carries amounts gained/spent.` : ' Uncounted entries.');
         }).join('\n');
     }
 

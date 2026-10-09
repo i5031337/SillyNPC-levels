@@ -1,3 +1,4 @@
+import { collectionQuantityField } from '../../core/collection-fields.js';
 import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { progressionFields } from '../progression-fields.js';
 import { npcStatsFor } from '../../core/npc-templates.js';
@@ -53,15 +54,18 @@ export function buildExtractionSchema(trackerSettings, { strangers = [], state =
                 type: 'object',
                 properties: {
                     add: { type: 'array', items: itemShape(col) },
-                    remove: { type: 'array', items: { type: itemShape(col).properties[
-                        (col.fields || []).find(field => field.isPrimary)?.name || 'name']?.type || 'string' } },
-                    /* The third verb, which the reader could not reach.
-                       A schema names what may come back, so leaving "update" out told the
-                       model not to send one - while the inline prompt documented all three
-                       and applyCollectionUpdate handled all three. A half-drunk potion had
-                       no way to be reported, so it arrived as an "add" that merged field by
-                       field, or not at all. */
-                    update: { type: 'array', items: itemShape(col) },
+                    remove: { type: 'array', items: collectionQuantityField(col) ? {
+                        type: 'object', required: itemShape(col).required,
+                        properties: {
+                            [itemShape(col).required[0]]: itemShape(col).properties[itemShape(col).required[0]],
+                            [collectionQuantityField(col).name]: { type: 'number' },
+                            all: { type: 'boolean' },
+                        },
+                    } : { type: itemShape(col).properties[itemShape(col).required[0]]?.type || 'string' } },
+                    update: { type: 'array', items: {
+                        ...itemShape(col), properties: Object.fromEntries(Object.entries(itemShape(col).properties)
+                            .filter(([key]) => key !== collectionQuantityField(col)?.name)),
+                    } },
                 },
             }])),
         };
