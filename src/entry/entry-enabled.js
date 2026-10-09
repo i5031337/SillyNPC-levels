@@ -1,5 +1,6 @@
 import { disconnectStatusObservers } from '../tracker/ui/status-ui-process.js';
 import { resetNpcExpressions } from '../expressions/npc-expressions.js';
+import { stopNpcTts } from '../tts/npc-tts.js';
 import { getSettings } from '../core/settings.js';
 import { triggerReprocess } from '../chat/reprocess.js';
 import { resetExtractionState } from '../tracker/extractor/status-extractor.js';
@@ -18,6 +19,7 @@ export function refreshExtensionEnabled() {
         input.checked = getSettings().enabled;
     });
     if (!getSettings().enabled) {
+        stopNpcTts();
         resetNpcExpressions();
         resetExtractionState();
         disconnectStatusObservers();

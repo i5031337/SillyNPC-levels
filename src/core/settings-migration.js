@@ -9,6 +9,7 @@ import { saveSettings } from './settings.js';
 import { migratePresetsAndStores } from './settings-store-migration.js';
 import { normaliseBaseSettings } from './settings-base-migration.js';
 import { normalizeCharacterPresentation } from './npc-presentation.js';
+import { normalizeTtsSettings } from '../tts/tts-settings.js';
 
 /**
  * Is version a older than version b? Dotted numbers, missing parts count as zero.
@@ -303,6 +304,7 @@ export function normalizeSettings(settings) {
     const currentVersion = defaultSettings.version;
 
     normaliseBaseSettings(settings);
+    settings.tts = normalizeTtsSettings(settings.tts);
     normalizeCharactersAndCategories(settings);
     normalizeDefaultImagesAndPreferences(settings);
     migrateLegacyTrackerLayout(settings);

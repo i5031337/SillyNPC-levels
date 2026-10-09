@@ -1,10 +1,12 @@
 import { defaultTrackerSettings } from './settings-tracker-defaults.js';
 import { EXTENSION_VERSION, DEFAULT_PORTRAIT_SHAPE } from './constants.js';
+import { defaultTtsSettings } from '../tts/tts-settings.js';
 export const DEFAULT_IMAGE_NEGATIVE_PROMPT = 'speech bubbles, text, logo, watermark, username, signature, frames, panels, comic, multiple characters, crowd, busy background, character sheet, grid, reference sheet';
 
 export const defaultSettings = {
     version: EXTENSION_VERSION,
     enabled: true,
+    tts: defaultTtsSettings,
     applyColors: true,
     /**
      * Text size in the menus and sheets, and in the in-chat tracker box, as a multiplier

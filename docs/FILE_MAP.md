@@ -29,7 +29,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `README.md` | Installation, features, and usage documentation. |
 | `LICENSE` | Project license. |
 | `docs/chat-owned-npcs-plan.md` | Chat ownership and portable character contract. |
-| `docs/npc-expressions-tts-plan.md` | Implemented dialogue/configuration and NPC expression adapters, plus planned, host TTS hooks, and staged verification. |
+| `docs/npc-expressions-tts-plan.md` | Dialogue, expressions, independent speech stages, and verification. |
 | `docs/FILE_MAP.md` | This source map. |
 | `docs/ARCHITECTURE.md` | Current storage ownership, reader behavior, review, and verification boundaries. |
 | `docs/REWRITE_HOST_SMOKE.md` | Dated user-reported host results and remaining manual checks. |
@@ -376,7 +376,7 @@ actions, and `renderEditor` routes among smaller view builders. Their key behavi
 paths have regression tests under `tests/`.
 
 
-## NPC expressions
+## NPC expressions and voices
 
 | File | Responsibility |
 | --- | --- |
@@ -385,6 +385,16 @@ paths have regression tests under `tests/`.
 | `src/expressions/host-expressions.js` | Host sprite listings, supported classifier modes, and dialogue-only classification. |
 | `src/expressions/npc-expressions.js` | Runtime freshness guards, cached dialogue portraits, and event registration. |
 | `src/ui/characters/ui-expressions.js` | Owned sprite binding preferences, pack checks, and full-image previews in NPC Edit. |
-| `styles/16-npc-expressions.css` | NPC expression editor layout. |
+| `src/tts/tts-settings.js` | Independent speech settings normalization and per-NPC voice resolution. |
+| `src/tts/speech-units.js` | Ordered narration and quoted dialogue from rendered story paragraphs. |
+| `src/tts/speech-events.js` | Completed-reply authorization and stale-source cancellation. |
+| `src/tts/speech-queue.js` | Cancellable sequential synthesis and audio playback. |
+| `src/tts/openai-speech.js` | OpenAI-compatible synthesis through the host server proxy and HTML audio playback. |
+| `src/tts/npc-tts.js` | SillyNPC Play/Stop controls, automatic gating, previews, and runtime voice routing. |
+| `src/ui/tts/ui-tts-settings.js` | Separate endpoint, model, narrator, and automatic playback controls. |
+| `src/ui/characters/ui-voices.js` | Per-NPC voice selection, missing-binding status, and deliberate preview. |
+| `styles/16-npc-expressions.css` | NPC expression and voice editor layout. |
 | `tests/npc-expressions.mjs` | Classification order, caching, failure recovery, variants, cancellation, and event gating. |
 | `tests/ui-npc-expressions.py` | Unsaved live portrait and editor checks with mocked classification and sprite packs. |
+| `tests/npc-tts.mjs` | Speech segmentation, queue ordering/cancellation, voice fallback, and completion gating. |
+| `tests/ui-npc-voices.cjs` | Windows headless Edge check of settings, manual/automatic routing, duplicate guard, and optional real preview. |

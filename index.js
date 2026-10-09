@@ -1,5 +1,7 @@
 import { refreshExtensionEnabled } from './src/entry/entry-enabled.js';
 import { initNpcExpressions } from './src/expressions/npc-expressions.js';
+import { initNpcTts, stopNpcTts, previewNpcVoice } from './src/tts/npc-tts.js';
+import { renderTtsSettings } from './src/ui/tts/ui-tts-settings.js';
 import { buildSettingToggle } from './src/ui/shared/ui-shared.js';
 import { eventSource, event_types } from '../../../events.js';
 import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted, onMessageEdited } from './src/entry/entry-message-events.js';
@@ -46,6 +48,7 @@ async function addSettingsPanel() {
     try {
         const html = await renderExtensionTemplateAsync(extensionName, 'index');
         $('#extensions_settings2').append(html);
+        renderTtsSettings({ onChange: () => { stopNpcTts(); reprocessAllMessages(); }, preview: previewNpcVoice });
         document.getElementById('sillynpc-enable-setting')?.append(buildSettingToggle({
             key: 'enabled',
             label: 'Enable SillyNPC',
@@ -87,6 +90,7 @@ jQuery(async () => {
             .catch(err => console.warn(LOG_PREFIX, 'Could not move pictures into folders', err));
         initStatusLogic();
         initNpcExpressions();
+        initNpcTts();
         setMemoryButtonRefresh(refreshMemoryButton);
         resetMemorySchedule();
         syncActiveProfileLore().catch(err => console.error(LOG_PREFIX, 'Profile lore sync failed', err));

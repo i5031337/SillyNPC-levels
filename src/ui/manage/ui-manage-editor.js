@@ -8,6 +8,7 @@ import { triggerReprocess } from '../../chat/reprocess.js';
 import { renameLorebookEntry } from '../../lore/lorebook.js';
 import { buildPortraitBlock } from '../characters/ui-portrait.js';
 import { buildExpressionsSection } from '../characters/ui-expressions.js';
+import { buildVoicesSection } from '../characters/ui-voices.js';
 import { taggedFields } from '../../characters/image-tags.js';
 import { folderFor, moveFolder } from '../../characters/character-images.js';
 import { renderLorebookSection } from '../story/ui-lorebook-section.js';
@@ -159,6 +160,7 @@ function buildEditorLeft(char, refreshEditor) {
     
     left.append(preview, imgBtns, fitField, colorField, catContainer);
     left.append(buildExpressionsSection(char));
+    left.append(buildVoicesSection(char));
     
     return { left, catContainer };
 }

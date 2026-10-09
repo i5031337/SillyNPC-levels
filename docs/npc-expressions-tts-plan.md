@@ -1,12 +1,11 @@
 # NPC Expressions and TTS integration plan
 
-Status: Stages 1 and 2 implemented; later stages remain planned. Updated 2026-10-08.
+Status: Stages 1, 2, and 4 implemented; Stage 3 host adapter superseded. Updated 2026-10-09.
 
 Add mood sprites and individual voices to SillyNPC NPCs using the dialogue lines
 SillyNPC already recognizes and highlights. Expressions can reuse SillyTavern's
-classifier and sprite storage with a SillyNPC display. Broad integration with
-built-in TTS requires a small host extension interface for external speakers and
-ordered dialogue playback.
+classifier and sprite storage with a SillyNPC display. Stage 4 gives SillyNPC an
+independent speech connection and one ordered queue for narration and dialogue.
 
 ## Agreed scope
 
@@ -14,14 +13,15 @@ ordered dialogue playback.
   instructions. Use the same recognition and identity resolution as highlighting.
 - Classify only the recognized dialogue text. Do not assign surrounding prose,
   actions, or scene context to NPCs.
-- Read only those dialogue lines through this integration, in message order,
-  omitting speaker labels. Narration remains outside its scope.
+- Read narration and recognized dialogue in message order. NPC voices read only
+  their quoted speech; prose and actions use the narrator voice. Omit speaker labels.
 - For a completed reply, each NPC's last dialogue line determines their current
   sprite. Dialogue portraits can retain the expression for their individual line.
 - Initially operate on completed replies. Automatic streaming narration and
   expressions synchronized to speech are later stages.
-- Initially use voices from the active built-in TTS provider. Universal per-NPC
-  provider, pitch, rate, and emotional delivery controls are outside the MVP.
+- Stage 4 starts with a separately configured local OpenAI-compatible speech
+  endpoint, model, narrator voice, and NPC voices. Broad support for every built-in
+  TTS provider, pitch, rate, and emotional delivery remains outside the MVP.
 
 Multiple speakers in one highlighted block are not an expected workflow. Do not
 build a new attribution engine to support it. If malformed input cannot be resolved
@@ -172,7 +172,7 @@ Defaults are applied to newly created, loaded, and imported cards. Reusable-card
 instances copy preferences independently. Character transfer remains version 2
 with an additive `presentation` field; older exports receive disabled expressions
 and an empty voice map. Expression editor controls and runtime sprite checks land
-in Stage 2; voice controls and runtime voice checks land in Stage 3.
+in Stage 2; the voice preferences gained an editor in later stages.
 
 ## Expressions adapter
 
@@ -204,55 +204,52 @@ NPC sprite panel for the current reply. Preserve full-body sprite framing in the
 panel. Leave native expression holders under the host extension's control; its
 worker and group-layer cleanup can overwrite injected NPC content.
 
-## TTS adapter and host interface
+## Stage 4: SillyNPC-owned TTS
 
-Built-in multi-voice mode separates quotes, actions, and other text for one
-`message.name`; it does not identify embedded NPC speakers. Saved extra voice-map
-entries do not solve this because runtime initialization rebuilds the map from
-native characters and personas.
+Stage 4 supersedes the earlier host queue proposal. SillyNPC owns narration and
+NPC dialogue playback through one ordered queue. The initial provider is a
+separately configured local OpenAI-compatible `/v1/audio/speech` endpoint, with
+its own model, voice list, narrator voice, and per-NPC voice bindings. The user
+may copy the current built-in OpenAI Compatible connection as a starting point;
+subsequent changes are independent. The existing SillyTavern server proxy can
+carry requests to a local server without a browser CORS dependency. Its API key
+is the host's existing OpenAI-compatible TTS secret, so separate credentials
+require a later server-side adapter.
 
-Add explicit host registration hooks for external dialogue sources and speakers.
-These are proposed interfaces, not APIs available in the baseline:
+Build ordered speech units from rendered story content and shared dialogue
+discovery. Narration paragraphs use the narrator voice. A recognized speaker
+paragraph is split around its accepted quote spans: quoted passages use that
+NPC's voice; surrounding prose and actions use narration. Exclude speaker labels,
+code, hidden text, tracker panels, and widgets. Unknown speakers and persona
+lines use the narrator voice until explicitly configured. Preserve chat, swipe,
+edit, and displayed-text revision identity for every unit.
 
-- Register a resolver that handles a message with ordered NPC dialogue records,
-  or declines it so normal host narration proceeds.
-- Resolve external speaker voices within the active provider, with voice
-  enumeration and preview available to the NPC editor.
-- Queue an entire ordered batch through the existing TTS pipeline, carrying
-  message revision, NPC ID, and line index through synthesis and audio jobs.
-- Cancel handled batches when their chat or source revision becomes obsolete.
-- Later emit actual playback start/end/cancel events with the same identity.
+Offer SillyNPC Play and Stop controls for historical messages and an opt-in
+automatic mode for new completed replies. History rendering and decoration
+refreshes never start audio. One controller owns synthesis, audio playback,
+queue order, cancellation, and errors. Stop, a new play request, a new generation,
+edit, swipe, deletion, chat switch, provider setting change, or disabling the
+extension invalidates in-flight work and stops current audio. Recheck revision
+before and after each synthesis and before audio starts. Keep controls responsive
+while a request is pending.
 
-A handled message replaces ordinary whole-message narration for that playback
-request. Do not append NPC audio while the host also reads the same dialogue.
-Preserve existing manual megaphone playback, automatic narration enablement, Stop,
-applicable narration filters, and provider processing. Decide the resolver's exact
-placement before destructive cleanup or quote joining. Never mutate stored chat
-text or manufacture native character cards to route voices.
+The built-in TTS extension must not automatically narrate the same replies while
+SillyNPC automatic speech is enabled. The UI should show a direct warning when
+both automatic modes are on, without silently changing the user's built-in TTS
+settings. Its megaphone remains a separate control; SillyNPC Play always uses the
+SillyNPC queue. No host TTS extension patch is needed for Stage 4 playback.
 
-Voice profiles initially select a voice, default voice, or silence for the active
-provider. Provider values often use display names and resolve IDs internally; retain
-both where useful and reconcile through the provider adapter. Missing assignments
-must have a visible, predictable fallback rather than silently borrow another NPC's
-voice. Provider-specific style controls can follow behind capability checks.
-
-Repeated `/speak` calls are unsuitable for ordered NPC playback: each invocation
-resets playback, rebuilds the native voice map, and does not await audio completion.
-If a host change cannot be shipped, an independent SillyNPC queue supporting a small
-provider subset is a separate implementation choice. Do not quietly duplicate all
-built-in provider and playback machinery as a substitute for the proposed hooks.
+Stage 3 briefly used experimental host voice hooks. Stage 4 replaced that editor
+with SillyNPC's own connection and removed the host patch and adapter. Saved
+Stage 3 voice bindings remain readable as a fallback for the OpenAI-compatible
+provider; changing a voice writes the new SillyNPC binding.
 
 ## Playback synchronization
 
-Existing `TTS_JOB_STARTED`, `TTS_AUDIO_READY`, and `TTS_JOB_COMPLETE` events describe
-synthesis. They cannot identify when queued speech is actually audible. Carry NPC
-and line identity into audio jobs and expose playback events before connecting
-sprite changes to speech.
-
-System TTS speaks directly through `SpeechSynthesisUtterance` and returns a silence
-response after speaking. It needs utterance start/end callbacks; ordinary audio
-queue events would be too late. Other providers with direct playback also need
-capability-specific handling.
+The SillyNPC queue knows when its own HTML audio starts and ends. Stage 5 can
+emit playback start/end/cancel with NPC and line identity before connecting
+sprite changes to speech. Future direct-playback providers need their own
+start/end callbacks.
 
 Synchronization can classify each line ahead of playback, update the active speaker
 sprite when that line starts, and retain the last expression after playback ends.
@@ -265,9 +262,9 @@ animation, lip sync, or emotional voice delivery.
 | --- | --- | --- |
 | 1 complete | Shared dialogue records and NPC configuration | Highlighted lines resolve to the same NPC IDs and order; labels/prose are excluded; ownership, rename, defaults, and transfer behavior are verified |
 | 2 complete | Sprite binding, preview, and automatic expressions | Last line selects each NPC's current sprite; missing assets fall back; stale results cannot update a different chat or swipe; native Expressions coexist |
-| 3 | Host TTS interface and voice editor | Active-provider voices can be selected and previewed for NPCs; host hook contract and deployment dependency are documented; missing hooks leave the feature unavailable with a clear explanation |
-| 4 | Manual and automatic NPC dialogue playback | Lines play in order with assigned voices; native narration does not duplicate them; Stop, provider switches, edits, swipes, and chat switches behave correctly |
-| 5 | Optional playback synchronization | Sprite changes follow audible lines, including System TTS; synthesis completion cannot advance the displayed speaker |
+| 3 superseded | Host TTS voice prototype | The experimental host hooks were removed when Stage 4 adopted its own provider configuration |
+| 4 complete | Independent narration and NPC playback | Narration and quoted dialogue play in order with separate voices; SillyNPC Play, Stop, opt-in automatic mode, stale cancellation, and duplicate-narration warning work |
+| 5 | Optional playback synchronization | Sprite changes follow audible SillyNPC lines; synthesis completion cannot advance the displayed speaker |
 | 6 | Optional streaming and provider styling | Streaming emits each completed dialogue unit once, cancels stale work, and preserves ordering; style controls appear only for supported providers |
 
 Complete and verify each stage before widening scope. Update this plan's status and
@@ -278,11 +275,11 @@ separate dialogue, expression, voice, and playback responsibilities.
 
 Use focused Node tests for dialogue extraction, alias resolution, ordering,
 ownership, settings normalization, transfer, caching, stale-result rejection,
-voice fallback, and host-hook batch routing. Mock classification and synthesis
+voice fallback, and speech queue routing. Mock classification and synthesis
 when checking routing; model quality requires deliberate manual samples.
 
-Verify UI and event behavior in running SillyTavern with the existing Firefox
-WebDriver workflow. Cover:
+Verify UI and event behavior in running SillyTavern with the Windows Edge check
+or the older Firefox WebDriver workflow. Cover:
 
 - Two NPCs alternating dialogue, with one speaking again at the end.
 - Unicode names and quote styles accepted by current highlighting; aliases and
@@ -310,8 +307,8 @@ On 2026-10-08, all 68 Node test files passed. New focused coverage is in
 fragmented quotes, actions rendered as emphasis, speech wrappers, hidden names,
 removed portraits, player identity, aliases, ordering, and revision isolation.
 `python3 tests/ui-smoke.py` also passed. The fixtures made no model/audio requests
-or settings/chat saves. Sprite selection and expression editor controls land in Stage 2. Voice provider
-integration remains work for Stage 3.
+or settings/chat saves. Sprite selection and expression editor controls landed in
+Stage 2. Voice provider integration followed in later stages.
 
 
 ### Stage 2 interfaces and verification results
@@ -370,4 +367,53 @@ native holder isolation.
 Remaining deliberate manual checks: real Local/Extras model availability, real
 WebLLM classification quality and contention with native WebLLM consumers, real
 sprite packs including deleted image files, and native Expressions enabled in
-Visual Novel/group mode alongside the NPC portraits. TTS remains Stage 3 onward.
+Visual Novel/group mode alongside the NPC portraits.
+
+### Stage 4 interfaces and verification results
+
+Implemented on 2026-10-09:
+
+- `src/tts/tts-settings.js` normalizes separate endpoint, model, voice list,
+  narrator voice, speed, enablement, and opt-in automatic playback settings.
+  Extension settings offer a one-time copy of the built-in OpenAI Compatible
+  connection. The NPC editor stores per-card choices under
+  `presentation.voices['SillyNPC OpenAI Compatible']`, with default narrator,
+  explicit silence, and missing-voice status. The previous `OpenAI Compatible`
+  binding is read only when no SillyNPC binding exists.
+- `speech-units.js` reads rendered story paragraphs and shared dialogue matches.
+  It separates accepted quoted passages from surrounding narration and actions,
+  excluding labels, code, widgets, hidden content, and tracker UI. Units carry
+  exact chat/message/swipe/content revision identity.
+- `speech-queue.js`, `openai-speech.js`, and `npc-tts.js` own sequential synthesis
+  and audible playback. The queue starts synthesizing the next unit as soon as
+  the previous synthesis returns, while playing units in order and buffering at
+  most three units. Each assistant message has a SillyNPC Play/Stop button.
+  Automatic playback is off by default and is authorized only after a changed
+  completed foreground reply. Built-in automatic TTS blocks SillyNPC automatic
+  playback and is flagged in settings; manual SillyNPC Play remains available.
+  Stop, new play, generation, edit, swipe, deletion, chat switch, and setting
+  changes cancel work. The built-in TTS source patch was reversed.
+
+The Node suite passed 425 tests. `node tests/ui-npc-voices.cjs` passed in the
+running Windows host with unsaved fixtures: narration/dialogue/action ordering,
+an NPC voice distinct from narration, the manual button, sequential mocked
+audio responses for manual and opt-in automatic playback, and the built-in TTS
+duplicate guard. `--preview` synthesized and played one short sample through
+the configured local Kokoro server. `--real-playback` exercised the actual
+three-unit message playback through that server. The browser recorded the
+requests in order: narrator `alloy` for "The hall went quiet.", NPC `nova` for
+"Wait.", and narrator `alloy` for "She lowers her sword." Each returned HTTP
+200 `audio/mpeg` and decoded to a non-silent waveform: 24,237 bytes / 1.51 s,
+16,557 bytes / 1.03 s, and 25,389 bytes / 1.58 s, respectively. This verifies
+generation and routing without judging pronunciation by ear. The fixtures
+restored in-memory settings and chat and made no chat or metadata saves.
+Broader provider support, streaming, and sprite synchronization remain later
+work.
+
+On 2026-10-09, a follow-up Windows Edge check found and fixed a pause between
+segments: synthesis had waited for the previous segment's playback to finish.
+`node tests/ui-npc-voices.cjs` and `--real-playback` now assert that requests
+for the second and third units begin before the first unit ends. The real
+Kokoro check passed with three decodable, non-silent MP3 responses. Focused
+queue tests cover ordered playback, bounded prefetch, and Stop cancellation.
+The full Node suite passed 426 tests after this change.

@@ -8,6 +8,7 @@ import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.j
 import { migratePresetsAndStores } from '../src/core/settings-store-migration.js';
 import { normalizeHudLayoutId } from '../src/core/constants-base.js';
 import { normalizeCharacterPresentation } from '../src/core/npc-presentation.js';
+import { normalizeTtsSettings } from '../src/tts/tts-settings.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
@@ -16,7 +17,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
-    'normalizeHudLayoutId', 'ensureCollectionIdentifier', 'ensureCollectionQuantity', 'normalizeTrackerProgression', 'normalizeCharacterPresentation',
+    'normalizeHudLayoutId', 'ensureCollectionIdentifier', 'ensureCollectionQuantity', 'normalizeTrackerProgression', 'normalizeCharacterPresentation', 'normalizeTtsSettings',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -32,7 +33,7 @@ function migration() {
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
         () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier, ensureCollectionQuantity, normalizeTrackerProgression,
-        normalizeCharacterPresentation);
+        normalizeCharacterPresentation, normalizeTtsSettings);
     return { normalize, saves };
 }
 
