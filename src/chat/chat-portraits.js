@@ -153,7 +153,7 @@ let pendingActiveCharacters = null;
  * Exported so it can be tested: injecting avatars needs a parsed document, but deciding
  * which picture to draw does not.
  */
-export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
+export function createAvatarImg({ char, defaultImage, name, isLastMessage, persona: resolvedPersona }) {
     const img = document.createElement('img');
     const shape = getSettings().avatarShape || 'rounded';
     const size = getSettings().avatarSize || 'medium';
@@ -168,7 +168,8 @@ export function createAvatarImg({ char, defaultImage, name, isLastMessage }) {
 
     // A cast decision can identify the speaker as the player even when a card exists.
     const label = name || char?.name || '';
-    const persona = label ? resolvePersonaSpeaker(label) : null;
+    const persona = resolvedPersona === undefined
+        ? (label ? resolvePersonaSpeaker(label) : null) : resolvedPersona;
 
     if (persona) {
         img.src = persona.imageUrl;

@@ -12,6 +12,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/generation/` | Staged System generation, canonical schema fragments, validation, requests, and isolated drafts. |
 | `src/characters/` | Character records, ownership, portraits, and transfer. |
 | `src/chat/` | Chat ownership, message decoration, and reprocessing. |
+| `src/expressions/` | NPC sprite packs, classifier adapter, completed-reply scheduling, and expression cache. |
 | `src/lore/` | Lorebook entries and synchronization. |
 | `src/story/` | Story beats, mentions, and collection scans. |
 | `src/prompts/` | Built-in prompt templates, formatting rules, and prompt placement. |
@@ -28,6 +29,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `README.md` | Installation, features, and usage documentation. |
 | `LICENSE` | Project license. |
 | `docs/chat-owned-npcs-plan.md` | Chat ownership and portable character contract. |
+| `docs/npc-expressions-tts-plan.md` | Implemented dialogue/configuration and NPC expression adapters, plus planned, host TTS hooks, and staged verification. |
 | `docs/FILE_MAP.md` | This source map. |
 | `docs/ARCHITECTURE.md` | Current storage ownership, reader behavior, review, and verification boundaries. |
 | `docs/REWRITE_HOST_SMOKE.md` | Dated user-reported host results and remaining manual checks. |
@@ -57,6 +59,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/history-scan.mjs` | Preserve NPC template assignments through scan filtering and multi-pass merging. |
 | `tests/ui-enable-switch.py` | Unsaved live checks for both master controls, synchronization, disabled reader, and UI cleanup. |
 | `tests/ui-smoke.py` | Read-only headless Firefox checks of startup, manual reader controls, and the System Builder. |
+| `tests/dialogue-presentation.mjs` | Quoted speech extraction, highlight alias rules, and message revision isolation. |
+| `tests/npc-presentation.mjs` | Presentation defaults, normalization, ownership, cloning, and portable transfer. |
+| `tests/ui-dialogue-presentation.py` | Unsaved live dialogue records, highlight identity parity, and display independence. |
 | `tests/ui-settings-navigation.py` | Settings sections, search, accessibility labels, and narrow navigation. |
 | `tests/ui-collection-smoke.py` | Collection rendering and reward editor controls, validation, and narrow layouts. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
@@ -89,6 +94,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/core/profile-memories.js` | Normalize and edit bounded character memory lists. |
 | `src/core/constants-prompts.js` | Built-in status and image prompt constants. |
 | `src/core/settings.js` | Default settings, normalization, persistence, and settings transfer. |
+| `src/core/npc-presentation.js` | Normalize portable NPC expression and provider voice preferences and unresolved imported bindings. |
 | `src/core/settings-defaults.js` | Default settings catalog. |
 | `src/prompts/default-prompt-texts.js` | Built-in lore prompt defaults. |
 | `src/core/settings-tracker-defaults.js` | Default tracker settings. |
@@ -224,6 +230,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/chat/chat-signature.js` | Compute chat rendering signatures. |
 | `src/chat/chat-portraits.js` | Select and inject character portraits. |
 | `src/chat/dialogue-line.js` | Recognize plain speaker dialogue lines. |
+| `src/chat/dialogue-discovery.js` | Shared DOM dialogue discovery, quote extraction, and card/alias matching for highlighting and presentation. |
+| `src/chat/dialogue-presentation.js` | Read ordered dialogue records with NPC/persona identity and chat/message revision keys. |
 | `src/chat/chat-speech.js` | Attach portraits to recognized dialogue lines. |
 | `src/chat/chat-reprocess.js` | Reprocess message decorations and tracker controls. |
 | `src/chat/chat-listing.js` | List chat headers. |
@@ -363,3 +371,17 @@ initialization and shared state need care. `normalizeSettings` sequences focused
 migration passes, `generateLoreEntry` separates dialog construction from its async
 actions, and `renderEditor` routes among smaller view builders. Their key behavior
 paths have regression tests under `tests/`.
+
+
+## NPC expressions
+
+| File | Responsibility |
+| --- | --- |
+| `src/expressions/expression-engine.js` | Last NPC dialogue selection, deterministic sprite variants, serialized classification, and bounded result cache. |
+| `src/expressions/expression-events.js` | Completed foreground reply authorization and cancellation on source changes. |
+| `src/expressions/host-expressions.js` | Host sprite listings, supported classifier modes, and dialogue-only classification. |
+| `src/expressions/npc-expressions.js` | Runtime freshness guards, cached dialogue portraits, and event registration. |
+| `src/ui/characters/ui-expressions.js` | Owned sprite binding preferences, pack checks, and full-image previews in NPC Edit. |
+| `styles/16-npc-expressions.css` | NPC expression editor layout. |
+| `tests/npc-expressions.mjs` | Classification order, caching, failure recovery, variants, cancellation, and event gating. |
+| `tests/ui-npc-expressions.py` | Unsaved live portrait and editor checks with mocked classification and sprite packs. |

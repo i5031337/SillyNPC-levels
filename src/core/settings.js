@@ -5,6 +5,7 @@ import { IMAGE_PROMPT } from './constants.js';
 import { defaultSettings } from './settings-defaults.js';
 import { normalizeSettings } from './settings-migration.js';
 import { setProfileSettingsProvider } from './profile-fields.js';
+import { normalizeCharacterPresentation } from './npc-presentation.js';
 export { defaultSettings, normalizeSettings };
 setProfileSettingsProvider(getSettings);
 export { normaliseStatDefs } from './settings-migration.js';
@@ -58,6 +59,7 @@ export function importSettingsData(jsonText) {
     // Merge, then repair. Imported files can be from any older version, so they
     // must go through the same migration pass as settings loaded at startup.
     Object.assign(getSettings(), data);
+    for (const card of getSettings().characters) normalizeCharacterPresentation(card, { imported: true });
     normalizeSettings(getSettings());
     saveSettings();
     return true;

@@ -2,6 +2,7 @@ import { getContext } from '../../../../../st-context.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { CHAT_NPCS_KEY } from '../chat/chat-npc-sources.js';
 import { visibleCharacters } from './character-scope.js';
+import { normalizeCharacterPresentation } from '../core/npc-presentation.js';
 
 export { CHAT_NPCS_KEY };
 
@@ -10,7 +11,9 @@ export function getChatCharacters() {
     const context = getContext();
     if (context?.getCurrentChatId?.() === undefined) return [];
     const records = context.chatMetadata?.[CHAT_NPCS_KEY];
-    return Array.isArray(records) ? records : [];
+    if (!Array.isArray(records)) return [];
+    for (const card of records) normalizeCharacterPresentation(card);
+    return records;
 }
 
 export function getWorldCharacters() {
@@ -42,6 +45,7 @@ export function isChatCharacter(id) {
 
 /** New cards belong to the open chat; without one they remain reusable world cards. */
 export function addCharacterRecord(card, { world = false } = {}) {
+    normalizeCharacterPresentation(card);
     const context = getContext();
     if (!world && context?.getCurrentChatId?.() !== undefined && context.chatMetadata) {
         const records = getChatCharacters();

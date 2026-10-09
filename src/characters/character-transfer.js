@@ -8,6 +8,7 @@ import { debugLog } from '../core/constants.js';
 import { blankActiveProfile, profileStrings } from '../core/profile-fields.js';
 import { splitNpcStats, initialiseNpcStats } from '../tracker/stat-persistence.js';
 import { getAllCharacters, isChatCharacter } from './character-repository.js';
+import { normalizeNpcPresentation } from '../core/npc-presentation.js';
 
 /** Transfer portable character prose, lore, and innate stats between installations.
  * Portraits are supplied by the recipient; older files with embedded portraits still import.
@@ -57,6 +58,7 @@ export async function serialiseCharacter(char, {
         category: String(char.category || ''),
         imageFit: String(char.imageFit || ''),
         aliases: Array.isArray(char.aliases) ? structuredClone(char.aliases) : [],
+        presentation: normalizeNpcPresentation(char.presentation),
         profile,
         npcTemplateId: npcTemplateFor(char, system)?.id || char.npcTemplateId || '',
         // Keep the version 2 field name so existing character files remain readable.
@@ -139,6 +141,7 @@ function applyRecord(char, record, name, version) {
     char.imageFit = String(record.imageFit || '');
     char.npcTemplateId = String(record.npcTemplateId || '');
     char.aliases = Array.isArray(record.aliases) ? structuredClone(record.aliases) : [];
+    char.presentation = normalizeNpcPresentation(record.presentation, { imported: true });
     // Version 1 mixed every override. The destination schema decides which values
     // travel; turn fields receive its defaults instead.
     const incoming = version >= 2 ? record.innateStats : record.statusOverrides;
@@ -252,6 +255,10 @@ export async function importCharacters(payload, { onCollision } = {}) {
         const char = localInstance || (overwriting ? existing : createCharacter(name));
 
         applyRecord(char, record, name, Number(payload.version) || 1);
+        if (char.presentation.expressions.spriteFolder
+            || Object.values(char.presentation.voices).some(voice => voice.mode === 'voice')) {
+            result.notes.push(`${name}: sprite and voice references need checking on this installation`);
+        }
         await restoreImages(char, record);
         const loreNote = await restoreLore(char, record);
         if (loreNote) result.notes.push(`${name}: ${loreNote}`);

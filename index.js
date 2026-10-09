@@ -1,4 +1,5 @@
 import { refreshExtensionEnabled } from './src/entry/entry-enabled.js';
+import { initNpcExpressions } from './src/expressions/npc-expressions.js';
 import { buildSettingToggle } from './src/ui/shared/ui-shared.js';
 import { eventSource, event_types } from '../../../events.js';
 import { onMessageRendered, onMessageForExtraction, onSwipe, onRegenerateStarted, onMessageDeleted, onMessageEdited } from './src/entry/entry-message-events.js';
@@ -85,6 +86,7 @@ jQuery(async () => {
             })
             .catch(err => console.warn(LOG_PREFIX, 'Could not move pictures into folders', err));
         initStatusLogic();
+        initNpcExpressions();
         setMemoryButtonRefresh(refreshMemoryButton);
         resetMemorySchedule();
         syncActiveProfileLore().catch(err => console.error(LOG_PREFIX, 'Profile lore sync failed', err));

@@ -6,6 +6,7 @@ import { npcTemplateFor } from '../src/core/npc-templates.js';
 import { splitNpcStats, normaliseNpcPersistence } from '../src/tracker/stat-persistence.js';
 import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
 import { profileStrings } from '../src/core/profile-fields.js';
+import { normalizeNpcPresentation } from '../src/core/npc-presentation.js';
 
 function hostIndependentSource(path) {
     return readFileSync(new URL(path, import.meta.url), 'utf8')
@@ -29,10 +30,10 @@ test('inactive System exports shared cards and chat NPCs using its own rules', a
         [CHAT_NPCS_KEY]: [{ id: 'chat', name: 'Tess', statusOverrides: { Rank: '2' } }],
     } }];
     const serialiseCharacter = new Function('getSettings', 'activeNpcSystem', 'npcTemplateFor',
-        'splitNpcStats', 'profileStrings', 'loadWorldInfo', 'debugLog',
+        'splitNpcStats', 'profileStrings', 'loadWorldInfo', 'debugLog', 'normalizeNpcPresentation',
         `${transferSource}\nreturn serialiseCharacter;`)(
         () => settings, () => activeDefinition, npcTemplateFor, splitNpcStats,
-        profileStrings, async () => null, () => {});
+        profileStrings, async () => null, () => {}, normalizeNpcPresentation);
     const exportWorldCharacters = new Function('getSettings', 'getWorldCharacters',
         'getChatCharacters', 'getContext', 'listChatHeaders', 'chatNpcSources', 'CHAT_NPCS_KEY',
         'serialiseCharacter', 'TRANSFER_FORMAT', 'TRANSFER_VERSION',

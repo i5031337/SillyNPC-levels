@@ -8,6 +8,7 @@ import { getAllCharacters, getLibraryCharacters, addCharacterRecord,
     deleteCharacterRecord, findCharacterRecord, collectionForCharacter,
     getWorldCharacters, getChatCharacters } from './character-repository.js';
 import { initialiseNpcStats } from '../tracker/stat-persistence.js';
+import { normalizeNpcPresentation } from '../core/npc-presentation.js';
 
 /**
  * A colour no other card is already using.
@@ -59,6 +60,7 @@ export function createCharacter(name = '') {
         category: '',
         imageFit: '',
         aliases: [],
+        presentation: normalizeNpcPresentation(),
         lorebook: null,
         // A chat NPC is a new person even when a shared lorebook has the same name.
         // The user can still explicitly link an entry from the card's Lore section.
@@ -316,6 +318,7 @@ export function instantiateWorldCharacter(id) {
     if (existing) return existing;
     const card = structuredClone(source);
     card.id = makeId();
+    card.presentation = normalizeNpcPresentation(source.presentation);
     card.statusOverrides = initialiseNpcStats(source.statusOverrides,
         npcStatsFor(source, getSettings().statusTracker));
     card.statusCollections = {};

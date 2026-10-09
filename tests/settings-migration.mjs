@@ -7,6 +7,7 @@ import { NPC_LORE_FIELDS } from '../src/core/constants-profile.js';
 import { normaliseStatUpdatePolicies } from '../src/tracker/stat-update-policy.js';
 import { migratePresetsAndStores } from '../src/core/settings-store-migration.js';
 import { normalizeHudLayoutId } from '../src/core/constants-base.js';
+import { normalizeCharacterPresentation } from '../src/core/npc-presentation.js';
 
 // Load the migration with its SillyTavern boundaries replaced by small fixtures.
 const source = readFileSync(new URL('../src/core/settings-migration.js', import.meta.url), 'utf8')
@@ -15,7 +16,7 @@ const source = readFileSync(new URL('../src/core/settings-migration.js', import.
 const loadMigration = new Function('debugLog', 'SPEAKER_PALETTE', 'NPC_LORE_FIELDS',
     'paletteIndexFor', 'normaliseNpcPersistence', 'defaultSettings', 'saveSettings',
     'migratePresetsAndStores', 'normaliseBaseSettings', 'normaliseStatUpdatePolicies',
-    'normalizeHudLayoutId', 'ensureCollectionIdentifier', 'normalizeTrackerProgression',
+    'normalizeHudLayoutId', 'ensureCollectionIdentifier', 'normalizeTrackerProgression', 'normalizeCharacterPresentation',
     `${source}\nreturn normalizeSettings;`);
 
 function migration() {
@@ -30,7 +31,8 @@ function migration() {
         NPC_LORE_FIELDS, () => 0, () => {}, defaults,
         () => saves.push('saved'),
         (settings, version) => { settings.version = version; },
-        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier, normalizeTrackerProgression);
+        () => {}, normaliseStatUpdatePolicies, normalizeHudLayoutId, ensureCollectionIdentifier, normalizeTrackerProgression,
+        normalizeCharacterPresentation);
     return { normalize, saves };
 }
 
@@ -47,6 +49,7 @@ test('imports repair character data and retain a single default portrait on repe
     normalize(settings);
     assert.deepEqual(settings.characters[0].images, ['portrait.png']);
     assert.deepEqual(settings.characters[0].aliases, []);
+    assert.equal(settings.characters[0].presentation.expressions.enabled, false);
     assert.equal(settings.characters[0].profile.age, '');
     assert.equal(settings.characters[0].profile.history, '');
     assert.deepEqual(settings.categories, ['Crew']);

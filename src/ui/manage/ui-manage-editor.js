@@ -7,6 +7,7 @@ import { deleteCharacter, findCharacter, assignMatchingTrackerTemplate } from '.
 import { triggerReprocess } from '../../chat/reprocess.js';
 import { renameLorebookEntry } from '../../lore/lorebook.js';
 import { buildPortraitBlock } from '../characters/ui-portrait.js';
+import { buildExpressionsSection } from '../characters/ui-expressions.js';
 import { taggedFields } from '../../characters/image-tags.js';
 import { folderFor, moveFolder } from '../../characters/character-images.js';
 import { renderLorebookSection } from '../story/ui-lorebook-section.js';
@@ -155,6 +156,7 @@ function buildEditorLeft(char, refreshEditor) {
     catContainer.className = 'sillynpc-editor-field category-field-container';
     
     left.append(preview, imgBtns, fitField, colorField, catContainer);
+    left.append(buildExpressionsSection(char));
     
     return { left, catContainer };
 }

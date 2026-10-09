@@ -8,6 +8,7 @@ import { defaultSettings } from './settings-defaults.js';
 import { saveSettings } from './settings.js';
 import { migratePresetsAndStores } from './settings-store-migration.js';
 import { normaliseBaseSettings } from './settings-base-migration.js';
+import { normalizeCharacterPresentation } from './npc-presentation.js';
 
 /**
  * Is version a older than version b? Dotted numbers, missing parts count as zero.
@@ -55,6 +56,7 @@ function normalizeCharactersAndCategories(settings) {
     debugLog('Processing characters');
     if (!Array.isArray(settings.characters)) settings.characters = [];
     for (const char of settings.characters) {
+        normalizeCharacterPresentation(char);
         if (!Array.isArray(char.aliases)) char.aliases = [];
         // Portraits predate the list. One rule covers both seeding it for a character
         // that never had one and adopting a portrait set outside it - and, because it
