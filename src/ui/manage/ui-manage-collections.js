@@ -1,3 +1,4 @@
+import { buildProfileSection } from '../characters/ui-profile-sections.js';
 import { collectionAppliesTo } from '../../core/collection-targets.js';
 import { Popup } from '../../../../../../popup.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
@@ -13,55 +14,25 @@ export function renderCollectionsSection(char, container) {
     const sceneActor = loadStateFromMetadata()?.characters?.find(actor => actor.name?.toLowerCase() === char.name?.toLowerCase());
     const collections = settings.collections.filter(col => collectionAppliesTo(col, 'npc', sceneActor?.npcTemplateId ? sceneActor : char));
     
-    if (collections.length === 0) { container.replaceChildren(); return; }
-
-    container.innerHTML = `
-        <div class="sillynpc-aliases-header">
-            <label>Current Collections</label>
-            <small class="notes">Manage inventory and other collections for this NPC in the current chat.</small>
-        </div>
-        <div class="sillynpc-npc-collections-tabs sillynpc-sheet-tabs" style="margin-top: 10px;">
-            ${collections.map((col, idx) => `
-                <div class="sillynpc-tab ${idx === 0 ? 'active' : ''}" data-tab="${escapeHtml(col.id)}">${escapeHtml(col.name)}</div>
-            `).join('')}
-        </div>
-        <div class="sillynpc-npc-collections-content" style="margin-top: 10px;">
-            <!-- Collection UI will be rendered here -->
-        </div>
-    `;
-
-    const contentArea = container.querySelector('.sillynpc-npc-collections-content');
-    const tabs = container.querySelectorAll('.sillynpc-tab');
-    
-    let currentCollectionId = collections[0].id;
-
-    const refreshCollection = () => {
-        const state = loadStateFromMetadata();
-        const charInState = state.characters.find(c => c.name.toLowerCase() === char.name.toLowerCase());
-
-        // A card-backed actor, shaped like a scene one so the same renderer and listeners
-        // work unchanged rather than needing an off-stage variant.
-        const actor = charInState || {
-            name: char.name,
-            npcTemplateId: char.npcTemplateId || '',
-            stats: char.statusOverrides || {},
-            collections: char.statusCollections || (char.statusCollections = {}),
+    container.replaceChildren();
+    for (const col of collections) {
+        const collection = buildProfileSection(`collection:${col.id}`, col.name || col.id, { open: true });
+        container.append(collection.section);
+        const refreshCollection = () => {
+            const state = loadStateFromMetadata();
+            const charInState = state?.characters?.find(c => c.name.toLowerCase() === char.name.toLowerCase());
+            const actor = charInState || {
+                name: char.name,
+                npcTemplateId: char.npcTemplateId || '',
+                stats: char.statusOverrides || {},
+                collections: char.statusCollections || (char.statusCollections = {}),
+            };
+            collection.setTitle(col.name || col.id, (actor.collections?.[col.id] || []).length);
+            collection.body.innerHTML = renderCollectionUI(col.id, actor, settings);
+            attachCollectionListeners(collection.body, actor, refreshCollection);
         };
-
-        contentArea.innerHTML = renderCollectionUI(currentCollectionId, actor, settings);
-        attachCollectionListeners(contentArea, actor, refreshCollection);
-    };
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            currentCollectionId = tab.dataset.tab;
-            refreshCollection();
-        });
-    });
-
-    refreshCollection();
+        refreshCollection();
+    }
 }
 
 export function renderCategorySelect(char, container, refreshEditor) {

@@ -64,7 +64,7 @@ async function askPlan(char, audit) {
 
     // Numbered in the order they run; later stages can use the completed description.
     wrap.append(
-        stageRow('lore', '1. Description & Lore', audit.lore),
+        stageRow('lore', '1. Lore', audit.lore),
         stageRow('image', '2. Portrait', audit.image),
     );
 

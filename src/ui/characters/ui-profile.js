@@ -5,9 +5,8 @@ import { liveFactsFor } from '../../api/api.js';
 import { readLoreEntry, fillProfile } from '../../characters/character-fill.js';
 import { openLightbox } from './ui-portrait.js';
 import { syncProfileToLore, readLoreValues } from '../../lore/lore-sync.js';
-import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status-logic.js';
-import { renderMemorySection } from './ui-memories.js';
-import { readNpcMemories, writeNpcMemories } from '../../tracker/npc-memories.js';
+import { renderNpcMemorySection } from './ui-npc-memory-section.js';
+import { buildProfileSection } from './ui-profile-sections.js';
 
 /** The character profile reads from the card, linked lore, and live tracker state. */
 
@@ -47,25 +46,6 @@ function chip(name, value) {
     return el;
 }
 
-/** A row of chips under a caption, or nothing at all when there are none. */
-function chipRow(label, chips) {
-    if (!chips.length) return null;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'sillynpc-cv-block';
-
-    const caption = document.createElement('div');
-    caption.className = 'sillynpc-cv-label';
-    caption.textContent = label;
-
-    const row = document.createElement('div');
-    row.className = 'sillynpc-cv-chips';
-    row.append(...chips);
-
-    wrap.append(caption, row);
-    return wrap;
-}
-
 /** Restore the previous value after a single field is regenerated. */
 function buildUndoButton(field, char, input) {
     const undo = document.createElement('button');
@@ -102,14 +82,6 @@ function buildUndoButton(field, char, input) {
 /** Edit the active System fields while retaining older saved values below them. */
 export function renderProfileFields(char, container) {
     if (!container) return;
-
-    container.innerHTML = `
-        <div class="sillynpc-aliases-header">
-            <label>Character details</label>
-            <small class="notes">The active System defines these fields. Use Fill or the
-                lore writer to add details.</small>
-        </div>
-    `;
 
     if (!char.profile || typeof char.profile !== 'object') char.profile = {};
 
@@ -289,7 +261,7 @@ function buildPortrait(char) {
  * @param {{ extraBadges?: Element[] }} [options] Chips to ride along in the top row.
  * @returns {Element[]} Empty when nothing is written, so the caller can say so its own way.
  */
-export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
+export function buildProfileBlocks(char, { extraBadges = [], includeIdentity = true } = {}) {
     const profile = char?.profile || {};
     const fields = profileFieldsForCard(char);
     const written = fields.filter(f => String(profile[f.id] ?? '').trim());
@@ -299,8 +271,12 @@ export function buildProfileBlocks(char, { extraBadges = [] } = {}) {
     // together as chips while the paragraphs get a block each.
     const badges = [...written.filter(f => !f.multiline).map(f => chip(f.label, profile[f.id])),
         ...extraBadges];
-    const glance = chipRow('At a glance', badges);
-    if (glance) out.push(glance);
+    if (includeIdentity && badges.length) {
+        const identity = document.createElement('div');
+        identity.className = 'sillynpc-cv-chips sillynpc-cv-identity';
+        identity.append(...badges);
+        out.push(identity);
+    }
 
     for (const field of written.filter(f => f.multiline)) {
         out.push(block(field.label, profile[field.id]));
@@ -353,18 +329,50 @@ export async function renderProfileView(char, container) {
     const right = document.createElement('div');
     right.className = 'sillynpc-cv-right';
 
-    const narrative = document.createElement('section');
-    narrative.className = 'sillynpc-cv-narrative';
-    const narrativeHeading = document.createElement('h3');
-    narrativeHeading.textContent = 'Description & Lore';
-    narrative.append(narrativeHeading);
-    right.append(narrative);
-
     const aliasNames = (char.aliases || [])
         .filter(a => a?.pattern && !a.isRegex)
         .map(a => a.pattern);
+    const identity = document.createElement('div');
+    identity.className = 'sillynpc-cv-chips sillynpc-cv-identity';
+    identity.append(...profileFieldsForCard(char)
+        .filter(field => !field.multiline && String(unified[field.id] ?? '').trim())
+        .map(field => chip(field.label, unified[field.id])));
+    if (aliasNames.length) identity.append(chip('Also called', aliasNames.join(', ')));
+    if (identity.childElementCount) left.append(identity);
+
+    const { stats, collections } = liveFactsFor(char);
+    const statChips = Object.entries(stats)
+        .filter(([, value]) => String(value ?? '').trim() !== '')
+        .map(([name, value]) => chip(name, value));
+    if (statChips.length) {
+        const statsSection = buildProfileSection('stats', 'Stats', { open: true });
+        const row = document.createElement('div');
+        row.className = 'sillynpc-cv-chips';
+        row.append(...statChips);
+        statsSection.body.append(row);
+        right.append(statsSection.section);
+    }
+    for (const colDef of getSettings().statusTracker.collections || []) {
+        if (!colDef?.id || !Object.hasOwn(collections, colDef.id)) continue;
+        const identifier = colDef.fields?.find(field => field.isPrimary)?.name || 'name';
+        const items = (collections[colDef.id] || [])
+            .map(item => String(item?.[identifier] ?? '').trim()).filter(Boolean);
+        const collection = buildProfileSection(`collection:${colDef.id}`, colDef.name || colDef.id,
+            { open: true, count: items.length });
+        const row = document.createElement('div');
+        row.className = 'sillynpc-cv-chips';
+        row.append(...items.map(name => chip(name)));
+        if (!items.length) row.textContent = 'No entries.';
+        collection.body.append(row);
+        right.append(collection.section);
+    }
+
+    const lore = buildProfileSection('lore', 'Lore');
+    const narrative = lore.body;
+    narrative.classList.add('sillynpc-cv-narrative');
+    right.append(lore.section);
     const blocks = buildProfileBlocks({ ...char, profile: unified }, {
-        extraBadges: aliasNames.length ? [chip('Also called', aliasNames.join(', '))] : [],
+        includeIdentity: false,
     });
 
     if (blocks.length) {
@@ -372,46 +380,12 @@ export async function renderProfileView(char, container) {
     } else {
         const empty = document.createElement('p');
         empty.className = 'notes sillynpc-cv-empty';
-        empty.textContent = 'Nothing recorded about who they are yet. Fill reads the story '
+        empty.textContent = 'No lore recorded yet. Fill reads the story '
             + 'and writes it, or open Edit and write it yourself.';
         narrative.append(empty);
     }
 
-    renderMemorySection(right, {
-        read: () => readNpcMemories(loadStateFromMetadata(), char),
-        write: store => {
-            const state = loadStateFromMetadata();
-            writeNpcMemories(state, char, store);
-            saveStateToMetadata(state, { label: 'NPC memories', recordHistory: false });
-            syncProfileToLore(char, store).catch(err =>
-                console.error(LOG_PREFIX, 'Could not update lorebook memories', err));
-        },
-        fields: profileFieldsForCard(char),
-        limit: getSettings().statusTracker?.presets?.[getSettings().activeSystem]
-            ?.definition?.memories?.maxEntriesPerCharacter,
-    });
-    // Tracker values: whatever is true now. A character on stage has live numbers and the
-    // card's are what they last walked in with, so showing the card's would be stale.
-    const { stats, collections } = liveFactsFor(char);
-    const statChips = Object.entries(stats)
-        .filter(([, value]) => String(value ?? '').trim() !== '')
-        .map(([name, value]) => chip(name, value));
-    const statsRow = chipRow('Tracked', statChips);
-    if (statsRow) right.append(statsRow);
-
-    // Every collection, including the ones hidden from the tracker. That flag keeps the
-    // bar in the chat readable and says nothing about this page, which is where somebody
-    // comes precisely to see what is not on the bar.
-    for (const colDef of getSettings().statusTracker.collections || []) {
-        if (!colDef?.id) continue;
-        const identifier = colDef.fields?.find(field => field.isPrimary)?.name || 'name';
-        const items = (collections[colDef.id] || [])
-            .map(item => String(item?.[identifier] ?? '').trim())
-            .filter(Boolean);
-        const row = chipRow(colDef.name || colDef.id, items.map(name => chip(name)));
-        if (row) right.append(row);
-    }
-
+    renderNpcMemorySection(char, right);
     body.append(left, right);
     container.append(body);
 

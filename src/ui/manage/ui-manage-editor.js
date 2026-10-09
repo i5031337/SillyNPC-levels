@@ -21,6 +21,8 @@ import { renderPictureTagsSection } from './ui-manage-pictures.js';
 import { renderCollectionsSection, renderCategorySelect } from './ui-manage-collections.js';
 import { renderOverridesSection, buildAliasRow } from './ui-manage-overrides.js';
 import { buildManualLevelUpSection } from '../characters/ui-manual-level-up.js';
+import { buildProfileSection } from '../characters/ui-profile-sections.js';
+import { renderNpcMemorySection } from '../characters/ui-npc-memory-section.js';
 
 /**
  * The tabs, in their own class.
@@ -284,13 +286,15 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
     const collectionsContainer = document.createElement('div');
     collectionsContainer.className = 'sillynpc-editor-field collections-field-container';
     
-    const narrativeEditor = document.createElement('section');
-    narrativeEditor.className = 'sillynpc-narrative-editor';
-    const narrativeHeading = document.createElement('h3');
-    narrativeHeading.textContent = 'Description & Lore';
-    narrativeEditor.append(narrativeHeading, profileContainer, loreContainer);
-    right.append(nameField, aliasField, narrativeEditor, overridesContainer,
-        collectionsContainer);
+    const identity = buildProfileSection('edit:identity', 'Identity', { open: true });
+    identity.body.append(nameField, aliasField);
+    const stats = buildProfileSection('stats', 'Stats', { open: true });
+    stats.body.append(overridesContainer);
+    const lore = buildProfileSection('lore', 'Lore');
+    lore.body.classList.add('sillynpc-narrative-editor');
+    lore.body.append(profileContainer, loreContainer);
+    left.append(identity.section);
+    right.append(stats.section, collectionsContainer, lore.section);
     
     main.append(left, vDivider, right);
     editView.append(sticky, main);
@@ -313,6 +317,7 @@ function renderEditForm(char, editView, sticky, title, refreshEditor) {
     renderOverridesSection(char, overridesContainer);
     if (!char.isPlayer) overridesContainer.append(buildManualLevelUpSection(char, { onChange: refreshEditor }));
     renderCollectionsSection(char, collectionsContainer);
+    if (!char.isPlayer) renderNpcMemorySection(char, right);
 }
 
 export function renderEditor(showGrid) {

@@ -1,4 +1,5 @@
 import { appendMemory, editMemory, memoryLimit, normalizeMemoryStore, removeMemory } from '../../core/profile-memories.js';
+import { buildProfileSection } from './ui-profile-sections.js';
 
 function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -11,12 +12,15 @@ function element(tag, className, text) {
 export function renderMemorySection(container, { read, write, fields = [], limit = 50 }) {
     if (!container) return;
     const labels = new Map(fields.map(field => [field.id, field.label]));
-    const section = element('section', 'sillynpc-memory-section');
-    container.append(section);
+    const memories = buildProfileSection('memories', 'Memories');
+    const section = memories.body;
+    section.classList.add('sillynpc-memory-section');
+    container.append(memories.section);
 
     function draw() {
         const store = normalizeMemoryStore(read(), 500);
-        section.replaceChildren(element('h3', '', 'Memories'));
+        memories.setTitle('Memories', store.entries.length);
+        section.replaceChildren();
 
         {
             const form = element('div', 'sillynpc-memory-add');
@@ -38,8 +42,11 @@ export function renderMemorySection(container, { read, write, fields = [], limit
         }
 
         for (const [kind, entries] of [['Active', store.entries], ['Archived', store.archive]]) {
-            const group = element('div', 'sillynpc-memory-group');
-            group.append(element('div', 'sillynpc-cv-label', `${kind} · ${entries.length}`));
+            const archived = kind === 'Archived'
+                ? buildProfileSection('archived-memories', kind, { count: entries.length }) : null;
+            const group = archived?.body || element('div', 'sillynpc-memory-group');
+            group.classList.add('sillynpc-memory-group');
+            if (!archived) group.append(element('div', 'sillynpc-cv-label', `${kind} · ${entries.length}`));
             if (!entries.length) group.append(element('p', 'notes', kind === 'Active'
                 ? 'No memories recorded yet.' : 'No archived memories.'));
             for (const entry of entries) {
@@ -74,9 +81,9 @@ export function renderMemorySection(container, { read, write, fields = [], limit
                 row.append(input, meta, controls);
                 group.append(row);
             }
-            section.append(group);
+            section.append(archived?.section || group);
         }
     }
     draw();
-    return section;
+    return memories.section;
 }

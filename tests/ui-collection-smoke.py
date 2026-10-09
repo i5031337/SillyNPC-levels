@@ -10,6 +10,7 @@ with browser_session() as browser:
         script.type = 'module'; script.id = 'sillynpc-collection-smoke';
         script.textContent = `
             const root = ${JSON.stringify(new URL('.', entry.src).href)};
+            const { buildProfileSection } = await import(root + 'src/ui/characters/ui-profile-sections.js');
             const { bind } = await import(root + 'src/tracker/status-collection-updates.js');
             const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
             const { getSettings } = await import(root + 'src/core/settings.js');
@@ -48,11 +49,11 @@ with browser_session() as browser:
                     (field, value) => value, () => '', () => false, () => settings, () => writes++,
                     () => false, () => state, () => writes++, deps.addItem, deps.removeItem,
                     () => {}, () => {}, events, html, popup, syncCollections);
-            const renderNpc = new Function('collectionAppliesTo', 'Popup', 'getSettings', 'saveSettings',
+            const renderNpc = new Function('buildProfileSection', 'collectionAppliesTo', 'Popup', 'getSettings', 'saveSettings',
                 'getAllCategories', 'createCategory', 'escapeHtml', 'loadStateFromMetadata',
                 'renderCollectionUI', 'attachCollectionListeners',
                 strip(npcSource) + '; return renderCollectionsSection;')(
-                    () => true, popup, () => settings, () => writes++, () => [], () => {}, html,
+                    buildProfileSection, () => true, popup, () => settings, () => writes++, () => [], () => {}, html,
                     () => state, api.renderCollectionUI, api.attachCollectionListeners);
             const host = document.createElement('div');
             host.className = 'sillynpc-player-sheet'; document.body.append(host);

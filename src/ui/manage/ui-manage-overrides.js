@@ -11,7 +11,6 @@ export function renderOverridesSection(char, container) {
     
     container.innerHTML = `
         <div class="sillynpc-aliases-header">
-            <label>Stats</label>
             <small class="notes">Leave blank to use global default values.</small>
         </div>
     `;
