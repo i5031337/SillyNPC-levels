@@ -15,7 +15,8 @@ with browser_session() as browser:
           const { getSettings } = await import(root + 'src/core/settings.js');
           const { buildProfilesEditor } = await import(root + 'src/ui/system/ui-system-profiles.js');
           const result = {};
-          const fixture = { profiles: { npc: [{ id: 'species', label: 'Species', includeInImagePrompt: true }] } };
+          const { normalizeSystemDefinition } = await import(root + 'src/core/system-schema.js');
+          const fixture = normalizeSystemDefinition({ schemaVersion: 2, profiles: [{ id: 'species', label: 'Species', targets: ['npc'], includeInImagePrompt: true }] });
           const host = document.createElement('div');
           let saves = 0;
           try {
@@ -37,12 +38,12 @@ with browser_session() as browser:
             const prefix = imageSettings.querySelector('[data-setting=imgGenPromptPrefix] textarea');
             result.noImageContextSetting = !imageSettings.querySelector('[data-setting=imgGenContextMessages]');
             result.prefixSetting = !!prefix && prefix.value === getSettings().imgGenPromptPrefix;
-            const editor = buildProfilesEditor('npc', () => {}, { definition: () => fixture, saveSettings: () => saves++ });
+            const editor = buildProfilesEditor(() => {}, { definition: () => fixture, getSettings: () => ({statusTracker: {}}), saveSettings: () => saves++ });
             host.append(editor); document.body.append(host);
             const checkbox = editor.querySelector('.profile-image-prompt');
             result.fieldSelected = checkbox.checked;
             checkbox.click();
-            result.fieldToggle = !fixture.profiles.npc[0].includeInImagePrompt && saves === 1;
+            result.fieldToggle = !fixture.profiles[0].includeInImagePrompt && saves === 1;
             const card = { name: 'Portrait Smoke NPC', profile: { age: '30', appearance: 'Blue coat' } };
             const expectedPrompt = await buildCharacterImagePrompt(card);
             const task = generateCharacterImage(card);

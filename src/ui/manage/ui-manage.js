@@ -14,7 +14,8 @@ import { buildSettingsSearch, buildSettingsIndex } from '../settings/ui-settings
 import { manageState } from './ui-manage-state.js';
 import { renderCardGrid } from './ui-manage-grid.js';
 import { renderEditor } from './ui-manage-editor.js';
-import { renderPlayerView, commitOpenEdits } from '../characters/ui-player-sheet.js';
+import { commitStatEdits } from './ui-manage-overrides.js';
+import { renderPlayerView } from '../characters/ui-player-sheet.js';
 import { exportData, importData } from './ui-manage-transfer.js';
 
 // The menu can stay open while SillyTavern changes the current chat or persona.
@@ -38,7 +39,7 @@ eventSource.on('sillynpc-status-updated', refreshManageOnStatusUpdate);
 
 export async function openManagePopup({ tab = 'characters', charId = null } = {}) {
     if (manageState.managePopup && manageState.manageRoot) {
-        if (manageState.activeTab === 'player') commitOpenEdits(manageState.manageRoot);
+        commitStatEdits(manageState.manageRoot);
         manageState.editingCharId = charId;
         manageState.activeTab = tab;
         renderManageView();
@@ -56,10 +57,7 @@ export async function openManagePopup({ tab = 'characters', charId = null } = {}
 
     manageState.managePopup = new Popup(container, POPUP_TYPE.DISPLAY, '', {
         allowVerticalScrolling: false,
-        onClosing: () => {
-            if (manageState.activeTab === 'player') commitOpenEdits(container);
-            return true;
-        },
+        onClosing: () => { commitStatEdits(container); return true; },
         onOpen: (popup) => {
             applyPopupSize();
             updateManageTheme(manageState.manageRoot, popup);
@@ -194,7 +192,7 @@ function revealSetting(key) {
 
 function switchTab(name) {
     if (!manageState.manageRoot) return;
-    if (manageState.activeTab === 'player') commitOpenEdits(manageState.manageRoot);
+    commitStatEdits(manageState.manageRoot);
     manageState.activeTab = name;
     manageState.editingCharId = null;
     resetLorebookState();

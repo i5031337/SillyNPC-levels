@@ -1,4 +1,5 @@
 import { npcStatsFor } from '../core/npc-templates.js';
+import { fieldAppliesTo } from '../core/system-fields.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { getLibraryCharacters } from '../characters/character-repository.js';
 import { escapeRegExp } from '../core/utils.js';
@@ -45,7 +46,7 @@ function statsInSystem(stored, listKey, actor) {
 }
 
 /** Rename held stat values; update unambiguous display references. */
-function renameStat(listKey, oldName, newName) {
+function renameStat(listKey, oldName, newName, field) {
     const empty = { values: 0, templateUpdated: false, cssMentions: false };
     if (!STAT_SCOPES.includes(listKey) || !oldName || !newName || oldName === newName) return empty;
 
@@ -61,6 +62,9 @@ function renameStat(listKey, oldName, newName) {
 
     if (listKey === 'playerStats') {
         if (state && moveKey(state.player?.stats, oldName, newName)) values += 1;
+        for (const player of Object.values(state?.players || {})) {
+            if (moveKey(player?.stats, oldName, newName)) values += 1;
+        }
         // Every persona, not just the active one: the others are not loaded now but are
         // the same player returning to a different chat.
         for (const persona of Object.values(settings.personaData || {})) {
@@ -69,18 +73,23 @@ function renameStat(listKey, oldName, newName) {
     }
 
     if (listKey === 'npcStats') {
+        const system = tracker.presets?.[settings.activeSystem]?.definition;
+        const applies = actor => !field || fieldAppliesTo(field, 'npc', actor, system);
         for (const actor of (state?.characters || [])) {
+            if (!applies(actor)) continue;
             if (moveKey(actor?.stats, oldName, newName)) values += 1;
         }
         // Character cards - what someone off stage walks back in carrying.
         for (const card of getLibraryCharacters()) {
+            if (!applies(card)) continue;
             if (moveKey(card?.statusOverrides, oldName, newName)) values += 1;
         }
     }
 
     const otherLists = STAT_SCOPES.filter(k => k !== listKey);
     const stillUsedElsewhere = otherLists.some(key =>
-        (tracker[key] || []).some(s => s?.name === oldName));
+        (tracker[key] || []).some(s => s?.name === oldName))
+        || !!field && (tracker[listKey] || []).some(stat => stat.id !== field.id && stat.name === oldName);
 
     let templateUpdated = false;
     if (!stillUsedElsewhere && typeof tracker.template === 'string') {

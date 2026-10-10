@@ -1,10 +1,9 @@
 import { collectionQuantityField, ensureCollectionIdentifier, ensureCollectionQuantity } from '../../core/collection-fields.js';
 import { buildCollectionTargetsEditor } from './ui-collection-targets.js';
-import { liveSystemContext } from './ui-system-context.js';
+import { liveSystemContext, saveSystemEditor } from './ui-system-context.js';
 import { Popup } from '../../../../../../popup.js';
 import { escapeHtml, moveInList } from '../../core/utils.js';
-import { buildBulkCheckbox } from '../shared/ui-bulk-select.js';
-import { statsBulkBar } from './ui-system-stats.js';
+import { buildBulkBar, buildBulkCheckbox, spliceIndexes } from '../shared/ui-bulk-select.js';
 import { renderCollectionFields } from './ui-collection-fields.js';
 import { buildCollectionRewardsEditor } from './ui-collection-rewards.js';
 
@@ -22,10 +21,10 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
         <details style="margin-bottom:12px;">
             <summary>Choosing stats, profiles or collections</summary>
             <ul>
-                <li><b>Stats:</b> tracked values such as health, stamina or level. Define player stats
-                    in the Player tab, or NPC stats in the NPC tab and select them for each NPC template.</li>
+                <li><b>Stats:</b> tracked values such as health, stamina or level. Define them on the Stats page and
+                    assign them to the player, all NPCs or selected NPC templates.</li>
                 <li><b>Profiles:</b> character details such as appearance, occupation or background.
-                    Define NPC profile fields in NPC Profile and select them for each NPC template.</li>
+                    Define them on the Profile fields page and assign their character targets.</li>
                 <li><b>Collections:</b> one entry per item, skill or piece of clothing.
                     An inventory collection might have a name, quantity and description. Enable Level-up rewards
                     to propose scheduled or story-guided entries for the collection’s existing targets.</li>
@@ -54,7 +53,18 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
         if (ensureCollectionQuantity(col) || identifierChanged) saveSettings();
     });
 
-    const bulk = statsBulkBar('collections', onRefresh, 'collection', context);
+    if (!context.bulkBars.has('collections')) {
+        context.bulkBars.set('collections', buildBulkBar({
+            noun: 'collection',
+            allIds: () => context.getSettings().statusTracker.collections.map((_, index) => index),
+            onDelete: ids => {
+                spliceIndexes(context.getSettings().statusTracker.collections, ids);
+                saveSystemEditor(context);
+            },
+            onRefresh: () => onRefresh(),
+        }));
+    }
+    const bulk = context.bulkBars.get('collections');
     wrap.appendChild(bulk.bar);
 
     collections.forEach((col, index) => wrap.appendChild(createCollectionRow(col, index, collections, bulk, onRefresh, context)));
@@ -85,12 +95,9 @@ export function buildCollectionsEditor(onRefresh, context = liveSystemContext) {
 
 function createCollectionRow(col, index, collections, bulk, onRefresh, context) {
     const colWrap = document.createElement('div');
-    colWrap.className = 'sillynpc-alias-row';
+    colWrap.className = 'sillynpc-alias-row sillynpc-system-collection-row';
     colWrap.style.marginBottom = '20px';
     colWrap.style.padding = '15px';
-    colWrap.style.background = 'var(--sillynpc-bg-secondary)';
-    colWrap.style.borderRadius = '8px';
-    colWrap.style.border = '1px solid var(--sillynpc-border)';
 
     colWrap.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; margin-bottom:12px;">

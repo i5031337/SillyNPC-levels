@@ -79,11 +79,6 @@
     transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
-/* Scale the sheet relative to the host text size. */
-.sillynpc-player-sheet {
-    font-size: calc(1em * var(--sillynpc-font-scale, 1));
-}
-
 .sillynpc-manage-layout {
     display: flex;
     flex-direction: row;
@@ -343,11 +338,6 @@
 .sillynpc-manage input[type="number"],
 .sillynpc-manage textarea,
 .sillynpc-manage .text_pole,
-.sillynpc-player-sheet select,
-.sillynpc-player-sheet input[type="text"],
-.sillynpc-player-sheet input[type="number"],
-.sillynpc-player-sheet textarea,
-.sillynpc-player-sheet .text_pole,
 .sillynpc-status-box select,
 .sillynpc-status-box input[type="text"],
 .sillynpc-status-box input[type="number"],
@@ -369,17 +359,14 @@
    Repeating the list with :not(:checked) outranks it outright, and !important settles it
    whatever order the two sheets happen to load in. */
 .sillynpc-manage select option,
-.sillynpc-player-sheet select option,
 .sillynpc-status-box select option,
 .sillynpc-manage select option:not(:checked),
-.sillynpc-player-sheet select option:not(:checked),
 .sillynpc-status-box select option:not(:checked) {
     background-color: var(--sillynpc-bg-primary) !important;
     color: var(--sillynpc-fg-primary) !important;
 }
 
 .sillynpc-manage ::placeholder,
-.sillynpc-player-sheet ::placeholder,
 .sillynpc-status-box ::placeholder {
     color: var(--sillynpc-fg-secondary);
     opacity: 1;
@@ -389,9 +376,7 @@
    stay the browser default blue, which is the one thing on a parchment sheet that never
    belongs there. */
 .sillynpc-manage input[type="checkbox"],
-.sillynpc-manage input[type="radio"],
-.sillynpc-player-sheet input[type="checkbox"],
-.sillynpc-player-sheet input[type="radio"] {
+.sillynpc-manage input[type="radio"] {
     accent-color: var(--sillynpc-accent-text, var(--sillynpc-accent));
 }
 

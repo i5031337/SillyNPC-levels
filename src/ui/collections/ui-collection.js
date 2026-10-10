@@ -140,7 +140,7 @@ export function persistCollectionEdit(label, { target, state, offstage }, isPlay
  * @param {Function} onRefresh Refreshes the UI; may return its replacement container.
  */
 export function attachCollectionListeners(dom, actor, onRefresh) {
-    const isPlayer = actor.name === 'Player' || actor.name === (loadStateFromMetadata().player?.name);
+    const isPlayer = actor.isPlayer ?? (actor === loadStateFromMetadata().player);
 
     const persist = (label, where) => persistCollectionEdit(label, where, isPlayer);
 

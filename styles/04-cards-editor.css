@@ -235,7 +235,7 @@
 .sillynpc-editor-left {
     /* Percentage, not vw: this column lives in a dialog, and a narrow dialog on a wide
        monitor would take a viewport unit as permission to stay huge. See the note on
-       .sillynpc-sheet-sidebar. */
+       the portrait column. */
     flex: 0 0 clamp(130px, 30%, 260px);
     max-width: 100%;
 }

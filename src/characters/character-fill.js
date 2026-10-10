@@ -3,7 +3,7 @@ import { getContext } from '../../../../../st-context.js';
 import { fillTemplate } from '../prompts/macros.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { hintFor } from '../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
+import { profileFieldValue, profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 import { requestExtraction, coerceToUpdate } from '../tracker/extractor/status-extractor.js';
 import { describeTrackedFacts, describeProfile, buildLoreExcerpt } from '../api/api.js';
 import { tryAutoSyncLorebook } from '../lore/lorebook.js';
@@ -54,7 +54,7 @@ export async function auditCharacter(char) {
  */
 export function missingProfileFields(char) {
     const profile = char?.profile || {};
-    return fieldsForCard(char).filter(field => !String(profile[field.id] ?? '').trim());
+    return fieldsForCard(char).filter(field => !String(profileFieldValue(profile, field)).trim());
 }
 
 /**

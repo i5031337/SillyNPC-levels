@@ -43,7 +43,7 @@ with browser_session() as browser:
             panel = mount(buildSystemGeneration(() => {}, {
               requestFactory: () => async args => {
                 calls.push(args.stage);
-                if (fail && args.stage === 'stats.npc') return '{truncated';
+                if (fail && args.stage === 'stats.character') return '{truncated';
                 return responseFor(args.stage, registry);
               },
               save: (definition, name) => {
@@ -55,17 +55,17 @@ with browser_session() as browser:
             panel.querySelector('.gen-generate').click();
             await wait(() => !panel.querySelector('.gen-retry').hidden);
             results.failedSection = panel.querySelector('.gen-save').disabled && panel.querySelector('.gen-errors').textContent.includes('truncated')
-              && calls.filter(stage => stage === 'stats.npc').length === 2;
+              && calls.filter(stage => stage === 'stats.character').length === 2;
             fail = false; panel.querySelector('.gen-retry').click();
             await wait(() => !panel.querySelector('.gen-save').disabled);
-            results.preserved = calls.filter(stage => stage === 'stats.player').length === 1;
+            results.preserved = calls.filter(stage => stage === 'stats.world').length === 1;
             results.fewerCalls = !calls.some(stage => stage.startsWith('template.') || stage.startsWith('progression.') || stage === 'presentation')
-              && calls.length === 10 && panel.querySelector('.gen-progress').textContent.includes('10 requests');
+              && calls.length === 8 && panel.querySelector('.gen-progress').textContent.includes('8 requests');
             results.summary = panel.querySelector('.gen-summary').textContent.includes('Creature')
               && panel.querySelector('.gen-summary').textContent.includes('scheduled');
             panel.querySelector('.gen-edit').click();
             const tab = text => [...panel.querySelectorAll('[role=tab]')].find(el => el.textContent === text).click();
-            tab('Player Stats');
+            tab('Stats');
             const energy = [...panel.querySelectorAll('.sillynpc-alias-row')].find(row => row.querySelector('.stat-name')?.value === 'Energy');
             input(energy.querySelector('.stat-name'), 'Focus', 'change');
             input(energy.querySelector('.stat-min'), '20');
@@ -74,7 +74,7 @@ with browser_session() as browser:
             results.validAgain = !panel.querySelector('.gen-save').disabled;
             tab('NPC Templates');
             input(panel.querySelector('.sillynpc-npc-templates textarea'), 'Catchable monsters encountered in the wild.', 'change');
-            tab('NPC Profile');
+            tab('Profile fields');
             input(panel.querySelector('.profile-guidance'), 'Describe the species clearly.');
             tab('Collections');
             input(panel.querySelector('.col-hint'), 'Learned combat techniques.');
@@ -87,9 +87,9 @@ with browser_session() as browser:
             results.newTemplateValid = !panel.querySelector('.gen-save').disabled && !panel.querySelector('.gen-errors').textContent;
             results.narrow = panel.scrollWidth <= panel.clientWidth + 2;
             panel.querySelector('.gen-save').click();
-            results.savedDraft = saved.stats.player.some(f => f.name === 'Focus')
+            results.savedDraft = saved.stats.character.some(f => f.name === 'Focus')
               && saved.npcTemplates[0].description === 'Catchable monsters encountered in the wild.'
-              && saved.profiles.npc[0].guidance === 'Describe the species clearly.'
+              && saved.profiles[0].guidance === 'Describe the species clearly.'
               && saved.collections[0].guidance === 'Learned combat techniques.'
               && saved.collections[0].fields[0].guidance === 'The unique technique name.'
               && saved.collections[0].fields[0].name === 'title'
@@ -110,7 +110,7 @@ with browser_session() as browser:
             second.querySelector('.gen-cancel').click();
             third = mount(buildSystemGeneration(() => {}, { requestFactory: () => async args => {
               const output = responseFor(args.stage, registry);
-              if (args.stage === 'stats.player') {
+              if (args.stage === 'stats.character') {
                 const xp = output.section.fields.find(field => field.id === 'xp');
                 xp.defaultValue = '0'; xp.maxStatValue = '';
               }

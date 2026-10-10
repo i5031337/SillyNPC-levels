@@ -20,10 +20,11 @@ with browser_session() as browser:
           const { createMemoryService } = await import(root + 'src/memory/memory-service.js');
           const { applyReviewedMemories } = await import(root + 'src/memory/memory-review.js');
           ({ refreshMemoryButton } = await import(root + 'src/ui/tracker/ui-memory-button.js'));
-          const definition = { profiles: { npc: [] }, memories: {enabled:false,guidance:'',interval:8,maxEntriesPerCharacter:50} };
+          const { normalizeSystemDefinition } = await import(root + 'src/core/system-schema.js');
+          const definition = normalizeSystemDefinition({schemaVersion:2, profiles: [], memories: {enabled:false,guidance:'',interval:8,maxEntriesPerCharacter:50} });
           let saves = 0, refreshes = 0;
-          const controls = buildProfilesEditor('npc', () => {}, {
-            definition: () => definition, saveSettings: () => saves++, refreshMemoryButton: () => refreshes++ });
+          const controls = buildProfilesEditor(() => {}, {
+            definition: () => definition, getSettings: () => ({statusTracker: {}}), saveSettings: () => saves++, refreshMemoryButton: () => refreshes++ });
           result.systemControls = !!controls.querySelector('.profile-memory-guidance')
             && controls.querySelector('.profile-memory-interval').value === '8'
             && controls.querySelector('.profile-memory-limit').value === '50';

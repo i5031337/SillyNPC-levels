@@ -1,25 +1,49 @@
+import { getContext } from '../../../../../../st-context.js';
 import { npcStatsFor } from '../../core/npc-templates.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { triggerReprocess } from '../../chat/chat.js';
 import { escapeHtml } from '../../core/utils.js';
-import { syncOverrideToActiveState } from '../../tracker/status-logic.js';
+import { syncOverrideToActiveState, loadStateFromMetadata, applyUpdate, getCurrentPersonaKey } from '../../tracker/status-logic.js';
 import { constrainNumericStat, isPoolStat } from '../../tracker/numeric-stat-bounds.js';
 import { buildChoiceSelect, isChoiceField } from '../shared/ui-shared.js';
 
 export function renderOverridesSection(char, container) {
     if (!container) return;
     
-    container.innerHTML = `
+    container.innerHTML = char.isPlayer ? '' : `
         <div class="sillynpc-aliases-header">
             <small class="notes">Leave blank to use global default values.</small>
         </div>
     `;
 
-    const stats = npcStatsFor(char, getSettings().statusTracker);
+    const tracker = getSettings().statusTracker;
+    const origin = char.isPlayer ? { metadata: getContext().chatMetadata,
+        chatId: getContext().getCurrentChatId?.(), personaKey: getCurrentPersonaKey(), system: getSettings().activeSystem } : null;
+    const canWrite = () => !origin || (getContext().chatMetadata === origin.metadata
+        && getContext().getCurrentChatId?.() === origin.chatId && getCurrentPersonaKey() === origin.personaKey
+        && getSettings().activeSystem === origin.system);
+    const stats = char.isPlayer ? tracker.playerStats : npcStatsFor(char, tracker);
+    const readStat = stat => char.isPlayer
+        ? Object.entries(loadStateFromMetadata().player?.stats || {})
+            .find(([name]) => name.toLowerCase() === stat.name.toLowerCase())?.[1] ?? stat.defaultValue ?? ''
+        : char.statusOverrides?.[stat.name] ?? '';
+    const writeStat = (stat, value) => {
+        if (!canWrite()) return;
+        if (char.isPlayer) {
+            applyUpdate({ player: { stats: { [stat.name]: value } } }, { label: 'Edited on the sheet', verbatim: true });
+        } else {
+            char.statusOverrides ||= {};
+            if (value === '') delete char.statusOverrides[stat.name];
+            else char.statusOverrides[stat.name] = value;
+            saveSettings();
+            syncOverrideToActiveState(char.name, stat.name, value);
+            triggerReprocess();
+        }
+    };
     if (stats.length === 0) {
         const p = document.createElement('p');
         p.className = 'notes';
-        p.textContent = 'No character stats defined in Status Settings.';
+        p.textContent = 'No stats assigned to this character in the active System.';
         container.appendChild(p);
         return;
     }
@@ -43,7 +67,7 @@ export function renderOverridesSection(char, container) {
         label.style.fontWeight = 'bold';
         label.textContent = stat.name;
 
-        const currentValue = char.statusOverrides?.[stat.name] || '';
+        let currentValue = readStat(stat);
         const numeric = stat.type === 'number' || stat.type === 'bar';
         const pool = numeric && isPoolStat(stat);
         const fixedNumeric = numeric && !pool;
@@ -77,46 +101,49 @@ export function renderOverridesSection(char, container) {
         maxInput.value = maxPart;
 
         const updateOverride = () => {
+            if (!canWrite()) return;
             const v = valInput.value.trim();
             const m = pool ? maxInput.value.trim() : '';
             
-            if (!char.statusOverrides) char.statusOverrides = {};
-            
-            if (v === '' && m === '') {
-                delete char.statusOverrides[stat.name];
-            } else {
-                const raw = m ? `${v}/${m}` : v;
-                char.statusOverrides[stat.name] = constrainNumericStat(stat, raw, currentValue);
-            }
-            
-            saveSettings();
-            
-            const finalValue = char.statusOverrides[stat.name] || '';
-            if (fixedNumeric) valInput.value = String(finalValue);
-            syncOverrideToActiveState(char.name, stat.name, finalValue);
-            triggerReprocess();
+            const raw = m ? `${v}/${m}` : v;
+            const finalValue = v === '' && m === '' ? '' : constrainNumericStat(stat, raw, currentValue);
+            writeStat(stat, finalValue);
+            currentValue = readStat(stat);
+            if (char.isPlayer) {
+                const parts = String(currentValue).split('/');
+                valInput.value = parts[0];
+                maxInput.value = pool ? parts[1] || '' : '';
+            } else if (fixedNumeric) valInput.value = String(currentValue);
+
         };
 
         if (isChoiceField(stat)) {
             const select = buildChoiceSelect(stat.options, currentValue);
             select.style.flex = '3';
             select.addEventListener('change', () => {
-                if (!char.statusOverrides) char.statusOverrides = {};
-                const chosen = select.value;
-                if (chosen === '') delete char.statusOverrides[stat.name];
-                else char.statusOverrides[stat.name] = chosen;
-
-                saveSettings();
-                syncOverrideToActiveState(char.name, stat.name, chosen);
-                triggerReprocess();
+                writeStat(stat, select.value);
             });
             row.append(label, select);
             grid.appendChild(row);
             return;
         }
 
-        valInput.addEventListener(fixedNumeric ? 'change' : 'input', updateOverride);
-        if (pool) maxInput.addEventListener('input', updateOverride);
+        if (char.isPlayer) {
+            let saved = `${valInput.value}/${maxInput.value}`;
+            const commit = () => {
+                const next = `${valInput.value}/${maxInput.value}`;
+                if (next === saved) return;
+                updateOverride();
+                saved = `${valInput.value}/${maxInput.value}`;
+            };
+            row.classList.add('sillynpc-pending-stat');
+            row.commitStatEdit = commit;
+            valInput.addEventListener('change', commit);
+            if (pool) maxInput.addEventListener('change', commit);
+        } else {
+            valInput.addEventListener(fixedNumeric ? 'change' : 'input', updateOverride);
+            if (pool) maxInput.addEventListener('input', updateOverride);
+        }
 
         row.append(label, valInput);
         if (pool) row.append(slashLabel, maxInput);
@@ -146,4 +173,9 @@ export function buildAliasRow(char, index, refreshEditor) {
     row.querySelector('.delete-btn').addEventListener('click', () => { char.aliases.splice(index, 1); saveSettings(); refreshEditor(); });
     validate();
     return row;
+}
+
+/** Commit complete readings before a tab switch or popup removes focused inputs. */
+export function commitStatEdits(container) {
+    container?.querySelectorAll('.sillynpc-pending-stat').forEach(row => row.commitStatEdit());
 }

@@ -14,7 +14,6 @@ with browser_session() as browser:
             const { bind } = await import(root + 'src/tracker/status-collection-updates.js');
             const { buildCollectionRewardsEditor } = await import(root + 'src/ui/system/ui-collection-rewards.js');
             const { getSettings } = await import(root + 'src/core/settings.js');
-            const { renderTabContent } = await import(root + 'src/ui/characters/ui-player-sections.js');
             const source = await (await fetch(root + 'src/ui/collections/ui-collection.js')).text();
             const manageSource = await (await fetch(root + 'src/ui/manage/ui-manage.js')).text();
             const npcSource = await (await fetch(root + 'src/ui/manage/ui-manage-collections.js')).text();
@@ -56,7 +55,7 @@ with browser_session() as browser:
                     buildProfileSection, () => true, popup, () => settings, () => writes++, () => [], () => {}, html,
                     () => state, api.renderCollectionUI, api.attachCollectionListeners);
             const host = document.createElement('div');
-            host.className = 'sillynpc-player-sheet'; document.body.append(host);
+            host.className = 'sillynpc-manage'; document.body.append(host);
             const result = {};
             const actual = getSettings().statusTracker;
             const savedCollections = actual.collections;
@@ -191,8 +190,8 @@ with browser_session() as browser:
                 host.querySelector('.sillynpc-add-item').click();
                 if (card.statusCollections.smoke.length !== 2) throw Error('Card persistence');
                 result.offstageEditor = true;
-                const edit = renderTabContent('edit', state);
-                const profile = renderTabContent('profile', state);
+                const edit = api.renderCollectionUI('smoke', state.player, settings.statusTracker);
+                const profile = api.renderCollectionUI('smoke', state.player, settings.statusTracker, { isEditMode: false });
                 result.playerTabs = edit.includes('sillynpc-add-item') && edit.includes('drop-item')
                     && !edit.includes('sillynpc-edit-toggle') && !profile.includes('drop-item')
                     && !profile.includes('sillynpc-add-item');

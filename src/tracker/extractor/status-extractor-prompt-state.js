@@ -2,7 +2,7 @@ import { collectionQuantityField } from '../../core/collection-fields.js';
 import { collectionAppliesTo, collectionTargetLabel } from '../../core/collection-targets.js';
 import { npcTemplateFor } from '../../core/npc-templates.js';
 import { isStaticField } from '../../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
+import { profileFieldValue, profileFieldsForCard as fieldsForCard } from '../../core/profile-fields.js';
 import { statsInSystem, getPlayerCard, findCardForName } from '../status-logic.js';
 import { describeReaderStats } from '../stat-prompt-definitions.js';
 
@@ -230,7 +230,7 @@ export function describeCurrentState(state, trackerSettings) {
 export function profileBlock(card) {
     const profile = {};
     for (const field of fieldsForCard(card)) {
-        const value = String(card?.profile?.[field.id] ?? '').trim();
+        const value = String(profileFieldValue(card?.profile, field)).trim();
         if (value) profile[field.id] = value;
     }
     return Object.keys(profile).length ? { profile } : {};

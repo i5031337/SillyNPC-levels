@@ -1,22 +1,10 @@
 import { buildProgressionEditor } from './ui-system-progression.js';
-import { liveSystemContext } from './ui-system-context.js';
-import { normalizeSystemDefinition } from '../../core/system-schema.js';
+import { liveSystemContext, saveSystemEditor } from './ui-system-context.js';
+import { systemStatFields, systemProfileFields } from '../../core/system-fields.js';
 import { normalizeProgressionConfig } from '../../core/progression-config.js';
 
 // Keep disclosure state in the editor context, separate from saved System data.
 const disclosureStates = new WeakMap();
-
-/** Give the live NPC stat catalog stable IDs before templates reference it. */
-export function ensureNpcStatIds(context = liveSystemContext) {
-    const { getSettings } = context;
-    const settings = getSettings();
-    const system = context.definition();
-    if (!system) return;
-    const stats = settings.statusTracker.npcStats || [];
-    const normalized = normalizeSystemDefinition({ ...system, stats: { ...system.stats, npc: stats } });
-    stats.forEach((stat, index) => { stat.id = normalized.stats.npc[index].id; });
-    system.stats.npc = normalized.stats.npc;
-}
 
 function input(tag, value, label, change, saveSettings) {
     const element = document.createElement(tag);
@@ -28,30 +16,9 @@ function input(tag, value, label, change, saveSettings) {
     return element;
 }
 
-function choices(title, fields, selected, key, template, onRefresh, saveSettings) {
-    const group = document.createElement('fieldset');
-    const legend = document.createElement('legend');
-    legend.textContent = title;
-    group.append(legend);
-    for (const field of fields.filter(field => !field.retired)) {
-        const label = document.createElement('label');
-        label.style.display = 'block';
-        const check = document.createElement('input');
-        check.type = 'checkbox';
-        check.checked = selected.includes(field.id);
-        check.addEventListener('change', () => {
-            template[key] = check.checked ? [...new Set([...template[key], field.id])]
-                : template[key].filter(id => id !== field.id);
-            saveSettings(); onRefresh?.();
-        });
-        label.append(check, ` ${field.label || field.name}`);
-        group.append(label);
-    }
-    return group;
-}
-
 export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) {
-    const { getSettings, saveSettings } = context;
+    const { getSettings } = context;
+    const saveSettings = () => saveSystemEditor(context);
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-npc-templates';
     const system = context.definition();
@@ -68,10 +35,9 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
         }
         onRefresh?.();
     };
-    ensureNpcStatIds(context);
     getSettings().statusTracker.npcTemplates = system.npcTemplates;
     const help = document.createElement('p');
-    help.textContent = 'Define reusable NPC types. The reader assigns new NPCs using the description. Select their fields from NPC Stats and NPC Profile; each character keeps its own values.';
+    help.textContent = 'Define reusable NPC types. The reader assigns new NPCs using the description. Assign shared fields on the Stats and Profile fields pages; each character keeps its own values.';
     wrap.append(help);
     for (const template of system.npcTemplates) {
         const section = document.createElement('details');
@@ -100,11 +66,15 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
             system.npcTemplates = system.npcTemplates.filter(item => item !== template);
             getSettings().statusTracker.npcTemplates = system.npcTemplates;
             if (system.legacyNpcTemplateId === template.id) delete system.legacyNpcTemplateId;
+            for (const field of [...system.stats.character, ...system.profiles, ...system.collections, ...(getSettings().statusTracker.collections || [])]) {
+                field.targets = (field.targets || []).filter(target => target !== `template:${template.id}`);
+            }
             saveSettings(); refresh();
         });
-        section.append(title, name, id, description,
-            choices('Profile fields', system.profiles.npc, template.profileIds, 'profileIds', template, refresh, saveSettings),
-            choices('Stats', getSettings().statusTracker.npcStats, template.statIds, 'statIds', template, refresh, saveSettings),
+        const fields = document.createElement('p');
+        const actor = { npcTemplateId: template.id };
+        fields.textContent = `Stats: ${systemStatFields(system, 'npc', actor).map(field => field.name).join(', ') || 'None'}. Profile fields: ${systemProfileFields(system, 'npc', actor).map(field => field.label).join(', ') || 'None'}.`;
+        section.append(title, name, id, description, fields,
             buildProgressionEditor({ template, onRefresh: refresh, context }), remove);
         wrap.append(section);
     }
@@ -121,7 +91,7 @@ export function buildNpcTemplatesEditor(onRefresh, context = liveSystemContext) 
         const stem = /^[a-z]/.test(base) ? base : `npc-${base}`;
         let id = stem;
         for (let i = 2; used.has(id); i++) id = `${stem}-${i}`;
-        system.npcTemplates.push({ id, name: name.value.trim(), description: '', profileIds: [], statIds: [],
+        system.npcTemplates.push({ id, name: name.value.trim(), description: '',
             progression: normalizeProgressionConfig({}, [], { statIds: [] }) });
         saveSettings(); refresh();
     });

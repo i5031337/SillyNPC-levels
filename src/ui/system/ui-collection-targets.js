@@ -2,18 +2,20 @@ import { collectionTargets } from '../../core/collection-targets.js';
 import { npcTemplates } from '../../core/npc-templates.js';
 
 /** Checkboxes allow combinations without modifier keys or an exclusive “all” option. */
-export function buildCollectionTargetsEditor(collection, onChange, templates = npcTemplates()) {
-    const wrap = document.createElement('fieldset');
+export function buildTargetsEditor(collection, onChange, templates = npcTemplates()) {
+    const wrap = document.createElement('div');
     wrap.className = 'col-targets';
-    wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 12px;';
-    const legend = document.createElement('legend');
-    legend.textContent = 'Applies to';
-    wrap.append(legend);
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', 'Applies to');
+    const caption = document.createElement('span');
+    caption.className = 'col-targets-caption';
+    caption.textContent = 'Applies to:';
+    wrap.append(caption);
     const selected = collectionTargets(collection);
     const choices = [
         { value: 'player', label: 'Player' },
         { value: 'npc', label: 'All NPCs' },
-        ...templates.map(template => ({ value: `template:${template.id}`, label: `NPC template: ${template.name}` })),
+        ...templates.map(template => ({ value: `template:${template.id}`, label: template.name })),
     ];
     for (const value of selected) {
         if (!choices.some(choice => choice.value === value)) {
@@ -38,11 +40,17 @@ export function buildCollectionTargetsEditor(collection, onChange, templates = n
         check.value = value;
         check.checked = selected.includes(value);
         check.addEventListener('change', () => {
+            const previous = collection.targets;
             collection.targets = [...wrap.querySelectorAll('.col-target:checked')].map(input => input.value);
+            if (onChange() === false) {
+                collection.targets = previous;
+                for (const input of wrap.querySelectorAll('.col-target')) input.checked = (previous || selected).includes(input.value);
+                refreshAvailability();
+                return;
+            }
             delete collection.target;
             delete collection.npcTemplateId;
             refreshAvailability();
-            onChange();
         });
         label.append(check, document.createTextNode(text));
         wrap.append(label);
@@ -50,3 +58,5 @@ export function buildCollectionTargetsEditor(collection, onChange, templates = n
     refreshAvailability();
     return wrap;
 }
+
+export const buildCollectionTargetsEditor = buildTargetsEditor;

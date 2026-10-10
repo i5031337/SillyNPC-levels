@@ -6,9 +6,9 @@ import { statPolicyMarkup } from '../src/ui/system/ui-system-stat-policy.js';
 test('System Builder keeps update authority separate from the progression editor', () => {
     const escape = text => text;
     const npc = statPolicyMarkup({ name: 'Wisdom', persistence: 'innate',
-         }, 'npcStats', escape);
+         }, 'characterStats', escape);
     assert.match(npc, /class="stat-carry-over"/);
-    assert.match(npc, /Carry between adventures/);
+    assert.match(npc, /NPC carryover/);
     assert.doesNotMatch(npc, /stat-persistence|Innate|Variable/);
     assert.doesNotMatch(npc, /stat-advance-on-level/);
 

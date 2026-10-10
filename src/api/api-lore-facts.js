@@ -4,7 +4,7 @@ import { promptText } from '../prompts/prompt-texts.js';
 import { chat } from '../../../../../../script.js';
 import { executeSlashCommandsOnChatInput } from '../../../../../slash-commands.js';
 import { LOG_PREFIX, debugLog } from '../core/constants.js';
-import { profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
+import { profileFieldValue, profileFieldsForCard as fieldsForCard } from '../core/profile-fields.js';
 import { applyMacros, modernisePlaceholders } from '../prompts/macros.js';
 import { getSettings } from '../core/settings.js';
 import { loadStateFromMetadata } from '../tracker/status-logic.js';
@@ -45,7 +45,7 @@ export function describeProfile(char, except = null) {
     return fieldsForCard(char)
         .filter(field => !skip.has(field.id))
         .map(field => {
-            const value = String(profile[field.id] ?? '').trim();
+            const value = String(profileFieldValue(profile, field)).trim();
             return value ? `${field.label}: ${value}` : null;
         })
         .filter(Boolean)
@@ -72,9 +72,13 @@ export function liveFactsFor(char) {
     try { state = loadStateFromMetadata(); } catch { /* no chat open */ }
 
     if (char?.isPlayer) {
+        const tracker = getSettings().statusTracker;
+        const names = new Set((tracker.playerStats || []).map(stat => stat.name.toLowerCase()));
         return {
-            stats: state?.player?.stats || char.stats || {},
-            collections: state?.player?.collections || char.collections || {},
+            stats: Object.fromEntries(Object.entries(state?.player?.stats || char.stats || {})
+                .filter(([name]) => names.has(name.toLowerCase()))),
+            collections: Object.fromEntries(Object.entries(state?.player?.collections || char.collections || {})
+                .filter(([id]) => collectionAppliesTo(tracker.collections?.find(col => col.id === id), 'player'))),
         };
     }
 

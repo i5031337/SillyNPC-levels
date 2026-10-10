@@ -57,14 +57,14 @@ SillyNPC operates across two core modules:
 * **Faces for Strangers:** Speakers without a card draw from a pool of fallback portraits, tagged so a guard draws from the guards. A stranger keeps the same face for as long as they keep appearing.
 
 ### RPG Status Tracking & Character Sheets
-* **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define. In **Systems → Collections**, select any combination of the player, all NPCs, and named NPC templates (for example, clothing for the player and humans, or moves for Pokémon).
+* **Comprehensive State Model:** Tracks attributes, resource pools (HP/Energy by default), conditions, inventory, and any collection you define. In **Systems → Stats**, **Profile fields**, and **Collections**, define each asset once and assign any combination of the player, all NPCs, and named NPC templates (for example, clothing for the player and humans, or moves for Pokémon).
 * **Dedicated Extraction Pass:** Processes state updates in a background pass to keep tracker logic from polluting the primary prompt context.
 * **Review Controls:** Valid reader changes apply automatically by default. You can switch to review modes that hold risky changes or all changes for approval.
 * **Interactive Sheets:** Edit the selected persona's profile, stats, items, and memories on the **Player** tab. The HUD opens the same view. NPC sheets use the active System's profile fields.
 
 ### Memories
 * **Character Memories:** Add, edit, and remove memories on character sheets without configuring a profile field. Older entries move to an archive; only active entries are included in the NPC's linked lorebook.
-* **Occasional NPC Memory Reader:** Under **System → Builder → NPC Profile**, enable memory capture and optionally describe memorable events for your genre. A separate request uses the reader connection every eight assistant replies by default. Suggestions use the existing collection review controls and always wait for approval, independently of tracker review mode.
+* **Occasional NPC Memory Reader:** Under **Systems → Builder → Profile fields**, enable memory capture and optionally describe memorable events for your genre. A separate request uses the reader connection every eight assistant replies by default. Suggestions use the existing collection review controls and always wait for approval, independently of tracker review mode.
 * **Read Memories Now:** The brain icon beside the send controls reads the oldest unread segment on demand. Long chats may need several passes; the button reports remaining replies. This is currently separate from the History reader. Progress and pending suggestions survive reloads. Changed supporting replies invalidate automatic memories; manual entries and corrections are preserved.
 
 ### Floating HUD
@@ -142,13 +142,13 @@ Reload SillyTavern.
 
 ### NPC stats and character transfers
 
-In **Systems → Builder → Player/NPC**, **Locked** prevents story reader changes after initialization. The reader may seed blank locked NPC fields once; direct edits and configured level-up increases remain available. A blank NPC Level may be initialized once, even when Locked; afterward progression manages it automatically. Keep XP unlocked so the reader can report earned XP.
+In **Systems → Builder → Stats**, **Show name** controls whether the tracker prefixes a stat’s value with its name. **Locked** prevents story reader changes after initialization. The reader may seed blank locked NPC fields once; direct edits and configured level-up increases remain available. A blank NPC Level may be initialized once, even when Locked; afterward progression manages it automatically. Keep XP unlocked so the reader can report earned XP.
 
-In the NPC editor, **Carry between adventures** independently controls whether a stat travels with the character. Unchecked stats start from the destination System's defaults on import or when instantiated from a reusable world card. Existing Advancement fields migrate to Locked and retain NPC carryover; configured XP stays reader-writable. Stored character values are preserved.
+In the shared Stats editor, **NPC carryover** independently controls whether a stat travels with the character. Unchecked stats start from the destination System's defaults on import or when instantiated from a reusable world card. Existing Advancement fields migrate to Locked and retain NPC carryover; configured XP stays reader-writable. Stored character values are preserved.
 
 The progression controls select XP and Level fields, a growth policy, and eligible numeric stats; NPC progression is configured per template. Locked stats can be selected for growth. Numeric defaults such as `6/10` define resource pools whose current value and capacity grow together, preserving depletion. A new NPC may initialize its own pool capacity: `5/5` stays `5/5`, and a bare initial `8` becomes `8/8`. Ordinary reader updates preserve that established capacity. Plain defaults such as `3` define ratings with a fixed maximum. Pool capacity limits are optional and independent of locking or carryover.
 
-Under **Systems → Builder → Player/NPC profile**, add, rename, reorder, retire, or restore profile fields. Select **Include in image prompt** for any field that should describe portraits. Age and Appearance are selected by default; Appearance is optional, and custom visual fields work too. A field's ID stays stable when its label changes. Fill and manual lore generation can seed empty fields; manual edits and field regeneration can revise them. The tracker leaves profile and memory fields alone. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
+Under **Systems → Builder → Profile fields**, add, rename, reorder, retire, or restore profile fields. Use **Display as text section** for paragraphs, or leave it unchecked for compact badges. All profile value editors support multiple lines. Select **Include in image prompt** for any field that should describe portraits. Age and Appearance are selected by default; Appearance is optional, and custom visual fields work too. A field's ID stays stable when its label changes. Fill and manual lore generation can seed empty fields; manual edits and field regeneration can revise them. The tracker leaves profile and memory fields alone. Retired fields keep saved values. The memory limit is configurable per System and defaults to 50 active entries per character.
 
 In **Systems → Manager → Generate from premise**, describe a game and optional preferences. The generator uses the reader connection by default, with an explicit connection override. It plans the rules, then fills profiles, stats, NPC templates, collections, progression, and rewards in sequential requests suited to local models. It validates each section and attempts one repair before offering a retry that preserves completed work. Regenerate uses the current inputs and starts over.
 
@@ -158,7 +158,7 @@ A chat chooses its System before play starts and keeps it after the first player
 
 **Export selected** on the Characters page previews which fields travel. Character files use version 2; older character files still import, with their mixed stat values classified by the destination System. Linked lore travels as text and can be recreated in the destination lorebook. Portrait paths are local to one installation, so exported files contain no portraits. **Export World Characters** retains each source chat and NPC ID in the file, allowing same-name NPCs from different chats to remain separate on import.
 
-The NPC page groups profile description and linked lore in **Description & Lore**. They remain in their respective card and lorebook fields so existing writing is preserved.
+Player and NPC Cast pages share the same **Profile** and **Edit** layout. The Profile page groups profile description and linked lore in **Description & Lore**. They remain in their respective card and lorebook fields so existing writing is preserved.
 
 ---
 
@@ -220,6 +220,6 @@ Run the focused tests with `node --experimental-default-type=module --test tests
 
 ### NPC templates
 
-A System can contain multiple reusable NPC templates, such as Human, Elf, and Pokémon. In **Systems → NPC Templates**, name each template, describe which characters belong to it, and select its profile fields and stats. Define shared fields in **NPC Profile** and **NPC** first. Each NPC uses one template and keeps its own values.
+A System can contain multiple reusable NPC templates, such as Human, Elf, and Pokémon. In **Systems → NPC Templates**, name each template and describe which characters belong to it. Define stats and profile fields once in **Stats** and **Profile fields**, then use **Applies to** to assign them to the player, all NPCs, or selected templates. Each NPC uses one template and keeps its own values.
 
 The background reader assigns an unassigned NPC when the story identifies its type. Uncertain assignments appear in review with a template dropdown, even when ordinary change review is disabled. Correct an assignment using **NPC template** on the character sheet. Assignments survive leaving and returning to the scene. New Systems have no fallback template; existing Systems retain their previous NPC schema as an editable **NPC** template so saved chats remain readable.

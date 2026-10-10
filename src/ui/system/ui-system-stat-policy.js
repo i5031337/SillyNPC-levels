@@ -1,9 +1,9 @@
 /** NPC carryover is independent of reader locking and progression. */
 export function statPolicyMarkup(stat, scope) {
-    if (scope !== 'npcStats') return '';
+    if (scope !== 'characterStats') return '';
     return `<label class="sillynpc-check-group" title="Keep this NPC stat when moving the character to a new adventure. Otherwise use the destination default.">
         <input type="checkbox" class="stat-carry-over" ${stat.carryOver ? 'checked' : ''}>
-        <small>Carry between adventures</small>
+        <small>NPC carryover</small>
     </label>`;
 }
 

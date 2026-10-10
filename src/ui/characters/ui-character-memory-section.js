@@ -6,14 +6,15 @@ import { loadStateFromMetadata, saveStateToMetadata } from '../../tracker/status
 import { readNpcMemories, writeNpcMemories } from '../../tracker/npc-memories.js';
 import { renderMemorySection } from './ui-memories.js';
 
-/** The same chat-owned memory editor on the Cast Profile and Edit pages. */
-export function renderNpcMemorySection(char, container) {
+/** Chat-owned memories, with player and NPC storage resolved at the save boundary. */
+export function renderCharacterMemorySection(char, container) {
     return renderMemorySection(container, {
-        read: () => readNpcMemories(loadStateFromMetadata(), char),
+        read: () => char.isPlayer ? loadStateFromMetadata().player?.memories : readNpcMemories(loadStateFromMetadata(), char),
         write: store => {
             const state = loadStateFromMetadata();
-            writeNpcMemories(state, char, store);
-            saveStateToMetadata(state, { label: 'NPC memories', recordHistory: false });
+            if (char.isPlayer) state.player.memories = store;
+            else writeNpcMemories(state, char, store);
+            saveStateToMetadata(state, { label: char.isPlayer ? 'Player memories' : 'NPC memories', recordHistory: false });
             syncProfileToLore(char, store).catch(err =>
                 console.error(LOG_PREFIX, 'Could not update lorebook memories', err));
         },

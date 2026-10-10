@@ -1,3 +1,4 @@
+import { systemStatFields, templateStatIds } from './system-fields.js';
 /** Canonical, actor-independent progression configuration. IDs survive field renames. */
 const numericValue = value => /^\s*-?\d+(?:\.\d+)?(?:\s*\/\s*-?\d+(?:\.\d+)?)?\s*$/.test(String(value ?? ''));
 export function progressionStatEligible(stat, config = {}) {
@@ -37,7 +38,7 @@ export function normalizeProgressionConfig(source, stats = [], { enabledByDefaul
 export function resolveProgressionConfig(tracker, { isPlayer = false, templateId, template } = {}) {
     if (isPlayer) return normalizeProgressionConfig(tracker?.progression?.player, tracker?.playerStats || [], { enabledByDefault: true });
     const owner = template || tracker?.npcTemplates?.find(item => item.id === templateId);
-    return normalizeProgressionConfig(owner?.progression, tracker?.npcStats || [], { statIds: owner?.statIds || [] });
+    return normalizeProgressionConfig(owner?.progression, tracker?.npcStats || [], { statIds: owner?.statIds || templateStatIds({ stats: { character: tracker?.npcStats || [] } }, owner) });
 }
 
 /** Assign canonical IDs/config at loading boundaries without touching character values. */
@@ -45,13 +46,12 @@ export function normalizeTrackerProgression(tracker, system) {
     if (!tracker) return;
     for (const scope of ['player', 'npc']) {
         const stats = tracker[`${scope}Stats`] || [];
-        stats.forEach(stat => { stat.id ||= system?.stats?.[scope]?.find(field => field.name === stat.name)?.id || progressionFieldId(stat); });
+        stats.forEach(stat => { stat.id ||= systemStatFields(system, scope).find(field => field.name === stat.name)?.id || progressionFieldId(stat); });
     }
     tracker.progression ||= structuredClone(system?.progression || {});
     tracker.progression.player = normalizeProgressionConfig(tracker.progression.player, tracker.playerStats, { enabledByDefault: true });
     if (system?.npcTemplates) tracker.npcTemplates = system.npcTemplates;
     for (const template of tracker.npcTemplates || []) {
-        template.progression = normalizeProgressionConfig(template.progression, tracker.npcStats, { statIds: template.statIds });
-        if (!template.progression.enabled) continue;
+        template.progression = normalizeProgressionConfig(template.progression, tracker.npcStats, { statIds: template.statIds || templateStatIds(system || { stats: { character: tracker.npcStats } }, template) });
     }
 }

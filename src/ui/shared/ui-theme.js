@@ -48,7 +48,7 @@ export function applyPortraitFraming() {
  */
 export function updateAllExtensionThemes() {
     // Target all active SillyNPC containers in the DOM
-    const manageContainers = document.querySelectorAll('.sillynpc-manage, .sillynpc-player-sheet');
+    const manageContainers = document.querySelectorAll('.sillynpc-manage');
     manageContainers.forEach(container => {
         updateExtensionTheme(container);
     });
@@ -95,7 +95,7 @@ export function updateAllExtensionThemes() {
 export function updateExtensionTheme(root, popupInstance = null) {
     if (!root) return;
     const style = getSettings().menuStyle || 'default';
-    const container = root.classList.contains('sillynpc-manage') || root.classList.contains('sillynpc-player-sheet') ? root : root.querySelector('.sillynpc-manage') || root.querySelector('.sillynpc-player-sheet');
+    const container = root.classList.contains('sillynpc-manage') ? root : root.querySelector('.sillynpc-manage');
     if (!container) return;
     
     const themeClasses = allThemeClasses();

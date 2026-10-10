@@ -19,10 +19,9 @@ A chat selects its System before its first player message. Started chats keep th
 System. Changing persona does not change the chat's NPC ownership. Player values
 remain separate for each persona in the chat.
 
-System exports contain a normalized `schemaVersion: 1` rules definition, including
-profile catalogs, stat catalogs, NPC templates, collections, progression,
-memories, and HUD selections. Local presets also carry projected flat configuration
-for runtime consumers. Imports of older Systems keep rules and discard embedded
+System exports contain a normalized `schemaVersion: 2` rules definition, including
+shared profile and character stat catalogs, assignment targets, NPC templates, collections, progression,
+memories, and HUD selections. Runtime consumers use player and NPC projections of the shared catalogs. Imports of older Systems keep rules and discard embedded
 world characters, persona records, and item libraries. Whole-settings backups and
 character-transfer files are separate formats with different import behavior.
 
@@ -50,8 +49,8 @@ remain effective. Level-derived stat growth and collection rewards remain review
 proposals and depend on their originating XP transition. See
 [level-up-rewards-plan.md](level-up-rewards-plan.md) for the progression contract.
 
-The Player tab and HUD show the same current state. The HUD opens the menu's Player
-tab. Portrait generation uses SillyTavern Image Generation's `/imagine` provider.
+The player and NPC Cast pages share one Profile/Edit layout. The HUD opens the
+player’s Cast page and shows the same current state. Portrait generation uses SillyTavern Image Generation's `/imagine` provider.
 Maintained prompts use the active System's schema; the general raw-prompt editor is
 removed, while extraction diagnostics remain available.
 
@@ -67,7 +66,7 @@ elapsed-time regeneration.
 
 ## Verification
 
-Run `node --experimental-default-type=module --test tests/*.mjs` for state, schema,
+Run `node --test tests/*.mjs` for state, schema,
 request, progression, and review checks. Browser checks require a running local
 SillyTavern instance; `python3 tests/ui-smoke.py` is read-only. Additional UI fixtures
 restore temporary state and avoid saved test data or model requests.

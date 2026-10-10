@@ -3,7 +3,7 @@ import { progressXp } from '../src/tracker/progression.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizeSystemDefinition } from '../src/core/system-schema.js';
+import { normalizeSystemDefinition, projectSystemTracker } from '../src/core/system-schema.js';
 import { setProfileSettingsProvider, profileFieldsForCard } from '../src/core/profile-fields.js';
 import { activeNpcSystem, npcStatsFor, npcTemplateFor, proposedNpcTemplate, describeNpcTemplates } from '../src/core/npc-templates.js';
 
@@ -22,7 +22,7 @@ function fixture() {
         ],
     });
     const settings = { activeSystem: 'Adventure', statusTracker: {
-        presets: { Adventure: { definition } }, npcStats: definition.stats.npc,
+        presets: { Adventure: { definition } }, npcStats: projectSystemTracker(definition).npcStats,
         globalStats: [], playerStats: [], collections: [],
     } };
     setProfileSettingsProvider(() => settings);

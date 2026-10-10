@@ -1,6 +1,6 @@
 import { npcTemplates } from '../core/npc-templates.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from '../core/constants-profile.js';
-import { resolveProfileFields } from '../core/profile-fields.js';
+import { profileFieldValue, resolveProfileFields, profileFieldsForCard } from '../core/profile-fields.js';
 import { normalizeMemoryStore } from '../core/profile-memories.js';
 
 const MEMORY_HEADING = '### Memories';
@@ -23,7 +23,7 @@ const memorySection = content => {
 export function formatLoreContent(values = {}, existingContent = '', memories, scope = 'npc', fields = resolveProfileFields(scope)) {
     const activeLabels = new Set(fields.map(field => field.label));
     const current = fields.map(field =>
-        `${field.label}: ${String(values[field.id] ?? '').replace(/\s*\r?\n\s*/g, ' ').trim()}`)
+        `${field.label}: ${String(profileFieldValue(values, field)).replace(/\s*\r?\n\s*/g, ' ').trim()}`)
     const previous = parseLoreContent(existingContent, { scope }) === null ? []
         : profileSection(existingContent).trim().split(/\r?\n/).filter(line => {
             const label = line.slice(0, line.indexOf(':'));
@@ -48,7 +48,8 @@ export function parseLoreContent(content, { allowPartial = false, scope = 'npc' 
     if (allowPartial) return parseGeneratedProfileFields(lines.join('\n'), scope);
     if (!lines.join('\n').trim() && memorySection(content)) return {};
     // Entries written before a System changed its fields keep their original labels.
-    const templates = scope === 'npc' ? npcTemplates().map(template => active.filter(field => template.profileIds.includes(field.id))) : [];
+    const templates = scope === 'npc' ? npcTemplates().map(template =>
+        profileFieldsForCard({ npcTemplateId: template.id })) : [];
     for (const fields of [active, ...templates, scope === 'player' ? PROFILE_FIELDS : NPC_LORE_FIELDS]) {
         if (!fields.length) continue;
         if (lines.length < fields.length) continue;
@@ -125,6 +126,6 @@ export function mergeLoreValues(content, cardValues, scope = 'npc') {
             .filter(([, value]) => typeof value === 'string' && value.trim())
             .map(([id, value]) => [id, value.trim()])),
         ...Object.fromEntries(resolveProfileFields(scope).map(field => [field.id,
-            String(cardValues?.[field.id] || parsed[field.id] || '').trim()])),
+            String(profileFieldValue(cardValues, field) || parsed[field.id] || '').trim()])),
     };
 }

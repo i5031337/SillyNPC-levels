@@ -27,9 +27,10 @@ export function allocatePlan(source) {
         if (names.some(name => !name) || new Set(names).size !== names.length) errors.push(`${path}: names must be nonblank and unambiguous`);
     };
     if (!plan.name.trim()) errors.push('plan.name: required');
-    for (const [key, scopes] of [['profiles', ['player', 'npc']], ['stats', ['world', 'player', 'npc']]]) {
-        for (const scope of scopes) { checkNames(plan[key][scope], `${key}.${scope}`); plan[key][scope] = allocate(plan[key][scope]); }
-    }
+    for (const [fields, path] of [[plan.profiles, 'profiles'], [plan.stats.world, 'stats.world'], [plan.stats.character, 'stats.character']]) checkNames(fields, path);
+    plan.profiles = allocate(plan.profiles);
+    for (const scope of ['world', 'character']) plan.stats[scope] = allocate(plan.stats[scope]);
+    if (plan.npcTemplates.some(t => ['player', 'npc'].includes(t.name.trim().toLowerCase()))) errors.push('npcTemplates: player and npc are reserved target names');
     checkNames(plan.npcTemplates, 'npcTemplates'); checkNames(plan.collections, 'collections');
     plan.npcTemplates = allocate(plan.npcTemplates); plan.collections = allocate(plan.collections);
     const resolve = (name, fields, path, catalog) => {
@@ -43,13 +44,17 @@ export function allocatePlan(source) {
         if (xpFieldId && xpFieldId === levelFieldId) errors.push(`${path}: XP and Level must be distinct`);
         return { ...config, xpFieldId, levelFieldId };
     };
-    plan.playerProgression = progression(plan.playerProgression, plan.stats.player, 'playerProgression', 'stats.player');
-    for (const template of plan.npcTemplates) {
-        template.profileIds = template.profiles.map(name => resolve(name, plan.profiles.npc, `template.${template.name}.profiles`, 'profiles.npc'));
-        template.statIds = template.stats.map(name => resolve(name, plan.stats.npc, `template.${template.name}.stats`, 'stats.npc'));
-        if ([template.profileIds, template.statIds].some(ids => new Set(ids.filter(Boolean)).size !== ids.filter(Boolean).length)) errors.push(`template.${template.name}: duplicate memberships`);
-        template.progression = progression(template.progression, plan.stats.npc.filter(field => template.statIds.includes(field.id)), `template.${template.name}.progression`, 'stats.npc selected by this template');
-    }
+    const assignTargets = (field, path) => {
+        field.targets = field.targets.map(target => ['player', 'npc'].includes(target) ? target
+            : `template:${resolve(target, plan.npcTemplates, `${path}.targets`, 'npcTemplates')}`);
+        if (!field.targets.length || new Set(field.targets).size !== field.targets.length) errors.push(`${path}.targets: select unique targets`);
+    };
+    plan.profiles.forEach(field => assignTargets(field, `profiles.${field.name}`));
+    plan.stats.character.forEach(field => assignTargets(field, `stats.character.${field.name}`));
+    const forOwner = owner => plan.stats.character.filter(field => field.targets.includes(owner === 'player' ? 'player' : 'npc') || field.targets.includes(`template:${owner}`));
+    plan.playerProgression = progression(plan.playerProgression, forOwner('player'), 'playerProgression', 'stats.character assigned to player');
+    for (const template of plan.npcTemplates) template.progression = progression(template.progression,
+        forOwner(template.id), `template.${template.name}.progression`, 'stats.character assigned to this template');
     for (const collection of plan.collections) {
         checkNames(collection.fields, `collection.${collection.name}.fields`);
         if (!collection.fields.length) errors.push(`collection.${collection.name}: requires identifier field first`);
@@ -63,12 +68,12 @@ export function allocatePlan(source) {
     return freeze(plan);
 }
 export function emptyDefinition(plan) {
-    const definition = normalizeSystemDefinition({ schemaVersion: 1, id: slug(plan.name), name: plan.name,
-        metadata: { description: plan.description, author: 'Generated' }, memories: plan.memories, profiles: { player: [], npc: [] },
-        stats: { world: [], player: [], npc: [] }, npcTemplates: [], collections: [],
-        progression: { player: disabledProgression(), npc: disabledProgression() } });
-    // Catalogs are still empty; normalization would strip the frozen memberships.
+    const definition = normalizeSystemDefinition({ schemaVersion: 2, id: slug(plan.name), name: plan.name,
+        metadata: { description: plan.description, author: 'Generated' }, memories: plan.memories, profiles: [],
+        stats: { world: [], character: [] }, npcTemplates: [], collections: [],
+        progression: { player: disabledProgression() } });
+    // Preserve template identities while catalog stages are still pending.
     definition.npcTemplates = plan.npcTemplates.map(t => ({ id: t.id, name: t.name, description: t.description,
-        profileIds: [...t.profileIds], statIds: [...t.statIds], progression: disabledProgression() }));
+        progression: disabledProgression() }));
     return definition;
 }

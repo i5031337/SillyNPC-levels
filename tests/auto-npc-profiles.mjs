@@ -1,3 +1,4 @@
+import { profileFieldValue } from '../src/core/profile-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -18,7 +19,7 @@ function fixture() {
     let current = true;
     let imageReply = async card => `/images/${card.name}.png`;
     let reply = async () => ({ content: 'generated' });
-    const dependencies = {
+    const dependencies = { profileFieldValue,
         getContext: () => context, getSettings: () => settings,
         saveSettings: () => calls.push('save'), LOG_PREFIX: '[test]',
         profileFieldsForCard: () => fields,

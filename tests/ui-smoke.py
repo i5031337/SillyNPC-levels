@@ -48,18 +48,52 @@ with browser_session() as browser:
           const panel = document.querySelector('#sillynpc-status-view');
           const result = {};
           try {
-            const fixtureDefinition = { profiles: {
-              player: [{ id: 'detail', label: 'Detail' }],
-              npc: [{ id: 'detail', label: 'Detail' }],
-            } };
-            result.profileEditors = ['player', 'npc'].every(scope => {
-              const editor = buildProfilesEditor(scope, () => {}, {
-                definition: () => fixtureDefinition, saveSettings: () => {},
-              });
-              return editor.querySelectorAll('.sillynpc-system-profile-row').length === 1
-                && !editor.querySelector('.profile-policy')
-                && !!editor.querySelector('.profile-guidance');
+            const { normalizeSystemDefinition } = await import(root + 'src/core/system-schema.js');
+            const fixtureDefinition = normalizeSystemDefinition({schemaVersion:2, npcTemplates: [{id:'mage',name:'Mage'}], profiles: [
+              {id:'detail', label:'Detail', targets:['player','npc']},
+            ]});
+            const editor = buildProfilesEditor(() => {}, {
+              definition: () => fixtureDefinition, getSettings: () => ({statusTracker:{}}), saveSettings: () => {},
             });
+            result.profileEditors = editor.querySelectorAll('.sillynpc-system-profile-row').length === 1
+              && !editor.querySelector('.profile-policy')
+              && !!editor.querySelector('.profile-guidance')
+              && editor.querySelectorAll('.col-target:checked').length === 2
+              && editor.querySelector('.sillynpc-system-profile-options')?.children.length === 2
+              && editor.querySelector('.profile-text-section')?.closest('label').textContent.includes('Display as text section')
+              && !editor.textContent.includes('Multiline editor');
+            const layout = document.createElement('div');
+            layout.className = 'sillynpc sillynpc-manage sillynpc-system-builder';
+            layout.style.width = '700px';
+            layout.append(editor); document.body.append(layout);
+            try {
+              const besideCheckbox = label => {
+                const checkbox = label.querySelector('input').getBoundingClientRect();
+                const range = document.createRange(); range.selectNodeContents(label.lastChild);
+                const text = range.getBoundingClientRect();
+                return text.left >= checkbox.right
+                  && Math.abs(text.top + text.height / 2 - checkbox.top - checkbox.height / 2) < 5;
+              };
+              const options = [...editor.querySelectorAll('.sillynpc-system-profile-options > label')];
+              const targets = [...editor.querySelectorAll('.col-targets > label')];
+              const center = el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+              const profileRow = editor.querySelector('.sillynpc-system-profile-row');
+              const compactProfile = () => {
+                const sections = [...profileRow.children];
+                const fonts = [...profileRow.querySelectorAll('input[type=text], textarea, button, label, small, .col-targets-caption')]
+                  .map(el => getComputedStyle(el).fontSize);
+                return new Set(fonts).size === 1 && sections.every((el, index) => !index
+                  || el.getBoundingClientRect().top - sections[index - 1].getBoundingClientRect().bottom <= 4.1);
+              };
+              result.compactProfileFields = compactProfile();
+              result.profileEditorInlineLabels = [...options, ...targets].every(besideCheckbox)
+                && Math.abs(center(options[0]) - center(options[1])) < 2
+                && targets.every(label => Math.abs(center(label) - center(editor.querySelector('.col-targets-caption'))) < 2);
+              layout.style.width = '280px';
+              result.compactProfileFields &&= compactProfile();
+              result.profileEditorInlineLabels &&= [...editor.querySelectorAll('.col-targets, .sillynpc-system-profile-options')]
+                .every(row => row.scrollWidth <= row.clientWidth + 2);
+            } finally { layout.remove(); }
             const profileEditor = document.createElement('div');
             renderProfileFields({ isPlayer: true, profile: {} }, profileEditor);
             result.profileControls = profileEditor.querySelectorAll('.sillynpc-profile-row').length > 0
@@ -243,7 +277,7 @@ with browser_session() as browser:
     execute("""document.querySelector('#sillynpc-manual-smoke')?.remove();
         document.documentElement.removeAttribute('data-manual-smoke');""")
     assert manual_result and manual_result.get('manualOption'), manual_result
-    assert all(manual_result.get(key) for key in ['sceneStatusOnly', 'sceneStatMeanings', 'playerLoreFields', 'profileEditors', 'profileControls']), manual_result
+    assert all(manual_result.get(key) for key in ['sceneStatusOnly', 'sceneStatMeanings', 'playerLoreFields', 'profileEditors', 'profileEditorInlineLabels', 'compactProfileFields', 'profileControls']), manual_result
     assert manual_result.get('buttons') == 1 and manual_result.get('accessible'), manual_result
     assert manual_result.get('hiddenWhenDisabled') and manual_result.get('hiddenWhenAutomatic'), manual_result
     assert all(manual_result.get(key) for key in [
@@ -252,9 +286,50 @@ with browser_session() as browser:
         'collectionWarningsVisible', 'collectionWarningsCleared', 'levelUpVisible', 'initialStatsVisible',
     ]), manual_result
     execute("document.querySelector('.sillynpc-section[data-section=systems]').click()")
-    execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Player Stats').click()")
+    palette = execute("""const pages = [
+          ['Profile fields', '.sillynpc-system-profile-row'],
+          ['Stats', '.sillynpc-system-stat-row'],
+          ['Global', '.sillynpc-system-stat-row'],
+          ['Collections', '.sillynpc-system-collection-row'],
+          ['NPC Templates', '.sillynpc-system-profile-row'],
+          ['Player progression', '.sillynpc-progression-editor'],
+        ];
+        return pages.map(([tab, selector]) => {
+          [...document.querySelectorAll('.sillynpc-system-builder [role=tab]')]
+            .find(el => el.textContent.trim() === tab).click();
+          const cards = [...document.querySelectorAll('.sillynpc-system-builder ' + selector)];
+          return {tab, styles: cards.map(card => {
+            const style = getComputedStyle(card);
+            const input = getComputedStyle(card.querySelector('.text_pole'));
+            return [style.backgroundColor, style.color, style.borderTopColor, style.borderTopStyle,
+              style.borderTopWidth, style.borderRadius, input.backgroundColor, input.color, input.borderTopColor];
+          })};
+        });""")
+    reference = palette[0]['styles'][0]
+    assert all(page['styles'] and all(style == reference for style in page['styles']) for page in palette), palette
+    execute("[...document.querySelectorAll('.sillynpc-system-builder [role=tab]')].find(el => el.textContent.trim() === 'Stats').click()")
     result = execute("""const rows = [...document.querySelectorAll('.sillynpc-system-builder .sillynpc-alias-row')];
         return {rows: rows.length,
+          bulkControls: document.querySelectorAll('.sillynpc-system-builder .sillynpc-bulk-bar, .sillynpc-system-builder .sillynpc-bulk-check').length,
+          deleteButtons: rows.filter(row => row.querySelector('.delete-btn')).length,
+          customFormats: rows.filter(row => row.querySelector('.stat-format')).length,
+          enabledNameToggles: rows.filter(row => row.querySelector('.stat-show-name') && !row.querySelector('.stat-show-name').disabled).length,
+          separateOptionRows: rows.filter(row => {
+            const definition = row.querySelector('.sillynpc-stat-definition');
+            const options = row.querySelector('.sillynpc-stat-options');
+            return definition && options && !definition.querySelector('input[type=checkbox], input[type=color]')
+              && !options.querySelector('.stat-purpose, .stat-type, .stat-min, .stat-max, .stat-options')
+              && options.getBoundingClientRect().top >= definition.getBoundingClientRect().bottom - 1;
+          }).length,
+          compactRows: rows.filter(row => {
+            const sections = [...row.children].filter(el => el.matches('.sillynpc-stat-header, .sillynpc-stat-definition, .sillynpc-stat-options, .col-targets'));
+            return sections.every((el, index) => !index || el.getBoundingClientRect().top - sections[index - 1].getBoundingClientRect().bottom <= 4.1);
+          }).length,
+          uniformFonts: rows.filter(row => {
+            const sizes = [...row.querySelectorAll('input[type=text], select, button, label, small, .col-targets-caption')]
+              .map(el => getComputedStyle(el).fontSize);
+            return new Set(sizes).size === 1;
+          }).length,
           obsoletePolicies: rows.filter(row => row.querySelector('.stat-update-policy')).length,
           purpose: rows.filter(row => row.querySelector('.stat-purpose')).length,
           numericOptions: rows.filter(row => row.querySelector('.stat-type')?.value === 'number'
@@ -263,10 +338,14 @@ with browser_session() as browser:
             if (row.querySelector('.stat-type')?.value !== 'number') return false;
             const pool = row.querySelector('.stat-default')?.value.includes('/');
             const label = [...row.querySelectorAll('small')].map(el => el.textContent.trim())
-              .find(text => text === 'Max:' || text === 'Capacity limit:');
-            return label !== (pool ? 'Capacity limit:' : 'Max:');
+              .find(text => text === 'Max:' || text === 'Limit:');
+            return label !== (pool ? 'Limit:' : 'Max:');
           }).length};""")
     assert result['rows'] > 0 and result['purpose'] == result['rows'], result
+    assert result['bulkControls'] == 0 and result['deleteButtons'] == result['rows'], result
+    assert result['customFormats'] == 0 and result['enabledNameToggles'] == result['rows'], result
+    assert result['separateOptionRows'] == result['rows'], result
+    assert result['compactRows'] == result['rows'] and result['uniformFonts'] == result['rows'], result
     assert result['obsoletePolicies'] == 0
     assert result['numericOptions'] == 0 and result['wrongMaxLabels'] == 0, result
     print('SillyNPC live UI passed:', json.dumps(result))

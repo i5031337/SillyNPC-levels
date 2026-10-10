@@ -1,30 +1,29 @@
-import { normalizeSystemDefinition } from '../../core/system-schema.js';
-import { liveSystemContext } from './ui-system-context.js';
-import { normalizeProgressionConfig, progressionStatEligible, normalizeTrackerProgression } from '../../core/progression-config.js';
+import { systemStatFields } from '../../core/system-fields.js';
+import { liveSystemContext, saveSystemEditor } from './ui-system-context.js';
+import { normalizeProgressionConfig, progressionStatEligible } from '../../core/progression-config.js';
 
 /** Shared player/template progression controls. */
-export function buildProgressionEditor({ template, onRefresh = () => {}, context = liveSystemContext, onSave = context.saveSettings } = {}) {
-    const { getSettings } = context;
-    const tracker = getSettings().statusTracker;
-    const stats = template ? tracker.npcStats || [] : tracker.playerStats || [];
-    const normalized = normalizeSystemDefinition({ statusTracker: tracker });
-    const normalizedStats = template ? normalized.stats.npc : normalized.stats.player;
-    stats.forEach((stat, index) => { stat.id ||= normalizedStats[index].id; });
-    tracker.progression ||= {};
-    const owner = template || tracker.progression;
+export function buildProgressionEditor({ template, onRefresh = () => {}, context = liveSystemContext, onSave = () => saveSystemEditor(context) } = {}) {
+    const system = context.definition();
+    if (!system) {
+        const empty = document.createElement('p');
+        empty.textContent = 'Select a System to define progression.';
+        return empty;
+    }
+    const stats = systemStatFields(system, template ? 'npc' : 'player', template ? { npcTemplateId: template.id } : undefined);
+    system.progression ||= {};
+    const owner = template || system.progression;
     const key = template ? 'progression' : 'player';
-    const config = normalizeProgressionConfig(owner[key], stats,
-        { enabledByDefault: !template, ...(template ? { statIds: template.statIds } : {}) });
+    const config = normalizeProgressionConfig(owner[key], stats, { enabledByDefault: !template });
     owner[key] = config;
     const wrap = document.createElement('fieldset');
     wrap.className = 'sillynpc-progression-editor';
     const legend = document.createElement('legend'); legend.textContent = 'Level progression'; wrap.append(legend);
-    const save = () => { owner[key] = config; normalizeTrackerProgression(tracker, context.definition()); onSave(); onRefresh(); };
+    const save = () => { owner[key] = config; onSave(); onRefresh(); };
     const enableLabel = document.createElement('label');
     const enable = document.createElement('input'); enable.type = 'checkbox'; enable.checked = config.enabled;
     enable.setAttribute('aria-label', 'Enable level progression');
     enable.addEventListener('change', () => { config.enabled = enable.checked;
-        if (template && config.enabled) template.statIds = [...new Set([...template.statIds, config.xpFieldId, config.levelFieldId].filter(Boolean))];
         save(); });
     enableLabel.append(enable, ' Enable level progression'); wrap.append(enableLabel);
     const controls = document.createElement('div'); wrap.append(controls);
@@ -34,7 +33,6 @@ export function buildProgressionEditor({ template, onRefresh = () => {}, context
         for (const [value, title] of options) { const opt = document.createElement('option'); opt.value = value; opt.textContent = title; input.append(opt); }
         input.value = config[key]; input.addEventListener('change', () => {
             config[key] = input.value;
-            if (template && ['xpFieldId', 'levelFieldId'].includes(key)) template.statIds = [...new Set([...template.statIds, input.value])];
             save();
         }); label.append(input); controls.append(label);
     };
@@ -57,8 +55,7 @@ export function buildProgressionEditor({ template, onRefresh = () => {}, context
     const help = document.createElement('p');
     help.textContent = 'Each point increases one selected stat by 1. Pools gain current value and capacity; ratings stay within their caps. Random picks independently for each point, so a stat can receive several points. Set points to 0 to disable numeric growth.';
     controls.append(help);
-    for (const stat of stats.filter(stat => progressionStatEligible(stat, config)
-        && (!template || template.statIds.includes(stat.id)))) {
+    for (const stat of stats.filter(stat => progressionStatEligible(stat, config))) {
         const label = document.createElement('label'); label.style.display = 'block';
         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = config.statIds.includes(stat.id);
         check.setAttribute('aria-label', `${stat.name} level growth`);

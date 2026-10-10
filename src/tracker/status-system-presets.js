@@ -2,8 +2,9 @@ import { normalizeTrackerProgression } from '../core/progression-config.js';
 import { getSettings, saveSettings, defaultSettings, normaliseStatDefs } from '../core/settings.js';
 import { normaliseNpcPersistence } from './stat-persistence.js';
 import { normaliseStatUpdatePolicies } from './stat-update-policy.js';
+import { systemStatFields } from '../core/system-fields.js';
 import { debugLog } from '../core/constants.js';
-import { normalizeSystemDefinition } from '../core/system-schema.js';
+import { normalizeSystemDefinition, projectSystemTracker, SYSTEM_SCHEMA_VERSION } from '../core/system-schema.js';
 
 export function bind(deps) {
 const SYSTEM_EXCLUDED_ROOT = new Set([
@@ -17,6 +18,9 @@ const SYSTEM_EXCLUDED_ROOT = new Set([
     // Your window, not your world.
     'popupWidth', 'popupHeight', 'menuFontScale',
 ]);
+
+const PROJECTED_TRACKER_KEYS = new Set(['globalStats', 'characterStats', 'playerStats', 'npcStats', 'collections', 'progression', 'npcTemplates',
+    'hudLayout', 'showGlobalStats', 'showNpcPortraits']);
 
 const SYSTEM_EXCLUDED_TRACKER = new Set([
     // The library lives inside statusTracker; a system must never contain itself.
@@ -48,33 +52,6 @@ function assignExcept(target, source, excluded) {
     }
 }
 
-/** Existing Builder/reader controls still consume their flat tracker configuration. */
-function configFromDefinition(definition) {
-    const stat = fields => fields.map(field => ({
-        ...field,
-        name: field.name,
-        hint: field.guidance,
-    }));
-    const collections = definition.collections.map(collection => ({
-        ...collection,
-        hint: collection.guidance,
-        fields: collection.fields.map(field => ({ ...field, hint: field.guidance })),
-    }));
-    return {
-        statusTracker: {
-            globalStats: stat(definition.stats.world),
-            playerStats: stat(definition.stats.player),
-            npcStats: stat(definition.stats.npc),
-            collections,
-            progression: structuredClone(definition.progression),
-            npcTemplates: structuredClone(definition.npcTemplates),
-            hudLayout: definition.hud.layout,
-            showGlobalStats: definition.hud.showWorld,
-            showNpcPortraits: definition.hud.showNpcPortraits,
-        },
-    };
-}
-
 /** Convert a saved/imported profile at one boundary; discard embedded world data. */
 function migratePreset(name, preset) {
     if (!preset || typeof preset !== 'object') return preset;
@@ -89,26 +66,32 @@ function migratePreset(name, preset) {
         if (clean.config.statusTracker) clean.config.statusTracker = copyExcept(clean.config.statusTracker, SYSTEM_EXCLUDED_TRACKER);
     }
     clean.definition = normalizeSystemDefinition(preset.definition || preset, { name });
-    if (!clean.config) clean.config = configFromDefinition(clean.definition);
+    clean.config ||= {};
+    if (clean.config.statusTracker) clean.config.statusTracker = copyExcept(clean.config.statusTracker, PROJECTED_TRACKER_KEYS);
+    else clean.config = copyExcept(clean.config, PROJECTED_TRACKER_KEYS);
     return clean;
 }
 
 function migrateSavedPresets(settings) {
     const presets = settings.statusTracker?.presets || {};
     let changed = false;
+    let activeMigrated = false;
     for (const [name, preset] of Object.entries(presets)) {
-        if (!preset || (Array.isArray(preset.definition?.npcTemplates) && preset.definition?.progression?.player?.assignment && !preset.world
+        if (!preset || (preset.definition?.schemaVersion === SYSTEM_SCHEMA_VERSION && Array.isArray(preset.definition?.npcTemplates) && preset.definition?.progression?.player?.assignment && !preset.world
+            && ![...PROJECTED_TRACKER_KEYS].some(key => Object.hasOwn(preset.config?.statusTracker || preset.config || {}, key))
             && !['characters', 'personaData', 'master_items', 'systemWorldArchive']
                 .some(key => Object.hasOwn(preset.config || {}, key)))) continue;
         presets[name] = migratePreset(name, preset);
+        activeMigrated ||= name === settings.activeSystem;
         changed = true;
     }
     const active = presets[settings.activeSystem]?.definition;
     if (active) {
+        if (activeMigrated) Object.assign(settings.statusTracker, projectSystemTracker(active));
         settings.statusTracker.progression ||= structuredClone(active.progression);
         settings.statusTracker.npcTemplates = active.npcTemplates;
         for (const stat of settings.statusTracker.npcStats || []) {
-            if (!stat.id) stat.id = active.stats.npc.find(field => field.name === stat.name)?.id;
+            if (!stat.id) stat.id = systemStatFields(active, 'npc').find(field => field.name === stat.name)?.id;
         }
     }
     if (changed) saveSettings();
@@ -132,10 +115,11 @@ function getActiveSystem() {
 }
 
 /** What makes one configuration recognisably the same system as another. */
-function systemSignature(config) {
+function systemSignature(source) {
     // Either shape: a profile saved since systems carried everything nests its tracker
     // settings, one saved before that holds them flat.
-    const tracker = config?.statusTracker || config || {};
+    const config = source?.config || source;
+    const tracker = source?.definition ? projectSystemTracker(source.definition) : config?.statusTracker || config || {};
     return JSON.stringify([
         (tracker.globalStats || []).map(s => s?.name),
         (tracker.npcStats || []).map(s => s?.name),
@@ -168,7 +152,7 @@ function migrateToActiveSystem() {
     const presets = st.presets || {};
     const live = systemSignature(st);
     const matches = Object.keys(presets)
-        .filter(name => systemSignature(presets[name]?.config || {}) === live);
+        .filter(name => systemSignature(presets[name] || {}) === live);
 
     // Two systems that define the same stats cannot be told apart, so neither is claimed.
     const name = matches.length === 1
@@ -266,24 +250,19 @@ function saveSystemPreset(name, description = '', author = 'User') {
             statusTracker: copyExcept(st, SYSTEM_EXCLUDED_TRACKER),
         },
     };
-    const liveDefinition = normalizeSystemDefinition(profile, { name });
-    // Builder still edits the flat stat/collection config. Keep the imported profile
-    // schema until Builder has controls for those fields, instead of replacing it with
-    // the old fixed field list on the next save or chat switch.
-    profile.definition = normalizeSystemDefinition({
-        ...liveDefinition,
-        profiles: previous?.definition?.profiles || liveDefinition.profiles,
-        npcTemplates: previous?.definition?.npcTemplates || liveDefinition.npcTemplates,
-        progression: st.progression || previous?.definition?.progression || liveDefinition.progression,
-        legacyNpcTemplateId: previous ? previous.definition?.legacyNpcTemplateId : liveDefinition.legacyNpcTemplateId,
-        memories: previous?.definition?.memories || liveDefinition.memories,
+    const liveDefinition = previous?.definition || normalizeSystemDefinition(profile, { name });
+    // Stat/profile editors own canonical fields; collection and HUD controls still edit tracker projections.
+    profile.definition = normalizeSystemDefinition({ ...liveDefinition,
+        collections: st.collections ?? liveDefinition.collections,
         hud: { ...liveDefinition.hud,
-            playerStatIds: liveDefinition.stats.player.filter(stat => stat.isPrimary).map(stat => stat.id),
-            npcStatIds: previous?.definition?.hud?.npcStatIds ?? liveDefinition.hud.npcStatIds,
-            worldStatIds: previous?.definition?.hud?.worldStatIds ?? liveDefinition.hud.worldStatIds,
+            layout: st.hudLayout ?? liveDefinition.hud.layout,
+            showWorld: st.showGlobalStats ?? liveDefinition.hud.showWorld,
+            showNpcPortraits: st.showNpcPortraits ?? liveDefinition.hud.showNpcPortraits,
         },
+        metadata: { description, author },
     }, { name });
 
+    profile.config.statusTracker = copyExcept(profile.config.statusTracker, PROJECTED_TRACKER_KEYS);
     if (!st.presets) st.presets = {};
     st.presets[name] = profile;
     saveSettings();
@@ -311,7 +290,7 @@ function applySystemPreset(profile) {
     }
 
     if (profile.definition) {
-        const projected = configFromDefinition(normalizeSystemDefinition(profile.definition)).statusTracker;
+        const projected = projectSystemTracker(normalizeSystemDefinition(profile.definition));
         Object.assign(st, projected);
     }
 
@@ -332,7 +311,7 @@ function applySystemPreset(profile) {
     normaliseNpcPersistence(st.npcStats);
     normalizeTrackerProgression(st, profile.definition);
     for (const stat of st.npcStats || []) {
-        if (!stat.id) stat.id = profile.definition?.stats?.npc?.find(field => field.name === stat.name)?.id;
+        if (!stat.id) stat.id = systemStatFields(profile.definition, 'npc').find(field => field.name === stat.name)?.id;
     }
 
     // The theme was called displayStyle and lived in config; it is menuStyle at the root
@@ -360,7 +339,7 @@ function deleteSystemPreset(name) {
 function importSystemPreset(jsonText) {
     const profile = JSON.parse(jsonText);
     if (!profile || typeof profile !== 'object'
-        || (!profile.config && profile.schemaVersion !== 1 && !profile.definition)
+        || (!profile.config && ![1, SYSTEM_SCHEMA_VERSION].includes(profile.schemaVersion) && !profile.definition)
         || !(profile.metadata?.name || profile.name)) {
         throw new Error('Invalid System Profile format.');
     }

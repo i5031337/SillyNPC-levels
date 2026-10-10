@@ -15,7 +15,7 @@ with browser_session() as browser:
         const { normalizeSystemDefinition } = await import(root + 'src/core/system-schema.js');
         const { buildSystemBuilder } = await import(root + 'src/ui/system/ui-system-builder.js');
         const { buildCollectionTargetsEditor } = await import(root + 'src/ui/system/ui-collection-targets.js');
-        const { playerCollections } = await import(root + 'src/ui/characters/ui-player-sections.js');
+        const { collectionAppliesTo } = await import(root + 'src/core/collection-targets.js');
         const { collectionAppliesTo } = await import(root + 'src/core/collection-targets.js');
         const { buildCollectionsEditor } = await import(root + 'src/ui/system/ui-system-collections.js');
         const { renderCollectionsSection } = await import(root + 'src/ui/manage/ui-manage-collections.js');
@@ -120,7 +120,7 @@ with browser_session() as browser:
             collectionTargets: [...collectionsEditor.querySelectorAll('.col-targets')].map(group => ({
               selected: [...group.querySelectorAll('.col-target:checked')].map(input => input.value),
               options: [...group.querySelectorAll('.col-target')].map(input => input.value) })),
-            playerCollections: playerCollections().map(col => col.id),
+            playerCollections: settings.statusTracker.collections.filter(col => collectionAppliesTo(col, 'player')).map(col => col.id),
             playerReaderCollections: Object.keys(summariseCollections(state.player, 'player', settings.statusTracker)),
             humanCollections: [...humanCollections.querySelectorAll('[data-section-key]')].map(section => section.dataset.sectionKey.slice('collection:'.length)),
             pokemonCollections: [...pokemonCollections.querySelectorAll('[data-section-key]')].map(section => section.dataset.sectionKey.slice('collection:'.length)),

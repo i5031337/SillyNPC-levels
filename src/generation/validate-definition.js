@@ -1,3 +1,4 @@
+import { fieldAssignmentConflicts, systemStatFields } from '../core/system-fields.js';
 import { collectionQuantityField } from '../core/collection-fields.js';
 import { definitionSchema, LIMITS } from './contracts.js';
 import { validateShape } from './validate-shape.js';
@@ -33,7 +34,12 @@ function bounds(field, path, errors) {
 }
 export function validateFields(fields, path, errors, kind = 'stat') {
     unique(fields, 'id', path, errors);
-    unique(fields, kind === 'profile' ? 'label' : 'name', path, errors);
+    const key = kind === 'profile' ? 'label' : 'name';
+    fields.forEach((field, index) => {
+        if (!String(field[key] ?? '').trim()) errors.push(`${path}[${index}].${key}: must not be blank`);
+        if (!field.retired && fieldAssignmentConflicts(fields.slice(0, index), field, { name: field[key] }).length)
+            errors.push(`${path}[${index}].${key}: duplicate ${field[key]} for overlapping targets`);
+    });
     fields.forEach((field, i) => {
         const p = `${path}[${i}]`;
         if (kind === 'profile') return;
@@ -56,11 +62,11 @@ export function validateFields(fields, path, errors, kind = 'stat') {
         if (kind !== 'stat') return;
         if (/level bonus/i.test(field.name)) errors.push(`${p}.name: Level Bonus is not a narrative stat`);
         if (field.maxLength !== undefined && field.maxLength !== '' && (!Number.isSafeInteger(Number(field.maxLength)) || Number(field.maxLength) < 1)) errors.push(`${p}.maxLength: expected a positive integer or blank`);
-        if (field.format?.match(/{{.*?}}/g)?.some(token => !['{{name}}', '{{value}}', '{{max}}'].includes(token))) errors.push(`${p}.format: unsupported placeholder`);
+        if (field.format !== undefined && !['{{name}}: {{value}}', '{{value}}'].includes(field.format)) errors.push(`${p}.format: choose name and value or value only`);
         if (field.color && !/^#[0-9a-f]{6}$/i.test(field.color)) errors.push(`${p}.color: expected a hex color`);
     });
 }
-export function validateProgression(config, stats, path, errors, selections, npc = false) {
+export function validateProgression(config, stats, path, errors, selections) {
     const fields = selections ? stats.filter(field => selections.includes(field.id)) : stats;
     if (!config.enabled) return;
     if (config.xpFieldId === config.levelFieldId) errors.push(`${path}: XP and Level must be distinct`);
@@ -114,26 +120,28 @@ export function validateDefinition(definition) {
     const errors = validateShape(definition, definitionSchema);
     if (errors.length) return errors;
     if (!definition.name.trim()) errors.push('name: required');
-    for (const scope of ['player', 'npc']) validateFields(definition.profiles[scope], `profiles.${scope}`, errors, 'profile');
-    for (const scope of ['world', 'player', 'npc']) validateFields(definition.stats[scope], `stats.${scope}`, errors);
+    validateFields(definition.profiles, 'profiles', errors, 'profile');
+    for (const scope of ['world', 'character']) validateFields(definition.stats[scope], `stats.${scope}`, errors);
+    for (const [path, fields] of [['profiles', definition.profiles], ['stats.character', definition.stats.character]]) {
+        for (const field of fields) {
+            unique(field.targets, 'target', `${path}.${field.id}.targets`, errors);
+            for (const target of field.targets) if (!['player', 'npc'].includes(target) && !definition.npcTemplates.some(t => target === `template:${t.id}`)) errors.push(`${path}.${field.id}.targets: unresolved target ${target}`);
+        }
+    }
     unique(definition.npcTemplates, 'id', 'npcTemplates', errors);
     definition.npcTemplates.forEach((template, i) => {
         const p = `npcTemplates[${i}]`;
         if (!template.name.trim()) errors.push(`${p}.name: required`);
-        refs(template.statIds, definition.stats.npc, `${p}.statIds`, errors);
-        refs(template.profileIds, definition.profiles.npc, `${p}.profileIds`, errors);
-        if (!template.progression) errors.push(`${p}.progression: required`);
-        else validateProgression(template.progression, definition.stats.npc, `${p}.progression`, errors, template.statIds, true);
+        validateProgression(template.progression, systemStatFields(definition, 'npc', { npcTemplateId: template.id }), `${p}.progression`, errors);
     });
-    validateProgression(definition.progression.player, definition.stats.player, 'progression.player', errors);
-    if (definition.progression.npc.enabled) errors.push('progression.npc: configure NPC progression per template');
+    validateProgression(definition.progression.player, systemStatFields(definition, 'player'), 'progression.player', errors);
     validateCollections(definition.collections, definition.npcTemplates, errors);
     for (const col of definition.collections) if (col.levelUpRewards?.enabled) {
         const player = definition.progression.player.enabled && collectionRewardAppliesTo(col, 'player');
         const npc = definition.npcTemplates.some(t => t.progression?.enabled && collectionRewardAppliesTo(col, 'npc', t.id));
         if (!player && !npc) errors.push(`collections.${col.id}.levelUpRewards: requires a target with enabled progression`);
     }
-    for (const scope of ['world', 'player', 'npc']) refs(definition.hud[`${scope}StatIds`], definition.stats[scope], `hud.${scope}StatIds`, errors);
+    for (const scope of ['world', 'player', 'npc']) refs(definition.hud[`${scope}StatIds`], systemStatFields(definition, scope), `hud.${scope}StatIds`, errors);
     return errors;
 }
 export function finalizeDefinition(raw) {

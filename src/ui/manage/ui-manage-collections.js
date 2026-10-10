@@ -11,8 +11,9 @@ export function renderCollectionsSection(char, container) {
     if (!container) return;
     
     const settings = getSettings().statusTracker;
-    const sceneActor = loadStateFromMetadata()?.characters?.find(actor => actor.name?.toLowerCase() === char.name?.toLowerCase());
-    const collections = settings.collections.filter(col => collectionAppliesTo(col, 'npc', sceneActor?.npcTemplateId ? sceneActor : char));
+    const sceneActor = char.isPlayer ? loadStateFromMetadata()?.player
+        : loadStateFromMetadata()?.characters?.find(actor => actor.name?.toLowerCase() === char.name?.toLowerCase());
+    const collections = settings.collections.filter(col => collectionAppliesTo(col, char.isPlayer ? 'player' : 'npc', sceneActor?.npcTemplateId ? sceneActor : char));
     
     container.replaceChildren();
     for (const col of collections) {
@@ -20,9 +21,11 @@ export function renderCollectionsSection(char, container) {
         container.append(collection.section);
         const refreshCollection = () => {
             const state = loadStateFromMetadata();
-            const charInState = state?.characters?.find(c => c.name.toLowerCase() === char.name.toLowerCase());
-            const actor = charInState || {
+            const charInState = char.isPlayer ? state?.player
+                : state?.characters?.find(c => c.name.toLowerCase() === char.name.toLowerCase());
+            const actor = charInState ? { ...charInState, isPlayer: Boolean(char.isPlayer) } : {
                 name: char.name,
+                isPlayer: Boolean(char.isPlayer),
                 npcTemplateId: char.npcTemplateId || '',
                 stats: char.statusOverrides || {},
                 collections: char.statusCollections || (char.statusCollections = {}),

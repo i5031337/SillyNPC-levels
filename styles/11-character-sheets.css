@@ -294,7 +294,6 @@
     .sillynpc-cv-body { flex-direction: column; align-items: center; }
     .sillynpc-cv-left { flex: 0 0 auto; width: min(200px, 60%); }
 
-    .sillynpc-sheet-body,
     .sillynpc-editor-main {
         flex-direction: column;
         align-items: center;
@@ -302,7 +301,6 @@
 
     /* Stacked, the column is a block above the content rather than a column beside it, so
        the clamp above no longer applies - it was sizing it against a row. */
-    .sillynpc-sheet-sidebar,
     .sillynpc-editor-left {
         flex: 0 0 auto;
         width: min(200px, 60%);
@@ -312,51 +310,9 @@
         padding-right: 0;
     }
 
-    .sillynpc-sheet-main,
     .sillynpc-editor-right {
         width: 100%;
     }
-}
-
-/* Player profile collections share one page, matching the character sheet layout. */
-.sillynpc-sheet-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: var(--sillynpc-space-lg);
-}
-
-/* The profile fields, between the attributes above and the collections below. */
-.sillynpc-sheet-profile,
-.sillynpc-sheet-profile-form,
-.sillynpc-sheet-lore {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sillynpc-space-lg);
-}
-
-.sillynpc-sheet-profile:not(:empty),
-.sillynpc-sheet-lore:not(:empty) {
-    margin-top: var(--sillynpc-space-xl);
-}
-
-/* The sheet reads left-aligned: it is a working sheet with values you correct,
-   not the character page's centred read. Said out loud because SillyTavern's own
-   .popup centres everything inside it. */
-.sillynpc-sheet-content {
-    text-align: left;
-}
-
-.sillynpc-sheet-content .sillynpc-cv-block,
-.sillynpc-sheet-content .sillynpc-cv-lore {
-    margin: 0;
-}
-
-/* The chips centre on the character page and have to follow the text here. Left
-   in the middle they were the one row on the sheet that did not line up with
-   everything above and below it. */
-.sillynpc-sheet-content .sillynpc-cv-chips {
-    justify-content: flex-start;
 }
 
 /* ─── Ban list ──────────────────────────────────────────────────────────────

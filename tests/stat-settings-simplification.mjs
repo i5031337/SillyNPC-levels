@@ -5,7 +5,7 @@ import { normaliseStatUpdatePolicies, isReaderStat } from '../src/tracker/stat-u
 import { carriesNpcStat } from '../src/tracker/stat-persistence.js';
 import { constrainNumericStat } from '../src/tracker/numeric-stat-bounds.js';
 import { materializeGrantRows } from '../src/tracker/level-grant-review.js';
-import { statSchema } from '../src/generation/contracts.js';
+import { statSchema, characterStatSchema } from '../src/generation/contracts.js';
 import { GENERATION_INSTRUCTIONS } from '../src/generation/generate-system.js';
 import { validateFields } from '../src/generation/validate-definition.js';
 
@@ -15,7 +15,7 @@ test('reader locking and NPC carryover are independent and survive System round 
         { id: 'pool', name: 'Pool', type: 'number', defaultValue: '5/10', locked: false, carryOver: true },
     ];
     const system = normalizeSystemDefinition({ schemaVersion: 1, stats: { npc: stats }, profiles: {}, npcTemplates: [] });
-    const fields = system.stats.npc;
+    const fields = system.stats.character;
     assert.equal(isReaderStat(fields[0]), false);
     assert.equal(carriesNpcStat(fields[0]), false);
     assert.equal(isReaderStat(fields[1]), true);
@@ -63,17 +63,17 @@ test('locked stats receive selected level growth, with pool capacity independent
 
 test('premise generation and canonical stat schema expose the editor contract and format rules', () => {
     const field = { id: 'rating', name: 'Rating', type: 'number', defaultValue: '2',
-        locked: true, carryOver: false, format: '{{name}}: {{value}} / {{max}}' };
-    const canonical = normalizeSystemDefinition({ schemaVersion: 1, stats: { npc: [field] }, profiles: {}, npcTemplates: [] }).stats.npc[0];
-    assert.deepEqual(Object.keys(statSchema.properties).sort(), Object.keys(canonical).sort());
+        locked: true, carryOver: false, format: '{{name}}: {{value}}' };
+    const canonical = normalizeSystemDefinition({ schemaVersion: 1, stats: { npc: [field] }, profiles: {}, npcTemplates: [] }).stats.character[0];
+    assert.deepEqual(Object.keys(characterStatSchema.properties).sort(), Object.keys(canonical).sort());
     assert.ok(statSchema.required.includes('locked'));
     assert.equal(statSchema.properties.updatePolicy, undefined);
     assert.equal(statSchema.properties.persistence, undefined);
     assert.match(GENERATION_INSTRUCTIONS, /Locked stats remain eligible for level growth/);
-    for (const token of ['{{name}}', '{{value}}', '{{max}}']) assert.ok(GENERATION_INSTRUCTIONS.includes(token));
+    assert.deepEqual(statSchema.properties.format.enum, ['{{name}}: {{value}}', '{{value}}']);
     const errors = [];
     validateFields([field], 'stats.npc', errors);
     assert.deepEqual(errors, []);
     validateFields([{ ...field, format: '{{unsupported}}' }], 'stats.npc', errors);
-    assert.ok(errors.some(error => error.includes('unsupported placeholder')));
+    assert.ok(errors.some(error => error.includes('name and value or value only')));
 });

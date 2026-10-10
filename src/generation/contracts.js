@@ -11,13 +11,13 @@ const id = { type: 'string', pattern: '^[a-z][a-z0-9_-]*$', maxLength: 80 };
 const scalar = { type: ['string', 'number', 'boolean'] };
 export const progressionSchema = object({ enabled: bool, xpFieldId: text, levelFieldId: text,
     pointsPerLevel: { type: 'integer', minimum: 0 }, assignment: enumeration(['random', 'manual']), statIds: array(id) });
-export const profileSchema = object({ id, label: text, guidance: text,
-    placeholder: text, multiline: bool, includeInImagePrompt: bool, retired: bool },
-['id', 'label', 'guidance']);
+export const profileSchema = object({ id, label: text, guidance: text, targets: array(text, 8),
+    placeholder: text, multiline: { ...bool, description: 'Display as a text section when true, or a compact badge when false. All profile value editors support multiple lines.' }, includeInImagePrompt: bool, retired: bool, legacyId: text },
+['id', 'label', 'guidance', 'targets']);
 export const statSchema = object({ id, name: text, type: enumeration(['number', 'text']), defaultValue: { ...scalar, description: 'Numeric pools use a current/maximum string such as 10/10. This is a starting default; each NPC may initialize its own capacity. Plain numbers define ratings.' },
-    purpose: text, guidance: text, format: text,
+    purpose: text, guidance: text, format: enumeration(['{{name}}: {{value}}', '{{value}}']),
     min: text, maxStatValue: text, options: array(text), maxLength: text, locked: bool, visible: bool,
-    isPrimary: bool, color: text, retired: bool, advanceOnLevel: bool, carryOver: bool },
+    isPrimary: bool, color: text, retired: bool, carryOver: bool },
 ['id', 'name', 'type', 'defaultValue', 'purpose', 'locked']);
 export const fieldSchema = object({ id, name: text, label: text, type: enumeration(['text', 'number', 'boolean']),
     defaultValue: scalar, guidance: text, min: text, maxStatValue: text, options: array(text),
@@ -26,8 +26,8 @@ export const fieldSchema = object({ id, name: text, label: text, type: enumerati
 export const rewardSchema = object({ enabled: bool, mode: enumeration(['scheduled', 'guided']), guidance: text,
     interval: { type: 'integer', minimum: 1 }, schedule: array(object({ id,
         level: { type: 'integer', minimum: 2 }, entry: { type: 'object', additionalProperties: scalar } }), LIMITS.rewards) });
-export const templateSchema = object({ id, name: text, description: text, profileIds: array(id), statIds: array(id),
-    progression: progressionSchema }, ['id', 'name', 'description', 'profileIds', 'statIds']);
+export const characterStatSchema = object({ ...statSchema.properties, targets: array(text, 8) }, [...statSchema.required, 'targets']);
+export const templateSchema = object({ id, name: text, description: text, progression: progressionSchema });
 export const collectionSchema = object({ id, name: text, targets: array(text, 8), guidance: text,
     trackQuantity: bool, includeInImagePrompt: bool, retired: bool, fields: array(fieldSchema), levelUpRewards: rewardSchema },
 ['id', 'name', 'targets', 'guidance', 'trackQuantity', 'fields']);
@@ -37,25 +37,24 @@ export const memorySchema = object({ enabled: bool, guidance: text,
 export const presentationSchema = object({ memories: memorySchema,
     hud: object({ layout: enumeration(['plate', 'underline', 'pips', 'splitring']), showWorld: bool,
         showNpcPortraits: bool, playerStatIds: array(id), npcStatIds: array(id), worldStatIds: array(id) }) });
-export const definitionSchema = object({ schemaVersion: { type: 'integer', enum: [1] }, id, name: text,
-    metadata: object({ description: text, author: text }), profiles: object({ player: array(profileSchema), npc: array(profileSchema) }),
-    stats: object({ world: array(statSchema), player: array(statSchema), npc: array(statSchema) }),
-    npcTemplates: array(templateSchema, LIMITS.templates), collections: array(collectionSchema, LIMITS.collections),
-    progression: object({ player: progressionSchema, npc: progressionSchema }), ...presentationSchema.properties });
+export const definitionSchema = object({ schemaVersion: { type: 'integer', enum: [2] }, id, name: text,
+    metadata: object({ description: text, author: text }), profiles: array(profileSchema),
+    stats: object({ world: array(statSchema), character: array(characterStatSchema) }),
+    npcTemplates: array(templateSchema, LIMITS.templates), legacyNpcTemplateId: text, collections: array(collectionSchema, LIMITS.collections),
+    progression: object({ player: progressionSchema }), ...presentationSchema.properties },
+['schemaVersion', 'id', 'name', 'metadata', 'profiles', 'stats', 'npcTemplates', 'collections', 'progression', ...Object.keys(presentationSchema.properties)]);
 
 const plannedField = object({ name: text, purpose: text });
+const plannedCharacterField = object({ ...plannedField.properties, targets: array(text, 8) });
 const plannedProgression = object({ enabled: bool,
-    xp: { ...text, description: 'Exact XP stat NAME in this owner catalog, never a numeric default. Empty only when disabled.' },
-    level: { ...text, description: 'Exact Level stat NAME in this owner catalog, never a starting value. Empty only when disabled.' },
+    xp: { ...text, description: 'Exact XP stat NAME in the character catalog assigned to this owner, never a numeric default. Empty only when disabled.' },
+    level: { ...text, description: 'Exact Level stat NAME in the character catalog assigned to this owner, never a starting value. Empty only when disabled.' },
     growth: text });
 export const planSchema = object({ name: text, description: text, rationale: text, memories: memorySchema,
-    profiles: object({ player: array(plannedField), npc: array(plannedField) }),
-    stats: object({ world: array(plannedField), player: array(plannedField), npc: array(plannedField) }),
+    profiles: array(plannedCharacterField),
+    stats: object({ world: array(plannedField), character: array(plannedCharacterField) }),
     playerProgression: plannedProgression,
-    npcTemplates: array(object({ name: text, description: text,
-        profiles: { ...array(text), description: 'Exact attribute names from profiles.npc, not actor categories.' },
-        stats: { ...array(text), description: 'Exact stat names from stats.npc only, including XP/Level if progression is enabled.' },
-        progression: plannedProgression }), LIMITS.templates),
+    npcTemplates: array(object({ name: text, description: text, progression: plannedProgression }), LIMITS.templates),
     collections: array(object({ name: text, purpose: text, targets: array(text, 8), trackQuantity: bool, fields: array(plannedField),
         rewards: enumeration(['none', 'scheduled', 'guided']) }), LIMITS.collections) });
 export const responseSchema = section => object({ section, assumptions: array(text, 12) });

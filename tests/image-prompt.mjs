@@ -114,9 +114,9 @@ test('profile portrait flags survive normalization and are validated as booleans
         { id: 'age' }, { id: 'appearance', includeInImagePrompt: false },
         { id: 'species', includeInImagePrompt: true }, { id: 'history' },
     ] } });
-    assert.deepEqual(definition.profiles.npc.map(field => field.includeInImagePrompt), [true, false, true, false]);
+    assert.deepEqual(definition.profiles.map(field => field.includeInImagePrompt), [true, false, true, false]);
     assert.deepEqual(normalizeSystemDefinition(definition).profiles, definition.profiles);
-    assert.deepEqual(validateShape(definition.profiles.npc[2], profileSchema), []);
-    assert.ok(validateShape({ ...definition.profiles.npc[2], includeInImagePrompt: 'yes' }, profileSchema)
+    assert.deepEqual(validateShape(definition.profiles[2], profileSchema), []);
+    assert.ok(validateShape({ ...definition.profiles[2], includeInImagePrompt: 'yes' }, profileSchema)
         .some(error => error.includes('includeInImagePrompt')));
 });

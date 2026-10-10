@@ -1,4 +1,5 @@
 import { resolveProgressionConfig, progressionFieldId } from '../core/progression-config.js';
+import { templateStatIds } from '../core/system-fields.js';
 import { constrainNumericStat } from './numeric-stat-bounds.js';
 import { progressXp } from './progression.js';
 import { selectLevelGrants, collectLevelTransitions } from './extractor/status-level-grants.js';
@@ -42,8 +43,10 @@ export function createManualLevelUpService(deps) {
             collections: structuredClone(scene?.collections || card.statusCollections || {}) };
         const config = resolveProgressionConfig(tracker, { templateId: actor.npcTemplateId });
         if (!config.enabled) return unavailable('Enable progression for this NPC template first.');
-        const definitions = tracker.npcStats || [];
-        for (const def of definitions.filter(def => tracker.npcTemplates?.find(t => t.id === actor.npcTemplateId)?.statIds.includes(progressionFieldId(def)))) {
+        const template = tracker.npcTemplates?.find(t => t.id === actor.npcTemplateId);
+        const selected = new Set(templateStatIds({ stats: { character: tracker.npcStats || [] } }, template));
+        const definitions = (tracker.npcStats || []).filter(def => selected.has(progressionFieldId(def)));
+        for (const def of definitions) {
             actor.stats[def.name] ??= def.defaultValue ?? '';
         }
         const xp = definitions.find(def => progressionFieldId(def) === config.xpFieldId);

@@ -19,12 +19,12 @@ runtime, export, and generator; avoid a second set of generated-only rules.
 A complete draft should cover:
 
 - Name, description, and a concise explanation of the rules chosen for the premise.
-- Player and NPC profile fields with readable labels and guidance.
-- World, player, and shared NPC stat catalogs with stable IDs, sensible defaults,
-  types, numeric bounds, display formats, purposes, and Turn or Advancement policies.
-- NPC templates with assignment guidance and explicit selections from those catalogs.
+- A shared profile field catalog with Player, All NPCs, and template assignments with readable labels and guidance.
+- World and shared character stat catalogs with stable IDs, sensible defaults,
+  types, numeric bounds, display formats, reader guidance, and NPC carryover rules.
+- NPC templates with assignment guidance; field targets select templates from the shared catalogs.
 - Player progression and independently enabled NPC template progression, including
-  XP and Level field IDs, growth policy and eligible stats; growth amounts are chosen by the reader.
+  XP and Level field IDs, growth policy and eligible stats; code-owned point budgets and random or manual assignment.
 - Collections with existing Player, All NPCs, and template targets; a pinned primary
   identifier; typed fields; optional ranges; and shared static versus personal fields.
 - Optional scheduled or guided collection rewards, with scheduled entries authored
@@ -36,9 +36,9 @@ Progression may be disabled when it does not suit the premise. A complete System
 does not need every feature enabled. Prefer a small usable ruleset over dozens of
 unnecessary stats, templates, or reward entries.
 
-For Turn pools, express starting capacity in defaults such as `6/10`. An explicit
+For resource pools, express starting capacity in defaults such as `6/10`. An explicit
 maximum is a hard ceiling for level growth; leave it blank for expandable capacity.
-NPC Level uses Advancement so it survives a new adventure. Choose other policies
+NPC Level uses carryOver so it survives a new adventure. Choose other policies
 deliberately and explain whether resources reset while learned ratings persist.
 
 Exclude character cards, persona records, current values, holdings, chat metadata,
@@ -84,7 +84,7 @@ between them.
 
 1. **Plan the rules.** Produce a compact manifest with the System name, description,
    design rationale, assumptions, and intended objects. Include field names, scopes,
-   and purposes; NPC template profile/stat memberships and assignment intent;
+   and purposes; profile/stat targets and template assignment intent;
    collection targets and field intent; progression enablement, counters, growth
    intent, and optional reward intent. Names alone are insufficient: later stages
    need shared decisions about relationships, resource reset, and persistence.
@@ -93,17 +93,17 @@ between them.
    unambiguously and freeze the registry before requesting full definitions. Subsequent
    stages must use these IDs and cannot rename, add, or remove planned objects silently.
    An ambiguous plan receives a bounded repair before dependent work begins.
-3. **Define catalogs.** Fill player/NPC profile catalogs and world/player/shared NPC
+3. **Define catalogs.** Fill the shared profile catalog and world/shared character
    stat catalogs using the relevant canonical schema fragments. Include each catalog's
    enabled progression owners in the same response as its stats, and validate XP/Level
    defaults and growth rules together before accepting either. This lets section repair
    fix invalid counter defaults instead of failing a later call that cannot edit them.
    Generate coherent sections, not one request per field.
 4. **Define dependents.** Assemble NPC templates in code from the plan's names,
-   descriptions, and validated catalog memberships; these need no additional model call.
+   descriptions, and validated independent progression; these need no additional model call.
    Fill each collection, or a bounded group of small collections, using
    the fixed targets and field IDs. Validate collection fields before rewards are
-   requested. Do not generate separate copies of shared NPC fields per template.
+   requested. Do not generate separate copies of shared character fields per template.
 5. **Define rewards and presentation.** Generate optional collection rewards only after
    their collections and applicable progression are valid. Supply ordinary editable
    memory/HUD defaults in code, selecting visible active stats for the HUD;
@@ -119,9 +119,9 @@ Code supplies schema version, allocated IDs, and ordinary application defaults;
 the model chooses the substantive rules. Defaults must not mask missing required
 model decisions or silently enable unplanned features.
 
-A plan with both profile catalogs, all three stat catalogs, two NPC templates,
-player and per-template progression, and two collections without rewards uses eight
-model calls: one plan, two profile catalogs, three stat/rule catalogs, and two collections.
+A plan with a shared profile catalog, world and character stat catalogs, two NPC templates,
+player and per-template progression, and two collections without rewards uses six
+model calls: one plan, one profile catalog, two stat/rule catalogs, and two collections.
 Each enabled reward collection adds one call; each section repair adds one call.
 The progress counter counts model tasks, excluding local assembly stages.
 
@@ -159,11 +159,11 @@ Return stage- and field-specific errors for:
 
 - Missing names or duplicate, invalid, or unresolved field and template IDs.
 - Wrong types, malformed defaults, conflicting numeric ranges, or invalid pool values.
-- Invalid template stat/profile selections, collection targets, or primary identifiers.
+- Invalid profile/stat assignments, collection targets, or primary identifiers.
 - Enabled progression without distinct, selected, usable XP and Level fields, a positive
   XP capacity, or an integer starting Level of at least one.
-- Growth candidates that are locked, retired, nonnumeric, or progression counters;
-  invalid growth candidates; and conflicting NPC persistence choices.
+- Growth candidates that are retired, nonnumeric, or progression counters; locked
+  ratings remain eligible for code-owned growth.
 - Invalid scheduled levels, entries, field ranges, or guided intervals.
 - HUD selections pointing outside their respective catalogs.
 - Embedded world data, executable markup, or settings outside the generation contract.
@@ -182,7 +182,7 @@ For complete-definition errors, identify the owning section and repair it within
 the same bounds; do not use an unrestricted whole-System repair call. Incomplete
 work may be inspected, but it must never be presented or saved as a valid System.
 
-Generated formats should use supported stat placeholders and ordinary text. Render
+Stat display supports only `{{name}}: {{value}}` and `{{value}}`, matching the Show name checkbox. Render
 labels, guidance, assumptions, and errors through safe text/escaping paths. Bound
 definition size and counts using shared import limits where available; establish small
 explicit limits where none exist. Avoid introducing a separate legacy schema.
@@ -190,7 +190,7 @@ explicit limits where none exist. Avoid introducing a separate legacy schema.
 ## Verification and completion criteria
 
 Use focused Node tests, then run
-`node --experimental-default-type=module --test tests/*.mjs`.
+`node --test tests/*.mjs`.
 
 Cover valid staged responses and assembled definitions, renamed/custom IDs, different
 NPC progression policies, overlapping collection targets, field types/ranges, duplicate identifiers, corrupted
@@ -232,10 +232,10 @@ supply presentation details where possible.
 
 | Candidate | Evidence and possible simplification |
 | --- | --- |
-| NPC `persistence` versus `updatePolicy` | Both describe whether a value travels between adventures. Runtime uses Turn/Advancement. Keep one policy and derive any boundary projection rather than exposing both choices to models. |
+| NPC carryover | Character fields use a single `carryOver` flag to retain NPC values between adventures. |
 | `guidance` versus `hint` | Canonical definitions use guidance; flat Builder/reader data use hint. Collections previously lost their guidance during projection. The generator draft context translates explicitly, and collection import projection now supplies hint. Move consumers to guidance to remove this translation. |
-| Top-level `progression.npc` | Actor progression resolves from NPC templates. The generator leaves this historical global block disabled. A future canonical schema can remove the redundant block. |
-| `advanceOnLevel` versus progression `statIds` | The former supplies a default selection when IDs are absent; explicit progression configurations already identify candidates. Generation uses the explicit configuration and does not ask for the old flag. |
+| Top-level `progression.npc` | Removed from canonical schema version 2; NPC progression belongs to templates. |
+| Progression growth | Canonical schema version 2 uses explicit progression `statIds`; obsolete `advanceOnLevel` is converted when loading old definitions. |
 | HUD `playerStatIds` versus stat `isPrimary` | The floating HUD consumes isPrimary while exports contain both representations. The generator translates selected IDs to player flags; draft capture translates flags back. Use one authoritative selection. |
 | HUD `npcStatIds` and `worldStatIds` | They are preserved and validated in definitions, but the floating HUD currently renders only player meters. They should either gain a concrete display consumer or be removed from a future schema. |
 | Collection field `id`, `name`, and `label` | IDs and names are both storage/reference keys in different paths; labels are display text. Reward schedules use IDs while holdings use names. Consolidating storage on IDs would reduce rename logic and prompt surface. |

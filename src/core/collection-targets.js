@@ -1,13 +1,11 @@
+import { fieldTargets } from './system-fields.js';
 import { npcTemplateFor, npcTemplates, activeNpcSystem } from './npc-templates.js';
 
 /** Read older single targets at the boundary; new collections store a target list. */
 export function collectionTargets(collection = {}) {
-    const incoming = Array.isArray(collection.targets) ? collection.targets
-        : collection.target === 'npc' && collection.npcTemplateId ? [`template:${collection.npcTemplateId}`]
-            : [collection.target || 'all'];
-    return [...new Set(incoming.flatMap(target => target === 'all' ? ['player', 'npc']
-        : target === 'player' || target === 'npc' || (typeof target === 'string' && /^template:[a-z][a-z0-9_-]*$/.test(target))
-            ? [target] : []))];
+    return fieldTargets(Array.isArray(collection.targets) ? collection
+        : { targets: collection.target === 'npc' && collection.npcTemplateId
+            ? [`template:${collection.npcTemplateId}`] : [collection.target || 'all'] });
 }
 
 /** Omit actor only when building a schema for an entire scope, rather than one NPC. */

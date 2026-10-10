@@ -1,7 +1,7 @@
 import { getContext } from '../../../../../../st-context.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { LOG_PREFIX } from '../../core/constants.js';
-import { profileFieldsForCard } from '../../core/profile-fields.js';
+import { profileFieldValue, profileFieldsForCard } from '../../core/profile-fields.js';
 import { createCharacter } from '../../characters/characters.js';
 import { findCharacterRecord } from '../../characters/character-repository.js';
 import { findCardForName, loadStateFromMetadata, mayJoinScene, resolveCanonicalName } from '../status-logic.js';
@@ -50,7 +50,7 @@ export async function generateNewNpcProfiles(names, isCurrent) {
             // A manual edit made during generation takes precedence.
             card.profile ||= {};
             for (const field of fields) {
-                if (!String(card.profile[field.id] || '').trim() && values[field.id]) {
+                if (!String(profileFieldValue(card.profile, field)).trim() && values[field.id]) {
                     card.profile[field.id] = values[field.id];
                 }
             }

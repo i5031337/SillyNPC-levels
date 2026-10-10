@@ -1,12 +1,39 @@
 .sillynpc-system-profiles { display: grid; gap: 12px; }
 .sillynpc-system-profiles > p { margin: 0; }
-.sillynpc-system-profile-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--sillynpc-border); border-radius: 8px; }
+.sillynpc-system-stat-row,
+.sillynpc-system-collection-row,
+.sillynpc-system-profile-row,
+.sillynpc-progression-editor {
+    background: transparent;
+    color: inherit;
+    border: 1px solid var(--sillynpc-border);
+    border-radius: 8px;
+}
+.sillynpc-system-profile-row { display: grid; gap: 4px; padding: 8px; font-size: var(--sillynpc-text-md); }
 .sillynpc-system-profile-row.is-retired { opacity: .75; }
-.sillynpc-system-profile-header, .sillynpc-system-profile-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sillynpc-system-profile-header, .sillynpc-system-profile-add { display: flex; gap: 4px 8px; align-items: center; flex-wrap: wrap; }
 .sillynpc-system-profile-header .profile-label, .sillynpc-system-profile-add input { flex: 1 1 180px; }
 .sillynpc-system-profile-header small { overflow-wrap: anywhere; }
 .sillynpc-system-profile-row textarea { width: 100%; resize: vertical; }
 .sillynpc-system-profile-row select, .sillynpc-system-profile-row .profile-placeholder { width: 100%; }
+.sillynpc-system-profile-options { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
+.col-targets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; min-width: 0; }
+.col-targets-caption { opacity: .7; white-space: nowrap; }
+.sillynpc-system-profile-row .sillynpc-system-profile-options > label,
+.sillynpc-system-builder .col-targets > label.sillynpc-check-group {
+    display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; white-space: nowrap;
+}
+.sillynpc-system-profile-options input[type="checkbox"], .col-targets input[type="checkbox"] { flex: none; margin: 0; }
+.sillynpc-system-stat-row { row-gap: 4px; margin-bottom: 12px; font-size: var(--sillynpc-text-md); }
+.sillynpc-stat-header, .sillynpc-stat-definition, .sillynpc-stat-options {
+    display: flex; flex-wrap: wrap; gap: 4px 8px; width: 100%; align-items: center;
+}
+:is(.sillynpc-system-stat-row, .sillynpc-system-profile-row) :is(input, select, textarea, button, label, small, .col-targets-caption) { font-size: inherit; }
+:is(.sillynpc-system-stat-row, .sillynpc-system-profile-row) :is(.text_pole, .menu_button) { height: 28px; margin: 0; padding: 3px 6px; }
+.sillynpc-system-profile-row textarea.text_pole { height: auto; }
+.sillynpc-system-stat-row input[type="checkbox"] { margin: 0; }
+:is(.sillynpc-system-stat-row, .sillynpc-system-profile-row) .col-targets { row-gap: 4px; }
+.sillynpc-stat-options > .sillynpc-check-group { flex-direction: row; margin: 0; white-space: nowrap; }
 
 .sillynpc-npc-templates { display: grid; gap: 12px; }
 .sillynpc-npc-templates > details > summary {

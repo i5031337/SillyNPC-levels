@@ -1,57 +1,51 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "expedition",
   "name": "Expedition",
   "metadata": {
     "description": "Catch monsters and learn techniques.",
     "author": "Generated"
   },
-  "profiles": {
-    "player": [
-      {
-        "id": "background",
-        "label": "Background",
-        "guidance": "Training history",
-        "includeInImagePrompt": false,
-        "placeholder": "",
-        "multiline": false,
-        "retired": false
-      }
-    ],
-    "npc": [
-      {
-        "id": "species",
-        "label": "Species",
-        "guidance": "Stable visible species",
-        "includeInImagePrompt": true,
-        "placeholder": "",
-        "multiline": false,
-        "retired": false
-      }
-    ]
-  },
+  "profiles": [
+    {
+      "id": "background",
+      "label": "Background",
+      "guidance": "Training history",
+      "placeholder": "",
+      "multiline": false,
+      "includeInImagePrompt": false,
+      "retired": false,
+      "targets": [
+        "player"
+      ]
+    },
+    {
+      "id": "species",
+      "label": "Species",
+      "guidance": "Stable visible species",
+      "placeholder": "",
+      "multiline": false,
+      "includeInImagePrompt": false,
+      "retired": false,
+      "targets": [
+        "template:creature"
+      ]
+    }
+  ],
   "npcTemplates": [
     {
       "id": "creature",
       "name": "Creature",
       "description": "Catchable monsters.",
-      "profileIds": [
-        "species"
-      ],
-      "statIds": [
-        "xp",
-        "level",
-        "vigor"
-      ],
       "progression": {
         "enabled": true,
         "xpFieldId": "xp",
         "levelFieldId": "level",
+        "pointsPerLevel": 2,
+        "assignment": "random",
         "statIds": [
           "vigor"
-        ],
-        "pointsPerLevel": 2,
-        "assignment": "random"
+        ]
       }
     }
   ],
@@ -71,13 +65,12 @@
         "visible": true,
         "guidance": "",
         "purpose": "Current region",
-        "advanceOnLevel": false,
         "isPrimary": false,
         "color": "",
         "retired": false
       }
     ],
-    "player": [
+    "character": [
       {
         "id": "xp",
         "name": "XP",
@@ -89,73 +82,17 @@
         "options": [],
         "maxLength": "",
         "locked": false,
+        "carryOver": true,
         "visible": true,
         "guidance": "",
-        "purpose": "Earned training XP",
-        "advanceOnLevel": false,
-        "isPrimary": false,
-        "color": "",
-        "retired": false
-      },
-      {
-        "id": "level",
-        "name": "Level",
-        "type": "number",
-        "defaultValue": "1",
-        "format": "{{name}}: {{value}}",
-        "maxStatValue": "",
-        "min": "0",
-        "options": [],
-        "maxLength": "",
-        "locked": true,
-        "visible": true,
-        "guidance": "",
-        "purpose": "Training level",
-        "advanceOnLevel": false,
-        "isPrimary": false,
-        "color": "",
-        "retired": false
-      },
-      {
-        "id": "energy",
-        "name": "Energy",
-        "type": "number",
-        "defaultValue": "6/10",
-        "format": "{{name}}: {{value}}",
-        "maxStatValue": "",
-        "min": "0",
-        "options": [],
-        "maxLength": "",
-        "locked": false,
-        "visible": true,
-        "guidance": "",
-        "purpose": "Spent on expeditions",
-        "advanceOnLevel": false,
+        "purpose": "Earned XP",
         "isPrimary": true,
         "color": "",
-        "retired": false
-      }
-    ],
-    "npc": [
-      {
-        "id": "xp",
-        "name": "XP",
-        "type": "number",
-        "defaultValue": "0/100",
-        "format": "{{name}}: {{value}}",
-        "maxStatValue": "100",
-        "min": "0",
-        "options": [],
-        "maxLength": "",
-        "locked": false,
-        "carryOver": false,
-        "visible": true,
-        "guidance": "",
-        "purpose": "Earned combat XP",
-        "advanceOnLevel": false,
-        "isPrimary": false,
-        "color": "",
-        "retired": false
+        "retired": false,
+        "targets": [
+          "player",
+          "template:creature"
+        ]
       },
       {
         "id": "level",
@@ -172,10 +109,35 @@
         "visible": true,
         "guidance": "",
         "purpose": "Learned level",
-        "advanceOnLevel": false,
-        "isPrimary": false,
+        "isPrimary": true,
         "color": "",
-        "retired": false
+        "retired": false,
+        "targets": [
+          "player",
+          "template:creature"
+        ]
+      },
+      {
+        "id": "energy",
+        "name": "Energy",
+        "type": "number",
+        "defaultValue": "6/10",
+        "format": "{{name}}: {{value}}",
+        "maxStatValue": "",
+        "min": "0",
+        "options": [],
+        "maxLength": "",
+        "locked": false,
+        "carryOver": false,
+        "visible": true,
+        "guidance": "",
+        "purpose": "Spent on expeditions",
+        "isPrimary": true,
+        "color": "",
+        "retired": false,
+        "targets": [
+          "player"
+        ]
       },
       {
         "id": "vigor",
@@ -192,10 +154,12 @@
         "visible": true,
         "guidance": "",
         "purpose": "Combat stamina",
-        "advanceOnLevel": false,
         "isPrimary": false,
         "color": "",
-        "retired": false
+        "retired": false,
+        "targets": [
+          "template:creature"
+        ]
       }
     ]
   },
@@ -207,6 +171,7 @@
         "player",
         "template:creature"
       ],
+      "trackQuantity": false,
       "includeInImagePrompt": true,
       "guidance": "Learned combat actions",
       "retired": false,
@@ -261,8 +226,7 @@
             }
           }
         ]
-      },
-      "trackQuantity": false
+      }
     }
   ],
   "progression": {
@@ -270,35 +234,31 @@
       "enabled": true,
       "xpFieldId": "xp",
       "levelFieldId": "level",
+      "pointsPerLevel": 2,
+      "assignment": "random",
       "statIds": [
         "energy"
-      ],
-      "pointsPerLevel": 2,
-      "assignment": "random"
-    },
-    "npc": {
-      "enabled": false,
-      "xpFieldId": "",
-      "levelFieldId": "",
-      "statIds": [],
-      "pointsPerLevel": 0,
-      "assignment": "random"
+      ]
     }
   },
   "memories": {
-    "maxEntriesPerCharacter": 50,
     "enabled": true,
     "guidance": "Remember consequential battles and commitments; skip routine travel.",
-    "interval": 8
+    "interval": 8,
+    "maxEntriesPerCharacter": 50
   },
   "hud": {
     "layout": "plate",
     "showWorld": true,
     "showNpcPortraits": true,
     "playerStatIds": [
+      "xp",
+      "level",
       "energy"
     ],
     "npcStatIds": [
+      "xp",
+      "level",
       "vigor"
     ],
     "worldStatIds": [

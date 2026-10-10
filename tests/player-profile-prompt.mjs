@@ -1,3 +1,4 @@
+import { profileFieldValue } from '../src/core/profile-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ function profileFixture(activePersona = persona) {
     const source = load('../src/characters/character-fill.js')
         .replace(/^import .*;\n/gm, '').replace(/^export \{.*;\n/gm, '').replaceAll('export ', '');
     const requests = [];
-    const dependencies = {
+    const dependencies = { profileFieldValue,
         promptText, getContext: () => ({ chat: [] }), fillTemplate: text => text,
         getSettings: () => ({ statusTracker: {} }), saveSettings() {}, hintFor: () => 'Describe appearance.',
         fieldsForCard: () => fields, requestExtraction: async prompt => {

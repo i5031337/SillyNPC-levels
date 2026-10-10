@@ -23,7 +23,6 @@
 .sillynpc-theme-tabletop-parchment .sillynpc-manage,
 .sillynpc-theme-tabletop-parchment .sillynpc-status-box,
 .sillynpc-theme-tabletop-parchment.sillynpc-hud-container,
-.sillynpc-theme-tabletop-parchment.sillynpc-player-sheet,
 .sillynpc-theme-tabletop-parchment.sillynpc-manage {
     /* Blotching, then a faint fibre weave, over the base tone. All gradients, so the
        theme stays self-contained - no image to ship, cache, or fail to load. */
@@ -115,7 +114,6 @@
 
 .sillynpc-theme-analog-horror .sillynpc-manage,
 .sillynpc-theme-analog-horror .sillynpc-status-box,
-.sillynpc-theme-analog-horror.sillynpc-player-sheet,
 .sillynpc-theme-analog-horror.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
@@ -126,8 +124,7 @@
 }
 
 .sillynpc-theme-analog-horror .sillynpc-manage::before,
-.sillynpc-theme-analog-horror .sillynpc-status-box::before,
-.sillynpc-theme-analog-horror.sillynpc-player-sheet::before {
+.sillynpc-theme-analog-horror .sillynpc-status-box::before {
     content: " ";
     display: block;
     position: absolute;
@@ -218,7 +215,6 @@
 .sillynpc-theme-rosewater .sillynpc-manage,
 .sillynpc-theme-rosewater .sillynpc-status-box,
 .sillynpc-theme-rosewater.sillynpc-hud-container,
-.sillynpc-theme-rosewater.sillynpc-player-sheet,
 .sillynpc-theme-rosewater.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
@@ -228,8 +224,7 @@
                 border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sillynpc-theme-rosewater .sillynpc-manage::after,
-.sillynpc-theme-rosewater.sillynpc-player-sheet::after {
+.sillynpc-theme-rosewater .sillynpc-manage::after {
     content: "✿";
     position: absolute;
     bottom: 20px;

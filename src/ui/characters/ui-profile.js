@@ -1,11 +1,11 @@
 import { LOG_PREFIX } from '../../core/constants.js';
-import { profileFieldsForCard } from '../../core/profile-fields.js';
+import { profileFieldsForCard, profileFieldValue } from '../../core/profile-fields.js';
 import { getSettings, saveSettings } from '../../core/settings.js';
 import { liveFactsFor } from '../../api/api.js';
 import { readLoreEntry, fillProfile } from '../../characters/character-fill.js';
 import { openLightbox } from './ui-portrait.js';
 import { syncProfileToLore, readLoreValues } from '../../lore/lore-sync.js';
-import { renderNpcMemorySection } from './ui-npc-memory-section.js';
+import { renderCharacterMemorySection } from './ui-character-memory-section.js';
 import { buildProfileSection } from './ui-profile-sections.js';
 
 /** The character profile reads from the card, linked lore, and live tracker state. */
@@ -108,14 +108,11 @@ export function renderProfileFields(char, container) {
          * to go back to. There is no undo for settings, and a regenerate is worth little if
          * the answer is worse and gone.
          */
-        const input = field.multiline
-            ? document.createElement('textarea')
-            : document.createElement('input');
-        if (!field.multiline) input.type = 'text';
-        else input.rows = 3;
+        const input = document.createElement('textarea');
+        input.rows = 3;
         input.className = 'text_pole sillynpc-profile-input';
         input.placeholder = field.placeholder;
-        input.value = String(char.profile[field.id] ?? '');
+        input.value = String(profileFieldValue(char.profile, field));
         // Saved as typed, with no redraw. Rebuilding the panel mid-sentence is what takes
         // the cursor away, and three of these four are paragraphs.
         input.addEventListener('input', () => {
@@ -139,7 +136,7 @@ export function renderProfileFields(char, container) {
         redo.setAttribute('aria-label', redo.title);
         redo.addEventListener('click', async () => {
             if (redo.disabled) return;
-            const previous = String(char.profile[field.id] ?? '');
+            const previous = String(profileFieldValue(char.profile, field));
             redo.disabled = true;
             redo.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             try {
@@ -149,7 +146,7 @@ export function renderProfileFields(char, container) {
                 } else if (!result.filled.length) {
                     toastr.info(result.reason || 'Nothing came back for that field.', 'SillyNPC');
                 } else {
-                    input.value = String(char.profile[field.id] ?? '');
+                    input.value = String(profileFieldValue(char.profile, field));
                     undo.offer(previous);
                 }
             } catch (err) {
@@ -180,7 +177,7 @@ export function renderProfileFields(char, container) {
 
     // Saved fields from an older System remain editable even after that System retires
     // them. Fill uses only active fields.
-    const active = new Set(profileFieldsForCard(char).map(field => field.id));
+    const active = new Set(profileFieldsForCard(char).flatMap(field => [field.id, field.legacyId].filter(Boolean)));
     const legacy = Object.entries(char.profile).filter(([id, value]) =>
         !active.has(id) && String(value ?? '').trim());
     if (legacy.length) {
@@ -264,12 +261,12 @@ function buildPortrait(char) {
 export function buildProfileBlocks(char, { extraBadges = [], includeIdentity = true } = {}) {
     const profile = char?.profile || {};
     const fields = profileFieldsForCard(char);
-    const written = fields.filter(f => String(profile[f.id] ?? '').trim());
+    const written = fields.filter(f => String(profileFieldValue(profile, f)).trim());
     const out = [];
 
     // Age is one word and sits on a line of its own badly, so the short fields ride
     // together as chips while the paragraphs get a block each.
-    const badges = [...written.filter(f => !f.multiline).map(f => chip(f.label, profile[f.id])),
+    const badges = [...written.filter(f => !f.multiline).map(f => chip(f.label, profileFieldValue(profile, f))),
         ...extraBadges];
     if (includeIdentity && badges.length) {
         const identity = document.createElement('div');
@@ -279,9 +276,9 @@ export function buildProfileBlocks(char, { extraBadges = [], includeIdentity = t
     }
 
     for (const field of written.filter(f => f.multiline)) {
-        out.push(block(field.label, profile[field.id]));
+        out.push(block(field.label, profileFieldValue(profile, field)));
     }
-    const active = new Set(fields.map(field => field.id));
+    const active = new Set(fields.flatMap(field => [field.id, field.legacyId].filter(Boolean)));
     const legacy = Object.entries(profile).filter(([id, value]) =>
         !active.has(id) && String(value ?? '').trim());
     if (legacy.length) {
@@ -335,8 +332,8 @@ export async function renderProfileView(char, container) {
     const identity = document.createElement('div');
     identity.className = 'sillynpc-cv-chips sillynpc-cv-identity';
     identity.append(...profileFieldsForCard(char)
-        .filter(field => !field.multiline && String(unified[field.id] ?? '').trim())
-        .map(field => chip(field.label, unified[field.id])));
+        .filter(field => !field.multiline && String(profileFieldValue(unified, field)).trim())
+        .map(field => chip(field.label, profileFieldValue(unified, field))));
     if (aliasNames.length) identity.append(chip('Also called', aliasNames.join(', ')));
     if (identity.childElementCount) left.append(identity);
 
@@ -385,7 +382,7 @@ export async function renderProfileView(char, container) {
         narrative.append(empty);
     }
 
-    renderNpcMemorySection(char, right);
+    renderCharacterMemorySection(char, right);
     body.append(left, right);
     container.append(body);
 

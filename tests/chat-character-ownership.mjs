@@ -1,3 +1,4 @@
+import { profileFieldValue } from '../src/core/profile-fields.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { visibleCharacters, canAutoLinkLorebook } from '../src/characters/character-scope.js';
@@ -74,9 +75,9 @@ const settings = {
 let saves = 0;
 const deps = { getInitialStatValue: value => value };
 bindFrom('../src/tracker/status-persona-state.js',
-    ['collectionAppliesTo', 'getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'resolveProfileFields'],
+    ['collectionAppliesTo', 'getContext', 'power_user', 'user_avatar', 'getSettings', 'saveSettings', 'debugLog', 'resolveProfileFields', 'profileFieldValue'],
     [collectionAppliesTo, () => ({}), { personas: { 'Rhea.png': 'Rhea' } }, 'Rhea.png',
-        () => settings, () => { saves++; }, () => {}, () => []])(deps);
+        () => settings, () => { saves++; }, () => {}, () => [], profileFieldValue])(deps);
 
 test('fresh chat and persona values start at System defaults, without old global inventory', () => {
     const chatA = { player: { name: 'Rhea', personaKey: 'Rhea.png', ...deps.createChatPlayerSeed() } };

@@ -4,7 +4,7 @@ import { getContext } from '../../../../../st-context.js';
 import { power_user } from '../../../../../power-user.js';
 import { getSettings, saveSettings } from '../core/settings.js';
 import { debugLog } from '../core/constants.js';
-import { resolveProfileFields } from '../core/profile-fields.js';
+import { resolveProfileFields, profileFieldValue } from '../core/profile-fields.js';
 
 export function bind(deps) {
 function getCurrentPersonaName() {
@@ -119,7 +119,7 @@ function getPlayerCard() {
     // gains it rather than being replaced by a blank set.
     if (!record.profile || typeof record.profile !== 'object') record.profile = {};
     for (const field of resolveProfileFields('player')) {
-        if (typeof record.profile[field.id] !== 'string') record.profile[field.id] = '';
+        if (typeof record.profile[field.id] !== 'string') record.profile[field.id] = String(profileFieldValue(record.profile, field));
     }
 
     return record;

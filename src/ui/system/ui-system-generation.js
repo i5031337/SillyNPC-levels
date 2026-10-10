@@ -1,3 +1,4 @@
+import { templateStatIds, templateProfileIds } from '../../core/system-fields.js';
 import { buildDraftDetails } from './ui-draft-details.js';
 import { getSettings } from '../../core/settings.js';
 import { getContext } from '../../../../../../st-context.js';
@@ -68,12 +69,12 @@ export function buildSystemGeneration(onSaved = () => {}, { requestFactory, save
         const text = document.createElement('p');
         text.textContent = `${draft.name}: ${draft.metadata.description}`; summary.append(text);
         const list = document.createElement('ul');
-        const playerPending = !run.complete && run.plan?.playerProgression.enabled && !run.accepted.has('stats.player');
+        const playerPending = !run.complete && run.plan?.playerProgression.enabled && !run.accepted.has('stats.character');
         const lines = [
             `Player progression: ${playerPending ? 'pending' : draft.progression.player.enabled ? `${draft.progression.player.pointsPerLevel} skill points per level (${draft.progression.player.assignment})` : 'disabled'}`,
             ...draft.npcTemplates.map(t => {
-                const pending = !run.complete && run.plan?.npcTemplates.find(p => p.id === t.id)?.progression.enabled && !run.accepted.has('stats.npc');
-                return `${t.name}: ${t.statIds.length} stats, ${t.profileIds.length} profile fields; progression ${pending ? 'pending' : t.progression?.enabled ? 'enabled' : 'disabled'}. ${t.description}`;
+                const pending = !run.complete && run.plan?.npcTemplates.find(p => p.id === t.id)?.progression.enabled && !run.accepted.has('stats.character');
+                return `${t.name}: ${templateStatIds(draft, t).length} stats, ${templateProfileIds(draft, t).length} profile fields; progression ${pending ? 'pending' : t.progression?.enabled ? 'enabled' : 'disabled'}. ${t.description}`;
             }),
             ...draft.collections.map(c => `${c.name}: ${c.targets.join(', ')}; rewards ${c.levelUpRewards?.enabled ? `${c.levelUpRewards.mode} (${c.levelUpRewards.schedule.length} scheduled entries, guided interval ${c.levelUpRewards.interval})` : 'disabled'}.`),
             ...run.allAssumptions(),

@@ -1,4 +1,6 @@
-import { liveSystemContext } from './ui-system-context.js';
+import { fieldAssignmentConflicts } from '../../core/system-fields.js';
+import { buildTargetsEditor } from './ui-collection-targets.js';
+import { liveSystemContext, saveSystemEditor } from './ui-system-context.js';
 import { addProfileField, renameProfileField, moveProfileField, retireProfileField } from './ui-system-profile-operations.js';
 
 function control(tag, className, value) {
@@ -20,7 +22,7 @@ function button(label, title, action, disabled = false) {
 }
 
 function rowFor(field, fields, onRefresh, context) {
-    const { saveSettings } = context;
+    const saveSettings = () => saveSystemEditor(context);
     const row = document.createElement('div');
     row.className = 'sillynpc-system-profile-row';
     if (field.retired) row.classList.add('is-retired');
@@ -31,6 +33,11 @@ function rowFor(field, fields, onRefresh, context) {
     name.placeholder = 'Field name';
     name.setAttribute('aria-label', 'Profile field name');
     name.addEventListener('change', () => {
+        if (fieldAssignmentConflicts(fields, field, { name: name.value }).length) {
+            toastr.error('These actors already have a profile field with this name.', 'SillyNPC');
+            name.value = field.label;
+            return;
+        }
         if (!renameProfileField(field, name.value)) { name.value = field.label; return; }
         saveSettings();
     });
@@ -48,7 +55,13 @@ function rowFor(field, fields, onRefresh, context) {
     }
     header.append(button(field.retired ? 'Restore' : 'Retire',
         field.retired ? 'Show this field again' : 'Hide this field while preserving existing values',
-        () => { retireProfileField(field, !field.retired); saveSettings(); onRefresh(); }));
+        () => {
+            if (field.retired && fieldAssignmentConflicts(fields, field).length) {
+                toastr.error('These actors already have a profile field with this name. Change its name or targets before restoring it.', 'SillyNPC');
+                return;
+            }
+            retireProfileField(field, !field.retired); saveSettings(); onRefresh();
+        }));
 
     const guidance = control('textarea', 'profile-guidance', field.guidance || '');
     guidance.rows = 2;
@@ -63,12 +76,16 @@ function rowFor(field, fields, onRefresh, context) {
     placeholder.addEventListener('input', () => { field.placeholder = placeholder.value; saveSettings(); });
 
     const multiline = document.createElement('label');
+    multiline.className = 'sillynpc-check-group';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.className = 'profile-text-section';
     checkbox.checked = field.multiline === true;
     checkbox.addEventListener('change', () => { field.multiline = checkbox.checked; saveSettings(); });
-    multiline.append(checkbox, ' Multiline editor');
+    multiline.append(checkbox, ' Display as text section');
+    multiline.title = 'Unchecked fields display as compact badges. All profile editors support multiple lines.';
     const imageLabel = document.createElement('label');
+    imageLabel.className = 'sillynpc-check-group';
     const imageCheckbox = document.createElement('input');
     imageCheckbox.type = 'checkbox';
     imageCheckbox.className = 'profile-image-prompt';
@@ -78,23 +95,29 @@ function rowFor(field, fields, onRefresh, context) {
         saveSettings();
     });
     imageLabel.append(imageCheckbox, ' Include in image prompt');
-    row.append(header, guidance, placeholder, multiline, imageLabel);
+    const displayOptions = document.createElement('div');
+    displayOptions.className = 'sillynpc-system-profile-options';
+    displayOptions.append(multiline, imageLabel);
+    row.append(header, buildTargetsEditor(field, () => {
+        if (fieldAssignmentConflicts(fields, field).length) {
+            toastr.error('These actors already have a profile field with this name. Rename it or choose other targets.', 'SillyNPC');
+            return false;
+        }
+        saveSettings(); onRefresh();
+    }, context.definition().npcTemplates), guidance, placeholder, displayOptions);
     return row;
 }
 
-export function buildProfilesEditor(scope, onRefresh, context = liveSystemContext) {
-    const { saveSettings } = context;
+export function buildProfilesEditor(onRefresh, context = liveSystemContext) {
+    const saveSettings = () => saveSystemEditor(context);
     const wrap = document.createElement('div');
     wrap.className = 'sillynpc-system-profiles';
     const definition = context.definition();
-    const fields = definition?.profiles?.[scope];
+    const fields = definition?.profiles;
     if (!fields) {
         wrap.textContent = 'Select a System to edit its profile fields.';
         return wrap;
     }
-    const heading = document.createElement('p');
-    heading.textContent = `${scope === 'player' ? 'Player' : 'NPC'} profile fields. IDs stay fixed when names change. Retired fields keep their saved values.`;
-    wrap.appendChild(heading);
     fields.filter(field => !field.retired).forEach(field => wrap.appendChild(rowFor(field, fields, onRefresh, context)));
     const add = document.createElement('div');
     add.className = 'sillynpc-system-profile-add';
@@ -103,6 +126,10 @@ export function buildProfilesEditor(scope, onRefresh, context = liveSystemContex
     label.placeholder = 'New field name';
     label.setAttribute('aria-label', 'New profile field name');
     const addField = () => {
+        if (fieldAssignmentConflicts(fields, { label: label.value, targets: ['player', 'npc'] }).length) {
+            toastr.error('A profile field with this name already exists. Assign that field to more actors instead.', 'SillyNPC');
+            return;
+        }
         if (!addProfileField(fields, label.value)) return;
         saveSettings();
         onRefresh();
@@ -110,7 +137,7 @@ export function buildProfilesEditor(scope, onRefresh, context = liveSystemContex
     label.addEventListener('keydown', event => { if (event.key === 'Enter') addField(); });
     add.append(label, button('Add field', 'Add a profile field', addField));
     wrap.appendChild(add);
-    if (scope === 'npc') wrap.appendChild(buildMemoryControls(definition, saveSettings, context.refreshMemoryButton));
+    wrap.appendChild(buildMemoryControls(definition, saveSettings, context.refreshMemoryButton));
     const retired = fields.filter(field => field.retired);
     if (retired.length) {
         const title = document.createElement('h4');

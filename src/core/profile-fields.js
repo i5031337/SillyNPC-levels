@@ -1,3 +1,4 @@
+import { systemProfileFields } from './system-fields.js';
 import { setNpcTemplateSettingsProvider, npcProfileIdsFor } from './npc-templates.js';
 import { NPC_LORE_FIELDS, PROFILE_FIELDS } from './constants-profile.js';
 
@@ -11,10 +12,11 @@ export function setProfileSettingsProvider(provider) {
 
 /** The active System is the authority for fields shown and requested at runtime. */
 export function resolveProfileFieldsFromSystem(system, scope) {
-    const fields = system?.profiles?.[scope];
+    const fields = system?.profiles ? systemProfileFields(system, scope) : null;
     if (!Array.isArray(fields)) return null;
     return fields.filter(field => field && !field.retired && field.id).map(field => ({
         id: field.id,
+        ...(field.legacyId ? { legacyId: field.legacyId } : {}),
         label: field.label || field.id,
         hint: field.guidance ?? field.hint ?? '',
         placeholder: field.placeholder || '',
@@ -49,4 +51,9 @@ export function profileStrings(profile) {
     return Object.fromEntries(Object.entries(profile || {})
         .filter(([, value]) => typeof value === 'string' && value.trim())
         .map(([id, value]) => [id, value.trim()]));
+}
+
+/** Canonical IDs take precedence; migrated collisions retain readable saved prose. */
+export function profileFieldValue(profile, field) {
+    return profile?.[field.id] ?? (field.legacyId ? profile?.[field.legacyId] : undefined) ?? '';
 }

@@ -10,7 +10,7 @@ import { PROFILE_FIELDS, NPC_LORE_FIELDS, anyProfileFieldUnlocked } from '../src
 import { formatLoreContent, parseLoreContent, parseGeneratedProfileFields, mergeLoreValues } from '../src/lore/lore-format.js';
 import { DEFAULT_LORE_PROMPT } from '../src/prompts/default-prompt-texts.js';
 import { loreReplyWasTruncated, parseLoreReply } from '../src/lore/lore-reply.js';
-import { resolveProfileFields, resolveProfileFieldsFromSystem, setProfileSettingsProvider, profileStrings } from '../src/core/profile-fields.js';
+import { resolveProfileFields, resolveProfileFieldsFromSystem, setProfileSettingsProvider, profileStrings, profileFieldValue } from '../src/core/profile-fields.js';
 
 test('player profiles use player fields and preserve additional lore and memories', () => {
     const prose = '### Hero\nA traveler from the coast.\nKeeps a journal.';
@@ -298,14 +298,14 @@ test('Fill requests missing named fields in one generation call', async () => {
     const fillLore = new Function('loadWorldInfo', 'debugLog', 'getSettings', 'saveSettings',
         'createLoreEntry', 'generateLoreContent', 'saveLoreContent',
         'tryAutoSyncLorebook', 'getChatLorebookName', 'profileFieldsForCard', 'parseLoreContent',
-        'parseGeneratedProfileFields',
+        'parseGeneratedProfileFields', 'profileFieldValue',
         `${source}\nreturn fillLore;`)(
         async () => ({ entries: { 0: { content: entry } } }),
         () => {}, () => ({ defaultLorebook: 'World' }), () => {},
         () => { throw new Error('should reuse linked entry'); },
         async () => { calls++; return { content: formatLoreContent({ age: '34', role: 'Watchmaker' }), tags: '' }; },
         async () => {}, () => false, () => 'World', card => resolveProfileFields(card.isPlayer ? 'player' : 'npc'), parseLoreContent,
-        parseGeneratedProfileFields,
+        parseGeneratedProfileFields, profileFieldValue,
     );
     const char = { name: 'Mira', profile: {}, lorebook: { world: 'World', uid: 0 } };
     assert.equal((await fillLore(char)).ok, true);

@@ -23,7 +23,6 @@
 .sillynpc-reader-report.sillynpc-theme-default,
 .sillynpc-status-box.sillynpc-theme-default,
 .sillynpc-theme-default.sillynpc-hud-container,
-.sillynpc-theme-default.sillynpc-player-sheet,
 .sillynpc-theme-default.sillynpc-manage {
     --sillynpc-bg-primary: var(--SmartThemeBlurTintColor, #1a1a1a);
     --sillynpc-bg-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #fff) 14%, transparent);
@@ -54,7 +53,6 @@
     .sillynpc-reader-report.sillynpc-theme-default,
     .sillynpc-status-box.sillynpc-theme-default,
     .sillynpc-theme-default.sillynpc-hud-container,
-    .sillynpc-theme-default.sillynpc-player-sheet,
     .sillynpc-theme-default.sillynpc-manage {
         --sillynpc-bg-primary: rgb(from var(--SmartThemeBlurTintColor, #1a1a1a) r g b / 1);
     }
@@ -108,7 +106,6 @@
 .sillynpc-theme-terminal .sillynpc-manage,
 .sillynpc-theme-terminal .sillynpc-status-box,
 .sillynpc-theme-terminal.sillynpc-hud-container,
-.sillynpc-theme-terminal.sillynpc-player-sheet,
 .sillynpc-theme-terminal.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
@@ -165,7 +162,6 @@
 .sillynpc-theme-cyberpunk .sillynpc-manage,
 .sillynpc-theme-cyberpunk .sillynpc-status-box,
 .sillynpc-theme-cyberpunk.sillynpc-hud-container,
-.sillynpc-theme-cyberpunk.sillynpc-player-sheet,
 .sillynpc-theme-cyberpunk.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
@@ -234,7 +230,6 @@
 .sillynpc-theme-monochrome .sillynpc-manage,
 .sillynpc-theme-monochrome .sillynpc-status-box,
 .sillynpc-theme-monochrome.sillynpc-hud-container,
-.sillynpc-theme-monochrome.sillynpc-player-sheet,
 .sillynpc-theme-monochrome.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     color: var(--sillynpc-fg-primary);
@@ -297,7 +292,6 @@
 .sillynpc-theme-modern-dark .sillynpc-manage,
 .sillynpc-theme-modern-dark .sillynpc-status-box,
 .sillynpc-theme-modern-dark.sillynpc-hud-container,
-.sillynpc-theme-modern-dark.sillynpc-player-sheet,
 .sillynpc-theme-modern-dark.sillynpc-manage {
     background: radial-gradient(circle at top left, #141418, #050506);
 }
@@ -366,7 +360,6 @@
 .sillynpc-theme-fantasy-hud .sillynpc-manage,
 .sillynpc-theme-fantasy-hud .sillynpc-status-box,
 .sillynpc-theme-fantasy-hud.sillynpc-hud-container,
-.sillynpc-theme-fantasy-hud.sillynpc-player-sheet,
 .sillynpc-theme-fantasy-hud.sillynpc-manage {
     background: var(--sillynpc-bg-primary);
     border: 1px solid var(--sillynpc-border);

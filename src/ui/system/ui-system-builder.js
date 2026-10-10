@@ -35,13 +35,13 @@ export function buildSystemBuilder(onRefresh, context = liveSystemContext) {
 
     const tabList = [
         { id: 'global', label: 'Global' },
-        { id: 'npc', label: 'NPC Stats' },
-        { id: 'npc-profile', label: 'NPC Profile' },
+        { id: 'stats', label: 'Stats' },
+        { id: 'profiles', label: 'Profile fields' },
         { id: 'npc-templates', label: 'NPC Templates' },
-        { id: 'player', label: 'Player Stats' },
-        { id: 'player-profile', label: 'Player Profile' },
-        { id: 'collections', label: 'Collections' }
+        { id: 'progression', label: 'Player progression' },
+        { id: 'collections', label: 'Collections' },
     ];
+    if (!tabList.some(tab => tab.id === activeTab)) activeTab = 'stats';
 
     const renderTabs = () => {
         tabs.replaceChildren();
@@ -74,18 +74,15 @@ export function buildSystemBuilder(onRefresh, context = liveSystemContext) {
     const renderContent = () => {
         content.replaceChildren();
         if (activeTab === 'global') {
-            content.appendChild(buildStatsEditor('Global Stats', 'globalStats', onRefresh, context));
+            content.appendChild(buildStatsEditor('globalStats', onRefresh, context));
         } else if (activeTab === 'npc-templates') {
             content.appendChild(buildNpcTemplatesEditor(onRefresh, context));
-        } else if (activeTab === 'npc') {
-            content.appendChild(buildStatsEditor('NPC Stats', 'npcStats', onRefresh, context));
-        } else if (activeTab === 'player') {
-            content.appendChild(buildStatsEditor('Player Stats', 'playerStats', onRefresh, context));
+        } else if (activeTab === 'stats') {
+            content.appendChild(buildStatsEditor('characterStats', onRefresh, context));
+        } else if (activeTab === 'progression') {
             content.appendChild(buildProgressionEditor({ onRefresh, context }));
-        } else if (activeTab === 'npc-profile') {
-            content.appendChild(buildProfilesEditor('npc', onRefresh, context));
-        } else if (activeTab === 'player-profile') {
-            content.appendChild(buildProfilesEditor('player', onRefresh, context));
+        } else if (activeTab === 'profiles') {
+            content.appendChild(buildProfilesEditor(onRefresh, context));
         } else if (activeTab === 'collections') {
             content.appendChild(buildCollectionsEditor(onRefresh, context));
         }

@@ -2,7 +2,9 @@ import { normalizeTrackerProgression } from '../src/core/progression-config.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { normalizeSystemDefinition } from '../src/core/system-schema.js';
+import { normalizeSystemDefinition, projectSystemTracker, SYSTEM_SCHEMA_VERSION } from '../src/core/system-schema.js';
+
+import { systemStatFields, systemProfileFields } from '../src/core/system-fields.js';
 
 const settings = {
     activeSystem: 'Harbor RPG', characters: [{ id: 'live', name: 'Live' }],
@@ -20,9 +22,9 @@ function loadBind(file, names, values) {
 const bindPresets = loadBind('status-system-presets.js', [
     'getSettings', 'saveSettings', 'defaultSettings', 'normaliseStatDefs',
     'normaliseNpcPersistence', 'normaliseStatUpdatePolicies', 'normalizeSystemDefinition',
-    'debugLog', 'normalizeTrackerProgression',
+    'debugLog', 'normalizeTrackerProgression', 'projectSystemTracker', 'SYSTEM_SCHEMA_VERSION', 'systemStatFields',
 ], [() => settings, () => { saves++; }, { statusTracker: {}, characters: [], personaData: {}, master_items: {} },
-    () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}, normalizeTrackerProgression]);
+    () => {}, () => {}, () => {}, normalizeSystemDefinition, () => {}, normalizeTrackerProgression, projectSystemTracker, SYSTEM_SCHEMA_VERSION, systemStatFields]);
 bindPresets(deps);
 
 test('System switches and creation preserve the user menu text size', () => {
@@ -83,9 +85,10 @@ test('old profile import ignores its world; modern definition import is usable',
     });
     const imported = deps.importSystemPreset(JSON.stringify(modern));
     assert.equal(imported.definition.name, 'Sci-Fi');
-    assert.equal(imported.config.statusTracker.globalStats[0].name, 'Ship');
+    assert.equal(projectSystemTracker(imported.definition).globalStats[0].name, 'Ship');
+    assert.equal(imported.config.globalStats, undefined);
     deps.saveSystemPreset('Sci-Fi');
-    assert.equal(settings.statusTracker.presets['Sci-Fi'].definition.profiles.npc[0].id, 'call-sign');
+    assert.equal(systemProfileFields(settings.statusTracker.presets['Sci-Fi'].definition, 'npc')[0].id, 'call-sign');
     deps.chatHasStarted = () => true;
     deps.getChatSystem = () => 'Harbor RPG';
     assert.equal(deps.setActiveSystem('Sci-Fi'), false);
@@ -115,7 +118,7 @@ test('template definitions survive System capture and modern import', () => {
             profileIds: ['species'], statIds: ['hp'] }],
     });
     deps.importSystemPreset(JSON.stringify(system));
-    settings.statusTracker.npcStats = structuredClone(system.stats.npc);
+    settings.statusTracker.npcStats = structuredClone(systemStatFields(system, 'npc'));
     deps.saveSystemPreset('Mixed Cast');
     assert.deepEqual(settings.statusTracker.presets['Mixed Cast'].definition.npcTemplates, system.npcTemplates);
     assert.equal(settings.statusTracker.presets['Mixed Cast'].definition.legacyNpcTemplateId, undefined);
@@ -149,7 +152,7 @@ test('canonical progression projects into live tracker and survives capture', ()
 });
 
 test('generated fixture imports without activation and retains rules through capture/export', () => {
-    const definition = JSON.parse(readFileSync(new URL('./fixtures/generated-expedition-system.json', import.meta.url), 'utf8'));
+    const definition = normalizeSystemDefinition(JSON.parse(readFileSync(new URL('./fixtures/generated-expedition-system.json', import.meta.url), 'utf8')));
     const before = structuredClone(settings);
     const savedCount = saves;
     const imported = deps.importSystemPreset(JSON.stringify(definition));
@@ -158,13 +161,57 @@ test('generated fixture imports without activation and retains rules through cap
     assert.deepEqual(after, before);
     assert.equal(saves, savedCount + 1);
     assert.deepEqual(imported.definition, definition);
-    assert.equal(imported.config.statusTracker.collections[0].hint, definition.collections[0].guidance);
+    assert.equal(projectSystemTracker(imported.definition).collections[0].hint, definition.collections[0].guidance);
+    assert.equal(imported.config.statusTracker, undefined);
     deps.applySystemPreset(imported);
     deps.saveSystemPreset(definition.name, definition.metadata.description, definition.metadata.author);
     const captured = settings.statusTracker.presets[definition.name].definition;
-    assert.deepEqual(captured.hud.playerStatIds, ['energy']);
+    assert.deepEqual(captured.hud.playerStatIds, definition.hud.playerStatIds);
     assert.deepEqual(captured.progression, definition.progression);
     assert.deepEqual(captured.npcTemplates, definition.npcTemplates);
     assert.deepEqual(captured.collections, definition.collections);
+    assert.deepEqual(captured.stats, definition.stats);
+});
+
+test('capture preserves canonical edits and omits runtime projection catalogs', () => {
+    const system = normalizeSystemDefinition({ schemaVersion: 2, name: 'Shared Edit',
+        stats: { world: [], character: [{ id: 'health', name: 'Health', targets: ['player', 'npc'] }] },
+        profiles: [{ id: 'bio', label: 'Bio', targets: ['player', 'npc'] }], npcTemplates: [], collections: [] });
+    settings.statusTracker.presets['Shared Edit'] = { definition: system, metadata: { name: 'Shared Edit' }, config: {} };
+    system.stats.character[0].name = 'Vitality';
+    settings.statusTracker.playerStats = [{ id: 'health', name: 'Stale projection' }];
+    deps.saveSystemPreset('Shared Edit');
+    const saved = settings.statusTracker.presets['Shared Edit'];
+    assert.equal(saved.definition.stats.character[0].name, 'Vitality');
+    for (const key of ['globalStats', 'playerStats', 'npcStats', 'collections', 'progression', 'npcTemplates']) {
+        assert.equal(Object.hasOwn(saved.config.statusTracker, key), false);
+    }
+});
+
+
+test('capture retains collection and HUD edits made through tracker controls', () => {
+    const definition = normalizeSystemDefinition({ schemaVersion: 2, name: 'Tracker Controls',
+        stats: { world: [], character: [{ id: 'health', name: 'Health', targets: ['player', 'npc'] }] },
+        profiles: [], npcTemplates: [], collections: [{ id: 'gear', name: 'Gear', targets: ['player'], fields: [] }],
+        hud: { playerStatIds: ['health'], npcStatIds: ['health'], worldStatIds: [] } });
+    const preset = deps.migratePreset(definition.name, { definition });
+    settings.statusTracker.presets[definition.name] = preset;
+    deps.applySystemPreset(preset);
+    settings.statusTracker.collections[0].name = 'Equipment';
+    settings.statusTracker.collections[0].targets = ['player', 'npc'];
+    settings.statusTracker.collections[0].guidance = 'Track carried equipment.';
+    settings.statusTracker.hudLayout = 'pips';
+    settings.statusTracker.showGlobalStats = false;
+    settings.statusTracker.showNpcPortraits = false;
+    deps.saveSystemPreset(definition.name);
+    const captured = settings.statusTracker.presets[definition.name].definition;
+    assert.equal(captured.collections[0].name, 'Equipment');
+    assert.deepEqual(captured.collections[0].targets, ['player', 'npc']);
+    assert.equal(captured.collections[0].guidance, 'Track carried equipment.');
+    assert.equal(captured.hud.layout, 'pips');
+    assert.equal(captured.hud.showWorld, false);
+    assert.equal(captured.hud.showNpcPortraits, false);
+    assert.deepEqual(captured.hud.playerStatIds, ['health']);
+    assert.deepEqual(captured.hud.npcStatIds, ['health']);
     assert.deepEqual(captured.stats, definition.stats);
 });

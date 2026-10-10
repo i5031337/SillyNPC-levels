@@ -69,6 +69,9 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `tests/ui-collection-smoke.py` | Collection rendering and reward editor controls, validation, and narrow layouts. |
 | `tests/status-apply-update.mjs` | Tracker update, dry-run, and no-chat behavior tests. |
 | `tests/settings-migration.mjs` | Settings import repair and version-gated HUD migration tests. |
+| `tests/field-assignments.mjs` | Shared field assignment overlap and conflict rules. |
+| `tests/shared-stat-renames.mjs` | Assignment-scoped stat renames and inactive persona readings. |
+| `tests/ui-cast-shared.py` | Isolated player/NPC Cast layouts, complete stat commits, and chat/persona guards. |
 | `tests/system-schema.mjs` | System definition normalization, legacy imports, and retired HUD layouts. |
 | `tests/profile-fields-ui.mjs` | Profile rendering and System profile field edit operations. |
 | `tests/stat-model-bounds.mjs` | Numeric bounds, model sanitization, and rejection warnings. |
@@ -91,7 +94,7 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/entry/entry-history-notes.js` | Manage copied historical notes on messages. |
 | `src/core/constants.js` | Extension constants, themes, profile schema, and built-in writing/image prompts. |
 | `src/core/constants-base.js` | Base extension, theme, layout, and image constants. |
-| `src/core/constants-profile.js` | Built-in player and NPC profile fields and defaults. |
+| `src/core/constants-profile.js` | Built-in character profile fields and default assignments. |
 | `src/core/npc-templates.js` | Resolve NPC templates and their selected stats and profile fields; compact reader assignment guidance. |
 | `src/core/profile-fields.js` | Resolve the active System's player and NPC fields, with built-in defaults. |
 | `src/core/profile-memories.js` | Normalize and edit bounded character memory lists. |
@@ -115,7 +118,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/generation/generate-system.js` | Sequential generation, bounded repair, retry, cancellation, progress, and assembly. |
 | `src/generation/request.js` | Captured reader connection adapter and usage reporting without connection fallback. |
 | `src/generation/draft-context.js` | Isolated Builder projection, draft capture, and local rename callbacks. |
-| `src/core/system-schema.js` | Versioned reusable System definitions, profile fields, and bounded legacy preset normalization. |
+| `src/core/system-fields.js` | Resolve shared stat and profile catalogs for player, NPC, and template assignments. |
+| `src/core/system-schema.js` | Versioned shared System catalogs, target assignments, and bounded legacy preset normalization. |
 | `src/core/progression-config.js` | Canonical player and per-template progression configuration and configured stat resolution. |
 | `src/core/collection-rewards.js` | Pure collection reward normalization, typed entries, schedules, guided intervals, targeting, and duplicate checks. |
 | `src/core/utils.js` | Image preparation, JSON repair, stat display, downloads, and DOM helpers. |
@@ -278,8 +282,8 @@ SillyTavern loads `index.js` and `style.css` from `manifest.json`. The JavaScrip
 | `src/ui/collections/ui-item-library.js` | Master item library. |
 | `src/ui/collections/ui-item-library-sections.js` | Item rows, rules, and tombstone sections. |
 | `src/ui/story/ui-lorebook-section.js` | Lorebook settings and controls. |
-| `src/ui/characters/ui-player-sheet.js` | Player tab view, shared HUD/avatar open action, and inline edits. |
-| `src/ui/characters/ui-player-sections.js` | Player sheet content sections. |
+| `src/ui/characters/ui-character-memory-section.js` | Shared memory controls with actor-specific storage. |
+| `src/ui/characters/ui-player-sheet.js` | Route the active persona into the shared Cast view and expose the HUD/avatar open action. |
 | `src/ui/characters/ui-memories.js` | Editable active and archived memory lists on character sheets. |
 | `src/ui/characters/ui-portrait.js` | Portrait gallery and lightbox. |
 | `src/ui/characters/ui-profile.js` | Active System profile fields and saved legacy field display/editing. |
