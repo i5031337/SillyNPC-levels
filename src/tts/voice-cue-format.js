@@ -26,6 +26,11 @@ export function stripVoiceCueNodes(container) {
     if (!container?.ownerDocument) return;
     // SillyTavern turns the annotation's quoted values into separate <q> nodes.
     // Remove the complete block before walking text nodes.
+    // Speech discovery also passes a paragraph itself as the clone root.
+    if (container.matches?.('p, li, blockquote') && CUE.test(container.textContent)) {
+        container.replaceChildren();
+        return;
+    }
     container.querySelectorAll('p, li, blockquote').forEach(block => {
         if (CUE.test(block.textContent)) block.remove();
     });

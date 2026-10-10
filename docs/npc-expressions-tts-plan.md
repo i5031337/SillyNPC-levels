@@ -518,6 +518,11 @@ The parser accepts only a complete annotation line for a recognized, non-persona
 speaker with quoted dialogue in the same reply. Rendering removes the annotation
 before dialogue discovery and TTS segmentation; SillyTavern's formatter wraps
 the attribute values in `<q>` nodes, so removal handles that markup as well.
+Speech discovery also strips a cue when the cloned paragraph is itself the root,
+so playback does not depend on the display reprocessing event removing it first.
+The read-only Linux regression `python3 tests/ui-voice-cues.py` checks this with
+the host formatter and verifies that the description is encoded in the Qwen
+voice field while the speech input contains only the NPC's dialogue.
 Annotations inside code fences, malformed lines, and cues for speakers absent
 from the reply are ignored. Do not put the cue inside spoken quotes or attach it
 to a dialogue line; the existing dialogue parser remains the attribution source.
