@@ -62,13 +62,18 @@ async function main() {
             await sleep(100);
         }
         const root = await evaluate(`new URL('.', [...document.scripts].find(s => s.src.includes('SillyNPC-levels/index.js') || s.src.includes('SillyNPC-XP/index.js')).src).href`);
-        const fixture = `const out={root:${JSON.stringify(root)}};let section,designSection,settings,savedTts,savedCharacters,hostContext,chatLength,fixtureMes,originalFetch,originalPlay,nativeTts,savedNative;try {
+        const fixture = `const out={root:${JSON.stringify(root)}};let section,designSection,settings,savedTts,savedCharacters,hostContext,chatLength,fixtureMes,cueMes,originalFetch,originalPlay,nativeTts,savedNative;try {
             try{await import(${JSON.stringify(root + 'index.js')});out.entryOk=true}catch(error){out.entryError=String(error.stack||error)}
             for(let i=0;i<200&&!document.getElementById('sillynpc-tts-settings');i++)
                 await new Promise(r=>setTimeout(r,100));
             const {getSettings}=await import(${JSON.stringify(root + 'src/core/settings.js')});
             const {buildVoicesSection}=await import(${JSON.stringify(root + 'src/ui/characters/ui-voices.js')});
             const {readSpeechUnits}=await import(${JSON.stringify(root + 'src/tts/speech-units.js')});
+            const {stripVoiceCueNodes}=await import(${JSON.stringify(root + 'src/tts/voice-cue-format.js')});
+            const {readDialogueRecords}=await import(${JSON.stringify(root + 'src/chat/dialogue-presentation.js')});
+            const {captureVoiceCues,cardWithVoiceCue}=await import(${JSON.stringify(root + 'src/tts/voice-cues.js')});
+            const {resolveUnitSpeech}=await import(${JSON.stringify(root + 'src/tts/tts-settings.js')});
+            const {dialogueFormatText}=await import(${JSON.stringify(root + 'src/prompts/dialogue-format.js')});
             const {previewNpcVoice}=await import(${JSON.stringify(root + 'src/tts/npc-tts.js')});
             const {playNpcMessage,renderNpcTtsControl,stopNpcTts}=await import(${JSON.stringify(root + 'src/tts/npc-tts.js')});
             settings=getSettings();savedTts=structuredClone(settings.tts);
@@ -180,13 +185,49 @@ async function main() {
                 out.designedCalls=out.calls.slice(-3);
                 const payload=out.designedCalls[1].voice.split(':')[1].replace(/-/g,'+').replace(/_/g,'/');
                 out.designFields=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload),c=>c.charCodeAt(0))));
+                if(!realDesign){
+                    out.cuePrompt=dialogueFormatText().includes('[[NPC_VOICE speaker=');
+                    const cueId=hostContext.chat.length;
+                    hostContext.chat.push({mes:'[[NPC_VOICE speaker="Cue Fixture" description="adult low warm voice"]]\\n\\nCue Fixture: "Ready."',swipe_id:0,is_user:false});
+                    const cueContext={...hostContext,chatMetadata:{},getCurrentChatId:()=> 'cue-fixture',saveMetadataDebounced:()=>{}};
+                    cueMes=document.createElement('div');cueMes.className='mes';cueMes.setAttribute('mesid',String(cueId));
+                    const cueText=document.createElement('div');cueText.className='mes_text';
+                    cueText.innerHTML=hostContext.messageFormatting(hostContext.chat[cueId].mes,'',false,false,cueId);
+                    cueMes.append(cueText);
+                    document.querySelector('#chat').append(cueMes);
+                    stripVoiceCueNodes(cueMes.querySelector('.mes_text'));
+                    out.cueHidden=!cueMes.textContent.includes('NPC_VOICE');
+                    out.cueRecords=readDialogueRecords(cueMes,{context:cueContext}).map(record=>[record.speakerLabel,record.text,record.isPersona]);
+                    out.cueCaptured=captureVoiceCues(cueId,cueContext);
+                    const cueUnits=readSpeechUnits(cueMes,{context:cueContext});
+                    out.cueUnits=cueUnits.map(unit=>[unit.kind,unit.text]);
+                    const cueChoice=resolveUnitSpeech(cueUnits[0],settings.tts,
+                        cardWithVoiceCue(null,cueUnits[0].speakerLabel,cueContext));
+                    out.cueModel=cueChoice.model;
+                    const encoded=cueChoice.voice.split(':')[1].replace(/-/g,'+').replace(/_/g,'/');
+                    out.cueFields=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))));
+                    out.cueStored=Boolean(cueContext.chatMetadata.sillynpc_voice_cues?.['cue fixture']);
+                    const linked={id:'linked-card',name:'Cue Fixture',presentation:{voiceDesign:{description:'',version:1}}};
+                    out.cueLinkedId=cardWithVoiceCue(linked,'Cue Fixture',cueContext).id;
+                    out.cueAliasId=cardWithVoiceCue({id:'alias-card',name:'Other Name',
+                        aliases:[{pattern:'Cue Fixture'}],presentation:{voiceDesign:{description:'',version:1}}},
+                        'Other Name',cueContext).id;
+                    linked.presentation.voiceDesign.description='Manual voice';
+                    out.cueManualId=cardWithVoiceCue(linked,'Cue Fixture',cueContext).id;
+                    hostContext.chat[cueId].mes=hostContext.chat[cueId].mes.replace('adult low warm voice','different voice');
+                    out.cueRepeated=captureVoiceCues(cueId,cueContext);
+                    out.cueSticky=cueContext.chatMetadata.sillynpc_voice_cues['cue fixture'].description;
+                    const otherCueContext={...cueContext,chatMetadata:{},getCurrentChatId:()=> 'other-chat'};
+                    captureVoiceCues(cueId,otherCueContext);
+                    out.cueOtherId=otherCueContext.chatMetadata.sillynpc_voice_cues?.['cue fixture']?.id;
+                }
             }
             stopNpcTts();
         }catch(error){out.error=String(error.stack||error)}finally{
             if(originalFetch)window.fetch=originalFetch;
             if(originalPlay)HTMLMediaElement.prototype.play=originalPlay;
             if(nativeTts&&savedNative)Object.assign(nativeTts,savedNative);
-            fixtureMes?.remove();if(hostContext&&chatLength!==undefined)hostContext.chat.splice(chatLength);
+            cueMes?.remove();fixtureMes?.remove();if(hostContext&&chatLength!==undefined)hostContext.chat.splice(chatLength);
             section?.remove();designSection?.remove();if(settings&&savedTts)settings.tts=savedTts;
             if(settings&&savedCharacters)settings.characters=savedCharacters}
         document.documentElement.setAttribute('data-npc-voices-fixture',JSON.stringify(out));`;
@@ -223,6 +264,17 @@ async function main() {
                     || parsed.designFields?.npc_id !== 'sn_mira-tts-fixture_v3'
                     || parsed.designFields?.instructions !== 'A bright, clear voice.'
                     || parsed.designFields?.max_new_tokens !== 128
+                    || (!process.argv.includes('--designed-real-playback') &&
+                        (!parsed.cuePrompt || !parsed.cueHidden || !parsed.cueStored || parsed.cueCaptured !== 1
+                            || parsed.cueUnits?.map(unit=>unit.join(':')).join('|') !== 'dialogue:Ready.'
+                            || parsed.cueModel !== 'qwen3-tts'
+                            || parsed.cueFields?.instructions !== 'adult low warm voice'
+                            || !parsed.cueFields?.npc_id?.startsWith('sn_')
+                            || parsed.cueLinkedId !== parsed.cueFields.npc_id.slice(3,-3)
+                            || parsed.cueAliasId !== parsed.cueLinkedId
+                            || parsed.cueManualId !== 'linked-card' || parsed.cueRepeated !== 0
+                            || parsed.cueSticky !== 'adult low warm voice'
+                            || parsed.cueOtherId === parsed.cueLinkedId))
                     || (process.argv.includes('--designed-real-playback') &&
                         (parsed.audio?.length !== 3 || parsed.audio.some(item => item.status !== 200
                             || item.bytes < 1000 || item.seconds <= 0 || item.rms <= 0.001))))

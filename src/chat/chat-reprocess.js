@@ -20,10 +20,14 @@ import { eventSource } from '../../../../../events.js';
 import { messageBeats, MESSAGE_RENDERED_EVENT } from '../story/beats.js';
 import { chatRenderSignature } from './chat-signature.js';
 import { applyPlayerPortrait, injectCharacterImages } from './chat-portraits.js';
+import { stripVoiceCueNodes } from '../tts/voice-cue-format.js';
 
 function runReprocessLogic(mesEl) {
     if (!mesEl) return;
     try {
+        const message = getContext()?.chat?.[Number(mesEl.getAttribute('mesid'))];
+        if (message && !message.is_user && !message.is_system)
+            stripVoiceCueNodes(mesEl.querySelector('.mes_text'));
         if (!getSettings().enabled) {
             mesEl.querySelectorAll('.sillynpc-refresh-btn, .sillynpc-tracker-eye, .sillynpc-status-tracker-container, .sillynpc-review-panel, .sillynpc-reader-report').forEach(el => el.remove());
             applyPlayerPortrait(mesEl);

@@ -391,10 +391,13 @@ paths have regression tests under `tests/`.
 | `src/tts/speech-queue.js` | Cancellable sequential synthesis and audio playback. |
 | `src/tts/openai-speech.js` | OpenAI-compatible synthesis through the host server proxy and HTML audio playback. |
 | `src/tts/npc-tts.js` | SillyNPC Play/Stop controls, automatic gating, previews, and runtime voice routing. |
+| `src/tts/voice-cue-format.js` | Narrator cue validation and removal from rendered dialogue and narration. |
+| `src/tts/voice-cues.js` | Chat-scoped provisional voice identities and first-reply cue capture. |
 | `src/ui/tts/ui-tts-settings.js` | Shared built-in endpoint display, independent model and narrator settings, and automatic playback controls. |
 | `src/ui/characters/ui-voices.js` | Per-NPC voice selection, missing-binding status, and deliberate preview. |
 | `styles/16-npc-expressions.css` | NPC expression and voice editor layout. |
 | `tests/npc-expressions.mjs` | Classification order, caching, failure recovery, variants, cancellation, and event gating. |
 | `tests/ui-npc-expressions.py` | Unsaved live portrait and editor checks with mocked classification and sprite packs. |
 | `tests/npc-tts.mjs` | Speech segmentation, queue ordering/cancellation, voice fallback, and completion gating. |
+| `tests/voice-cues.mjs` | Complete narrator cue syntax, speaker matching, and rejection of fenced or malformed cues. |
 | `tests/ui-npc-voices.cjs` | Windows headless Edge check of settings, manual/automatic routing, duplicate guard, and optional real preview. |

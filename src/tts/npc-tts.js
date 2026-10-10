@@ -10,6 +10,7 @@ import { hostSpeechEndpoint, synthesizeSpeech, playSpeechAudio } from './openai-
 import { normalizeTtsSettings, resolveUnitSpeech, ttsConfigError, QWEN_MODEL } from './tts-settings.js';
 import { builtInAutoTtsEnabled } from '../ui/tts/ui-tts-settings.js';
 import { wireSpeechEvents } from './speech-events.js';
+import { captureVoiceCues, cardWithVoiceCue } from './voice-cues.js';
 
 const messageElement = id => document.querySelector(`#chat .mes[mesid="${Number(id)}"]`);
 let previewController = null;
@@ -51,10 +52,11 @@ export async function previewNpcVoice(voice, card) {
     const issue = ttsConfigError(config, hostSpeechEndpoint());
     if (issue) throw new Error(issue);
     const unit = { kind: 'dialogue', text: 'Hello. It is good to meet you.' };
-    if (card && config.npcModel === QWEN_MODEL && !card.presentation?.voiceDesign?.description)
+    const designCard = cardWithVoiceCue(card, card?.name);
+    if (card && config.npcModel === QWEN_MODEL && !designCard?.presentation?.voiceDesign?.description)
         throw new Error('Describe this NPC voice first.');
     const choice = card && config.npcModel === QWEN_MODEL
-        ? resolveUnitSpeech(unit, config, card) : { voice, model: config.model };
+        ? resolveUnitSpeech(unit, config, designCard) : { voice, model: config.model };
     if (config.npcModel !== QWEN_MODEL && !config.voices.includes(voice))
         throw new Error('Voice is not in the SillyNPC voice list.');
     if (!choice.voice) throw new Error('Describe this NPC voice first.');
@@ -77,11 +79,13 @@ export async function playNpcMessage(messageId, { automatic = false } = {}) {
     if (!message || message.is_user || message.is_system) return;
     const element = messageElement(id);
     if (!element) return;
+    captureVoiceCues(id);
     const units = readSpeechUnits(element);
     if (!units.length) return;
     const cards = new Map(getActiveCharacters().map(card => [card.id, card]));
     const prepared = units.map(unit => ({ ...unit,
-        ...resolveUnitSpeech(unit, config, cards.get(unit.npcId)), config }));
+        ...resolveUnitSpeech(unit, config,
+            unit.kind === 'dialogue' ? cardWithVoiceCue(cards.get(unit.npcId), unit.speakerLabel) : null), config }));
     if (!prepared.some(unit => unit.voice)) return;
     configSignature = JSON.stringify(config);
     endpointSignature = hostSpeechEndpoint();
@@ -120,5 +124,10 @@ export function initNpcTts() {
         revision: id => dialogueRevision(getContext(), id),
         sourceToken: id => getContext()?.chat?.[id],
         defer: requestAnimationFrame,
-        complete: id => playNpcMessage(id, { automatic: true }) });
+        complete: id => {
+            const settings = getSettings();
+            if (settings.enabled && settings.tts?.enabled && settings.tts.npcModel === QWEN_MODEL)
+                captureVoiceCues(id);
+            return playNpcMessage(id, { automatic: true });
+        } });
 }

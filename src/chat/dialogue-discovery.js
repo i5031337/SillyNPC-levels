@@ -1,4 +1,5 @@
 import { dialogueLabels } from './dialogue-line.js';
+import { stripVoiceCueNodes } from '../tts/voice-cue-format.js';
 
 const OPEN_QUOTES = new Map([['"', '"'], ['“', '”'], ['«', '»'], ['「', '」'], ['『', '』'], ['＂', '＂']]);
 const BLOCKS = new Set(['P', 'BLOCKQUOTE', 'LI']);
@@ -138,6 +139,7 @@ export function discoverDialogueLines(container, {
 /** Strip visual decorations from a clone so reads are independent of display settings. */
 export function dialogueContentClone(container) {
     const clone = container.cloneNode(true);
+    stripVoiceCueNodes(clone);
     clone.querySelectorAll('.sillynpc-chat-avatar, .sillynpc-alias-link').forEach(el => el.remove());
     clone.querySelectorAll('.sillynpc-speech-text, .sillynpc-speaker-name, .sillynpc-speaker-colon')
         .forEach(wrapper => wrapper.replaceWith(...wrapper.childNodes));

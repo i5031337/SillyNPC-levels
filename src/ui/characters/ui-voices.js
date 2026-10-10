@@ -4,6 +4,7 @@ import { saveSettings, getSettings } from '../../core/settings.js';
 import { NPC_TTS_PROVIDER, QWEN_MODEL } from '../../tts/tts-settings.js';
 import { previewNpcVoice, stopNpcTts } from '../../tts/npc-tts.js';
 import { getContext } from '../../../../../../st-context.js';
+import { voiceCueFor } from '../../tts/voice-cues.js';
 
 export function buildVoicesSection(card, { save = () => {
     if (isChatCharacter(card.id)) getContext()?.saveMetadataDebounced?.();
@@ -29,12 +30,13 @@ export function buildVoicesSection(card, { save = () => {
     const refresh = () => {
         config = getSettings().tts;
         const presentation = normalizeCharacterPresentation(card);
+        const cue = voiceCueFor(card.name, card);
         const saved = presentation.voices;
         const binding = saved[NPC_TTS_PROVIDER] || saved['OpenAI Compatible'];
         const designed = config.npcModel === QWEN_MODEL;
         descriptionLabel.hidden = !designed;
         version.hidden = !designed;
-        description.value = presentation.voiceDesign.description;
+        description.value = presentation.voiceDesign.description || cue?.description || '';
         version.textContent = `Voice version ${presentation.voiceDesign.version}. Changing the description creates a new voice on the next spoken line.`;
         select.replaceChildren();
         for (const [value, label] of [['default', 'Use narrator voice'], ['disabled', 'Silent'],
@@ -52,12 +54,14 @@ export function buildVoicesSection(card, { save = () => {
         } else {
             select.value = designed ? (binding?.mode === 'disabled' ? 'disabled' : 'default')
                 : binding?.mode === 'voice' ? `voice:${voice}` : binding?.mode || 'default';
-            status.textContent = designed ? 'Describe this NPC voice before playback. Preview also creates its persistent voice.'
+            status.textContent = designed ? (cue && !presentation.voiceDesign.description
+                ? 'Using the narrator voice cue for this chat. Edit to create a new voice version.'
+                : 'Describe this NPC voice before playback. Preview also creates its persistent voice.')
                 : config.voices.length ? `${config.voices.length} voices configured.`
                     : 'Add voices in SillyNPC speech settings.';
         }
         preview.disabled = !config.enabled || (designed
-            ? select.value === 'disabled' || !presentation.voiceDesign.description
+            ? select.value === 'disabled' || !description.value
             : !select.value.startsWith('voice:'));
     };
     select.addEventListener('change', () => {
@@ -70,13 +74,13 @@ export function buildVoicesSection(card, { save = () => {
         stopNpcTts();
         save();
         preview.disabled = !config.enabled || (config.npcModel === QWEN_MODEL
-            ? select.value === 'disabled' || !card.presentation.voiceDesign.description : !voice);
+            ? select.value === 'disabled' || !description.value : !voice);
         status.textContent = 'SillyNPC voice preference saved.';
     });
     description.addEventListener('change', () => {
         const design = normalizeCharacterPresentation(card).voiceDesign;
         const next = description.value.trim().slice(0, 500);
-        if (next === design.description) return;
+        if (next === (design.description || voiceCueFor(card.name, card)?.description || '')) return;
         design.description = next;
         design.version = Number.isSafeInteger(design.version + 1) ? design.version + 1 : 1;
         stopNpcTts(); save(); refresh();
@@ -88,7 +92,7 @@ export function buildVoicesSection(card, { save = () => {
         try { await previewVoice(voice, card); status.textContent = 'Voice preview finished.'; }
         catch (error) { status.textContent = `Voice preview failed: ${error?.message || error}`; }
         preview.disabled = !config.enabled || (config.npcModel === QWEN_MODEL
-            ? select.value === 'disabled' || !card.presentation.voiceDesign.description
+            ? select.value === 'disabled' || !description.value
             : !select.value.startsWith('voice:'));
     });
     refresh();

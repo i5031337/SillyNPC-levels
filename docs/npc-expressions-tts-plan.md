@@ -1,6 +1,6 @@
 # NPC Expressions and TTS integration plan
 
-Status: Stages 1, 2, and 4 implemented, including designed NPC voices; Stage 3 host adapter superseded. Updated 2026-10-09.
+Status: Stages 1, 2, and 4 implemented, including designed NPC voices and narrator voice cues; Stage 3 host adapter superseded. Updated 2026-10-09.
 
 Add mood sprites and individual voices to SillyNPC NPCs using the dialogue lines
 SillyNPC already recognizes and highlights. Expressions can reuse SillyTavern's
@@ -75,7 +75,7 @@ the applicable TTS filters run.
 
 Resolve aliases to card IDs. A player/persona line remains distinguishable and does
 not inherit an NPC voice. For an unknown speaker without a card, retain the existing
-portrait fallback and omit NPC-specific presentation until a card exists.
+portrait fallback; a later narrator cue can provide a provisional TTS voice.
 
 The module must work when optional color or portrait display settings are off.
 If resolution currently depends on visible decoration, expose the existing
@@ -221,8 +221,9 @@ Build ordered speech units from rendered story content and shared dialogue
 discovery. Narration paragraphs use the narrator voice. A recognized speaker
 paragraph is split around its accepted quote spans: quoted passages use that
 NPC's voice; surrounding prose and actions use narration. Exclude speaker labels,
-code, hidden text, tracker panels, and widgets. Unknown speakers and persona
-lines use the narrator voice until explicitly configured. Preserve chat, swipe,
+code, hidden text, tracker panels, and widgets. Unknown speakers use the narrator
+voice until a narrator cue or card description is available; persona lines use
+the narrator voice. Preserve chat, swipe,
 edit, and displayed-text revision identity for every unit.
 
 Offer SillyNPC Play and Stop controls for historical messages and an opt-in
@@ -499,3 +500,39 @@ NPC model, and built-in automatic TTS on. For ordinary playback, set SillyNPC's
 narrator model to `kokoro`, NPC model to `qwen3-tts`, and disable built-in
 automatic TTS if SillyNPC automatic speech is desired. Audible quality remains a
 manual listening check.
+
+### Narrator voice cues on first appearance
+
+When SillyNPC speech uses `qwen3-tts`, its dialogue-format prompt asks the story
+narrator for a brief voice cue when a new NPC first speaks. This adds no separate
+model request. The narrator keeps `Name: "dialogue"` unchanged and puts the cue
+on its own line before the first dialogue, separated by a blank line:
+
+```text
+[[NPC_VOICE speaker="Mira" description="adult feminine voice, low and warm, measured pace"]]
+
+Mira: "Wait."
+```
+
+The parser accepts only a complete annotation line for a recognized, non-persona
+speaker with quoted dialogue in the same reply. Rendering removes the annotation
+before dialogue discovery and TTS segmentation; SillyTavern's formatter wraps
+the attribute values in `<q>` nodes, so removal handles that markup as well.
+Annotations inside code fences, malformed lines, and cues for speakers absent
+from the reply are ignored. Do not put the cue inside spoken quotes or attach it
+to a dialogue line; the existing dialogue parser remains the attribution source.
+
+The prompt requests evidenced age band and voice presentation, a few audible
+traits, and an accent only when established. It does not infer accent from a name
+or nationality. The first accepted cue is saved in chat metadata with a stable ID and
+version. Repeated or edited cues leave that voice unchanged because the Qwen
+service retains the first design for a given `npc_id`. Manual card descriptions
+take priority; editing a card description creates a new voice version.
+
+A cardless speaker can use the provisional voice identity on their first line.
+When a card is later created or linked, its name and literal aliases resolve the
+same chat cue until the card has a manual description. Voice cues are kept inside
+each chat's metadata, not in a global name map. If no usable cue is present,
+playback keeps the existing narrator fallback without delay. The background
+tracker is not part of this first-line path. A dedicated small decision model
+remains a possible later fallback for narrators that omit cues.
